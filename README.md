@@ -17,8 +17,7 @@ It uses [Clerk](https://clerk.com/) for authentication, has a [Stripe](https://s
 ### Tech stack
 - **Backend framework:** [Encore.ts](https://encore.dev)
 - **Frontend framework:** [Next.js](https://nextjs.org/)
-- **Authentication:** [Clerk](https://clerk.com/)
-- **Payments:** [Stripe](https://stripe.com/)
+- **Authentication:** [Auth0](https://auth0.com/)
 - **UI Library:** [Tailwind](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
 
 ## Getting started 
@@ -31,14 +30,6 @@ Install Encore:
 - **Windows:** `iwr https://encore.dev/install.ps1 | iex`
 
 **Note**: This starter requires Encore v1.46.9+, if you have an older version installed, update using `encore version update`.
-
-### Create app
-
-Create a local app from this template:
-
-```bash
-encore app create my-app-name --example=ts/saas-starter
-```
 
 Then install the frontend dependencies:
 

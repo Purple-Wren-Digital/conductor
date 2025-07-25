@@ -7,7 +7,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { plans } from "@/lib/plans";
-import { auth } from "@clerk/nextjs/server";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 

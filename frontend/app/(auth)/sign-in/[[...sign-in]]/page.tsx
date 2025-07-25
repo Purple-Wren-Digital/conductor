@@ -1,13 +1,9 @@
-import { SignIn } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 /**
- * This page renders the Clerk SignIn component.
- * See https://clerk.com/docs/components/authentication/sign-in for more information.
+ * This page redirects to Auth0 login.
+ * Auth0 handles the authentication flow through /api/auth/login
  */
 export default function SignInPage() {
-	return (
-		<div className="min-h-screen flex items-center justify-center">
-			<SignIn />
-		</div>
-	);
+	redirect("/auth/login");
 }

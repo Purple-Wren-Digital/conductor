@@ -17,13 +17,13 @@ export default function Home() {
 						<div className="flex-1">
 							<div className="flex flex-col gap-4 lg:gap-8">
 								<h1 className="max-w-[80%] text-4xl leading-tight font-semibold text-foreground lg:text-5xl xl:text-7xl">
-									Encore.ts Saas Starter
+									Conductor Ticketing
 								</h1>
 								<p className="text-lg leading-relaxed text-muted-foreground xl:text-2xl">
 									Build your SaaS quickly with{" "}
 									<a href="https://encore.dev">Encore.ts</a>,{" "}
 									<a href="https://nextjs.org">Next.js</a>,{" "}
-									<a href="https://clerk.com">Clerk</a>,{" "}
+									<a href="https://auth0.com">Auth0</a>,{" "}
 									<a href="https://stripe.com">Stripe</a>,{" "}
 									<a href="https://tailwindcss.com">TailwindCSS</a> and{" "}
 									<a href="https://ui.shadcn.com">shadcn/ui</a>.
@@ -31,7 +31,7 @@ export default function Home() {
 							</div>
 							<div className="my-6 lg:my-10">
 								<Button asChild size="lg">
-									<Link href="/pricing">Pricing</Link>
+									<Link href="/pricing">Get Started</Link>
 								</Button>
 							</div>
 						</div>

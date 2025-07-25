@@ -1,31 +1,40 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { auth0 } from "@/lib/auth0";
 
-const isPublicRoute = createRouteMatcher(["/", "/pricing", "/sign-in(.*)"]);
+const publicRoutes = ["/", "/pricing", "/company"];
 
-export default clerkMiddleware(async (auth, request) => {
-	const isPublic = isPublicRoute(request);
-	if (!isPublic) {
-		await auth.protect();
-	}
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-	// If we don't have an organization ID, redirect to the create organization page
-	if (!isPublic && request.nextUrl.pathname !== "/select-organization") {
-		const user = await auth();
+  // Always run Auth0 middleware first
+  const authRes = await auth0.middleware(request);
 
-		if (!user.orgId) {
-			return NextResponse.redirect(
-				new URL("/select-organization", request.url),
-			);
-		}
-	}
-});
+  // Don't protect auth routes (let Auth0 handle them)
+  if (pathname.startsWith("/auth")) {
+    return authRes;
+  }
+
+  // Don't protect public routes
+  if (publicRoutes.includes(pathname)) {
+    return authRes;
+  }
+
+  // For protected routes, check if user is authenticated
+  const session = await auth0.getSession(request);
+
+  if (!session) {
+    // Redirect to login (v4 uses /auth prefix)
+    return NextResponse.redirect(
+      new URL("/auth/login", request.nextUrl.origin)
+    );
+  }
+
+  // Return the auth middleware response to preserve session updates
+  return authRes;
+}
 
 export const config = {
 	matcher: [
-		// Skip Next.js internals and all static files, unless found in search params
-		"/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-		// Always run for API routes
-		"/(api|trpc)(.*)",
+		"/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"
 	],
 };

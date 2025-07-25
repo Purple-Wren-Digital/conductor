@@ -6,6 +6,24 @@ interface DashboardData {
 	totalRevenue: number;
 }
 
+interface HealthCheck {
+	status: string;
+	timestamp: string;
+}
+
+/**
+ * Health check endpoint
+ */
+export const health = api(
+	{ method: "GET", expose: true, auth: false, path: "/health" },
+	(): HealthCheck => {
+		return {
+			status: "ok",
+			timestamp: new Date().toISOString(),
+		};
+	},
+);
+
 /**
  * A simple authenticated API endpoint that returns some fake data
  */

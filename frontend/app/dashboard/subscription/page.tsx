@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/encore-client";
 import { getApiClient } from "@/lib/api/server-side";
 import { plans } from "@/lib/plans";
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@auth0/nextjs-auth0";
 import { redirect } from "next/navigation";
 
 interface SubscriptionPageProps {
@@ -31,9 +31,9 @@ export default async function SubscriptionPage(
 ) {
   const { success, canceled } = await props.searchParams;
 
-  const { userId } = await auth();
-  if (!userId) {
-    redirect("/sign-in");
+  const session = await getSession();
+  if (!session?.user) {
+    redirect("/auth/login");
   }
 
   const apiClient = await getApiClient();

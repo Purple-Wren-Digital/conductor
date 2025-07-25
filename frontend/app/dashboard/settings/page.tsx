@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SignOutButton } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage() {
 	return (
@@ -13,11 +13,11 @@ export default function SettingsPage() {
 					<CardTitle>Sign out</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<SignOutButton>
-						<Button>
+					<Button asChild>
+						<Link href="/auth/logout">
 							Sign out <LogOut />
-						</Button>
-					</SignOutButton>
+						</Link>
+					</Button>
 				</CardContent>
 			</Card>
 		</main>
