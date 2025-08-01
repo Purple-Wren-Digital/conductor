@@ -2,8 +2,6 @@
 
 This is a starter template for building a SaaS application using [Encore.ts](https://encore.dev) and [Next.js](https://nextjs.org/).
 
-It uses [Clerk](https://clerk.com/) for authentication, has a [Stripe](https://stripe.com/) integration for payments, and uses [Tailwind](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/) for styling and components.
-
 **Demo:** [https://encorets-saas-starter.vercel.app](https://encorets-saas-starter.vercel.app)
 
 ![SaaS Starter](https://github.com/user-attachments/assets/4fe8d1db-1938-4ea4-9fa6-e89ac66066cd)
@@ -43,12 +41,6 @@ If you want to host the frontend on Vercel and don't already have it installed, 
 ```bash
 pnpm i -g vercel
 ```
-
-## Setting up Clerk
-
-Create a Clerk account if you haven't already. Then, in the Clerk dashboard, create a new application.
-
-Ensure the application is configured to support organizations, which can be enabled on the **Organization management settings** page.
 
 ### Secrets
 
