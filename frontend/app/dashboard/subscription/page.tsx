@@ -8,14 +8,10 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  ErrCode,
-  isAPIError,
-  type subscription,
-} from "@/lib/api/encore-client";
+import { ErrCode, isAPIError } from "@/lib/api/encore-client";
 import { getApiClient } from "@/lib/api/server-side";
+import { auth0 } from "@/lib/auth0";
 import { plans } from "@/lib/plans";
-import { getSession } from "@auth0/nextjs-auth0";
 import { redirect } from "next/navigation";
 
 interface SubscriptionPageProps {
@@ -27,11 +23,11 @@ interface SubscriptionPageProps {
 }
 
 export default async function SubscriptionPage(
-  props: Readonly<SubscriptionPageProps>,
+  props: Readonly<SubscriptionPageProps>
 ) {
   const { success, canceled } = await props.searchParams;
 
-  const session = await getSession();
+  const session = await auth0.getSession();
   if (!session?.user) {
     redirect("/auth/login");
   }
@@ -39,39 +35,39 @@ export default async function SubscriptionPage(
   const apiClient = await getApiClient();
 
   // Get the current subscription there is one
-  let currentSubscription: subscription.GetSubscriptionsResponse | undefined;
-  try {
-    currentSubscription = await apiClient.subscription.getSubscription();
-  } catch (error) {
-    if (!(isAPIError(error) && error.code === ErrCode.NotFound)) {
-      throw error;
-    }
-  }
+  // let currentSubscription: subscription.GetSubscriptionsResponse | undefined;
+  // try {
+  //   // currentSubscription = await apiClient.subscription.getSubscription();
+  // } catch (error) {
+  //   if (!(isAPIError(error) && error.code === ErrCode.NotFound)) {
+  //     throw error;
+  //   }
+  // }
 
   // Sever action to setup a subscription
-  const createCheckoutSession = async (formData: FormData) => {
-    "use server";
-    const stripePriceId = formData.get("stripePriceId") as string;
+  // const createCheckoutSession = async (formData: FormData) => {
+  //   "use server";
+  //   const stripePriceId = formData.get("stripePriceId") as string;
 
-    const serverApiClient = await getApiClient();
-    const session = await serverApiClient.subscription.createCheckoutSession({
-      priceId: stripePriceId,
-    });
-    redirect(session.url);
-  };
+  //   const serverApiClient = await getApiClient();
+  //   const session = await serverApiClient.subscription.createCheckoutSession({
+  //     priceId: stripePriceId,
+  //   });
+  //   redirect(session.url);
+  // };
 
-  // Server action to setup a subscription
-  const createPortalSession = async () => {
-    "use server";
-    const serverApiClient = await getApiClient();
-    const session = await serverApiClient.subscription.createPortalSession();
-    redirect(session.url);
-  };
+  // // Server action to setup a subscription
+  // const createPortalSession = async () => {
+  //   "use server";
+  //   const serverApiClient = await getApiClient();
+  //   const session = await serverApiClient.subscription.createPortalSession();
+  //   redirect(session.url);
+  // };
 
-  // Get the current plan
-  const currentPlan = plans.find(
-    (plan) => plan.stripePriceId === currentSubscription?.priceId,
-  );
+  // // Get the current plan
+  // const currentPlan = plans.find(
+  //   (plan) => plan.stripePriceId === currentSubscription?.priceId
+  // );
 
   return (
     <main className="container">
@@ -86,13 +82,13 @@ export default async function SubscriptionPage(
         </CardHeader>
 
         <CardContent>
-          {success === 'true' && (
+          {success === "true" && (
             <p>You have successfully subscribed to the plan.</p>
           )}
 
-          {canceled === 'true' && <p>The checkout has been canceled.</p>}
+          {canceled === "true" && <p>The checkout has been canceled.</p>}
 
-          {currentPlan && (
+          {/* {currentPlan && (
             <div className="flex flex-col gap-2">
               <p>
                 Your current plan is {currentPlan.name} - €{currentPlan.price}
@@ -130,7 +126,7 @@ export default async function SubscriptionPage(
 
               <Button type="submit">Subscribe</Button>
             </form>
-          )}
+          )} */}
         </CardContent>
       </Card>
     </main>
