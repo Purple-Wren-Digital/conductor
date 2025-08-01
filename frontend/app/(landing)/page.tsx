@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 
-import img1 from "./img1.jpg";
-import img2 from "./img2.jpg";
-import img3 from "./img3.jpg";
-import img4 from "./img4.jpg";
+import img1 from "./assets/matt-hardison-Z63xuEskzXs-unsplash.jpg" // "./img1.jpg";
+import img2 from "./assets/dillon-kydd-XGvwt544g8k-unsplash.jpg" //"./img2.jpg";
+import img3 from "./assets/phil-hearing-IYfp2Ixe9nM-unsplash.jpg" //"./img3.jpg";
+import img4 from "./assets/todd-kent-178j8tJrNlc-unsplash.jpg" //"./img4.jpg";
 
 export default function Home() {
 	return (
@@ -20,13 +20,7 @@ export default function Home() {
 									Conductor Ticketing
 								</h1>
 								<p className="text-lg leading-relaxed text-muted-foreground xl:text-2xl">
-									Build your SaaS quickly with{" "}
-									<a href="https://encore.dev">Encore.ts</a>,{" "}
-									<a href="https://nextjs.org">Next.js</a>,{" "}
-									<a href="https://auth0.com">Auth0</a>,{" "}
-									<a href="https://stripe.com">Stripe</a>,{" "}
-									<a href="https://tailwindcss.com">TailwindCSS</a> and{" "}
-									<a href="https://ui.shadcn.com">shadcn/ui</a>.
+									Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae pharetra risus, non laoreet lorem.
 								</p>
 							</div>
 							<div className="my-6 lg:my-10">
