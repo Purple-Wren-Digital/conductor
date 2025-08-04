@@ -6,64 +6,114 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+// Field definitions are aligned into columns separated by 2 or more spaces
 
-// OAUTH Connection
 model User {
-    id           String   @id @default(cuid())
-    auth0Id      String   @unique
-    email        String   @unique
-    phone        String?  @unique
-    name         String
-    role         Role     @default(USER)
-    marketCenter MarketCenter?
-    tickets      Ticket[] // 1 user → many tickets
+    id              String          @id @default(cuid())
+    auth0Id         String          @unique // OAUTH Connection
+    name            String
+    role            Role[]          @default([AGENT])
+    email           String          @unique
+    phone           String?         @unique
+    marketCenterId  String
+    marketCenter    MarketCenter    @relation(fields: [marketCenterId], references: [id]) // 1 user → 1 market center 
+    ticketAuthor    Ticket[]        @relation("TicketAuthor")
+    ticketOwner     Ticket[]        @relation("TicketOwner")
+    comments        Comments[]
 }
 
 model Ticket {
-    id               String       @id @default(cuid())
-    title            String
-    description      String
-    status           TicketStatus @default(CREATED)
-    priority         Priority
-    userId           String
-    user             User         @relation(fields: [userId], references: [id])
-    createdAt        DateTime     @default(now())
+    id              String                  @id @default(cuid())
+    created         DateTime                @default(now())
+    author          User                    @relation("TicketAuthor", fields: [authorId], references: [id]) // 1 ticket → 1 creator
+    authorId        String
+    owner           User                    @relation("TicketOwner", fields: [ownerId], references: [id]) // 1 ticket → 1 assignment
+    ownerId         String
+    marketCenter    MarketCenter            @relation(fields: [marketCenterId], references: [id]) // 1 ticket → 1 market center
+    marketCenterId  String
+    title           String
+    priority        Priority
+    comments        Comments[]
+    status          TicketStatus            @default(CREATED)
+    statusHistory   TicketStatusHistory[]
 }
 
 model MarketCenter {
-    id          String   @id @default(cuid())
-    title       String
-    description String
+    id              String          @id @default(uuid())
+    created         DateTime        @default(now())
+    updated         DateTime        @updatedAt
+    name            String
+    code            String          @unique
+    region          String
+    timezone        String
+    address1        String
+    address2        String?
+    city            String
+    state           String
+    zip             String
+    phone           String
+    email           String
+    tickets         Ticket[]
+    users           User[]          // 1 market center → many users/staff
+}
+
+model Comments {
+    id          String          @id @default(cuid())
+    created     DateTime        @default(now())
     userId      String
-    user        User     @relation(fields: [userId], references: [id])
-    @@unique([userId])
+    user        User            @relation(fields: [userId], references: [id])
+    ticketId    String
+    ticket      Ticket          @relation(fields: [ticketId], references: [id])
+    type        CommentType
+    comment     String
+    @@unique([userId, ticketId])
+}
+model TicketStatusHistory {
+    id          String        @id @default(cuid())
+    updatedAt   DateTime      @default(now())
+    ticketId    String
+    ticket      Ticket        @relation(fields: [ticketId], references: [id])
+    status      TicketStatus
 }
 
 enum Role {
-    USER
     ADMIN
+    AGENT
+    COMPLIANCE
+    FINANCE
+    MANAGEMENT
+    MARKETING
+    TECH_SUPPORT
 }
 
 enum TicketStatus {
     CREATED
+    ASSIGNED
+    IN_PROGRESS
     PENDING
-    CANCELLED
     COMPLETED
+    CLOSED
+    CANCELLED
 }
 
 enum Priority {
     LOW
     MEDIUM
     HIGH
+    CRITICAL
 }
 
 enum CommentType {
-    NOTE
-    ISSUE
-    QUESTION
+    CANCEL
+    ESCALATION
+    EXTERNAL
     FEEDBACK
     FOLLOW_UP
+    ISSUE
+    NOTE
+    QUESTION
+    REMINDER
+    SYSTEM
 }
 
 
-// Field definitions are aligned into columns separated by 2 or more spaces

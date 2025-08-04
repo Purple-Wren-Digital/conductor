@@ -10,7 +10,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { useUser } from "@auth0/nextjs-auth0";
-import { ArrowRight, House, Rat } from "lucide-react";
+import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
 
 export function Header() {
