@@ -10,10 +10,10 @@ import {
   TicketFilters,
   TicketListResponse,
   TicketStatus,
-  Urgency,
+  Priority,
   UserRole,
   TicketComment
-} from "./types";
+} from "../types";
 
 // Mock data storage - replace with actual database
 let tickets: Ticket[] = [];
@@ -34,12 +34,12 @@ export const createTicket = api(
       title: req.title,
       description: req.description,
       status: TicketStatus.ASSIGNED,
-      urgency: req.urgency,
+      priority: req.priority,
       category: req.category,
       creatorId: user.userID,
       dueDate: req.dueDate ? new Date(req.dueDate) : undefined,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     tickets.push(ticket);
@@ -68,8 +68,8 @@ export const getTickets = api(
     if (req.status) {
       filteredTickets = filteredTickets.filter(t => t.status === req.status);
     }
-    if (req.urgency) {
-      filteredTickets = filteredTickets.filter(t => t.urgency === req.urgency);
+    if (req.priority) {
+      filteredTickets = filteredTickets.filter(t => t.priority === req.priority);
     }
     if (req.assigneeId) {
       filteredTickets = filteredTickets.filter(t => t.assigneeId === req.assigneeId);
@@ -251,7 +251,8 @@ export const addComment = api(
       ticketId: id,
       userId: user.userID,
       internal: commentData.internal || false,
-      createdAt: new Date()
+      createdAt: new Date(),
+      type: '',
     };
 
     comments.push(comment);

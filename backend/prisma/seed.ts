@@ -5,13 +5,14 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Testing only
-  // await prisma.ticketStatusHistory.deleteMany();
-  // await prisma.comments.deleteMany();
-  // await prisma.ticket.deleteMany();
-  // await prisma.user.deleteMany();
-  // await prisma.marketCenter.deleteMany();
+  // Clear existing data
+  await prisma.ticketStatusHistory.deleteMany();
+  await prisma.comments.deleteMany();
+  await prisma.ticket.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.marketCenter.deleteMany();
 
+  // Create Market Center
   const marketCenter = await prisma.marketCenter.create({
     data: {
       id: 'mc_001',
@@ -29,66 +30,87 @@ async function main() {
     },
   });
 
-  const user1 = await prisma.user.create({
-    data: {
-      id: 'user_001',
-      auth0Id: 'auth0|agent001',
-      name: 'Kim Possible',
-      role: [Role.AGENT],
-      email: 'kpossible@example.com',
-      phone: '704-555-0101',
-      marketCenterId: marketCenter.id,
-    },
-  });
+  // Create Users
+  const [user1, user2, user3] = await prisma.$transaction([
+    prisma.user.create({
+      data: {
+        id: 'user_001',
+        auth0Id: 'auth0|agent001',
+        name: 'Kim Possible',
+        role: [Role.AGENT],
+        email: 'kpossible@example.com',
+        phone: '704-555-0101',
+        marketCenterId: marketCenter.id,
+      },
+    }),
+    prisma.user.create({
+      data: {
+        id: 'user_002',
+        auth0Id: 'auth0|admin001',
+        name: 'Norville Rodgers',
+        role: [Role.ADMIN],
+        email: 'norville.rogers@example.com',
+        phone: '704-555-0102',
+        marketCenterId: marketCenter.id,
+      },
+    }),
+    prisma.user.create({
+      data: {
+        id: 'user_003',
+        auth0Id: 'auth0|compliance001',
+        name: 'Bob Belcher',
+        role: [Role.STAFF],
+        email: 'burgers@example.com',
+        phone: '704-555-0103',
+        marketCenterId: marketCenter.id,
+      },
+    }),
+  ]);
 
-  const user2 = await prisma.user.create({
-    data: {
-      id: 'user_002',
-      auth0Id: 'auth0|admin001',
-      name: 'Norville Rodgers',
-      role: [Role.ADMIN, Role.TECH_SUPPORT],
-      email: 'norville.rogers@example.com',
-      phone: '704-555-0102',
-      marketCenterId: marketCenter.id,
-    },
-  });
-
-  const user3 = await prisma.user.create({
-    data: {
-      id: 'user_003',
-      auth0Id: 'auth0|compliance001',
-      name: 'Bob Belcher',
-      role: [Role.COMPLIANCE],
-      email: 'burgers@example.com',
-      phone: '704-555-0103',
-      marketCenterId: marketCenter.id,
-    },
-  });
-
-  const ticket1 = await prisma.ticket.create({
+  // Create Tickets
+const [ticket1, ticket2] = await prisma.$transaction([
+  prisma.ticket.create({
     data: {
       id: 'ticket_001',
-      authorId: user1.id,
-      ownerId: user2.id,
+      creatorId: user1.id,
+      assigneeId: user2.id,
       marketCenterId: marketCenter.id,
       title: 'Issue uploading buyer documents',
       priority: Priority.HIGH,
       status: TicketStatus.IN_PROGRESS,
+      updatedAt: new Date(),
+      category: 'Tech',
     },
-  });
-
-  const ticket2 = await prisma.ticket.create({
+  }),
+  prisma.ticket.create({
     data: {
       id: 'ticket_002',
-      authorId: user1.id,
-      ownerId: user3.id,
+      creatorId: user1.id,
+      assigneeId: user3.id,
       marketCenterId: marketCenter.id,
       title: 'Question about commission disbursement',
       priority: Priority.MEDIUM,
       status: TicketStatus.PENDING,
+      updatedAt: new Date(),
+      category: 'Payment',
     },
-  });
+  }),
+    prisma.ticket.create({
+      data: {
+        id: 'ticket_003',
+        creatorId: user2.id,
+        assigneeId: user3.id,
+        marketCenterId: marketCenter.id,
+        title: 'Printer out of ink',
+        priority:  Priority.LOW,
+        status: TicketStatus.CREATED,
+        updatedAt: new Date(),
+        category: 'Housekeeping',
+      },
+    }),
+]);
 
+  // Create Comments
   await prisma.comments.createMany({
     data: [
       {
@@ -96,32 +118,33 @@ async function main() {
         userId: user1.id,
         ticketId: ticket1.id,
         type: CommentType.ISSUE,
-        comment: 'I keep getting an error when I try to upload the contract PDF.',
+        content: 'I keep getting an error when I try to upload the contract PDF.',
       },
       {
         id: 'comment_002',
         userId: user2.id,
         ticketId: ticket1.id,
         type: CommentType.NOTE,
-        comment: 'Checked the logs; seems like a file size limit issue. Looking into it.',
+        content: 'Checked the logs; seems like a file size limit issue. Looking into it.',
       },
       {
         id: 'comment_003',
         userId: user1.id,
         ticketId: ticket2.id,
         type: CommentType.QUESTION,
-        comment: 'When should I expect the commission payment for the sale?',
+        content: 'When should I expect the commission payment for the sale?',
       },
       {
         id: 'comment_004',
         userId: user3.id,
         ticketId: ticket2.id,
         type: CommentType.FOLLOW_UP,
-        comment: 'Payment should be disbursed by Friday. Waiting on one final signature.',
+        content: 'Payment should be disbursed by Friday. Waiting on one final signature.',
       },
     ],
   });
 
+  // Create Ticket Status History
   await prisma.ticketStatusHistory.createMany({
     data: [
       {
