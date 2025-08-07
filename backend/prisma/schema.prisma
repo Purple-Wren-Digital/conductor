@@ -1,10 +1,14 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+generator client {
+  provider        = "prisma-client"
+  output          = "./generated"
+  previewFeatures = ["queryCompiler", "driverAdapters"]
 }
 
-generator client {
-  provider = "prisma-client-js"
+datasource db {
+  provider = "postgresql"
+  // Connect Prisma CLI to Encore's shadow database
+  // This prevents interference with Encore's migration system
+  url      = env("SHADOW_DB_URL") //DATABASE_URL
 }
 // Field definitions are aligned into columns separated by 2 or more spaces
 

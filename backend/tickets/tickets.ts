@@ -12,7 +12,7 @@ import {
   TicketStatus,
   Priority,
   UserRole,
-  TicketComment
+  TicketComment,
 } from "../types";
 
 // Mock data storage - replace with actual database
@@ -28,7 +28,7 @@ export const createTicket = api(
   { method: "POST", expose: true, auth: true, path: "/tickets" },
   async (req: CreateTicketRequest): Promise<Ticket> => {
     const user = getAuthData();
-    
+
     const ticket: Ticket = {
       id: `ticket_${ticketCounter++}`,
       title: req.title,
@@ -52,61 +52,75 @@ export const createTicket = api(
  */
 export const getTickets = api(
   { method: "GET", expose: true, auth: true, path: "/tickets" },
-  async (req: TicketFilters & { page?: number; limit?: number }): Promise<TicketListResponse> => {
+  async (
+    req: TicketFilters & { page?: number; limit?: number }
+  ): Promise<TicketListResponse> => {
     const user = getAuthData();
     const page = req.page || 1;
     const limit = req.limit || 20;
-    
+
     let filteredTickets = tickets;
 
     // Role-based filtering
     if (user.role === UserRole.AGENT) {
-      filteredTickets = tickets.filter(t => t.creatorId === user.userID);
+      filteredTickets = tickets.filter((t) => t.creatorId === user.userID);
     }
 
     // Apply filters
     if (req.status) {
-      filteredTickets = filteredTickets.filter(t => t.status === req.status);
+      filteredTickets = filteredTickets.filter((t) => t.status === req.status);
     }
     if (req.priority) {
-      filteredTickets = filteredTickets.filter(t => t.priority === req.priority);
+      filteredTickets = filteredTickets.filter(
+        (t) => t.priority === req.priority
+      );
     }
     if (req.assigneeId) {
-      filteredTickets = filteredTickets.filter(t => t.assigneeId === req.assigneeId);
+      filteredTickets = filteredTickets.filter(
+        (t) => t.assigneeId === req.assigneeId
+      );
     }
     if (req.creatorId) {
-      filteredTickets = filteredTickets.filter(t => t.creatorId === req.creatorId);
+      filteredTickets = filteredTickets.filter(
+        (t) => t.creatorId === req.creatorId
+      );
     }
     if (req.category) {
-      filteredTickets = filteredTickets.filter(t => t.category.toLowerCase().includes(req.category!.toLowerCase()));
+      filteredTickets = filteredTickets.filter((t) =>
+        t.category.toLowerCase().includes(req.category!.toLowerCase())
+      );
     }
     if (req.search) {
       const searchLower = req.search.toLowerCase();
-      filteredTickets = filteredTickets.filter(t => 
-        t.title.toLowerCase().includes(searchLower) ||
-        t.description.toLowerCase().includes(searchLower)
+      filteredTickets = filteredTickets.filter(
+        (t) =>
+          t.title.toLowerCase().includes(searchLower) ||
+          t.description.toLowerCase().includes(searchLower)
       );
     }
 
     // Date filtering
     if (req.dateFrom) {
       const fromDate = new Date(req.dateFrom);
-      filteredTickets = filteredTickets.filter(t => t.createdAt >= fromDate);
+      filteredTickets = filteredTickets.filter((t) => t.createdAt >= fromDate);
     }
     if (req.dateTo) {
       const toDate = new Date(req.dateTo);
-      filteredTickets = filteredTickets.filter(t => t.createdAt <= toDate);
+      filteredTickets = filteredTickets.filter((t) => t.createdAt <= toDate);
     }
 
     // Pagination
     const startIndex = (page - 1) * limit;
-    const paginatedTickets = filteredTickets.slice(startIndex, startIndex + limit);
+    const paginatedTickets = filteredTickets.slice(
+      startIndex,
+      startIndex + limit
+    );
 
     return {
       tickets: paginatedTickets,
       total: filteredTickets.length,
       page,
-      limit
+      limit,
     };
   }
 );
@@ -118,8 +132,8 @@ export const getTicket = api(
   { method: "GET", expose: true, auth: true, path: "/tickets/:id" },
   async ({ id }: { id: string }): Promise<Ticket> => {
     const user = getAuthData();
-    const ticket = tickets.find(t => t.id === id);
-    
+    const ticket = tickets.find((t) => t.id === id);
+
     if (!ticket) {
       throw new Error("Ticket not found");
     }
@@ -130,10 +144,10 @@ export const getTicket = api(
     }
 
     // Add comments to ticket
-    const ticketComments = comments.filter(c => c.ticketId === id);
+    const ticketComments = comments.filter((c) => c.ticketId === id);
     return {
       ...ticket,
-      comments: ticketComments
+      comments: ticketComments,
     };
   }
 );
@@ -143,10 +157,13 @@ export const getTicket = api(
  */
 export const updateTicket = api(
   { method: "PUT", expose: true, auth: true, path: "/tickets/:id" },
-  async ({ id, ...updates }: { id: string } & UpdateTicketRequest): Promise<Ticket> => {
+  async ({
+    id,
+    ...updates
+  }: { id: string } & UpdateTicketRequest): Promise<Ticket> => {
     const user = getAuthData();
-    const ticketIndex = tickets.findIndex(t => t.id === id);
-    
+    const ticketIndex = tickets.findIndex((t) => t.id === id);
+
     if (ticketIndex === -1) {
       throw new Error("Ticket not found");
     }
@@ -163,8 +180,11 @@ export const updateTicket = api(
       ...ticket,
       ...updates,
       dueDate: updates.dueDate ? new Date(updates.dueDate) : ticket.dueDate,
-      resolvedAt: updates.status === TicketStatus.RESOLVED ? new Date() : ticket.resolvedAt,
-      updatedAt: new Date()
+      resolvedAt:
+        updates.status === TicketStatus.RESOLVED
+          ? new Date()
+          : ticket.resolvedAt,
+      updatedAt: new Date(),
     };
 
     return tickets[ticketIndex];
@@ -178,21 +198,21 @@ export const deleteTicket = api(
   { method: "DELETE", expose: true, auth: true, path: "/tickets/:id" },
   async ({ id }: { id: string }): Promise<{ success: boolean }> => {
     const user = getAuthData();
-    
+
     // Only admins can delete tickets
     if (user.role !== UserRole.ADMIN) {
       throw new Error("Unauthorized to delete tickets");
     }
 
-    const ticketIndex = tickets.findIndex(t => t.id === id);
-    
+    const ticketIndex = tickets.findIndex((t) => t.id === id);
+
     if (ticketIndex === -1) {
       throw new Error("Ticket not found");
     }
 
     // Remove ticket and its comments
     tickets.splice(ticketIndex, 1);
-    comments = comments.filter(c => c.ticketId !== id);
+    comments = comments.filter((c) => c.ticketId !== id);
 
     return { success: true };
   }
@@ -203,16 +223,22 @@ export const deleteTicket = api(
  */
 export const assignTicket = api(
   { method: "POST", expose: true, auth: true, path: "/tickets/:id/assign" },
-  async ({ id, assigneeId }: { id: string; assigneeId: string }): Promise<Ticket> => {
+  async ({
+    id,
+    assigneeId,
+  }: {
+    id: string;
+    assigneeId: string;
+  }): Promise<Ticket> => {
     const user = getAuthData();
-    
+
     // Only staff and admins can assign tickets
     if (user.role === UserRole.AGENT) {
       throw new Error("Unauthorized to assign tickets");
     }
 
-    const ticketIndex = tickets.findIndex(t => t.id === id);
-    
+    const ticketIndex = tickets.findIndex((t) => t.id === id);
+
     if (ticketIndex === -1) {
       throw new Error("Ticket not found");
     }
@@ -220,7 +246,7 @@ export const assignTicket = api(
     tickets[ticketIndex] = {
       ...tickets[ticketIndex],
       assigneeId,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return tickets[ticketIndex];
@@ -232,10 +258,13 @@ export const assignTicket = api(
  */
 export const addComment = api(
   { method: "POST", expose: true, auth: true, path: "/tickets/:id/comments" },
-  async ({ id, ...commentData }: { id: string } & CreateCommentRequest): Promise<TicketComment> => {
+  async ({
+    id,
+    ...commentData
+  }: { id: string } & CreateCommentRequest): Promise<TicketComment> => {
     const user = getAuthData();
-    const ticket = tickets.find(t => t.id === id);
-    
+    const ticket = tickets.find((t) => t.id === id);
+
     if (!ticket) {
       throw new Error("Ticket not found");
     }
@@ -252,13 +281,13 @@ export const addComment = api(
       userId: user.userID,
       internal: commentData.internal || false,
       createdAt: new Date(),
-      type: '',
+      type: "",
     };
 
     comments.push(comment);
 
     // Update ticket's updatedAt timestamp
-    const ticketIndex = tickets.findIndex(t => t.id === id);
+    const ticketIndex = tickets.findIndex((t) => t.id === id);
     if (ticketIndex !== -1) {
       tickets[ticketIndex].updatedAt = new Date();
     }
@@ -278,8 +307,8 @@ export const getTicketComments = api(
   { method: "GET", expose: true, auth: true, path: "/tickets/:id/comments" },
   async ({ id }: { id: string }): Promise<GetCommentsResponse> => {
     const user = getAuthData();
-    const ticket = tickets.find(t => t.id === id);
-    
+    const ticket = tickets.find((t) => t.id === id);
+
     if (!ticket) {
       throw new Error("Ticket not found");
     }
@@ -289,11 +318,11 @@ export const getTicketComments = api(
       throw new Error("Unauthorized to view comments on this ticket");
     }
 
-    const ticketComments = comments.filter(c => c.ticketId === id);
+    const ticketComments = comments.filter((c) => c.ticketId === id);
 
     // Filter out internal comments for agents
     if (user.role === UserRole.AGENT) {
-      return { comments: ticketComments.filter(c => !c.internal) };
+      return { comments: ticketComments.filter((c) => !c.internal) };
     }
 
     return { comments: ticketComments };
