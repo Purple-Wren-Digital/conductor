@@ -1,0 +1,69 @@
+# Conductor: Backend
+
+## Project Structure
+
+- `auth/`: Authentication handler + encompassing gateway
+- `database/`: Prisma schema, migrations, and database client setup
+- `tickets/`: Feature module implementing Conductor endpoints
+- `encore.gen/, .encore/`: Encore-generated code, created by running encore dev (or pnpm dev) (do not edit manually)
+
+## Encore
+
+### Commands
+
+1. Start Encore: `encore run`
+2. Fresh connection URLs: `encore db conn-uri conductor-db` and `encore db conn-uri conductor-db --shadow`
+3. Check for compile-time errors: `encore check`
+
+## Prisma
+
+### Generate
+
+Use `prisma generate` whenever you change your Prisma schema, so your Prisma Client stays in sync with your schema
+
+```bash
+cd backend/<service>
+npx prisma generate --schema=./prisma/schema.prisma
+```
+
+<!--     "postinstall": "npx prisma generate --schema=./backend/database/prisma/schema.prisma"
+ -->
+
+### Migrations
+
+Use `prisma migrate dev` when you make changes to your Prisma schema and want to update your database schema, keeping a migration history
+
+```bash
+cd backend/database
+npx prisma migrate dev --name init --schema=./prisma/schema.prisma
+```
+
+#### Generate New Migrations
+
+When you make changes to your schema.prisma file:
+
+```bash
+cd backend/database
+npx prisma migrate dev --name describe-your-change --schema=./prisma/schema.prisma
+
+```
+
+# Reset the `auth` schema
+
+```bash
+psql "$postgresql://conductor-ee92:local@127.0.0.1:9500/tickets?sslmode=disable" -v ON_ERROR_STOP=1 <<'SQL'
+SET search_path = public;
+DROP SCHEMA IF EXISTS auth CASCADE;
+CREATE SCHEMA auth;
+SQL
+```
+
+```bash
+# Reset the `tickets` schema (do similarly, if needed)
+psql "$BASEpostgresql://conductor-ee92:local@127.0.0.1:9500/tickets?sslmode=disable_URL" -v ON_ERROR_STOP=1 <<'SQL'
+SET search_path = public;
+DROP SCHEMA IF EXISTS tickets CASCADE;
+CREATE SCHEMA tickets;
+SQL
+
+```

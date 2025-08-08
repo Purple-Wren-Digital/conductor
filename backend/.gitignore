@@ -3,4 +3,14 @@ encore.gen.go
 encore.gen.cue
 /.encore
 node_modules
+node_modules/*
+
 /encore.gen
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# misc
+.DS_Store
+*.pem
+/prisma/generated/prisma
