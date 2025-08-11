@@ -1,59 +1,20 @@
-# Conductor: Backend
+## Conductor: Backend
 
-## Project Structure
+### Developer Notes
 
-- `auth/`: Authentication handler + encompassing gateway
-- `ticket/`: Feature module implementing ticket CRUD endpoints + Prisma schema, migrations, and database client setup
-- `user/`: Feature module implementing user creation and listing all users
-- `encore.gen/, .encore/`: Encore-generated code, created by running encore dev (or pnpm dev) (do not edit manually)
+1. Run `cd backend`
+2. Run two separate terminals for `Encore` and `Prisma`:
 
-## Developer Notes
-
-Run two separate terminals for `Encore` and `Prisma`.
-
-### Encore
-
-#### How to Start Encore Locally:
+#### Start `Encore` Locally
 
 ```bash
-cd backend
 encore run
 ```
 
-<!-- a. Get database connection URLs
-(if/once Prisma is generated or if there are no `DB_URL` + `SHADOW_URL`):
+### Run `Prisma Studio` Locally
 
 ```bash
-cd backend
-encore db conn-uri ticket
-encore db conn-uri ticket --shadow
-``` -->
-
-## Prisma
-
-### Run Prisma Studio Locally
-
-```bash
-cd backend
-npx prisma studio --schema=ticket/schema.prisma
+npm run studio
 ```
 
-### Seed
-
-```bash
-cd backend
-npx prisma db seed seed/seed.ts
-```
-
-### Revert a Migration (Rollback)
-
-```bash
-cd backend
- npx prisma migrate resolve --applied <migration id> --schema=ticket/schema.prisma
-```
-
-
-<!-- 
-psql -h 127.0.0.1 -p 9500 -U conductor-ee92 -d ticket
-local
- -->
+- Remaining scripts in `package.json`
