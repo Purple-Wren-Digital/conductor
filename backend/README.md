@@ -44,3 +44,16 @@ npx prisma studio --schema=ticket/schema.prisma
 cd backend
 npx prisma db seed seed/seed.ts
 ```
+
+### Revert a Migration (Rollback)
+
+```bash
+cd backend
+ npx prisma migrate resolve --applied <migration id> --schema=ticket/schema.prisma
+```
+
+
+<!-- 
+psql -h 127.0.0.1 -p 9500 -U conductor-ee92 -d ticket
+local
+ -->
