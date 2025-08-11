@@ -15,15 +15,18 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "~22.13.9",
+    "tsx": "^4.20.3",
     "typescript": "~5.2.2",
     "vite": "~6.2.0",
     "vitest": "~3.0.7"
   },
   "dependencies": {
     "@prisma/client": "^6.13.0",
+    "@prisma/extension-accelerate": "^2.0.2",
     "auth0": "^4.27.0",
     "encore.dev": "^1.48.12",
     "jsonwebtoken": "^9.0.2",
+    "prisma": "^6.13.0",
     "stripe": "~17.7.0"
   },
   "optionalDependencies": {

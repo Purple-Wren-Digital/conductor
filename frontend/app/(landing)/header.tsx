@@ -10,7 +10,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { useUser } from "@auth0/nextjs-auth0";
-import { ArrowRight, Rat } from "lucide-react";
+import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
 
 export function Header() {
@@ -20,7 +20,7 @@ export function Header() {
     <header className="border-b">
       <div className="container flex items-center justify-between py-2">
         <Link href="/" className="text-xl font-bold flex items-center">
-          <Rat className="size-5 mr-1" /> Acme
+          <House className="size-5 mr-1" strokeWidth={2.5}/> Conductor Ticketing
         </Link>
 
         <NavigationMenu>
