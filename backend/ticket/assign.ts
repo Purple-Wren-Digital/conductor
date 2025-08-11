@@ -12,7 +12,7 @@ export interface AssignTicketResponse {
 }
 
 // Assigns a ticket to a user
-export const assign = api<AssignTicketRequest>( // , AssignTicketResponse
+export const assign = api<AssignTicketRequest, AssignTicketResponse>(
   { expose: true, method: "POST", path: "/tickets/:id/assign" },
   async (req) => {
     // Check if assignee exists
@@ -34,7 +34,7 @@ export const assign = api<AssignTicketRequest>( // , AssignTicketResponse
         },
       });
 
-      return { ticket };
+      return { ticket } as AssignTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");

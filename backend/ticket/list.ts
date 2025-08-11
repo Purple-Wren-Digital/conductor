@@ -77,6 +77,6 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       commentCount: ticket._count.comments,
     }));
 
-    return { tickets: formattedTickets, total };
+    return { tickets: formattedTickets, total } as ListTicketsResponse;
   }
 );

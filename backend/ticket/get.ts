@@ -29,7 +29,7 @@ export interface GetTicketResponse {
 }
 
 // Retrieves a specific ticket by ID
-export const get = api<GetTicketRequest>( // , GetTicketResponse
+export const get = api<GetTicketRequest, GetTicketResponse>(
   { expose: true, method: "GET", path: "/tickets/:id" },
   async (req) => {
     const ticket = await prisma.ticket.findUnique({
@@ -44,7 +44,6 @@ export const get = api<GetTicketRequest>( // , GetTicketResponse
       throw APIError.notFound("ticket not found");
     }
 
-
-    return { ticket };
+    return { ticket } as GetTicketResponse;
   }
 );

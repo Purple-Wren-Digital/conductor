@@ -22,7 +22,7 @@ export interface Ticket {
   status: TicketStatus;
   urgency: Urgency;
   category: string;
-  creatorId: string;
+  creatorId?: string;
   assigneeId: string | null;
   dueDate: Date | null;
   resolvedAt: Date | null;

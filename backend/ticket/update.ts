@@ -17,7 +17,7 @@ export interface UpdateTicketResponse {
 }
 
 // Updates an existing ticket.
-export const update = api<UpdateTicketRequest>( // , UpdateTicketResponse
+export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
   { expose: true, method: "PUT", path: "/tickets/:id" },
   async (req) => {
     const updateData: any = {};
@@ -49,7 +49,7 @@ export const update = api<UpdateTicketRequest>( // , UpdateTicketResponse
         },
       });
 
-      return { ticket };
+      return { ticket } as UpdateTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");
