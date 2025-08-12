@@ -11,7 +11,6 @@ export interface ListUsersResponse {
   users: User[];
 }
 
-// Retrieves all users with optional role filtering.
 export const list = api<ListUsersRequest, ListUsersResponse>(
   { expose: true, method: "GET", path: "/users" },
   async (req) => {

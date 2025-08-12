@@ -12,14 +12,12 @@ export interface CreateCommentResponse {
   comment: Comment;
 }
 
-// Creates a new comment on a ticket.
 export const create = api<CreateCommentRequest, CreateCommentResponse>(
   { expose: true, method: "POST", path: "/tickets/:ticketId/comments" },
   async (req) => {
-    // For now, we'll use a mock user ID. In a real app, this would come from auth
+    // TODO: Implement auth
     const mockUserId = "user_1";
 
-    // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
     });

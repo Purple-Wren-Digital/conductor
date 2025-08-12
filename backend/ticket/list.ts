@@ -19,7 +19,6 @@ export interface ListTicketsResponse {
   total: number;
 }
 
-// Retrieves all tickets with optional filtering.
 export const list = api<ListTicketsRequest, ListTicketsResponse>(
   { expose: true, method: "GET", path: "/tickets" },
   async (req) => {

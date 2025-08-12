@@ -28,7 +28,6 @@ export interface GetTicketResponse {
       };
 }
 
-// Retrieves a specific ticket by ID
 export const get = api<GetTicketRequest>( //, GetTicketResponse
   { expose: true, method: "GET", path: "/tickets/:id" },
   async (req) => {

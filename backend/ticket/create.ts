@@ -19,7 +19,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
   { expose: true, method: "POST", path: "/tickets" },
   async (req) => {
     try {
-      // For now, we'll use a mock user ID. In a real app, this would come from auth
+      // TODO: AUTH
       const mockUserId = "user_1";
 
       const ticket = await prisma.ticket.create({

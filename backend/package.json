@@ -8,9 +8,10 @@
   "scripts": {
     "test": "vitest",
     "build": "cd ../frontend && bun install && vite build --outDir=../backend/frontend/dist",
-    "migrate": "npx prisma migrate dev --schema=ticket/schema.prisma",
     "postinstall": "npx prisma generate --schema=ticket/schema.prisma",
-    "studio": "npx prisma studio --schema=ticket/schema.prisma"
+    "migrate": "npx prisma migrate dev --schema=ticket/schema.prisma",
+    "studio": "npx prisma studio --schema=ticket/schema.prisma",
+    "seed": "npx prisma seed seed/seed.ts"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
@@ -26,6 +27,7 @@
     "auth0": "^4.27.0",
     "encore.dev": "^1.48.12",
     "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
     "prisma": "^6.13.0",
     "stripe": "~17.7.0"
   },

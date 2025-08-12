@@ -16,7 +16,6 @@ export interface UpdateTicketResponse {
   ticket: Ticket;
 }
 
-// Updates an existing ticket.
 export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
   { expose: true, method: "PUT", path: "/tickets/:id" },
   async (req) => {

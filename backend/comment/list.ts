@@ -10,7 +10,6 @@ export interface ListCommentsResponse {
   comments: Comment[];
 }
 
-// Retrieves all comments for a ticket.
 export const list = api<ListCommentsRequest, ListCommentsResponse>(
   { expose: true, method: "GET", path: "/tickets/:ticketId/comments" },
   async (req) => {
