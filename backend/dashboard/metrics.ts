@@ -1,5 +1,5 @@
 import { api } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { prisma, ready } from "../ticket/db";
 import type { DashboardMetrics, TicketStatus, Urgency } from "../ticket/types";
 
 export interface GetMetricsResponse {
@@ -9,6 +9,8 @@ export interface GetMetricsResponse {
 export const getMetrics = api<void, GetMetricsResponse>(
   { expose: true, method: "GET", path: "/dashboard/metrics" },
   async () => {
+    await ready; // ensure Prisma schema applied in preview
+
     const totalTickets = await prisma.ticket.count();
 
     const openTickets = await prisma.ticket.count({
