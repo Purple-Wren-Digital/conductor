@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "build": "cd ../frontend && bun install && vite build --outDir=../backend/frontend/dist",
+    "build": "cd ../frontend && bun install && ./node_modules/.bin/next build",
     "postinstall": "npx prisma generate --schema=ticket/schema.prisma",
     "migrate": "npx prisma migrate dev --schema=ticket/schema.prisma",
     "studio": "npx prisma studio --schema=ticket/schema.prisma",
