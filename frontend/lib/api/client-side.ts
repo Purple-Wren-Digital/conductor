@@ -25,6 +25,13 @@ export function useApiClient() {
 
   return new Client(environment, {
     auth: async () => {
+      // In development, always use "local" token
+      if (process.env.NODE_ENV === "development") {
+        return {
+          authorization: `Bearer local`,
+        };
+      }
+
       if (!user) {
         throw new Error("User not authenticated");
       }
