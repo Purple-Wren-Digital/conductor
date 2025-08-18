@@ -13,7 +13,7 @@ export interface CreateCommentResponse {
 }
 
 export const create = api<CreateCommentRequest, CreateCommentResponse>(
-  { expose: true, method: "POST", path: "/tickets/:ticketId/comments" },
+  { expose: true, method: "POST", path: "/tickets/:ticketId/comments", auth: true },
   async (req) => {
     // TODO: Implement auth
     const mockUserId = "user_1";

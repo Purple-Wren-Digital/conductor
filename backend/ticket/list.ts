@@ -20,7 +20,7 @@ export interface ListTicketsResponse {
 }
 
 export const list = api<ListTicketsRequest, ListTicketsResponse>(
-  { expose: true, method: "GET", path: "/tickets" },
+  { expose: true, method: "GET", path: "/tickets", auth: true },
   async (req) => {
     const limit = req.limit || 50;
     const offset = req.offset || 0;

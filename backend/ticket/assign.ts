@@ -13,7 +13,7 @@ export interface AssignTicketResponse {
 
 // Assigns a ticket to a user
 export const assign = api<AssignTicketRequest, AssignTicketResponse>(
-  { expose: true, method: "POST", path: "/tickets/:id/assign" },
+  { expose: true, method: "POST", path: "/tickets/:id/assign", auth: true },
   async (req) => {
     // Check if assignee exists
     const assignee = await prisma.user.findUnique({

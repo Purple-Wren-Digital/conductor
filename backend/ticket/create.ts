@@ -16,7 +16,7 @@ export interface CreateTicketResponse {
 
 // Creates a new ticket.
 export const create = api<CreateTicketRequest, CreateTicketResponse>(
-  { expose: true, method: "POST", path: "/tickets" },
+  { expose: true, method: "POST", path: "/tickets", auth: true },
   async (req) => {
     try {
       // TODO: AUTH

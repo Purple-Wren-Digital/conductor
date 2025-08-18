@@ -21,6 +21,13 @@ if (serverSideEnv.VERCEL_ENV === "production") {
 export async function getApiClient() {
   return new Client(environment, {
     auth: async () => {
+      // In development, always use "local" token
+      if (process.env.NODE_ENV === "development") {
+        return {
+          authorization: `Bearer local`,
+        };
+      }
+
       const session = await auth0.getSession();
       if (!session?.tokenSet?.accessToken) {
         throw new Error("User not authenticated or access token not available");

@@ -80,6 +80,16 @@ const myAuthHandler = authHandler(
       throw APIError.unauthenticated("no token provided");
     }
 
+    // Local development mode - accept "local" as bypass token
+    if (process.env.NODE_ENV === "development" && token === "local") {
+      console.log("🔧 Local development mode: accepting 'local' token");
+      return {
+        userID: "local-dev-user",
+        imageUrl: "https://via.placeholder.com/150",
+        emailAddress: "local@localhost.com",
+      };
+    }
+
     try {
       // Verify the JWT (production)
       jwt.verify(token, publicCert(), {
