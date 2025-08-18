@@ -11,7 +11,7 @@ export interface ListCommentsResponse {
 }
 
 export const list = api<ListCommentsRequest, ListCommentsResponse>(
-  { expose: true, method: "GET", path: "/tickets/:ticketId/comments" },
+  { expose: true, method: "GET", path: "/tickets/:ticketId/comments", auth: true },
   async (req) => {
     const comments = await prisma.comment.findMany({
       where: { ticketId: req.ticketId },

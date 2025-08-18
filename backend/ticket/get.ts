@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import type { Ticket, UserRole } from "./types";
 
 export interface GetTicketRequest {
-  id: string;
+  ticketId: string;
 }
 
 export interface GetTicketResponse {
@@ -29,10 +29,10 @@ export interface GetTicketResponse {
 }
 
 export const get = api<GetTicketRequest>( //, GetTicketResponse
-  { expose: true, method: "GET", path: "/tickets/:id" },
+  { expose: true, method: "GET", path: "/tickets/:ticketId", auth: true },
   async (req) => {
     const ticket = await prisma.ticket.findUnique({
-      where: { id: req.id },
+      where: { id: req.ticketId },
       include: {
         creator: true,
         assignee: true,

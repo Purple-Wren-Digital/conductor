@@ -12,7 +12,7 @@ export interface ListUsersResponse {
 }
 
 export const list = api<ListUsersRequest, ListUsersResponse>(
-  { expose: true, method: "GET", path: "/users" },
+  { expose: true, method: "GET", path: "/users", auth: true },
   async (req) => {
     const where: any = {};
     

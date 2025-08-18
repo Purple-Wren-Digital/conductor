@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 
 export interface UpdateTicketRequest {
-  id: string;
+  ticketId: string;
   title?: string;
   description?: string;
   status?: TicketStatus;
@@ -17,7 +17,7 @@ export interface UpdateTicketResponse {
 }
 
 export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
-  { expose: true, method: "PUT", path: "/tickets/:id" },
+  { expose: true, method: "PUT", path: "/tickets/:ticketId", auth: true },
   async (req) => {
     const updateData: any = {};
 
@@ -40,7 +40,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     try {
       const ticket = await prisma.ticket.update({
-        where: { id: req.id },
+        where: { id: req.ticketId },
         data: updateData,
         include: {
           creator: true,
