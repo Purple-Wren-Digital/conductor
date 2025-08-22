@@ -28,8 +28,8 @@ export interface GetTicketResponse {
       };
 }
 
-export const get = api<GetTicketRequest>( //, GetTicketResponse
-  { expose: true, method: "GET", path: "/tickets/:ticketId", auth: true },
+export const get = api<GetTicketRequest>( 
+  { expose: true, method: "GET", path: "/tickets/:ticketId", auth: false },
   async (req) => {
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -43,6 +43,6 @@ export const get = api<GetTicketRequest>( //, GetTicketResponse
       throw APIError.notFound("ticket not found");
     }
 
-    return { ticket }; // as GetTicketResponse;
+    return { ticket }; 
   }
 );
