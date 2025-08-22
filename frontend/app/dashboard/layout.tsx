@@ -1,11 +1,7 @@
 "use client";
 
 import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@auth0/nextjs-auth0";
 import Link from "next/link";
 import { AppSidebar } from "./app-sidebar";
@@ -17,10 +13,10 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar collapsible="offcanvas" />
+      <AppSidebar collapsible="offcanvas"/>
 
-      <div className="w-full flex flex-col">
-        <header className="flex items-center px-2 py-2 gap-2">
+      <div className="w-full flex flex-col min-h-screen">
+        <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0 bg-background z-10">
           <SidebarTrigger />
           <Separator orientation="vertical" />
 
@@ -36,7 +32,7 @@ export default function DashboardLayout({
                 />
               )}
               <Link
-                href="/auth/logout"
+                href="/api/auth/logout"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 Logout
@@ -45,7 +41,7 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <div className="px-2 py-2">{children}</div>
+        <main className="flex-grow container mx-auto p-6">{children}</main>
       </div>
     </SidebarProvider>
   );
