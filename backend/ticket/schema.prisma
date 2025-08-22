@@ -37,7 +37,8 @@ model User {
   createdTickets Ticket[] @relation("TicketCreator")
   assignedTickets Ticket[] @relation("TicketAssignee")
   comments Comment[]
-
+  deletedAt    DateTime?
+  isActive     Boolean    @default(true)
   @@map("users")
 }
 
