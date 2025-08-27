@@ -6,4 +6,5 @@ export * from "./team-invite";
 export * from "./team-members";
 export * from "./team-remove";
 export * from "./team-role";
+export * from "./categories";
 export * from "./types";
