@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
+import { commentRateLimiter } from "./rate-limiter";
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -17,6 +18,9 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
   async (req) => {
     // TODO: Implement auth
     const mockUserId = "user_1";
+
+    // Apply rate limiting
+    commentRateLimiter.checkRateLimit(mockUserId);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
