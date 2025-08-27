@@ -28,6 +28,7 @@
     "encore.dev": "^1.48.13",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
+    "resend": "^6.0.1",
     "stripe": "~17.7.0"
   },
   "optionalDependencies": {

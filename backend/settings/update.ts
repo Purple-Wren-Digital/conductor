@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
 import { SettingsUpdateRequest, MarketCenterSettings, BusinessHours, BrandingSettings } from "./types";
+import { notifySettingsChange } from "./notifications";
 
 const validateBusinessHours = (businessHours: any): BusinessHours => {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -188,6 +189,17 @@ export const updateMarketCenterSettings = api(
       await prisma.settingsAuditLog.createMany({
         data: auditLogs
       });
+
+      // Send email notifications to all market center admins
+      await notifySettingsChange(
+        user.marketCenter.id,
+        user.id,
+        auditLogs.map(log => ({
+          section: log.section,
+          previousValue: log.previousValue,
+          newValue: log.newValue
+        }))
+      );
     }
 
     return updatedMarketCenter.settings as any;
