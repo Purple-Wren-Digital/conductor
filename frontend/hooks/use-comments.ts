@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommentApi } from "@/lib/api/comment-client";
 import { Comment } from "@/lib/types";
 import { toast } from "sonner";
+import { useEffect, useCallback } from "react";
+import { realTimeService, CommentEvent } from "@/lib/realtime";
 
 interface CreateCommentParams {
   ticketId: string;
@@ -25,6 +27,51 @@ interface DeleteCommentParams {
 
 export function useComments(ticketId: string) {
   const commentApi = useCommentApi();
+  const queryClient = useQueryClient();
+
+  // Handle real-time comment events
+  const handleCommentEvent = useCallback((event: CommentEvent) => {
+    const queryKey = ["comments", ticketId];
+    
+    switch (event.type) {
+      case "comment.created":
+        if (event.comment) {
+          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+            if (!oldComments) return [event.comment];
+            // Avoid duplicates by checking if comment already exists
+            const exists = oldComments.some(c => c.id === event.comment.id);
+            return exists ? oldComments : [...oldComments, event.comment];
+          });
+        }
+        break;
+      
+      case "comment.updated":
+        if (event.comment) {
+          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+            if (!oldComments) return [];
+            return oldComments.map(c => 
+              c.id === event.comment.id ? event.comment : c
+            );
+          });
+        }
+        break;
+      
+      case "comment.deleted":
+        if (event.commentId) {
+          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+            if (!oldComments) return [];
+            return oldComments.filter(c => c.id !== event.commentId);
+          });
+        }
+        break;
+    }
+  }, [queryClient, ticketId]);
+
+  // Subscribe to real-time events
+  useEffect(() => {
+    const unsubscribe = realTimeService.subscribe(ticketId, handleCommentEvent);
+    return unsubscribe;
+  }, [ticketId, handleCommentEvent]);
 
   return useQuery({
     queryKey: ["comments", ticketId],
@@ -32,7 +79,7 @@ export function useComments(ticketId: string) {
       const response = await commentApi.listComments(ticketId);
       return response.comments;
     },
-    refetchInterval: 30000, // Poll every 30 seconds for real-time updates
+    refetchInterval: 30000, // Poll every 30 seconds as fallback
     staleTime: 10000, // Consider data stale after 10 seconds
   });
 }
@@ -58,30 +105,28 @@ export function useCreateComment() {
       const previousComments = queryClient.getQueryData<Comment[]>(["comments", ticketId]);
 
       // Optimistically update with new comment
-      if (previousComments) {
-        const optimisticComment: Comment = {
-          id: `temp-${Date.now()}`,
-          content,
-          ticketId,
-          userId: "current-user",
-          internal: internal || false,
-          createdAt: new Date(),
-          user: {
-            id: "current-user", // Will be replaced by real data
-            name: "You",
-            email: "",
-            role: "AGENT",
-            createdAt: new Date().toISOString(),
-          },
-        };
+      const optimisticComment: Comment = {
+        id: `temp-${Date.now()}-${Math.random()}`,
+        content,
+        ticketId,
+        userId: "current-user",
+        internal: internal || false,
+        createdAt: new Date(),
+        user: {
+          id: "current-user",
+          name: "You",
+          email: "",
+          role: "AGENT",
+          createdAt: new Date().toISOString(),
+        },
+      };
 
-        queryClient.setQueryData<Comment[]>(
-          ["comments", ticketId],
-          [...previousComments, optimisticComment]
-        );
-      }
+      queryClient.setQueryData<Comment[]>(
+        ["comments", ticketId],
+        (old) => old ? [...old, optimisticComment] : [optimisticComment]
+      );
 
-      return { previousComments };
+      return { previousComments, optimisticComment };
     },
     onError: (error: any, variables, context) => {
       // Revert optimistic update on error
@@ -90,15 +135,22 @@ export function useCreateComment() {
       }
       toast.error(error.message || "Failed to add comment");
     },
-    onSuccess: (newComment, { ticketId }) => {
+    onSuccess: (newComment, { ticketId }, context) => {
       // Replace optimistic update with real data
-      const comments = queryClient.getQueryData<Comment[]>(["comments", ticketId]);
-      if (comments) {
-        const updatedComments = comments.map((comment) =>
-          comment.id.startsWith("temp-") ? newComment : comment
+      queryClient.setQueryData<Comment[]>(["comments", ticketId], (old) => {
+        if (!old) return [newComment];
+        return old.map((comment) =>
+          comment.id === context?.optimisticComment?.id ? newComment : comment
         );
-        queryClient.setQueryData(["comments", ticketId], updatedComments);
-      }
+      });
+      
+      // Simulate real-time event for other clients
+      realTimeService.simulateEvent({
+        type: "comment.created",
+        ticketId,
+        comment: newComment,
+      });
+      
       toast.success("Comment added successfully");
     },
     onSettled: (data, error, { ticketId }) => {
@@ -144,7 +196,14 @@ export function useUpdateComment() {
       }
       toast.error(error.message || "Failed to update comment");
     },
-    onSuccess: () => {
+    onSuccess: (updatedComment, { ticketId }) => {
+      // Simulate real-time event for other clients
+      realTimeService.simulateEvent({
+        type: "comment.updated",
+        ticketId,
+        comment: updatedComment,
+      });
+      
       toast.success("Comment updated successfully");
     },
     onSettled: (data, error, { ticketId }) => {
@@ -182,11 +241,26 @@ export function useDeleteComment() {
       }
       toast.error(error.message || "Failed to delete comment");
     },
-    onSuccess: () => {
+    onSuccess: (result, { ticketId, commentId }) => {
+      // Simulate real-time event for other clients
+      realTimeService.simulateEvent({
+        type: "comment.deleted",
+        ticketId,
+        commentId,
+      });
+      
       toast.success("Comment deleted successfully");
     },
     onSettled: (data, error, { ticketId }) => {
       queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
     },
   });
+}
+
+/**
+ * Hook to get comment count for real-time updates
+ */
+export function useCommentCount(ticketId: string) {
+  const { data: comments } = useComments(ticketId);
+  return comments?.length ?? 0;
 }

@@ -15,10 +15,9 @@ import { Edit2, Trash2, Check, X } from "lucide-react";
 interface CommentItemProps {
   comment: Comment;
   ticketId: string;
-  onUpdate?: () => void;
 }
 
-export function CommentItem({ comment, ticketId, onUpdate }: CommentItemProps) {
+export function CommentItem({ comment, ticketId }: CommentItemProps) {
   const { user } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -40,7 +39,6 @@ export function CommentItem({ comment, ticketId, onUpdate }: CommentItemProps) {
         {
           onSuccess: () => {
             setIsEditing(false);
-            onUpdate?.();
           },
         }
       );
@@ -60,11 +58,6 @@ export function CommentItem({ comment, ticketId, onUpdate }: CommentItemProps) {
         {
           ticketId,
           commentId: comment.id,
-        },
-        {
-          onSuccess: () => {
-            onUpdate?.();
-          },
         }
       );
     }

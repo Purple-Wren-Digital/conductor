@@ -1,138 +1,118 @@
-import { Local } from "./encore-client";
-import { clientSideEnv } from "../env/client-side";
+"use client";
 
-export interface CreateCommentRequest {
-  ticketId: string;
-  content: string;
-  internal?: boolean;
+import { getAccessToken } from "@auth0/nextjs-auth0";
+import type { Comment } from "@/lib/types";
+
+const API_BASE = "http://localhost:4000";
+
+async function getAuthToken(): Promise<string> {
+  if (process.env.NODE_ENV === "development") {
+    return "local";
+  }
+  return await getAccessToken();
 }
 
-export interface UpdateCommentRequest {
+async function parseJsonSafe<T>(res: Response): Promise<T> {
+  const ct = res.headers.get("content-type") || "";
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text || "No body"}`);
+  }
+  if (ct.includes("application/json")) {
+    return res.json();
+  }
+  const text = await res.text().catch(() => "");
+  throw new Error(
+    `Expected JSON but got ${ct || "unknown content-type"}. First 200 chars:\n${text.slice(0, 200)}`
+  );
+}
+
+interface CreateCommentRequest {
+  ticketId: string;
+  content: string;
+  internal: boolean;
+}
+
+interface UpdateCommentRequest {
   ticketId: string;
   commentId: string;
   content: string;
   internal?: boolean;
 }
 
-export interface DeleteCommentRequest {
+interface DeleteCommentRequest {
   ticketId: string;
   commentId: string;
 }
 
-export interface CommentResponse {
-  comment: any; // Will use the backend Comment type
+interface ListCommentsResponse {
+  comments: Comment[];
 }
 
-export interface ListCommentsResponse {
-  comments: any[]; // Will use the backend Comment type
+interface CommentResponse {
+  comment: Comment;
 }
 
-export function useCommentApi() {
-  // Get the correct base URL
-  const getBaseUrl = () => {
-    if (process.env.NODE_ENV === "development") {
-      return Local;
-    }
-    // In production, use the staging environment
-    return `https://staging-conductor-ee92.encr.app`;
-  };
+class CommentApiClient {
+  async listComments(ticketId: string): Promise<ListCommentsResponse> {
+    const accessToken = await getAuthToken();
+    const res = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+    return parseJsonSafe<ListCommentsResponse>(res);
+  }
 
-  const getHeaders = async () => {
-    // In development, always use "local" token
-    if (process.env.NODE_ENV === "development") {
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer local',
-      };
-    }
+  async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
+    const accessToken = await getAuthToken();
+    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        content: request.content,
+        internal: request.internal,
+      }),
+    });
+    return parseJsonSafe<CommentResponse>(res);
+  }
 
-    // Get Auth0 access token from our API route
-    try {
-      const tokenResponse = await fetch("/api/auth/token");
-      if (!tokenResponse.ok) {
-        throw new Error("Failed to get access token");
-      }
-      
-      const { accessToken } = await tokenResponse.json();
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      };
-    } catch (error) {
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer local', // Fallback to local
-      };
-    }
-  };
+  async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
+    const accessToken = await getAuthToken();
+    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        content: request.content,
+        internal: request.internal,
+      }),
+    });
+    return parseJsonSafe<CommentResponse>(res);
+  }
 
-  return {
-    async listComments(ticketId: string): Promise<ListCommentsResponse> {
-      const headers = await getHeaders();
-      const response = await fetch(`${getBaseUrl()}/tickets/${ticketId}/comments`, {
-        method: 'GET',
-        headers,
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch comments: ${response.status} ${errorText}`);
-      }
-      
-      return response.json();
-    },
+  async deleteComment(request: DeleteCommentRequest): Promise<void> {
+    const accessToken = await getAuthToken();
+    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+    await parseJsonSafe(res);
+  }
+}
 
-    async createComment(data: CreateCommentRequest): Promise<CommentResponse> {
-      const headers = await getHeaders();
-      const response = await fetch(`${getBaseUrl()}/tickets/${data.ticketId}/comments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content: data.content,
-          internal: data.internal || false,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create comment: ${response.status} ${errorText}`);
-      }
-      
-      return response.json();
-    },
-
-    async updateComment(data: UpdateCommentRequest): Promise<CommentResponse> {
-      const headers = await getHeaders();
-      const response = await fetch(`${getBaseUrl()}/tickets/${data.ticketId}/comments/${data.commentId}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          content: data.content,
-          internal: data.internal,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update comment: ${response.status} ${errorText}`);
-      }
-      
-      return response.json();
-    },
-
-    async deleteComment(data: DeleteCommentRequest): Promise<{ success: boolean; message: string }> {
-      const headers = await getHeaders();
-      const response = await fetch(`${getBaseUrl()}/tickets/${data.ticketId}/comments/${data.commentId}`, {
-        method: 'DELETE',
-        headers,
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete comment: ${response.status} ${errorText}`);
-      }
-      
-      return response.json();
-    },
-  };
+// Hook to use the comment API client
+export function useCommentApi(): CommentApiClient {
+  return new CommentApiClient();
 }

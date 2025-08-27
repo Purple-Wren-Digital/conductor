@@ -10,12 +10,11 @@ import { Send } from "lucide-react";
 
 interface CommentFormProps {
   ticketId: string;
-  onSuccess?: () => void;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-export function CommentForm({ ticketId, onSuccess }: CommentFormProps) {
+export function CommentForm({ ticketId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,7 +63,6 @@ export function CommentForm({ ticketId, onSuccess }: CommentFormProps) {
             setContent("");
             setIsInternal(false);
             localStorage.removeItem(draftKey);
-            onSuccess?.();
           },
         }
       );

@@ -70,7 +70,6 @@ export function CommentList({ ticketId, className }: CommentListProps) {
                   key={comment.id}
                   comment={comment}
                   ticketId={ticketId}
-                  onUpdate={() => refetch()}
                 />
               ))}
             </div>
@@ -78,7 +77,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      <CommentForm ticketId={ticketId} onSuccess={() => refetch()} />
+      <CommentForm ticketId={ticketId} />
     </div>
   );
 }
