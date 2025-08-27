@@ -46,3 +46,21 @@ export interface SettingsAuditLogEntry {
   newValue: any;
   createdAt: Date;
 }
+
+export interface TeamInviteRequest {
+  email: string;
+  role: 'AGENT' | 'STAFF' | 'ADMIN';
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  name: string;
+  role: 'AGENT' | 'STAFF' | 'ADMIN';
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface UpdateMemberRoleRequest {
+  role: 'AGENT' | 'STAFF' | 'ADMIN';
+}
