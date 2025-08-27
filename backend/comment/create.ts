@@ -1,7 +1,15 @@
 import { api, APIError } from "encore.dev/api";
+// @ts-ignore - Encore internal module
+import { getAuthData } from "encore.dev/internal/auth/mod";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
+
+interface AuthData {
+  userID: string;
+  imageUrl: string | null;
+  emailAddress: string;
+}
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -16,11 +24,15 @@ export interface CreateCommentResponse {
 export const create = api<CreateCommentRequest, CreateCommentResponse>(
   { expose: true, method: "POST", path: "/tickets/:ticketId/comments", auth: true },
   async (req) => {
-    // TODO: Implement auth
-    const mockUserId = "user_1";
+    const authData = getAuthData<AuthData>();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const userId = authData.userID;
 
     // Apply rate limiting
-    commentRateLimiter.checkRateLimit(mockUserId);
+    commentRateLimiter.checkRateLimit(userId);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -34,7 +46,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       data: {
         content: req.content,
         ticketId: req.ticketId,
-        userId: mockUserId,
+        userId: userId,
         internal: req.internal || false,
       },
       include: {

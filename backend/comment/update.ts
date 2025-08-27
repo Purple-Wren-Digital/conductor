@@ -1,6 +1,14 @@
 import { api, APIError } from "encore.dev/api";
+// @ts-ignore - Encore internal module
+import { getAuthData } from "encore.dev/internal/auth/mod";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
+
+interface AuthData {
+  userID: string;
+  imageUrl: string | null;
+  emailAddress: string;
+}
 
 export interface UpdateCommentRequest {
   ticketId: string;
@@ -16,8 +24,12 @@ export interface UpdateCommentResponse {
 export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
   { expose: true, method: "PUT", path: "/tickets/:ticketId/comments/:commentId", auth: true },
   async (req) => {
-    // TODO: implement auth
-    const mockUserId = "user_2";
+    const authData = getAuthData<AuthData>();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const userId = authData.userID;
 
     const existingComment = await prisma.comment.findFirst({
       where: {
@@ -30,7 +42,7 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       throw APIError.notFound("Comment not found");
     }
 
-    if (existingComment.userId !== mockUserId) {
+    if (existingComment.userId !== userId) {
       throw APIError.permissionDenied("You can only edit your own comments");
     }
 

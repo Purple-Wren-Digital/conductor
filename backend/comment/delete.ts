@@ -1,5 +1,13 @@
 import { api, APIError } from "encore.dev/api";
+// @ts-ignore - Encore internal module
+import { getAuthData } from "encore.dev/internal/auth/mod";
 import { prisma } from "../ticket/db";
+
+interface AuthData {
+  userID: string;
+  imageUrl: string | null;
+  emailAddress: string;
+}
 
 export interface DeleteCommentRequest {
   ticketId: string;
@@ -14,8 +22,12 @@ export interface DeleteCommentResponse {
 export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
   { expose: true, method: "DELETE", path: "/tickets/:ticketId/comments/:commentId", auth: true },
   async (req) => {
-    // TODO: implement auth
-    const mockUserId = "user_1";
+    const authData = getAuthData<AuthData>();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const userId = authData.userID;
 
     const comment = await prisma.comment.findFirst({
       where: {
@@ -28,7 +40,7 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
       throw APIError.notFound("Comment not found");
     }
 
-    if (comment.userId !== mockUserId) {
+    if (comment.userId !== userId) {
       throw APIError.permissionDenied("You can only delete your own comments");
     }
 
