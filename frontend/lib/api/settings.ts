@@ -92,6 +92,27 @@ export interface TicketCategoriesResponse {
   categories: TicketCategory[];
 }
 
+export interface SettingsExportData {
+  marketCenter: {
+    name: string;
+    id: string;
+  };
+  settings: MarketCenterSettings;
+  exportedAt: Date;
+  version: string;
+}
+
+export interface SettingsImportRequest {
+  data: SettingsExportData;
+  overwriteExisting?: boolean;
+}
+
+export interface SettingsImportResponse {
+  success: boolean;
+  message: string;
+  importedSettings: MarketCenterSettings;
+}
+
 // Get the correct encore environment
 let environment = Local;
 if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
@@ -201,6 +222,17 @@ export const settingsApi = {
   deleteTicketCategory: async (id: string): Promise<{ success: boolean }> => {
     return fetchApi(`/settings/categories/${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  exportSettings: async (): Promise<SettingsExportData> => {
+    return fetchApi('/settings/export');
+  },
+
+  importSettings: async (request: SettingsImportRequest): Promise<SettingsImportResponse> => {
+    return fetchApi('/settings/import', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   },
 };

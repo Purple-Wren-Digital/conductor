@@ -2,13 +2,14 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs/base-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Users, Tag, History, LogOut } from "lucide-react";
+import { Settings, Users, Tag, History, LogOut, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import GeneralSettings from "./general-settings";
 import TeamManagement from "./team-management";
 import TicketCategories from "./ticket-categories";
 import AuditLog from "./audit-log";
+import ImportExport from "./import-export";
 
 export default function SettingsLayout() {
   return (
@@ -21,7 +22,7 @@ export default function SettingsLayout() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             General
@@ -33,6 +34,10 @@ export default function SettingsLayout() {
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Categories
+          </TabsTrigger>
+          <TabsTrigger value="import-export" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Import/Export
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-2">
             <History className="h-4 w-4" />
@@ -54,6 +59,10 @@ export default function SettingsLayout() {
 
         <TabsContent value="categories">
           <TicketCategories />
+        </TabsContent>
+
+        <TabsContent value="import-export">
+          <ImportExport />
         </TabsContent>
 
         <TabsContent value="audit">
