@@ -177,6 +177,29 @@ export async function applyAutoAssignment(ticket: {
   description: string;
   creatorId: string;
 }): Promise<string | null> {
+  // Priority 1: Check category-specific default assignee first
+  const categoryConfig = await prisma.ticketCategory.findFirst({
+    where: {
+      name: ticket.category,
+      // TODO: Get market center from auth context
+      marketCenterId: "market_center_1",
+    },
+  });
+
+  if (categoryConfig?.defaultAssigneeId) {
+    // Verify the assignee still exists and is active
+    const assignee = await prisma.user.findFirst({
+      where: {
+        id: categoryConfig.defaultAssigneeId,
+        isActive: true,
+      },
+    });
+    if (assignee) {
+      return assignee.id;
+    }
+  }
+
+  // Priority 2: Apply general auto-assignment rules
   const activeRules = ASSIGNMENT_RULES.filter(r => r.isActive);
   
   for (const rule of activeRules) {

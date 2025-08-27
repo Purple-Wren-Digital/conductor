@@ -1,0 +1,89 @@
+"use client";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs/base-tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings, Users, Tag, History, LogOut, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import GeneralSettings from "./general-settings";
+import TeamManagement from "./team-management";
+import TicketCategories from "./ticket-categories";
+import AuditLog from "./audit-log";
+import ImportExport from "./import-export";
+
+export default function SettingsLayout() {
+  return (
+    <div className="container mx-auto py-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-semibold">Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your market center settings and team configuration
+        </p>
+      </div>
+
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="team" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Team
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Categories
+          </TabsTrigger>
+          <TabsTrigger value="import-export" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Import/Export
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Audit Log
+          </TabsTrigger>
+          <TabsTrigger value="account" className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            Account
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general">
+          <GeneralSettings />
+        </TabsContent>
+
+        <TabsContent value="team">
+          <TeamManagement />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <TicketCategories />
+        </TabsContent>
+
+        <TabsContent value="import-export">
+          <ImportExport />
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <AuditLog />
+        </TabsContent>
+
+        <TabsContent value="account">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign out</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href="/api/auth/logout">
+                  Sign out <LogOut className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
