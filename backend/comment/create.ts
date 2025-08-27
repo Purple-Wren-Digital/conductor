@@ -4,6 +4,7 @@ import { getAuthData } from "encore.dev/internal/auth/mod";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
+import { processCommentContent } from "./sanitize";
 
 interface AuthData {
   userID: string;
@@ -44,7 +45,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
 
     const comment = await prisma.comment.create({
       data: {
-        content: req.content,
+        content: processCommentContent(req.content),
         ticketId: req.ticketId,
         userId: userId,
         internal: req.internal || false,

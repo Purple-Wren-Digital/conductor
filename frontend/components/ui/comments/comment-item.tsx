@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useUser } from "@auth0/nextjs-auth0";
 import { useUpdateComment, useDeleteComment } from "@/hooks/use-comments";
-import { processCommentContent } from "@/lib/sanitize";
 import { Comment } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { Button } from "../button";
 import { Textarea } from "../textarea";
 import { Badge } from "../badge";
+import { SafeHtml } from "../safe-html";
 import { formatDistanceToNow } from "date-fns";
 import { Edit2, Trash2, Check, X } from "lucide-react";
 
@@ -120,11 +120,9 @@ export function CommentItem({ comment, ticketId }: CommentItemProps) {
           </div>
         ) : (
           <div>
-            <div 
+            <SafeHtml 
+              content={comment.content}
               className="text-sm text-foreground break-words"
-              dangerouslySetInnerHTML={{ 
-                __html: processCommentContent(comment.content) 
-              }}
             />
             {isOwnComment && (
               <div className="flex space-x-2 mt-2">

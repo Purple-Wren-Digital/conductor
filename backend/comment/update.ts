@@ -3,6 +3,7 @@ import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "encore.dev/internal/auth/mod";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
+import { processCommentContent } from "./sanitize";
 
 interface AuthData {
   userID: string;
@@ -49,7 +50,7 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     const updatedComment = await prisma.comment.update({
       where: { id: req.commentId },
       data: {
-        content: req.content,
+        content: processCommentContent(req.content),
         internal: req.internal !== undefined ? req.internal : existingComment.internal,
         updatedAt: new Date(),
       },
