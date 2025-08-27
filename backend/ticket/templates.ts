@@ -1,5 +1,6 @@
 import { api } from "encore.dev/api";
 import type { Urgency } from "./types";
+import { getAuthData } from "~encore/auth";
 
 export interface TicketTemplate {
   id: string;
@@ -29,7 +30,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Property Showing Request",
     description: "Template for scheduling property showings",
     title: "Property Showing Request - [Property Address]",
-    ticketDescription: "Client wants to schedule a showing for the property at [Address].\n\nPreferred dates/times:\n- \n\nClient contact:\n- Name: \n- Phone: \n- Email: \n\nAdditional notes:",
+    ticketDescription:
+      "Client wants to schedule a showing for the property at [Address].\n\nPreferred dates/times:\n- \n\nClient contact:\n- Name: \n- Phone: \n- Email: \n\nAdditional notes:",
     category: "showing",
     urgency: "MEDIUM",
     tags: ["property", "showing", "client"],
@@ -40,7 +42,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Urgent Contract Issue",
     description: "Template for urgent contract-related issues",
     title: "URGENT: Contract Issue - [Property/Client]",
-    ticketDescription: "Urgent issue with contract for [Property/Client].\n\nIssue type:\n[ ] Missing signatures\n[ ] Incorrect terms\n[ ] Deadline approaching\n[ ] Other: \n\nDetails:\n\nDeadline: \n\nAction needed:",
+    ticketDescription:
+      "Urgent issue with contract for [Property/Client].\n\nIssue type:\n[ ] Missing signatures\n[ ] Incorrect terms\n[ ] Deadline approaching\n[ ] Other: \n\nDetails:\n\nDeadline: \n\nAction needed:",
     category: "contract",
     urgency: "HIGH",
     tags: ["contract", "urgent", "legal"],
@@ -51,7 +54,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "New Listing Setup",
     description: "Template for setting up a new property listing",
     title: "New Listing Setup - [Property Address]",
-    ticketDescription: "New listing to be set up.\n\nProperty details:\n- Address: \n- Price: \n- Bedrooms: \n- Bathrooms: \n- Square feet: \n\nTasks needed:\n[ ] Photography scheduled\n[ ] MLS entry\n[ ] Marketing materials\n[ ] Sign installation\n[ ] Open house planning\n\nTarget go-live date:",
+    ticketDescription:
+      "New listing to be set up.\n\nProperty details:\n- Address: \n- Price: \n- Bedrooms: \n- Bathrooms: \n- Square feet: \n\nTasks needed:\n[ ] Photography scheduled\n[ ] MLS entry\n[ ] Marketing materials\n[ ] Sign installation\n[ ] Open house planning\n\nTarget go-live date:",
     category: "listing",
     urgency: "MEDIUM",
     tags: ["listing", "new", "setup"],
@@ -62,7 +66,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Client Complaint",
     description: "Template for handling client complaints",
     title: "Client Complaint - [Client Name]",
-    ticketDescription: "Client complaint received.\n\nClient: \nDate of incident: \n\nNature of complaint:\n\nDetails:\n\nClient's desired resolution:\n\nPriority level: \n\nAssigned to:",
+    ticketDescription:
+      "Client complaint received.\n\nClient: \nDate of incident: \n\nNature of complaint:\n\nDetails:\n\nClient's desired resolution:\n\nPriority level: \n\nAssigned to:",
     category: "support",
     urgency: "HIGH",
     tags: ["complaint", "client", "support"],
@@ -73,7 +78,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Document Request",
     description: "Template for document requests",
     title: "Document Request - [Document Type]",
-    ticketDescription: "Document request from [Requester].\n\nDocuments needed:\n[ ] Purchase agreement\n[ ] Disclosure forms\n[ ] Inspection reports\n[ ] Title documents\n[ ] Other: \n\nRequired by: \nPurpose: \n\nDelivery method:\n[ ] Email\n[ ] Physical copy\n[ ] Upload to portal",
+    ticketDescription:
+      "Document request from [Requester].\n\nDocuments needed:\n[ ] Purchase agreement\n[ ] Disclosure forms\n[ ] Inspection reports\n[ ] Title documents\n[ ] Other: \n\nRequired by: \nPurpose: \n\nDelivery method:\n[ ] Email\n[ ] Physical copy\n[ ] Upload to portal",
     category: "documents",
     urgency: "LOW",
     tags: ["documents", "request"],
@@ -84,7 +90,8 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Maintenance Request",
     description: "Template for property maintenance requests",
     title: "Maintenance Request - [Property Address]",
-    ticketDescription: "Maintenance request for property.\n\nProperty: \nTenant/Owner: \n\nIssue description:\n\nUrgency:\n[ ] Emergency (immediate)\n[ ] Urgent (24-48 hours)\n[ ] Routine (within a week)\n\nAccess instructions:\n\nPreferred service window:",
+    ticketDescription:
+      "Maintenance request for property.\n\nProperty: \nTenant/Owner: \n\nIssue description:\n\nUrgency:\n[ ] Emergency (immediate)\n[ ] Urgent (24-48 hours)\n[ ] Routine (within a week)\n\nAccess instructions:\n\nPreferred service window:",
     category: "maintenance",
     urgency: "MEDIUM",
     tags: ["maintenance", "property", "repair"],
@@ -95,16 +102,20 @@ const TICKET_TEMPLATES: TicketTemplate[] = [
 export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
   { expose: true, method: "GET", path: "/ticket-templates", auth: true },
   async (req) => {
+    const auth = await getAuthData();
+    if (!auth || !auth.userID) {
+      throw new Error("Unauthorized");
+    }
     let templates = [...TICKET_TEMPLATES];
 
     // Filter by category if provided
     if (req.category) {
-      templates = templates.filter(t => t.category === req.category);
+      templates = templates.filter((t) => t.category === req.category);
     }
 
     // Filter by active status if provided
     if (req.isActive !== undefined) {
-      templates = templates.filter(t => t.isActive === req.isActive);
+      templates = templates.filter((t) => t.isActive === req.isActive);
     }
 
     return { templates };

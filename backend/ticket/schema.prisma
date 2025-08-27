@@ -51,7 +51,8 @@ model MarketCenter {
 model User {
   id             String   @id @default(dbgenerated("gen_random_uuid()::text"))
   email          String   @unique
-  name           String
+  name           String?
+  auth0Id        String?  @unique // = Auth0 sub
   role           UserRole @default(AGENT)
   marketCenterId String?  @map("market_center_id")
   createdAt      DateTime @default(now()) @map("created_at")
