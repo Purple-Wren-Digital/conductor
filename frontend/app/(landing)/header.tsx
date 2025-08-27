@@ -20,8 +20,8 @@ export function Header() {
     <header className="border-b">
       <div className="container flex items-center justify-between py-2">
         <Link href="/" className="text-xl font-bold flex items-center">
-          <House className="size-5 mr-1" strokeWidth={2.5} /> Conductor
-          Ticketing
+          <House className="size-5 mr-1" strokeWidth={2.5} />
+          Conductor Ticketing
         </Link>
 
         <NavigationMenu>

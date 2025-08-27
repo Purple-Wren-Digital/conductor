@@ -58,7 +58,7 @@ export function UserManagement() {
   }, [searchQuery]);
 
   const getAuthToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
+   // if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
 
