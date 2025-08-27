@@ -24,7 +24,7 @@
     "@prisma/client": "^6.13.0",
     "@prisma/extension-accelerate": "^2.0.2",
     "auth0": "^4.27.0",
-    "encore.dev": "^1.48.12",
+    "encore.dev": "^1.48.13",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
     "prisma": "^6.13.0",

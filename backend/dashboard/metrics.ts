@@ -9,7 +9,7 @@ export interface GetMetricsResponse {
 export const getMetrics = api<void, GetMetricsResponse>(
   { expose: true, method: "GET", path: "/dashboard/metrics" },
   async () => {
-    await ready; // ensure Prisma schema applied in preview
+    await ready; 
 
     const totalTickets = await prisma.ticket.count();
 
@@ -42,9 +42,9 @@ export const getMetrics = api<void, GetMetricsResponse>(
       ticketsByStatus[item.status] = item._count.status;
     });
 
-    // Get tickets by urgency
-    const urgencyCounts = await prisma.ticket.groupBy({
+    const urgencyCountsOpen = await prisma.ticket.groupBy({
       by: ["urgency"],
+      where: { status: { not: "RESOLVED" } },
       _count: { urgency: true },
     });
 
@@ -54,15 +54,15 @@ export const getMetrics = api<void, GetMetricsResponse>(
       LOW: 0,
     };
 
-    urgencyCounts.forEach((item) => {
-      ticketsByUrgency[item.urgency] = item._count.urgency;
+    urgencyCountsOpen.forEach((item) => {
+      ticketsByUrgency[item.urgency as Urgency] = item._count.urgency;
     });
 
     const metrics: DashboardMetrics = {
       totalTickets,
       openTickets,
       overdueTickets,
-      avgResponseTime: 2.5, //TODO: Mock value - would calculate from actual response times
+      avgResponseTime: 2.5, 
       ticketsByStatus,
       ticketsByUrgency,
     };

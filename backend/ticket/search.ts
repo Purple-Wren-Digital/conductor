@@ -1,128 +1,144 @@
+
 import { api } from "encore.dev/api";
+import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
+import { Prisma } from "@prisma/client";
 
 export interface SearchTicketsRequest {
-  query?: string;           // Search in title and description
-  status?: TicketStatus[];  // Filter by multiple statuses
-  urgency?: Urgency[];      // Filter by multiple urgencies
-  category?: string[];      // Filter by categories
-  creatorId?: string;       // Filter by creator
-  assigneeId?: string;      // Filter by assignee
-  dateFrom?: string;        // Created after this date
-  dateTo?: string;          // Created before this date
-  hasComments?: boolean;    // Only tickets with/without comments
-  isResolved?: boolean;     // Only resolved/unresolved tickets
-  limit?: number;           // Max results (default 50)
-  offset?: number;          // Pagination offset
+
+  query?: Query<string>;
+
+
+  status?: Query<TicketStatus[]>;
+  urgency?: Query<Urgency[]>;
+  assigneeId?: Query<string>;
+  creatorId?: Query<string>;
+  category?: Query<string>;
+
+  
+  dateFrom?: Query<string>; 
+  dateTo?: Query<string>;   
+
+ 
+  sortBy?: Query<"updatedAt" | "createdAt" | "urgency" | "status">;
+  sortDir?: Query<"asc" | "desc">;
+
+ 
+  limit?: Query<number>;
+  offset?: Query<number>;
 }
 
 export interface SearchTicketsResponse {
   tickets: Ticket[];
   total: number;
-  hasMore: boolean;
 }
 
 export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   { expose: true, method: "GET", path: "/tickets/search", auth: true },
   async (req) => {
-    const limit = req.limit || 50;
-    const offset = req.offset || 0;
+  
+    const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
+    const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    // Build dynamic where clause
-    const where: any = {};
+    
+    const where: Prisma.TicketWhereInput = {};
 
-    // Text search in title and description
+ 
+    if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
+      where.status = { not: "RESOLVED" as TicketStatus };
+    } else {
+      where.status = { in: req.status as TicketStatus[] };
+    }
+
+    if (req.urgency && req.urgency.length > 0) {
+      where.urgency = { in: req.urgency as Urgency[] };
+    }
+
+    if (req.assigneeId) where.assigneeId = req.assigneeId;
+    if (req.creatorId) where.creatorId = req.creatorId;
+    if (req.category)  where.category  = req.category;
+
     if (req.query) {
       where.OR = [
-        { title: { contains: req.query, mode: 'insensitive' } },
-        { description: { contains: req.query, mode: 'insensitive' } },
+        { title:       { contains: req.query, mode: "insensitive" } },
+        { description: { contains: req.query, mode: "insensitive" } },
       ];
     }
 
-    // Status filter
-    if (req.status && req.status.length > 0) {
-      where.status = { in: req.status };
-    }
-
-    // Urgency filter
-    if (req.urgency && req.urgency.length > 0) {
-      where.urgency = { in: req.urgency };
-    }
-
-    // Category filter
-    if (req.category && req.category.length > 0) {
-      where.category = { in: req.category };
-    }
-
-    // Creator filter
-    if (req.creatorId) {
-      where.creatorId = req.creatorId;
-    }
-
-    // Assignee filter
-    if (req.assigneeId) {
-      where.assigneeId = req.assigneeId;
-    }
-
-    // Date range filter
+ 
     if (req.dateFrom || req.dateTo) {
-      where.createdAt = {};
+      const createdAt: Prisma.DateTimeFilter = {};
       if (req.dateFrom) {
-        where.createdAt.gte = new Date(req.dateFrom);
+        const from = new Date(req.dateFrom);
+        if (!isNaN(from.getTime())) createdAt.gte = from;
       }
       if (req.dateTo) {
-        where.createdAt.lte = new Date(req.dateTo);
+        const to = new Date(req.dateTo);
+        if (!isNaN(to.getTime())) createdAt.lte = to;
+      }
+      if (Object.keys(createdAt).length > 0) {
+        where.createdAt = createdAt;
       }
     }
 
-    // Resolved filter
-    if (req.isResolved !== undefined) {
-      if (req.isResolved) {
-        where.resolvedAt = { not: null };
-      } else {
-        where.resolvedAt = null;
-      }
+    const sortBy: "updatedAt" | "createdAt" | "urgency" | "status" =
+      (req.sortBy as any) ?? "updatedAt";
+
+    const sortDir: Prisma.SortOrder =
+      req.sortDir === "asc" ? "asc" : "desc";
+
+  
+    const orderBy: Prisma.TicketOrderByWithRelationInput[] = [];
+
+    switch (sortBy) {
+      case "createdAt":
+        orderBy.push({ createdAt: sortDir }, { id: "desc" });
+        break;
+      case "urgency":
+        orderBy.push({ urgency: sortDir }, { updatedAt: "desc" }, { id: "desc" });
+        break;
+      case "status":
+        orderBy.push({ status: sortDir }, { updatedAt: "desc" }, { id: "desc" });
+        break;
+      case "updatedAt":
+      default:
+        orderBy.push({ updatedAt: sortDir }, { id: "desc" });
+        break;
     }
 
-    // Comments filter
-    if (req.hasComments !== undefined) {
-      if (req.hasComments) {
-        where.comments = { some: {} };
-      } else {
-        where.comments = { none: {} };
-      }
-    }
+ 
+    type Row = Prisma.TicketGetPayload<{
+      include: {
+        creator: true;
+        assignee: true;
+        _count: { select: { comments: true } };
+      };
+    }>;
 
-    // Execute search with pagination
-    const [ticketsRaw, total] = await Promise.all([
+
+    const [rows, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
           creator: true,
           assignee: true,
-          _count: {
-            select: { comments: true },
-          },
+          _count: { select: { comments: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         take: limit,
         skip: offset,
-      }),
+      }) as Promise<Row[]>,
       prisma.ticket.count({ where }),
     ]);
 
-    // Map to match Ticket type with commentCount
-    const tickets = ticketsRaw.map(ticket => ({
-      ...ticket,
-      commentCount: ticket._count.comments,
-      _count: undefined, // Remove _count from result
-    })) as Ticket[];
+  
+    const tickets: Ticket[] = rows.map((r) => ({
+      ...r,
+      commentCount: r._count.comments,
+    }));
 
-    return {
-      tickets,
-      total,
-      hasMore: offset + limit < total,
-    };
+    return { tickets, total };
   }
 );
+

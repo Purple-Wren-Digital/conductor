@@ -14,15 +14,20 @@ export interface ListUsersResponse {
 export const list = api<ListUsersRequest, ListUsersResponse>(
   { expose: true, method: "GET", path: "/users", auth: true },
   async (req) => {
-    const where: any = {};
-    
+    const baseWhere: any = {
+      isActive: true,
+      deletedAt: null,
+    };
+
+    const where: any = { ...baseWhere };
+
     if (req.role) {
       where.role = req.role;
     }
 
     const users = await prisma.user.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     return { users };

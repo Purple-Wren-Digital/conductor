@@ -21,6 +21,8 @@ model User {
     ticketsCreated      Ticket[]        @relation("TicketCreator")
     ticketsAssigned     Ticket[]        @relation("TicketAssignee")
     comments            Comments[]
+    deletedAt           DateTime?
+    isActive            Boolean         @default(true)
 }
 
 model Ticket {

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,15 +11,21 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useUser } from "@auth0/nextjs-auth0";
-import { Cog, LayoutDashboard, Wallet } from "lucide-react";
+import {
+  Cog,
+  LayoutDashboard,
+  Wallet,
+  Users as UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const { ...rest } = props;
+  const { className, ...rest } = props;
   const { user } = useUser();
 
   return (
-    <Sidebar {...rest}>
+    <Sidebar {...rest} className={cn(className, "border-r")}>
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
@@ -47,6 +54,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/subscription">
@@ -54,6 +62,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/users">
+                  <UsersIcon /> User Management
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/settings">
@@ -61,6 +78,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
