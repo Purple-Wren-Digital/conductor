@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
-// @ts-ignore - Encore internal module
-import { getAuthData } from "encore.dev/internal/auth/mod";
+// import { getAuthData } from "encore.dev/internal/auth/mod";
+import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { processCommentContent } from "./sanitize";
@@ -23,9 +23,14 @@ export interface UpdateCommentResponse {
 }
 
 export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
-  { expose: true, method: "PUT", path: "/tickets/:ticketId/comments/:commentId", auth: true },
+  {
+    expose: true,
+    method: "PUT",
+    path: "/tickets/:ticketId/comments/:commentId",
+    auth: true,
+  },
   async (req) => {
-    const authData = getAuthData<AuthData>();
+    const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
@@ -51,7 +56,8 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       where: { id: req.commentId },
       data: {
         content: processCommentContent(req.content),
-        internal: req.internal !== undefined ? req.internal : existingComment.internal,
+        internal:
+          req.internal !== undefined ? req.internal : existingComment.internal,
         updatedAt: new Date(),
       },
       include: {

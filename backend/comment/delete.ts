@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
-// @ts-ignore - Encore internal module
-import { getAuthData } from "encore.dev/internal/auth/mod";
+// import { getAuthData } from "encore.dev/internal/auth/mod";
+import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 
 interface AuthData {
@@ -20,9 +20,14 @@ export interface DeleteCommentResponse {
 }
 
 export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
-  { expose: true, method: "DELETE", path: "/tickets/:ticketId/comments/:commentId", auth: true },
+  {
+    expose: true,
+    method: "DELETE",
+    path: "/tickets/:ticketId/comments/:commentId",
+    auth: true,
+  },
   async (req) => {
-    const authData = getAuthData<AuthData>();
+    const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }

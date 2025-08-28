@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-// @ts-ignore - Encore internal module
-import { getAuthData } from "encore.dev/internal/auth/mod";
+// import { getAuthData } from "encore.dev/internal/auth/mod";
+import { getAuthData } from "~encore/auth";
+
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
@@ -23,9 +24,14 @@ export interface CreateCommentResponse {
 }
 
 export const create = api<CreateCommentRequest, CreateCommentResponse>(
-  { expose: true, method: "POST", path: "/tickets/:ticketId/comments", auth: true },
+  {
+    expose: true,
+    method: "POST",
+    path: "/tickets/:ticketId/comments",
+    auth: true,
+  },
   async (req) => {
-    const authData = getAuthData<AuthData>();
+    const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
