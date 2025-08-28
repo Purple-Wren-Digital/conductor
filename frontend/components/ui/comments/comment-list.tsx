@@ -5,7 +5,6 @@ import { Comment } from "@/lib/types";
 import { CommentItem } from "./comment-item";
 import { CommentForm } from "./comment-form";
 import { ScrollArea } from "../scroll-area";
-// import { hardCodedTicket } from "@/lib/mock-data";
 
 interface CommentListProps {
   ticketId: string;
@@ -73,7 +72,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-        {/* TODO: HARDCODED USER */}
+      {/* TODO: HARDCODED USER */}
       <CommentForm ticketId={ticketId} userId="u1" />
     </div>
   );

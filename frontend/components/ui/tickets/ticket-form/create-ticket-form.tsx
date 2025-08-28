@@ -21,6 +21,7 @@ const initialValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   category: "",
   dueDate: undefined,
+  creatorId: "u1",
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
@@ -77,7 +78,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         urgency: t.urgency,
         category: t.category,
         dueDate: undefined,
-        // creatorId: values.creatorId,
+        creatorId: "u1",
       });
     }
   };
