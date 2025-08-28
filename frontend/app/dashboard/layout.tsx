@@ -13,7 +13,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar collapsible="offcanvas"/>
+      <AppSidebar collapsible="offcanvas" />
 
       <div className="w-full flex flex-col min-h-screen">
         <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0 bg-background z-10">
@@ -21,7 +21,9 @@ export default function DashboardLayout({
           <Separator orientation="vertical" />
 
           <div className="grow flex items-center justify-between">
-            <p className="text-lg font-semibold">Acme</p>
+            <Link href="/" className="hover:text-muted-foreground">
+              <p className="text-lg font-semibold">Conductor Ticketing</p>
+            </Link>
 
             <div className="flex items-center gap-2">
               {user?.picture && (

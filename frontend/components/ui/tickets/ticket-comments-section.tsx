@@ -4,13 +4,16 @@ import { CommentList } from "@/components/ui/comments";
 import { useCommentCount } from "@/hooks/use-comments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";
+// import { hardCodedTicket } from "@/lib/mock-data";
 
 interface TicketCommentsSectionProps {
   ticketId: string;
 }
 
-export function TicketCommentsSection({ ticketId }: TicketCommentsSectionProps) {
-  const commentCount = useCommentCount(ticketId);
+export function TicketCommentsSection({
+  ticketId,
+}: TicketCommentsSectionProps) {
+  const commentCount = useCommentCount(ticketId); // Fallback to 2 for demo
 
   return (
     <Card>
@@ -18,6 +21,8 @@ export function TicketCommentsSection({ ticketId }: TicketCommentsSectionProps) 
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
           Comments ({commentCount})
+          {/* Comments (
+          {`${hardCodedTicket?.comments && hardCodedTicket?.comments.length}`}) */}
         </CardTitle>
       </CardHeader>
       <CardContent>

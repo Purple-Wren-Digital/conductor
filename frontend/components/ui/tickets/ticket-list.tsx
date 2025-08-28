@@ -14,7 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,7 +42,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import type { Ticket, TicketStatus, Urgency, User } from "@/lib/types";
 import { EditTicketForm } from "./ticket-form/edit-ticket-form";
 import { CreateTicketForm } from "./ticket-form/create-ticket-form";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+// import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
   useQuery,
   useMutation,
@@ -48,8 +52,14 @@ import {
 } from "@tanstack/react-query";
 
 import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
+// import { hardCodedTicket } from "@/lib/mock-data";
 
-const statusOptions: TicketStatus[] = ["ASSIGNED", "AWAITING_RESPONSE", "IN_PROGRESS", "RESOLVED"];
+const statusOptions: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+];
 const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 
 type SortBy = "updatedAt" | "createdAt" | "urgency" | "status";
@@ -60,7 +70,11 @@ type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };
 type UsersResponse = { users: User[] };
 
-const defaultActiveStatuses: TicketStatus[] = ["ASSIGNED", "AWAITING_RESPONSE", "IN_PROGRESS"];
+const defaultActiveStatuses: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+];
 
 export function TicketList() {
   const router = useRouter();
@@ -76,8 +90,9 @@ export function TicketList() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [selectedStatuses, setSelectedStatuses] =
-    useState<TicketStatus[]>(defaultActiveStatuses);
+  const [selectedStatuses, setSelectedStatuses] = useState<TicketStatus[]>(
+    defaultActiveStatuses
+  );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
@@ -106,17 +121,18 @@ export function TicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const getAuthToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+  // const getAuthToken = useCallback(async () => {
+  //   if (process.env.NODE_ENV === "development") return "local";
+  //   return await getAccessToken();
+  // }, []);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
-    if (selectedAssignee !== "all") params.append("assigneeId", selectedAssignee);
+    if (selectedAssignee !== "all")
+      params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
@@ -151,40 +167,47 @@ export function TicketList() {
   const {
     data: ticketsData,
     isFetching: ticketsLoading,
-  }: UseQueryResult<TicketsResponse, Error> =
-    useQuery<TicketsResponse, Error, TicketsResponse, typeof ticketsQueryKey>({
-      queryKey: ticketsQueryKey,
-      queryFn: async (): Promise<TicketsResponse> => {
-        const accessToken = await getAuthToken();
-        const res = await fetch(`/api/tickets/search?${queryParams.toString()}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error("Failed to fetch tickets");
-        return res.json();
-      },
-      placeholderData: keepPreviousData,
-      refetchInterval: 15000,
-    });
+  }: UseQueryResult<TicketsResponse, Error> = useQuery<
+    TicketsResponse,
+    Error,
+    TicketsResponse,
+    typeof ticketsQueryKey
+  >({
+    queryKey: ticketsQueryKey,
+    queryFn: async (): Promise<TicketsResponse> => {
+      // const accessToken = await getAuthToken();
+      const res = await fetch(`/api/tickets/search?${queryParams.toString()}`, {
+        // headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to fetch tickets");
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
+    refetchInterval: 15000,
+  });
 
   const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = Math.ceil(totalTickets / itemsPerPage);
 
-  const { data: usersData }: UseQueryResult<UsersResponse, Error> =
-    useQuery<UsersResponse, Error, UsersResponse>({
-      queryKey: ["users"],
-      queryFn: async (): Promise<UsersResponse> => {
-        const accessToken = await getAuthToken();
-        const res = await fetch("/api/users", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error("Failed to fetch users");
-        return res.json();
-      },
-      staleTime: 5 * 60 * 1000,
-    });
+  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
+    UsersResponse,
+    Error,
+    UsersResponse
+  >({
+    queryKey: ["users"],
+    queryFn: async (): Promise<UsersResponse> => {
+      // const accessToken = await getAuthToken();
+      const res = await fetch("/api/users", {
+        // headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const users: User[] = usersData?.users ?? [];
 
@@ -192,13 +215,16 @@ export function TicketList() {
     queryClient.invalidateQueries({ queryKey: ["tickets"] });
 
   const bulkAssignMutation = useMutation({
-    mutationFn: async (payload: { ticketIds: string[]; assigneeId: string }) => {
-      const accessToken = await getAuthToken();
+    mutationFn: async (payload: {
+      ticketIds: string[];
+      assigneeId: string;
+    }) => {
+      // const accessToken = await getAuthToken();
       const res = await fetch("/api/tickets/bulk-assign", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -213,13 +239,16 @@ export function TicketList() {
   });
 
   const bulkStatusMutation = useMutation({
-    mutationFn: async (payload: { ticketIds: string[]; status: TicketStatus }) => {
-      const accessToken = await getAuthToken();
+    mutationFn: async (payload: {
+      ticketIds: string[];
+      status: TicketStatus;
+    }) => {
+      // const accessToken = await getAuthToken();
       const res = await fetch("/api/tickets/bulk-update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -242,12 +271,12 @@ export function TicketList() {
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
@@ -302,6 +331,7 @@ export function TicketList() {
   };
 
   const handleTicketClick = (ticket: Ticket) => {
+    console.log("handleTicketClick", ticket.id, ticket);
     queryClient.setQueryData(["ticket", ticket.id], { ticket });
     router.push(`/dashboard/tickets/${ticket.id}`);
   };
@@ -368,7 +398,10 @@ export function TicketList() {
                     <Label>Status</Label>
                     <div className="flex flex-wrap gap-2">
                       {statusOptions.map((status) => (
-                        <div key={status} className="flex items-center space-x-2">
+                        <div
+                          key={status}
+                          className="flex items-center space-x-2"
+                        >
                           <Checkbox
                             id={`status-${status}`}
                             checked={selectedStatuses.includes(status)}
@@ -397,7 +430,10 @@ export function TicketList() {
                     <Label>Urgency</Label>
                     <div className="flex flex-wrap gap-2">
                       {urgencyOptions.map((urgency) => (
-                        <div key={urgency} className="flex items-center space-x-2">
+                        <div
+                          key={urgency}
+                          className="flex items-center space-x-2"
+                        >
                           <Checkbox
                             id={`urgency-${urgency}`}
                             checked={selectedUrgencies.includes(urgency)}
@@ -537,19 +573,25 @@ export function TicketList() {
           {ticketsLoading && tickets.length === 0 ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded animate-pulse"></div>
+                <div
+                  key={i}
+                  className="h-16 bg-muted rounded animate-pulse"
+                ></div>
               ))}
             </div>
           ) : (
             <div
               className={`space-y-4 transition-opacity duration-300 ${
-                ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+                ticketsLoading
+                  ? "opacity-50 pointer-events-none"
+                  : "opacity-100"
               }`}
             >
               <div className="flex items-center space-x-2 pb-2 border-b">
                 <Checkbox
                   checked={
-                    selectedTickets.length === tickets.length && tickets.length > 0
+                    selectedTickets.length === tickets.length &&
+                    tickets.length > 0
                   }
                   onCheckedChange={(v: boolean | "indeterminate") =>
                     handleSelectAll(v === true)
@@ -557,6 +599,30 @@ export function TicketList() {
                 />
                 <span className="text-sm font-medium">Select All</span>
               </div>
+              {/* 
+              <TicketListItem
+                key={hardCodedTicket.id}
+                ticket={{
+                  ...hardCodedTicket,
+                  updatedAt: new Date("2025-08-27T14:00:21.871Z"),
+                }}
+                selected={selectedTickets.includes(hardCodedTicket.id)}
+                onSelect={(checked: boolean) =>
+                  handleSelectTicket(hardCodedTicket.id, checked)
+                }
+                onEdit={(e: React.MouseEvent) =>
+                  handleQuickEdit(e, hardCodedTicket)
+                }
+                onClose={(e: React.MouseEvent) =>
+                  handleQuickClose(e, hardCodedTicket.id)
+                }
+                onClick={() => {
+                  queryClient.setQueryData(["ticket", hardCodedTicket.id], {
+                    hardCodedTicket,
+                  });
+                  router.push(`/dashboard/tickets/${hardCodedTicket.id}`);
+                }} // ⬅️ navigate & seed cache
+              /> */}
 
               {tickets.map((ticket: TicketWithUpdatedAt) => (
                 <TicketListItem
@@ -567,7 +633,9 @@ export function TicketList() {
                     handleSelectTicket(ticket.id, checked)
                   }
                   onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
-                  onClose={(e: React.MouseEvent) => handleQuickClose(e, ticket.id)}
+                  onClose={(e: React.MouseEvent) =>
+                    handleQuickClose(e, ticket.id)
+                  }
                   onClick={() => handleTicketClick(ticket)} // ⬅️ navigate & seed cache
                 />
               ))}
@@ -665,14 +733,19 @@ export function TicketList() {
       </Dialog>
 
       {/* Bulk Update Status Modal */}
-      <Dialog open={isUpdateStatusModalOpen} onOpenChange={setIsUpdateStatusModalOpen}>
+      <Dialog
+        open={isUpdateStatusModalOpen}
+        onOpenChange={setIsUpdateStatusModalOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Update Ticket Status</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p>Update {selectedTickets.length} selected ticket(s) to status:</p>
-            <Select onValueChange={(value) => setBulkStatus(value as TicketStatus)}>
+            <Select
+              onValueChange={(value) => setBulkStatus(value as TicketStatus)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a status..." />
               </SelectTrigger>
@@ -723,15 +796,18 @@ export function TicketList() {
           setEditingTicket(null);
           if (updated) {
             // optimistic local update of current page
-            queryClient.setQueryData<TicketsResponse>(ticketsQueryKey, (prev) => {
-              if (!prev) return prev;
-              const nextTickets = prev.tickets.map((t: TicketWithUpdatedAt) =>
-                t.id === (updated as TicketWithUpdatedAt).id
-                  ? (updated as TicketWithUpdatedAt)
-                  : t
-              );
-              return { ...prev, tickets: nextTickets };
-            });
+            queryClient.setQueryData<TicketsResponse>(
+              ticketsQueryKey,
+              (prev) => {
+                if (!prev) return prev;
+                const nextTickets = prev.tickets.map((t: TicketWithUpdatedAt) =>
+                  t.id === (updated as TicketWithUpdatedAt).id
+                    ? (updated as TicketWithUpdatedAt)
+                    : t
+                );
+                return { ...prev, tickets: nextTickets };
+              }
+            );
           }
           queryInvalidator();
         }}

@@ -5,6 +5,7 @@ import { Comment } from "@/lib/types";
 import { CommentItem } from "./comment-item";
 import { CommentForm } from "./comment-form";
 import { ScrollArea } from "../scroll-area";
+// import { hardCodedTicket } from "@/lib/mock-data";
 
 interface CommentListProps {
   ticketId: string;
@@ -12,12 +13,7 @@ interface CommentListProps {
 }
 
 export function CommentList({ ticketId, className }: CommentListProps) {
-  const {
-    data: comments,
-    error,
-    isLoading,
-    refetch,
-  } = useComments(ticketId);
+  const { data: comments, error, isLoading, refetch } = useComments(ticketId);
 
   const commentList = comments || [];
 
@@ -57,7 +53,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         <h3 className="text-lg font-semibold">
           Comments ({commentList.length})
         </h3>
-        
+
         {commentList.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
             No comments yet. Be the first to comment!

@@ -79,7 +79,7 @@ export function useComments(ticketId: string) {
       const response = await commentApi.listComments(ticketId);
       return response.comments;
     },
-    refetchInterval: 30000, // Poll every 30 seconds as fallback
+    refetchInterval: 30000, // Poll every 30 seconds as fallback // TODO: adjust or remove intervals - higher intervals are better for performance
     staleTime: 10000, // Consider data stale after 10 seconds
   });
 }

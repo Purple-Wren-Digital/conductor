@@ -12,7 +12,12 @@ export interface ListUsersResponse {
 }
 
 export const list = api<ListUsersRequest, ListUsersResponse>(
-  { expose: true, method: "GET", path: "/users", auth: true },
+  {
+    expose: true,
+    method: "GET",
+    path: "/users",
+    auth: false, // true,
+  },
   async (req) => {
     const baseWhere: any = {
       isActive: true,

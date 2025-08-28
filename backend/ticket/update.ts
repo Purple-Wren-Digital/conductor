@@ -17,7 +17,12 @@ export interface UpdateTicketResponse {
 }
 
 export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
-  { expose: true, method: "PUT", path: "/tickets/:ticketId", auth: true },
+  {
+    expose: true,
+    method: "PUT",
+    path: "/tickets/:ticketId",
+    auth: false, // true
+  },
   async (req) => {
     const updateData: any = {};
 
@@ -48,7 +53,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         },
       });
 
-      return { ticket } as UpdateTicketResponse;
+      return { ticket } as UpdateTicketResponse; // TODO: error here
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");

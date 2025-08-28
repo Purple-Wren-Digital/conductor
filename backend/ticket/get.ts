@@ -4,6 +4,7 @@ import type { Ticket, UserRole } from "./types";
 
 export interface GetTicketRequest {
   ticketId: string;
+  // creatorId: string;
 }
 
 export interface GetTicketResponse {
@@ -28,8 +29,13 @@ export interface GetTicketResponse {
       };
 }
 
-export const get = api<GetTicketRequest>( 
-  { expose: true, method: "GET", path: "/tickets/:ticketId", auth: false },
+export const get = api<GetTicketRequest>(
+  {
+    expose: true,
+    method: "GET",
+    path: "/tickets/:ticketId",
+    auth: false, // true
+  },
   async (req) => {
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -39,10 +45,12 @@ export const get = api<GetTicketRequest>(
       },
     });
 
+    console.log("Fetched ticket:", ticket);
+
     if (!ticket) {
       throw APIError.notFound("ticket not found");
     }
 
-    return { ticket }; 
+    return { ticket };
   }
 );
