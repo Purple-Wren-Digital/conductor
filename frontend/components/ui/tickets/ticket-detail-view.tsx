@@ -85,12 +85,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   // }, []);
 
   const refreshAllData = useCallback(async () => {
+    console.log("Attempting to fetch ticket with ID:", ticketId);
     if (!ticketId) return;
     setLoading(true);
     try {
       // const accessToken = await getAuthToken();
       const headers: HeadersInit = {
-        "content/type": "application/json",
+        "Content-Type": "application/json",
       };
 
       // Authorization: `Bearer ${accessToken}`,

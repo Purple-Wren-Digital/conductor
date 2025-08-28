@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import type { Ticket, UserRole } from "./types";
+import type { Ticket } from "./types";
 
 export interface GetTicketRequest {
   ticketId: string;
@@ -8,28 +8,10 @@ export interface GetTicketRequest {
 }
 
 export interface GetTicketResponse {
-  ticket:
-    | Ticket & {
-        creator: {
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          name: string;
-          email: string;
-          role: UserRole;
-        } | null;
-        assignee: {
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          name: string;
-          email: string;
-          role: UserRole;
-        } | null;
-      };
+  ticket: Ticket;
 }
 
-export const get = api<GetTicketRequest>(
+export const get = api<GetTicketRequest, GetTicketResponse>(
   {
     expose: true,
     method: "GET",
@@ -42,6 +24,11 @@ export const get = api<GetTicketRequest>(
       include: {
         creator: true,
         assignee: true,
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
       },
     });
 
@@ -51,6 +38,11 @@ export const get = api<GetTicketRequest>(
       throw APIError.notFound("ticket not found");
     }
 
-    return { ticket };
+    return { 
+      ticket: {
+        ...ticket,
+        commentCount: ticket._count.comments,
+      }
+    };
   }
 );

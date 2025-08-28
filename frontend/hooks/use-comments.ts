@@ -8,6 +8,7 @@ import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 
 interface CreateCommentParams {
+  userId: string;
   ticketId: string;
   content: string;
   internal?: boolean;
@@ -89,15 +90,16 @@ export function useCreateComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ticketId, content, internal }: CreateCommentParams) => {
+    mutationFn: async ({ userId, ticketId, content, internal }: CreateCommentParams) => {
       const response = await commentApi.createComment({
+        userId,
         ticketId,
         content,
         internal: internal || false,
       });
       return response.comment;
     },
-    onMutate: async ({ ticketId, content, internal }) => {
+    onMutate: async ({ userId, ticketId, content, internal }) => {
       // Cancel outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
@@ -109,11 +111,11 @@ export function useCreateComment() {
         id: `temp-${Date.now()}-${Math.random()}`,
         content,
         ticketId,
-        userId: "current-user",
+        userId,
         internal: internal || false,
         createdAt: new Date(),
         user: {
-          id: "current-user",
+          id: userId,
           name: "You",
           email: "",
           role: "AGENT",

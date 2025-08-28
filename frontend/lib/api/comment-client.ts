@@ -32,6 +32,7 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 }
 
 interface CreateCommentRequest {
+  userId: string;
   ticketId: string;
   content: string;
   internal: boolean;
@@ -81,6 +82,7 @@ class CommentApiClient {
         },
         cache: "no-store",
         body: JSON.stringify({
+          userId: request.userId,
           content: request.content,
           internal: request.internal,
         }),

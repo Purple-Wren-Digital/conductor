@@ -10,11 +10,12 @@ import { Send } from "lucide-react";
 
 interface CommentFormProps {
   ticketId: string;
+  userId: string;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-export function CommentForm({ ticketId }: CommentFormProps) {
+export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,6 +55,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     if (content.trim()) {
       createMutation.mutate(
         {
+          userId,
           ticketId,
           content: content.trim(),
           internal: isInternal,

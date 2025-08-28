@@ -73,7 +73,8 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      <CommentForm ticketId={ticketId} />
+        {/* TODO: HARDCODED USER */}
+      <CommentForm ticketId={ticketId} userId="u1" />
     </div>
   );
 }
