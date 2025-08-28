@@ -21,7 +21,7 @@ const initialValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   category: "",
   dueDate: undefined,
-  creatorId: "u1",
+  creatorId: "u1", // TODO: HARDCODED USER
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {

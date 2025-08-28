@@ -50,7 +50,6 @@ const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 const API_BASE = "http://localhost:4000";
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
-  console.log("Parsing response:", res);
   const ct = res.headers.get("content-type") || "";
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -75,7 +74,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
 
-  const { user: authUser } = useUser();
+  // const { user: authUser } = useUser();
 
   // const getAuthToken = useCallback(async () => {
   //   if (process.env.NODE_ENV === "development") {
@@ -85,40 +84,28 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   // }, []);
 
   const refreshAllData = useCallback(async () => {
-    console.log("Attempting to fetch ticket with ID:", ticketId);
     if (!ticketId) return;
     setLoading(true);
     try {
       // const accessToken = await getAuthToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+        // Authorization: `Bearer ${accessToken}`,
       };
 
-      // Authorization: `Bearer ${accessToken}`,
-      // };
-      console.log("Fetching ticket and users with headers:", headers);
-      // console.log("Fetching ticket and users without headers");
-      
-      // const [ticketRes, usersRes] = await Promise.all([
-
-      const [ticketRes] = await Promise.all([
+      const [ticketRes, usersRes] = await Promise.all([
         fetch(`${API_BASE}/tickets/${ticketId}`, {
           headers,
           cache: "no-store",
         }),
-        // fetch(`${API_BASE}/users`, { cache: "no-store" }), // headers,
+        fetch(`${API_BASE}/users`, { headers, cache: "no-store" }), //
       ]);
 
-      console.log("Fetched ticket response:", ticketRes);
-      // console.log("Fetched users response:", usersRes);
-
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
-      // const usersData = await parseJsonSafe<{ users: UserType[] }>(usersRes);
-      console.log("Fetched ticket data:", ticketData);
-      // console.log("Fetched users data:", usersData);
+      const usersData = await parseJsonSafe<{ users: UserType[] }>(usersRes);
 
       setTicket(ticketData.ticket);
-      // setUsers(usersData.users || []);
+      setUsers(usersData.users || []);
     } catch (err) {
       console.error("Error refreshing data:", err);
       setTicket(null);
@@ -128,7 +115,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   }, [ticketId]); //, getAuthToken]);
 
   useEffect(() => {
-    console.log("TicketDetailView mounted or ticketId changed:", ticketId);
     refreshAllData();
   }, [refreshAllData]);
 
@@ -152,7 +138,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       await parseJsonSafe(res);
       await refreshAllData();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to update ticket:", error);
       setTicket(prev);
     }
   };
@@ -192,7 +178,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       await parseJsonSafe(res);
       await refreshAllData();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to assign ticket", error);
       setTicket(prev);
     }
   };
