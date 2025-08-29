@@ -4,13 +4,26 @@ import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
 import type { User, UserRole } from "@/lib/types";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+// import { getAccessToken } from "@auth0/nextjs-auth0";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog/base-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog/base-dialog";
 import { Search, Plus, Users, Shield, Mail } from "lucide-react";
 
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
@@ -57,10 +70,10 @@ export function UserManagement() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const getAuthToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+  // const getAuthToken = useCallback(async () => {
+  //   if (process.env.NODE_ENV === "development") return "local";
+  //   return await getAccessToken();
+  // }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -69,9 +82,11 @@ export function UserManagement() {
     if (selectedRole !== "all") params.append("role", selectedRole);
 
     try {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const response = await fetch(`/api/users/search?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          //  Authorization: `Bearer ${accessToken}`
+        },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
       const data = await response.json();
@@ -88,7 +103,7 @@ export function UserManagement() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchQuery, selectedRole, getAuthToken]);
+  }, [debouncedSearchQuery, selectedRole]); //, getAuthToken]);
 
   useEffect(() => {
     fetchUsers();
@@ -118,13 +133,14 @@ export function UserManagement() {
     if (!userToDelete) return;
     try {
       setDeleting(true);
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const response = await fetch(`/api/users/${userToDelete.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        // headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || "Failed to deactivate user");
+      if (!response.ok)
+        throw new Error(data.message || "Failed to deactivate user");
       setConfirmOpen(false);
       setUserToDelete(null);
       await fetchUsers();
@@ -160,18 +176,21 @@ export function UserManagement() {
     const method = isEditing ? "PUT" : "POST";
 
     try {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(formData),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to ${isEditing ? "update" : "create"} user`);
+        throw new Error(
+          errorData.message ||
+            `Failed to ${isEditing ? "update" : "create"} user`
+        );
       }
       setShowUserForm(false);
       await fetchUsers();
@@ -205,7 +224,9 @@ export function UserManagement() {
                 <Users className="h-5 w-5" />
                 User Management ({users.length})
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Manage users, roles, and permissions</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage users, roles, and permissions
+              </p>
             </div>
             <Button onClick={handleCreateUser} className="gap-2">
               <Plus className="h-4 w-4" />
@@ -223,7 +244,12 @@ export function UserManagement() {
                 className="pl-10"
               />
             </div>
-            <Select value={selectedRole} onValueChange={(value: UserRole | "all") => setSelectedRole(value)}>
+            <Select
+              value={selectedRole}
+              onValueChange={(value: UserRole | "all") =>
+                setSelectedRole(value)
+              }
+            >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -252,7 +278,11 @@ export function UserManagement() {
               ))}
             </div>
           ) : (
-            <div className={`space-y-4 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+            <div
+              className={`space-y-4 transition-opacity duration-300 ${
+                loading ? "opacity-50 pointer-events-none" : "opacity-100"
+              }`}
+            >
               {users.map((user) => (
                 <UserListItem
                   key={user.id}
@@ -275,47 +305,69 @@ export function UserManagement() {
       <Dialog open={showUserForm} onOpenChange={setShowUserForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
+            <DialogTitle>
+              {editingUser ? "Edit User" : "Add New User"}
+            </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmitForm} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">Full Name *</label>
+              <label htmlFor="name" className="text-sm font-medium">
+                Full Name *
+              </label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Enter full name"
                 className={formErrors.name ? "border-destructive" : ""}
               />
-              {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+              {formErrors.name && (
+                <p className="text-sm text-destructive">{formErrors.name}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">Email Address *</label>
+              <label htmlFor="email" className="text-sm font-medium">
+                Email Address *
+              </label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
               />
-              {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
+              {formErrors.email && (
+                <p className="text-sm text-destructive">{formErrors.email}</p>
+              )}
             </div>
 
             {!editingUser && (
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">Password *</label>
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password *
+                </label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   placeholder="Enter a secure password"
                   className={formErrors.password ? "border-destructive" : ""}
                 />
-                {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
+                {formErrors.password && (
+                  <p className="text-sm text-destructive">
+                    {formErrors.password}
+                  </p>
+                )}
               </div>
             )}
 
@@ -323,7 +375,9 @@ export function UserManagement() {
               <label className="text-sm font-medium">Role *</label>
               <Select
                 value={formData.role}
-                onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
+                onValueChange={(value: UserRole) =>
+                  setFormData({ ...formData, role: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -342,11 +396,20 @@ export function UserManagement() {
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setShowUserForm(false)} disabled={isSubmitting}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowUserForm(false)}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : editingUser ? "Update User" : "Create User"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingUser
+                  ? "Update User"
+                  : "Create User"}
               </Button>
             </div>
           </form>
@@ -360,8 +423,10 @@ export function UserManagement() {
             <DialogDescription>
               {userToDelete ? (
                 <>
-                  This will deactivate <span className="font-medium">{userToDelete.name}</span> ({userToDelete.email}).
-                  They won’t be able to sign in, and they’ll be hidden from lists. You can restore them later.
+                  This will deactivate{" "}
+                  <span className="font-medium">{userToDelete.name}</span> (
+                  {userToDelete.email}). They won’t be able to sign in, and
+                  they’ll be hidden from lists. You can restore them later.
                 </>
               ) : null}
             </DialogDescription>
@@ -371,7 +436,10 @@ export function UserManagement() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => { setConfirmOpen(false); setUserToDelete(null); }}
+              onClick={() => {
+                setConfirmOpen(false);
+                setUserToDelete(null);
+              }}
               disabled={deleting}
             >
               Cancel

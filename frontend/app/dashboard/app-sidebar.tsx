@@ -10,19 +10,54 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useUser } from "@auth0/nextjs-auth0";
+// import { useUser } from "@auth0/nextjs-auth0";
 import {
   Cog,
   LayoutDashboard,
   Wallet,
   Users as UsersIcon,
+  CircleUserRound,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { UserRole } from "@/lib/types";
+
+interface UserPrisma {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+  picture?: string;
+}
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
-  const { user } = useUser();
+  // TODO: HARD CODED USER
+  // const { user } = useUser();
+  const [user, setUser] = React.useState<UserPrisma | null>(null);
+
+  const fetchUserFromPrisma = async (id: string) => {
+    try {
+      const res = await fetch(`/api/users/${id}`);
+
+      console.log("Fetch response:", res);
+      if (!res.ok) {
+        throw new Error("Failed to fetch user");
+      }
+      const data = await res.json();
+      console.log("Fetched user data:", data);
+      if (data && data?.user) setUser(data.user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchUserFromPrisma("u1");
+  }, []);
 
   return (
     <Sidebar {...rest} className={cn(className, "border-r")}>
@@ -79,6 +114,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/profile">
+                  <CircleUserRound /> Profile
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

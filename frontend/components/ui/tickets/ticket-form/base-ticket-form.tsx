@@ -232,7 +232,7 @@ export function BaseTicketForm({
                   mode="single"
                   selected={values.dueDate}
                   onSelect={(date) => onChange({ dueDate: date || undefined })}
-                  initialFocus
+                  // initialFocus
                   disabled={(date) => date < new Date()}
                 />
               </PopoverContent>

@@ -10,7 +10,7 @@ export interface GetUserResponse {
   user: User;
 }
 
-export const get = api<GetUserRequest>(
+export const get = api<GetUserRequest, GetUserResponse>(
   {
     expose: true,
     method: "GET",
@@ -26,6 +26,6 @@ export const get = api<GetUserRequest>(
       throw APIError.notFound("user not found");
     }
 
-    return { user };
+    return { user: user } as GetUserResponse;
   }
 );

@@ -37,10 +37,16 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         include: {
           creator: true,
           assignee: true,
+          comments: true,
         },
       });
 
-      return { ticket } as AssignTicketResponse; // TODO: error here
+      const ticketWithCommentCount = {
+        ...ticket,
+        commentCount: ticket.comments ? ticket.comments.length : 0,
+      };
+
+      return { ticket: ticketWithCommentCount } as AssignTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");

@@ -18,7 +18,7 @@ export interface Ticket {
   dueDate: Date | null;
   createdAt: Date;
   commentCount: number | null;
-  updatedAt?: Date;
+  updatedAt?: Date | string;
   comments?: Comment[];
 }
 
