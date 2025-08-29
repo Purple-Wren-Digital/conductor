@@ -5,7 +5,7 @@ import type React from "react";
 import { useState, useEffect, useCallback } from "react";
 import type { User, UserRole } from "@/lib/types";
 // import { getAccessToken } from "@auth0/nextjs-auth0";
-
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ interface UserFormData {
 const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
 
 export function UserManagement() {
+  const router = useRouter();
+
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,6 +291,7 @@ export function UserManagement() {
                   user={user}
                   onEdit={() => handleEditUser(user)}
                   onDelete={() => openDeleteModal(user)} // open modal
+                  onView={() => router.push(`/dashboard/profile/${user.id}`)}
                 />
               ))}
 

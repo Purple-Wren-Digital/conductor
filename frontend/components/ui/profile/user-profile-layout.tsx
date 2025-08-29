@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 // import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
@@ -26,14 +26,17 @@ const UserProfileLayout = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const { userId } = useParams<{ userId: string }>();
+
+
   const [user, setUser] = React.useState<UserPrisma | null>(null);
   const [ticketsCreated, setTicketsCreated] = React.useState<Ticket[] | null>(
     null
   );
 
-  const fetchUserFromPrisma = async (id: string) => {
+  const fetchUserFromPrisma = async () => {
     try {
-      const res = await fetch(`/api/users/${id}`);
+      const res = await fetch(`/api/users/${userId}`);
 
       if (!res.ok) {
         throw new Error("Failed to fetch user");
@@ -47,10 +50,10 @@ const UserProfileLayout = () => {
   };
 
   useEffect(() => {
-    fetchUserFromPrisma("u1");
+    fetchUserFromPrisma();
   }, []);
 
-  const getTicketsForUser = async (userId: string) => {
+  const getTicketsForUser = async () => {
     try {
       const res = await fetch(`/api/tickets?creatorId=${userId}`);
       if (!res.ok) {
@@ -67,7 +70,7 @@ const UserProfileLayout = () => {
 
   useEffect(() => {
     if (!user || !user?.id) return;
-    getTicketsForUser(user.id);
+    getTicketsForUser();
   }, [user]);
 
   const mappedTicketsCreated = ticketsCreated?.map((ticket: Ticket) => ({
@@ -91,7 +94,7 @@ const UserProfileLayout = () => {
           <div className="flex gap-2 flex-row justify-between items-center">
             <div className="flex flex-col gap-1">
               <CardTitle className="text-xl text-foreground pt-4 ">
-                {user?.name || "User"}
+                {user?.name || "User not found"}
               </CardTitle>
 
               <div className="flex gap-2 flex-row items-center">
@@ -111,7 +114,7 @@ const UserProfileLayout = () => {
             <p className="text-l font-bold">Information</p>
             <div className="flex gap-2 flex-row items-center">
               <Hash className="h-4 w-4" />
-              <p className="text-sm"> {user?.id || ""}</p>
+              <p className="text-sm"> {userId || ""}</p>
             </div>
             <div className="flex gap-2 flex-row items-center">
               <Shield className="h-4 w-4" />

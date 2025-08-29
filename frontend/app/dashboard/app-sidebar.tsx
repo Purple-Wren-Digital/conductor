@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -37,26 +37,27 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
   // TODO: HARD CODED USER
   // const { user } = useUser();
-  const [user, setUser] = React.useState<UserPrisma | null>(null);
+  const [user, setUser] = useState<UserPrisma | null>(null);
+  const userId = "u1";
 
   const fetchUserFromPrisma = async (id: string) => {
     try {
       const res = await fetch(`/api/users/${id}`);
 
-      console.log("Fetch response:", res);
+      // console.log("App Sidebar - Fetch response:", res);
       if (!res.ok) {
         throw new Error("Failed to fetch user");
       }
       const data = await res.json();
-      console.log("Fetched user data:", data);
+      // console.log("App Sidebar - Fetched user data:", data);
       if (data && data?.user) setUser(data.user);
     } catch (error) {
-      console.error("Error fetching user:", error);
+      console.error("App Sidebar - Error fetching user:", error);
     }
   };
 
-  React.useEffect(() => {
-    fetchUserFromPrisma("u1");
+  useEffect(() => {
+    fetchUserFromPrisma(userId);
   }, []);
 
   return (
@@ -116,7 +117,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/dashboard/profile">
+                <Link href={`/dashboard/profile/${userId}`}>
                   <CircleUserRound /> Profile
                 </Link>
               </SidebarMenuButton>

@@ -3,8 +3,9 @@
 import * as React from "react";
 import { ListItem, getRoleBadgeStyle, getRoleColor } from "./base-list-item";
 import type { User } from "@/lib/types";
-import { Mail, Calendar as CalendarIcon } from "lucide-react";
+import { Eye, Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { on } from "events";
 
 function getRoleIcon(role: string) {
   switch (role) {
@@ -21,7 +22,11 @@ function getRoleIcon(role: string) {
     case "STAFF":
       return (
         <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          <path
+            fillRule="evenodd"
+            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+            clipRule="evenodd"
+          />
         </svg>
       );
     default:
@@ -33,10 +38,12 @@ export function UserListItem({
   user,
   onEdit,
   onDelete,
+  onView,
 }: {
   user: User & { ticketsAssigned?: number; ticketsCreated?: number };
   onEdit: () => void;
   onDelete: () => void;
+  onView: () => void;
 }) {
   return (
     <ListItem
@@ -69,7 +76,12 @@ export function UserListItem({
         {
           label: "Edit",
           icon: (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -83,13 +95,24 @@ export function UserListItem({
         {
           label: "Deactivate",
           icon: (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
           ),
-          onClick: onDelete, 
+          onClick: onDelete,
           variant: "ghost",
         },
+        { label: "View", icon: <Eye />, onClick: onView, variant: "outline" },
       ]}
     />
   );
