@@ -1,11 +1,17 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   Calendar,
@@ -14,65 +20,84 @@ import {
   Edit,
   AlertTriangle,
   CheckCircle,
-} from "lucide-react"
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { format } from "date-fns"
-import type { Ticket, Comment, User as UserType, TicketStatus, Urgency } from "@/lib/types"
-import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form"
-import { TicketCommentsSection } from "./ticket-comments-section"
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0"
+} from "lucide-react";
+import { useState, useEffect, useCallback} from "react"; // , useMemo 
+import { format } from "date-fns";
+import type {
+  Ticket,
+  // Comment,
+  User as UserType,
+  TicketStatus,
+  Urgency,
+} from "@/lib/types";
+import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
+import { TicketCommentsSection } from "./ticket-comments-section";
+// import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface TicketDetailViewProps {
-  ticketId: string; 
-  onClose?: () => void; 
+  ticketId: string;
+  onClose?: () => void;
 }
 
-const statusOptions: TicketStatus[] = ["ASSIGNED", "AWAITING_RESPONSE", "IN_PROGRESS", "RESOLVED"]
-const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"]
+const statusOptions: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+];
+const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 
-const API_BASE =  "http://localhost:4000";
+const API_BASE = "http://localhost:4000";
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text || "No body"}`);
+    throw new Error(
+      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
+    );
   }
   if (ct.includes("application/json")) {
     return res.json();
   }
   const text = await res.text().catch(() => "");
   throw new Error(
-    `Expected JSON but got ${ct || "unknown content-type"}. First 200 chars:\n${text.slice(0, 200)}`
+    `Expected JSON but got ${
+      ct || "unknown content-type"
+    }. First 200 chars:\n${text.slice(0, 200)}`
   );
 }
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
-  const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [users, setUsers] = useState<UserType[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showEditForm, setShowEditForm] = useState(false)
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditForm, setShowEditForm] = useState(false);
 
-  const { user: authUser } = useUser();
+  // const { user: authUser } = useUser();
 
-  const getAuthToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") {
-      return "local";
-    }
-    return await getAccessToken();
-  }, []);
+  // const getAuthToken = useCallback(async () => {
+  //   if (process.env.NODE_ENV === "development") {
+  //     return "local";
+  //   }
+  //   return await getAccessToken();
+  // }, []);
 
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const headers: HeadersInit = {
-        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        // Authorization: `Bearer ${accessToken}`,
       };
 
       const [ticketRes, usersRes] = await Promise.all([
-        fetch(`${API_BASE}/tickets/${ticketId}`, { headers, cache: "no-store" }),
+        fetch(`${API_BASE}/tickets/${ticketId}`, {
+          headers,
+          cache: "no-store",
+        }),
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
@@ -83,11 +108,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       setUsers(usersData.users || []);
     } catch (err) {
       console.error("Error refreshing data:", err);
-      setTicket(null); 
+      setTicket(null);
     } finally {
       setLoading(false);
     }
-  }, [ticketId, getAuthToken]);
+  }, [ticketId]); //, getAuthToken]);
 
   useEffect(() => {
     refreshAllData();
@@ -100,12 +125,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
@@ -113,7 +138,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       await parseJsonSafe(res);
       await refreshAllData();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to update ticket:", error);
       setTicket(prev);
     }
   };
@@ -123,29 +148,37 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
     const prev = ticket;
     const nextAssignee =
-      newAssigneeId === "unassigned" ? undefined : users.find((u) => u.id === newAssigneeId);
+      newAssigneeId === "unassigned"
+        ? undefined
+        : users.find((u) => u.id === newAssigneeId);
     setTicket({
       ...ticket,
       assignee: nextAssignee
-        ? ({ id: nextAssignee.id, name: nextAssignee.name, role: nextAssignee.role } as any)
+        ? ({
+            id: nextAssignee.id,
+            name: nextAssignee.name,
+            role: nextAssignee.role,
+          } as any)
         : undefined,
     });
 
     try {
-      const accessToken = await getAuthToken();
+      // const accessToken = await getAuthToken();
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
-        body: JSON.stringify({ assigneeId: newAssigneeId === "unassigned" ? null : newAssigneeId }),
+        body: JSON.stringify({
+          assigneeId: newAssigneeId === "unassigned" ? null : newAssigneeId,
+        }),
       });
       await parseJsonSafe(res);
       await refreshAllData();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to assign ticket", error);
       setTicket(prev);
     }
   };
@@ -154,61 +187,67 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const getStatusColor = (status: TicketStatus) => {
     switch (status) {
       case "RESOLVED":
-        return "default"
+        return "default";
       case "IN_PROGRESS":
-        return "default"
+        return "default";
       case "ASSIGNED":
-        return "secondary"
+        return "secondary";
       case "AWAITING_RESPONSE":
-        return "outline"
+        return "outline";
       default:
-        return "secondary"
+        return "secondary";
     }
-  }
+  };
 
   const getUrgencyColor = (urgency: Urgency) => {
     switch (urgency) {
       case "HIGH":
-        return "destructive"
+        return "destructive";
       case "MEDIUM":
-        return "default"
+        return "default";
       case "LOW":
-        return "secondary"
+        return "secondary";
       default:
-        return "secondary"
+        return "secondary";
     }
-  }
+  };
 
   const getStatusIcon = (status: TicketStatus) => {
     switch (status) {
       case "RESOLVED":
-        return <CheckCircle className="h-4 w-4" />
+        return <CheckCircle className="h-4 w-4" />;
       case "IN_PROGRESS":
-        return <Clock className="h-4 w-4" />
+        return <Clock className="h-4 w-4" />;
       default:
-        return <AlertTriangle className="h-4 w-4" />
+        return <AlertTriangle className="h-4 w-4" />;
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">Loading ticket…</p>
       </div>
-    )
+    );
   }
 
   if (!ticket) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Ticket not found or could not be loaded.</p>
+        <p className="text-muted-foreground">
+          Ticket not found or could not be loaded.
+        </p>
         {onClose && (
-          <Button variant="outline" onClick={onClose} className="mt-4 bg-transparent">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="mt-4 bg-transparent"
+          >
             Go Back
           </Button>
         )}
       </div>
-    )
+    );
   }
 
   return (
@@ -221,10 +260,16 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         )}
         <div className="flex items-center gap-2">
           {getStatusIcon(ticket.status)}
-          <h1 className="text-2xl font-bold">#{ticket.id.substring(0, 8)}...</h1>
+          <h1 className="text-2xl font-bold">
+            #{ticket.id.substring(0, 8)}...
+          </h1>
         </div>
         <div className="ml-auto">
-          <Button variant="outline" onClick={() => setShowEditForm(true)} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowEditForm(true)}
+            className="gap-2"
+          >
             <Edit className="h-4 w-4" /> Edit Ticket
           </Button>
         </div>
@@ -238,8 +283,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusColor(ticket.status)}>{ticket.status.replace("_", " ")}</Badge>
-                    <Badge variant={getUrgencyColor(ticket.urgency)}>{ticket.urgency}</Badge>
+                    <Badge variant={getStatusColor(ticket.status)}>
+                      {ticket.status.replace("_", " ")}
+                    </Badge>
+                    <Badge variant={getUrgencyColor(ticket.urgency)}>
+                      {ticket.urgency}
+                    </Badge>
                     <Badge variant="outline">{ticket.category}</Badge>
                   </div>
                 </div>
@@ -249,7 +298,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Description</h4>
-                  <p className="text-muted-foreground leading-relaxed">{ticket.description}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {ticket.description}
+                  </p>
                 </div>
                 <Separator />
                 <div className="grid gap-4 md:grid-cols-2">
@@ -261,20 +312,28 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Created:</span>
-                    <span className="font-medium">{format(new Date(ticket.createdAt), "PPP")}</span>
+                    <span className="font-medium">
+                      {format(new Date(ticket.createdAt), "PPP")}
+                    </span>
                   </div>
                   {ticket.assignee && (
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Assigned to:</span>
-                      <span className="font-medium">{ticket.assignee.name}</span>
+                      <span className="text-muted-foreground">
+                        Assigned to:
+                      </span>
+                      <span className="font-medium">
+                        {ticket.assignee.name}
+                      </span>
                     </div>
                   )}
                   {ticket.dueDate && (
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Due date:</span>
-                      <span className="font-medium">{format(new Date(ticket.dueDate), "PPP")}</span>
+                      <span className="font-medium">
+                        {format(new Date(ticket.dueDate), "PPP")}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -287,12 +346,21 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={ticket.status} onValueChange={(value: TicketStatus) => handleUpdateTicket("status", value)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={ticket.status}
+                  onValueChange={(value: TicketStatus) =>
+                    handleUpdateTicket("status", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {statusOptions.map((status) => (
                       <SelectItem key={status} value={status}>
@@ -304,8 +372,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               </div>
               <div className="space-y-2">
                 <Label>Urgency</Label>
-                <Select value={ticket.urgency} onValueChange={(value: Urgency) => handleUpdateTicket("urgency", value)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={ticket.urgency}
+                  onValueChange={(value: Urgency) =>
+                    handleUpdateTicket("urgency", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {urgencyOptions.map((urgency) => (
                       <SelectItem key={urgency} value={urgency}>
@@ -317,8 +392,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               </div>
               <div className="space-y-2">
                 <Label>Assignee</Label>
-                <Select value={ticket.assignee?.id || "unassigned"} onValueChange={handleAssigneeChange}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={ticket.assignee?.id || "unassigned"}
+                  onValueChange={handleAssigneeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {users.map((user) => (
@@ -345,5 +425,5 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         }}
       />
     </div>
-  )
+  );
 }

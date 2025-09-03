@@ -5,12 +5,12 @@ import type { Comment } from "@/lib/types";
 
 const API_BASE = "http://localhost:4000";
 
-async function getAuthToken(): Promise<string> {
-  if (process.env.NODE_ENV === "development") {
-    return "local";
-  }
-  return await getAccessToken();
-}
+// async function getAuthToken(): Promise<string> {
+//   if (process.env.NODE_ENV === "development") {
+//     return "local";
+//   }
+//   return await getAccessToken();
+// }
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
@@ -28,6 +28,7 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 }
 
 interface CreateCommentRequest {
+  userId: string;
   ticketId: string;
   content: string;
   internal: boolean;
@@ -55,59 +56,69 @@ interface CommentResponse {
 
 class CommentApiClient {
   async listComments(ticketId: string): Promise<ListCommentsResponse> {
-    const accessToken = await getAuthToken();
+    // const accessToken = await getAuthToken();
     const res = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      // headers: {
+      //   Authorization: `Bearer ${accessToken}`,
+      // },
       cache: "no-store",
     });
     return parseJsonSafe<ListCommentsResponse>(res);
   }
 
   async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        content: request.content,
-        internal: request.internal,
-      }),
-    });
+    // const accessToken = await getAuthToken();
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          userId: request.userId,
+          content: request.content,
+          internal: request.internal,
+        }),
+      }
+    );
     return parseJsonSafe<CommentResponse>(res);
   }
 
   async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        content: request.content,
-        internal: request.internal,
-      }),
-    });
+    // const accessToken = await getAuthToken();
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          content: request.content,
+          internal: request.internal,
+        }),
+      }
+    );
     return parseJsonSafe<CommentResponse>(res);
   }
 
   async deleteComment(request: DeleteCommentRequest): Promise<void> {
-    const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
+    // const accessToken = await getAuthToken();
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
+      {
+        method: "DELETE",
+        headers: {
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      }
+    );
     await parseJsonSafe(res);
   }
 }

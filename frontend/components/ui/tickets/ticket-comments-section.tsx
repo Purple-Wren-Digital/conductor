@@ -9,8 +9,10 @@ interface TicketCommentsSectionProps {
   ticketId: string;
 }
 
-export function TicketCommentsSection({ ticketId }: TicketCommentsSectionProps) {
-  const commentCount = useCommentCount(ticketId);
+export function TicketCommentsSection({
+  ticketId,
+}: TicketCommentsSectionProps) {
+  const commentCount = useCommentCount(ticketId); // Fallback to 2 for demo
 
   return (
     <Card>
