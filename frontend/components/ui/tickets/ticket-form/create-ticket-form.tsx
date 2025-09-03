@@ -8,6 +8,7 @@ import {
   type TicketFormValues,
   type TicketFormErrors,
 } from "./base-ticket-form";
+import { toast } from "sonner";
 
 type Props = {
   isOpen: boolean;
@@ -100,7 +101,54 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     return Object.keys(next).length === 0;
   };
 
-  
+  const sendEmailNotification = async (ticket: Ticket | null) => {
+    if (
+      !ticket ||
+      !ticket.id ||
+      !ticket?.title ||
+      !ticket?.createdAt ||
+      !ticket?.creator ||
+      !ticket?.creator?.name ||
+      !ticket?.creator?.id
+    ) {
+      throw new Error("Ticket was null");
+    }
+    console.log("Created ticket information", ticket);
+
+    const ticketCreatedEmailBody = {
+      emailType: "createdTicket",
+      emailData: {
+        ticketNumber: ticket?.id,
+        ticketTitle: ticket?.title,
+        creatorName: ticket?.creator?.name,
+        creatorId: ticket?.creator?.id,
+        createdOn: ticket?.createdAt,
+        dueDate: ticket?.dueDate ? ticket.dueDate : undefined,
+        // ticketLink: `https://example.com/${ticket?.id}`,
+      },
+    };
+
+    try {
+      const response = await fetch("/api/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({ ticketCreatedEmailBody }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        const data = await response.json();
+        console.log("Email sent successfully:", data);
+        toast.success("Ticket created successfully! Confirmation email sent.");
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +168,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
       if (!res.ok) throw new Error("Failed to create ticket");
       const data = await res.json().catch(() => ({}));
       onSuccess(data?.ticket ?? null);
+      await sendEmailNotification(data?.ticket ?? null);
       onClose();
     } catch (err) {
       console.error(err);
