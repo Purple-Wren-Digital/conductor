@@ -1,26 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Mock Prisma
-const mockPrisma = {
-  ticketCategory: {
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    findMany: vi.fn(),
-    findFirst: vi.fn(),
-    findUnique: vi.fn(),
+const hoisted = vi.hoisted(() => ({
+  mockPrisma: {
+    ticketCategory: {
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
   },
-  user: {
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-  },
-};
-
-vi.mock("./db", () => ({
-  getPrisma: () => mockPrisma,
 }));
 
-// Mock Encore API
+vi.mock("./db", () => ({
+  getPrisma: () => hoisted.mockPrisma,
+}));
+
 vi.mock("encore.dev/api", () => ({
   api: vi.fn((config, handler) => handler),
   APIError: {
@@ -29,7 +29,16 @@ vi.mock("encore.dev/api", () => ({
   },
 }));
 
-import { createCategory, updateCategory, deleteCategory, listCategories } from "./categories";
+import {
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  listCategories,
+} from "./categories";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("Category Management", () => {
   beforeEach(() => {
@@ -38,7 +47,11 @@ describe("Category Management", () => {
 
   describe("createCategory", () => {
     it("should create a category with default assignee", async () => {
-      const mockUser = { id: "user_1", name: "Test User", email: "test@example.com" };
+      const mockUser = {
+        id: "user_1",
+        name: "Test User",
+        email: "test@example.com",
+      };
       const mockCategory = {
         id: "cat_1",
         name: "Technical Support",
@@ -50,9 +63,9 @@ describe("Category Management", () => {
         defaultAssignee: mockUser,
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
-      mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
-      mockPrisma.ticketCategory.create.mockResolvedValue(mockCategory);
+      hoisted.mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+      hoisted.mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
+      hoisted.mockPrisma.ticketCategory.create.mockResolvedValue(mockCategory);
 
       const result = await createCategory({
         name: "Technical Support",
@@ -61,10 +74,10 @@ describe("Category Management", () => {
       });
 
       expect(result.category).toEqual(mockCategory);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      expect(hoisted.mockPrisma.user.findUnique).toHaveBeenCalledWith({
         where: { id: "user_1" },
       });
-      expect(mockPrisma.ticketCategory.create).toHaveBeenCalledWith({
+      expect(hoisted.mockPrisma.ticketCategory.create).toHaveBeenCalledWith({
         data: {
           name: "Technical Support",
           description: "Technical issues",
@@ -95,8 +108,8 @@ describe("Category Management", () => {
         defaultAssignee: null,
       };
 
-      mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
-      mockPrisma.ticketCategory.create.mockResolvedValue(mockCategory);
+      hoisted.mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
+      hoisted.mockPrisma.ticketCategory.create.mockResolvedValue(mockCategory);
 
       const result = await createCategory({
         name: "General",
@@ -104,7 +117,7 @@ describe("Category Management", () => {
       });
 
       expect(result.category).toEqual(mockCategory);
-      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+      expect(hoisted.mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -115,19 +128,27 @@ describe("Category Management", () => {
         name: "Technical Support",
         marketCenterId: "market_center_1",
       };
-      
+
       const updatedCategory = {
         ...existingCategory,
         name: "Tech Support",
         description: "Updated description",
         defaultAssigneeId: "user_1",
-        defaultAssignee: { id: "user_1", name: "Test User", email: "test@example.com" },
+        defaultAssignee: {
+          id: "user_1",
+          name: "Test User",
+          email: "test@example.com",
+        },
       };
 
-      mockPrisma.ticketCategory.findFirst.mockResolvedValue(existingCategory);
-      mockPrisma.user.findUnique.mockResolvedValue({ id: "user_1" });
-      mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
-      mockPrisma.ticketCategory.update.mockResolvedValue(updatedCategory);
+      hoisted.mockPrisma.ticketCategory.findFirst.mockResolvedValue(
+        existingCategory
+      );
+      hoisted.mockPrisma.user.findUnique.mockResolvedValue({ id: "user_1" });
+      hoisted.mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
+      hoisted.mockPrisma.ticketCategory.update.mockResolvedValue(
+        updatedCategory
+      );
 
       const result = await updateCategory({
         id: "cat_1",
@@ -148,13 +169,17 @@ describe("Category Management", () => {
         marketCenterId: "market_center_1",
       };
 
-      mockPrisma.ticketCategory.findFirst.mockResolvedValue(existingCategory);
-      mockPrisma.ticketCategory.delete.mockResolvedValue(existingCategory);
+      hoisted.mockPrisma.ticketCategory.findFirst.mockResolvedValue(
+        existingCategory
+      );
+      hoisted.mockPrisma.ticketCategory.delete.mockResolvedValue(
+        existingCategory
+      );
 
       const result = await deleteCategory({ id: "cat_1" });
 
       expect(result.success).toBe(true);
-      expect(mockPrisma.ticketCategory.delete).toHaveBeenCalledWith({
+      expect(hoisted.mockPrisma.ticketCategory.delete).toHaveBeenCalledWith({
         where: { id: "cat_1" },
       });
     });
@@ -171,7 +196,11 @@ describe("Category Management", () => {
           defaultAssigneeId: "user_1",
           createdAt: new Date(),
           updatedAt: new Date(),
-          defaultAssignee: { id: "user_1", name: "Test User", email: "test@example.com" },
+          defaultAssignee: {
+            id: "user_1",
+            name: "Test User",
+            email: "test@example.com",
+          },
         },
         {
           id: "cat_2",
@@ -185,12 +214,14 @@ describe("Category Management", () => {
         },
       ];
 
-      mockPrisma.ticketCategory.findMany.mockResolvedValue(mockCategories);
+      hoisted.mockPrisma.ticketCategory.findMany.mockResolvedValue(
+        mockCategories
+      );
 
       const result = await listCategories({});
 
       expect(result.categories).toEqual(mockCategories);
-      expect(mockPrisma.ticketCategory.findMany).toHaveBeenCalledWith({
+      expect(hoisted.mockPrisma.ticketCategory.findMany).toHaveBeenCalledWith({
         where: {
           marketCenterId: "market_center_1",
         },
@@ -204,7 +235,7 @@ describe("Category Management", () => {
           },
         },
         orderBy: {
-          name: 'asc',
+          name: "asc",
         },
       });
     });
