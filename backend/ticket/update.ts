@@ -17,7 +17,12 @@ export interface UpdateTicketResponse {
 }
 
 export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
-  { expose: true, method: "PUT", path: "/tickets/:ticketId", auth: true },
+  {
+    expose: true,
+    method: "PUT",
+    path: "/tickets/:ticketId",
+    auth: false, // true
+  },
   async (req) => {
     const updateData: any = {};
 

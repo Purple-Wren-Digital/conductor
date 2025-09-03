@@ -7,6 +7,137 @@ datasource db {
   url      = env("DB_URL")
 }
 
+model MarketCenter {
+  id                String             @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name              String
+  settings          Json               @default("{}")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
+  settingsAuditLogs SettingsAuditLog[]
+  teamInvitations   TeamInvitation[]
+  ticketCategories  TicketCategory[]
+  users             User[]
+
+  @@map("market_centers")
+}
+
+model User {
+  id                   String             @id @default(dbgenerated("(gen_random_uuid())::text"))
+  email                String             @unique
+  name                 String?
+  role                 UserRole           @default(AGENT)
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @default(now()) @updatedAt @map("updated_at")
+  deletedAt            DateTime?
+  isActive             Boolean            @default(true)
+  marketCenterId       String?            @map("market_center_id")
+  auth0Id              String?            @unique
+  comments             Comment[]
+  auditLogs            SettingsAuditLog[]
+  defaultForCategories TicketCategory[]
+  assignedTickets      Ticket[]           @relation("TicketAssignee")
+  createdTickets       Ticket[]           @relation("TicketCreator")
+  marketCenter         MarketCenter?      @relation(fields: [marketCenterId], references: [id])
+
+  @@index([marketCenterId])
+  @@map("users")
+}
+
+model Ticket {
+  id          String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  title       String?
+  description String?
+  status      TicketStatus? @default(ASSIGNED)
+  urgency     Urgency?      @default(MEDIUM)
+  category    String?
+  creatorId   String        @map("creator_id")
+  assigneeId  String?       @map("assignee_id")
+  dueDate     DateTime?     @map("due_date")
+  resolvedAt  DateTime?     @map("resolved_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at")
+  publishedAt DateTime?
+  comments    Comment[]
+  assignee    User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  creator     User          @relation("TicketCreator", fields: [creatorId], references: [id])
+
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([urgency])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model Comment {
+  id        String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  content   String
+  ticketId  String   @map("ticket_id")
+  userId    String   @map("user_id")
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model TicketCategory {
+  id                String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name              String
+  description       String?
+  marketCenterId    String       @map("market_center_id")
+  defaultAssigneeId String?      @map("default_assignee_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at")
+  defaultAssignee   User?        @relation(fields: [defaultAssigneeId], references: [id])
+  marketCenter      MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+
+  @@unique([marketCenterId, name])
+  @@index([marketCenterId])
+  @@map("ticket_categories")
+}
+
+model TeamInvitation {
+  id             String           @id @default(dbgenerated("(gen_random_uuid())::text"))
+  email          String
+  role           UserRole         @default(AGENT)
+  status         InvitationStatus @default(PENDING)
+  marketCenterId String           @map("market_center_id")
+  invitedBy      String?          @map("invited_by")
+  token          String           @unique
+  expiresAt      DateTime         @map("expires_at")
+  acceptedAt     DateTime?        @map("accepted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
+  marketCenter   MarketCenter     @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+
+  @@unique([marketCenterId, email])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("team_invitations")
+}
+
+model SettingsAuditLog {
+  id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  marketCenterId String       @map("market_center_id")
+  userId         String       @map("user_id")
+  action         String
+  section        String
+  previousValue  Json?        @map("previous_value")
+  newValue       Json?        @map("new_value")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  marketCenter   MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@index([marketCenterId])
+  @@index([createdAt])
+  @@map("settings_audit_logs")
+}
+
 enum UserRole {
   AGENT
   STAFF
@@ -18,6 +149,7 @@ enum TicketStatus {
   AWAITING_RESPONSE
   IN_PROGRESS
   RESOLVED
+  DRAFT
 }
 
 enum Urgency {
@@ -31,140 +163,4 @@ enum InvitationStatus {
   ACCEPTED
   EXPIRED
   CANCELLED
-}
-
-model MarketCenter {
-  id          String    @id @default(dbgenerated("gen_random_uuid()::text"))
-  name        String
-  settings    Json      @default("{}")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  users             User[]
-  ticketCategories  TicketCategory[]
-  teamInvitations   TeamInvitation[]
-  settingsAuditLogs SettingsAuditLog[]
-
-  @@map("market_centers")
-}
-
-model User {
-  id             String   @id @default(dbgenerated("gen_random_uuid()::text"))
-  email          String   @unique
-  name           String
-  role           UserRole @default(AGENT)
-  marketCenterId String?  @map("market_center_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
-  deletedAt      DateTime?
-  isActive       Boolean  @default(true)
-
-  marketCenter          MarketCenter? @relation(fields: [marketCenterId], references: [id])
-  createdTickets        Ticket[]      @relation("TicketCreator")
-  assignedTickets       Ticket[]      @relation("TicketAssignee")
-  defaultForCategories  TicketCategory[]
-  comments              Comment[]
-  auditLogs             SettingsAuditLog[]
-
-  @@index([marketCenterId])
-  @@map("users")
-}
-
-model Ticket {
-  id          String       @id @default(dbgenerated("gen_random_uuid()::text"))
-  title       String
-  description String
-  status      TicketStatus @default(ASSIGNED)
-  urgency     Urgency      @default(MEDIUM)
-  category    String
-  creatorId   String       @map("creator_id")
-  assigneeId  String?      @map("assignee_id")
-  dueDate     DateTime?    @map("due_date")
-  resolvedAt  DateTime?    @map("resolved_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at")
-
-  creator   User @relation("TicketCreator", fields: [creatorId], references: [id])
-  assignee  User? @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  comments  Comment[]
-
-  @@index([creatorId])
-  @@index([assigneeId])
-  @@index([status])
-  @@index([urgency])
-  @@index([createdAt])
-  @@map("tickets")
-}
-
-model Comment {
-  id        String   @id @default(dbgenerated("gen_random_uuid()::text"))
-  content   String
-  ticketId  String   @map("ticket_id")
-  userId    String   @map("user_id")
-  internal  Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@index([ticketId])
-  @@index([createdAt])
-  @@map("comments")
-}
-
-model TicketCategory {
-  id                String  @id @default(dbgenerated("gen_random_uuid()::text"))
-  name              String
-  description       String?
-  marketCenterId    String  @map("market_center_id")
-  defaultAssigneeId String? @map("default_assignee_id")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
-
-  marketCenter    MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-  defaultAssignee User?        @relation(fields: [defaultAssigneeId], references: [id])
-
-  @@unique([marketCenterId, name])
-  @@index([marketCenterId])
-  @@map("ticket_categories")
-}
-
-model TeamInvitation {
-  id             String           @id @default(dbgenerated("gen_random_uuid()::text"))
-  email          String
-  role           UserRole         @default(AGENT)
-  status         InvitationStatus @default(PENDING)
-  marketCenterId String           @map("market_center_id")
-  invitedBy      String?          @map("invited_by")
-  token          String           @unique
-  expiresAt      DateTime         @map("expires_at")
-  acceptedAt     DateTime?        @map("accepted_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
-
-  marketCenter MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-
-  @@unique([marketCenterId, email])
-  @@index([token])
-  @@index([expiresAt])
-  @@map("team_invitations")
-}
-
-model SettingsAuditLog {
-  id             String      @id @default(dbgenerated("gen_random_uuid()::text"))
-  marketCenterId String      @map("market_center_id")
-  userId         String      @map("user_id")
-  action         String      // e.g., "update", "create", "delete"
-  section        String      // e.g., "business_hours", "branding", "team"
-  previousValue  Json?       @map("previous_value")
-  newValue       Json?       @map("new_value")
-  createdAt      DateTime    @default(now()) @map("created_at")
-
-  marketCenter MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id])
-
-  @@index([marketCenterId])
-  @@index([createdAt])
-  @@map("settings_audit_logs")
 }

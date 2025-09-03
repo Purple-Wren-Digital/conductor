@@ -45,8 +45,16 @@ export interface ListCategoriesResponse {
   categories: TicketCategory[];
 }
 
-export const createCategory = api<CreateCategoryRequest, CreateCategoryResponse>(
-  { expose: true, method: "POST", path: "/settings/categories", auth: true },
+export const createCategory = api<
+  CreateCategoryRequest,
+  CreateCategoryResponse
+>(
+  {
+    expose: true,
+    method: "POST",
+    path: "/settings/categories",
+    auth: false, // true
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -93,12 +101,26 @@ export const createCategory = api<CreateCategoryRequest, CreateCategoryResponse>
       },
     });
 
-    return { category };
+    // Ensure description is never null
+    const safeCategory = {
+      ...category,
+      description: category.description ?? undefined,
+    };
+
+    return { category: safeCategory };
   }
 );
 
-export const updateCategory = api<{ id: string } & UpdateCategoryRequest, UpdateCategoryResponse>(
-  { expose: true, method: "PUT", path: "/settings/categories/:id", auth: true },
+export const updateCategory = api<
+  { id: string } & UpdateCategoryRequest,
+  UpdateCategoryResponse
+>(
+  {
+    expose: true,
+    method: "PUT",
+    path: "/settings/categories/:id",
+    auth: false, // true
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -164,7 +186,12 @@ export const updateCategory = api<{ id: string } & UpdateCategoryRequest, Update
 );
 
 export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
-  { expose: true, method: "DELETE", path: "/settings/categories/:id", auth: true },
+  {
+    expose: true,
+    method: "DELETE",
+    path: "/settings/categories/:id",
+    auth: false, // true
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -190,12 +217,17 @@ export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
 );
 
 export const listCategories = api<{}, ListCategoriesResponse>(
-  { expose: true, method: "GET", path: "/settings/categories", auth: true },
+  {
+    expose: true,
+    method: "GET",
+    path: "/settings/categories",
+    auth: false, // true
+  },
   async () => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
 
-    const categories = await prisma.ticketCategory.findMany({
+    const categoriesFound = await prisma.ticketCategory.findMany({
       where: {
         marketCenterId: mockMarketCenterId,
       },
@@ -209,9 +241,16 @@ export const listCategories = api<{}, ListCategoriesResponse>(
         },
       },
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
+
+    const categories = categoriesFound.map((cat) => ({
+      ...cat,
+      description: cat.description ?? undefined,
+      defaultAssigneeId: cat.defaultAssigneeId ?? undefined,
+      defaultAssignee: cat.defaultAssignee ?? undefined,
+    }));
 
     return { categories };
   }

@@ -39,7 +39,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     const userId = authData.userID;
 
     // Apply rate limiting
-    commentRateLimiter.checkRateLimit(userId);
+    // commentRateLimiter.checkRateLimit(userId);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },

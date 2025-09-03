@@ -2,6 +2,7 @@ import { api } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, Urgency } from "./types";
 import { applyAutoAssignment } from "./auto-assignment";
+// import { getAuthData } from "~encore/auth";
 
 export interface CreateTicketRequest {
   title: string;
@@ -9,6 +10,7 @@ export interface CreateTicketRequest {
   category: string;
   urgency: Urgency;
   dueDate?: Date;
+  creatorId: string;
 }
 
 export interface CreateTicketResponse {
@@ -17,11 +19,16 @@ export interface CreateTicketResponse {
 
 // Creates a new ticket.
 export const create = api<CreateTicketRequest, CreateTicketResponse>(
-  { expose: true, method: "POST", path: "/tickets", auth: true },
+  {
+    expose: true,
+    method: "POST",
+    path: "/tickets",
+    auth: false, // true
+  },
   async (req) => {
     try {
       // TODO: AUTH
-      const mockUserId = "user_1";
+      // const mockUserId = "user_1";
 
       // Apply auto-assignment (checks category defaults first, then rules)
       const assigneeId = await applyAutoAssignment({
@@ -29,7 +36,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         urgency: req.urgency,
         title: req.title,
         description: req.description,
-        creatorId: mockUserId,
+        creatorId: req.creatorId,
       });
 
       const ticket = await prisma.ticket.create({
@@ -38,7 +45,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
           description: req.description,
           category: req.category,
           urgency: req.urgency,
-          creatorId: mockUserId,
+          creatorId: req.creatorId,
           assigneeId: assigneeId,
           dueDate: req.dueDate,
         },
@@ -53,11 +60,11 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         },
       });
 
-      return { 
+      return {
         ticket: {
           ...ticket,
           commentCount: ticket._count.comments,
-        }
+        },
       } as CreateTicketResponse;
     } catch (error) {
       console.log("Failed to create ticket", error);
