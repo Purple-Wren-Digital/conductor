@@ -4,20 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   ArrowLeft,
   Calendar,
   User,
   Clock,
-  MessageSquare,
   Edit,
-  Trash2,
-  Send,
   AlertTriangle,
   CheckCircle,
 } from "lucide-react"
@@ -25,6 +19,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import type { Ticket, Comment, User as UserType, TicketStatus, Urgency } from "@/lib/types"
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form"
+import { TicketCommentsSection } from "./ticket-comments-section"
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0"
 
 interface TicketDetailViewProps {
@@ -54,14 +49,9 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
   const [users, setUsers] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
   const [showEditForm, setShowEditForm] = useState(false)
-
-  const [newComment, setNewComment] = useState("")
-  const [isInternalComment, setIsInternalComment] = useState(false)
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
   const { user: authUser } = useUser();
 
@@ -81,18 +71,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         Authorization: `Bearer ${accessToken}`,
       };
 
-      const [ticketRes, commentsRes, usersRes] = await Promise.all([
+      const [ticketRes, usersRes] = await Promise.all([
         fetch(`${API_BASE}/tickets/${ticketId}`, { headers, cache: "no-store" }),
-        fetch(`${API_BASE}/tickets/${ticketId}/comments`, { headers, cache: "no-store" }),
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
-      const commentsData = await parseJsonSafe<{ comments: Comment[] }>(commentsRes);
       const usersData = await parseJsonSafe<{ users: UserType[] }>(usersRes);
 
       setTicket(ticketData.ticket);
-      setComments(commentsData.comments || []);
       setUsers(usersData.users || []);
     } catch (err) {
       console.error("Error refreshing data:", err);
@@ -163,51 +150,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
-  const handleSubmitComment = async () => {
-    if (!newComment.trim() || !ticket) return;
-    setIsSubmittingComment(true);
-    try {
-      const accessToken = await getAuthToken();
-      const res = await fetch(`${API_BASE}/tickets/${ticket.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          content: newComment,
-          internal: isInternalComment,
-        }),
-      });
-      const data = await parseJsonSafe<{ comment: Comment }>(res);
-      setComments((prev) => [...prev, data.comment]);
-      setNewComment("");
-      setIsInternalComment(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!ticket) return;
-    if (window.confirm("Are you sure you want to delete this comment?")) {
-      try {
-        const accessToken = await getAuthToken();
-        const res = await fetch(`${API_BASE}/tickets/${ticket.id}/comments/${commentId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${accessToken}` },
-          cache: "no-store",
-        });
-        await parseJsonSafe(res);
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
 
   const getStatusColor = (status: TicketStatus) => {
     switch (status) {
@@ -340,98 +282,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" /> Comments ({comments.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
-                          {comment.user?.name.split(" ").map((n) => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{comment.user?.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(comment.createdAt), "PPp")}
-                          </span>
-                          {comment.internal && (
-                            <Badge variant="secondary" className="text-xs">
-                              Internal
-                            </Badge>
-                          )}
-                        </div>
-                        <div
-                          className={`p-3 rounded-lg ${
-                            comment.internal ? "bg-yellow-50 border border-yellow-200" : "bg-muted"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{comment.content}</p>
-                        </div>
-                        {comment.user?.id === authUser?.sub && (
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteComment(comment.id)}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Separator />
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {authUser?.name?.split(" ").map((n) => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-3">
-                      <Textarea
-                        placeholder="Add a comment..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        className="min-h-[80px]"
-                      />
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="internal-comment"
-                            checked={isInternalComment}
-                            onCheckedChange={(checked) => setIsInternalComment(!!checked)}
-                          />
-                          <Label htmlFor="internal-comment" className="text-sm">
-                            Internal note
-                          </Label>
-                        </div>
-                        <Button onClick={handleSubmitComment} disabled={!newComment.trim() || isSubmittingComment} className="gap-2">
-                          <Send className="h-4 w-4" /> {isSubmittingComment ? "Posting..." : "Post Comment"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TicketCommentsSection ticketId={ticket.id} />
         </div>
 
         <div className="space-y-6">

@@ -27,8 +27,11 @@ export interface User {
 export interface Comment {
   id: string
   content: string
+  ticketId: string
+  userId: string
   internal: boolean
   createdAt: Date
+  updatedAt?: Date
   user?: User
 }
 
