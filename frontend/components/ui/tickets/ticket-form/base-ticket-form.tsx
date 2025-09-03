@@ -1,54 +1,70 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { Label } from "@/components/ui/label"
-import { CalendarIcon, Save, X, FileText } from "lucide-react"
-import { format } from "date-fns"
-import type { TicketTemplate, Urgency } from "@/lib/types"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog/base-dialog"
+import type React from "react";
+import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { CalendarIcon, Save, X, FileText } from "lucide-react";
+import { format } from "date-fns";
+import type { TicketTemplate, Urgency } from "@/lib/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog/base-dialog";
 
 export type TicketFormValues = {
-  title: string
-  description: string
-  urgency: Urgency
-  category: string
-  dueDate?: Date
-}
+  title: string;
+  description: string;
+  urgency: Urgency;
+  category: string;
+  dueDate?: Date;
+  creatorId: string;
+};
 
-export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>
+export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
 
 export type BaseTicketFormProps = {
   // Dialog controls
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 
   // Form state
-  values: TicketFormValues
-  errors: TicketFormErrors
-  loading?: boolean
+  values: TicketFormValues;
+  errors: TicketFormErrors;
+  loading?: boolean;
 
   // Handlers
-  onChange: (patch: Partial<TicketFormValues>) => void
-  onSubmit: (e: React.FormEvent) => void
+  onChange: (patch: Partial<TicketFormValues>) => void;
+  onSubmit: (e: React.FormEvent) => void;
 
   // Visuals
-  titleText: string // "Create New Ticket" or "Edit Ticket"
+  titleText: string; // "Create New Ticket" or "Edit Ticket"
 
   // Create-only (template picker)
-  showTemplateSelect?: boolean
-  templates?: TicketTemplate[]
-  selectedTemplateId?: string
-  onChangeTemplateId?: (id: string) => void
-}
+  showTemplateSelect?: boolean;
+  templates?: TicketTemplate[];
+  selectedTemplateId?: string;
+  onChangeTemplateId?: (id: string) => void;
+};
 
-const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"]
+const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 const categoryOptions = [
   "Bug",
   "Feature",
@@ -60,7 +76,7 @@ const categoryOptions = [
   "Email",
   "API",
   "Other",
-]
+];
 
 export function BaseTicketForm({
   isOpen,
@@ -77,7 +93,7 @@ export function BaseTicketForm({
   onChangeTemplateId,
 }: BaseTicketFormProps) {
   const templateSection = useMemo(() => {
-    if (!showTemplateSelect) return null
+    if (!showTemplateSelect) return null;
     return (
       <div className="space-y-2">
         <Label>Template (Optional)</Label>
@@ -95,8 +111,8 @@ export function BaseTicketForm({
           </SelectContent>
         </Select>
       </div>
-    )
-  }, [showTemplateSelect, selectedTemplateId, onChangeTemplateId, templates])
+    );
+  }, [showTemplateSelect, selectedTemplateId, onChangeTemplateId, templates]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -120,7 +136,9 @@ export function BaseTicketForm({
               placeholder="Brief description of the issue or request"
               className={errors.title ? "border-destructive" : ""}
             />
-            {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
+            {errors.title && (
+              <p className="text-sm text-destructive">{errors.title}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -130,9 +148,13 @@ export function BaseTicketForm({
               value={values.description}
               onChange={(e) => onChange({ description: e.target.value })}
               placeholder="Detailed description of the issue, including steps to reproduce, expected behavior, etc."
-              className={`min-h-[120px] ${errors.description ? "border-destructive" : ""}`}
+              className={`min-h-[120px] ${
+                errors.description ? "border-destructive" : ""
+              }`}
             />
-            {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
+            {errors.description && (
+              <p className="text-sm text-destructive">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -142,15 +164,20 @@ export function BaseTicketForm({
                 value={values.urgency}
                 onValueChange={(value: Urgency) => onChange({ urgency: value })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {urgencyOptions.map((urgency) => (
                     <SelectItem key={urgency} value={urgency}>
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full ${
-                            urgency === "HIGH" ? "bg-red-500" :
-                            urgency === "MEDIUM" ? "bg-yellow-500" : "bg-green-500"
+                            urgency === "HIGH"
+                              ? "bg-red-500"
+                              : urgency === "MEDIUM"
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
                           }`}
                         />
                         {urgency}
@@ -167,16 +194,22 @@ export function BaseTicketForm({
                 value={values.category}
                 onValueChange={(value) => onChange({ category: value })}
               >
-                <SelectTrigger className={errors.category ? "border-destructive" : ""}>
+                <SelectTrigger
+                  className={errors.category ? "border-destructive" : ""}
+                >
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((category) => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
+              {errors.category && (
+                <p className="text-sm text-destructive">{errors.category}</p>
+              )}
             </div>
           </div>
 
@@ -184,9 +217,14 @@ export function BaseTicketForm({
             <Label>Due Date (Optional)</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal bg-transparent"
+                >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {values.dueDate ? format(values.dueDate, "PPP") : "Select due date"}
+                  {values.dueDate
+                    ? format(values.dueDate, "PPP")
+                    : "Select due date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -194,7 +232,7 @@ export function BaseTicketForm({
                   mode="single"
                   selected={values.dueDate}
                   onSelect={(date) => onChange({ dueDate: date || undefined })}
-                  initialFocus
+                  // initialFocus
                   disabled={(date) => date < new Date()}
                 />
               </PopoverContent>
@@ -202,7 +240,12 @@ export function BaseTicketForm({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={!!loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={!!loading}
+            >
               <X className="h-4 w-4 mr-2" /> Cancel
             </Button>
             <Button type="submit" disabled={!!loading} className="gap-2">
@@ -213,6 +256,5 @@ export function BaseTicketForm({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

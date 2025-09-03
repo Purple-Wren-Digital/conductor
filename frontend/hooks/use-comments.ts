@@ -8,6 +8,7 @@ import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 
 interface CreateCommentParams {
+  userId: string;
   ticketId: string;
   content: string;
   internal?: boolean;
@@ -79,7 +80,7 @@ export function useComments(ticketId: string) {
       const response = await commentApi.listComments(ticketId);
       return response.comments;
     },
-    refetchInterval: 30000, // Poll every 30 seconds as fallback
+    refetchInterval: 30000, // Poll every 30 seconds as fallback // TODO: adjust or remove intervals - higher intervals are better for performance
     staleTime: 10000, // Consider data stale after 10 seconds
   });
 }
@@ -89,15 +90,16 @@ export function useCreateComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ticketId, content, internal }: CreateCommentParams) => {
+    mutationFn: async ({ userId, ticketId, content, internal }: CreateCommentParams) => {
       const response = await commentApi.createComment({
+        userId,
         ticketId,
         content,
         internal: internal || false,
       });
       return response.comment;
     },
-    onMutate: async ({ ticketId, content, internal }) => {
+    onMutate: async ({ userId, ticketId, content, internal }) => {
       // Cancel outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
@@ -109,11 +111,11 @@ export function useCreateComment() {
         id: `temp-${Date.now()}-${Math.random()}`,
         content,
         ticketId,
-        userId: "current-user",
+        userId,
         internal: internal || false,
         createdAt: new Date(),
         user: {
-          id: "current-user",
+          id: userId,
           name: "You",
           email: "",
           role: "AGENT",

@@ -10,6 +10,7 @@ interface AuthData {
 }
 
 export interface DeleteCommentRequest {
+  userID: string;
   ticketId: string;
   commentId: string;
 }
@@ -24,15 +25,15 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     expose: true,
     method: "DELETE",
     path: "/tickets/:ticketId/comments/:commentId",
-    auth: true,
+    auth: false, //true,
   },
   async (req) => {
-    const authData = getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
+    // const authData = getAuthData();
+    // if (!authData) {
+    //   throw APIError.unauthenticated("user not authenticated");
+    // }
 
-    const userId = authData.userID;
+    const userId = req.userID; // authData.userID;
 
     const comment = await prisma.comment.findFirst({
       where: {

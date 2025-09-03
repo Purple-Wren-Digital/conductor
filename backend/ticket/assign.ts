@@ -5,6 +5,7 @@ import type { Ticket } from "./types";
 export interface AssignTicketRequest {
   id: string;
   assigneeId: string;
+  // userId: string; // Added userId to request interface
 }
 
 export interface AssignTicketResponse {
@@ -13,7 +14,12 @@ export interface AssignTicketResponse {
 
 // Assigns a ticket to a user
 export const assign = api<AssignTicketRequest, AssignTicketResponse>(
-  { expose: true, method: "POST", path: "/tickets/:id/assign", auth: true },
+  {
+    expose: true,
+    method: "POST",
+    path: "/tickets/:id/assign",
+    auth: false, // true,
+  },
   async (req) => {
     // Check if assignee exists
     const assignee = await prisma.user.findUnique({
@@ -31,10 +37,16 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         include: {
           creator: true,
           assignee: true,
+          comments: true,
         },
       });
 
-      return { ticket } as AssignTicketResponse;
+      const ticketWithCommentCount = {
+        ...ticket,
+        commentCount: ticket.comments ? ticket.comments.length : 0,
+      };
+
+      return { ticket: ticketWithCommentCount } as AssignTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");

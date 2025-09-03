@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
 
-
 export function hashString(str: string) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -25,12 +24,18 @@ export function getCategoryStyle(category: string): React.CSSProperties {
   return { backgroundColor: bg, borderColor: border, color };
 }
 
-export function getStatusBadgeStyle(status: string): React.CSSProperties | undefined {
+export function getStatusBadgeStyle(
+  status: string
+): React.CSSProperties | undefined {
   switch (status) {
-    case "RESOLVED": 
-      return { backgroundColor: "#16a34a", color: "white", borderColor: "#15803d" };
+    case "RESOLVED":
+      return {
+        backgroundColor: "#16a34a",
+        color: "white",
+        borderColor: "#15803d",
+      };
     case "IN_PROGRESS":
-      return undefined; 
+      return undefined;
     case "ASSIGNED":
       return undefined;
     case "AWAITING_RESPONSE":
@@ -40,27 +45,51 @@ export function getStatusBadgeStyle(status: string): React.CSSProperties | undef
   }
 }
 
-export function getUrgencyBadgeStyle(urgency: string): React.CSSProperties | undefined {
+export function getUrgencyBadgeStyle(
+  urgency: string
+): React.CSSProperties | undefined {
   switch (urgency) {
-    case "HIGH": 
-      return { backgroundColor: "#ef4444", color: "white", borderColor: "#dc2626" };
-    case "MEDIUM": 
-      return { backgroundColor: "#fb923c", color: "#111827", borderColor: "#f97316" };
-    case "LOW": 
-      return { backgroundColor: "#fde047", color: "#111827", borderColor: "#facc15" };
+    case "HIGH":
+      return {
+        backgroundColor: "#ef4444",
+        color: "white",
+        borderColor: "#dc2626",
+      };
+    case "MEDIUM":
+      return {
+        backgroundColor: "#fb923c",
+        color: "#111827",
+        borderColor: "#f97316",
+      };
+    case "LOW":
+      return {
+        backgroundColor: "#fde047",
+        color: "#111827",
+        borderColor: "#facc15",
+      };
     default:
       return undefined;
   }
 }
 
-export function getRoleBadgeStyle(role: string): React.CSSProperties | undefined {
+export function getRoleBadgeStyle(
+  role: string
+): React.CSSProperties | undefined {
   switch (role) {
     case "ADMIN":
-      return { backgroundColor: "#ef4444", color: "white", borderColor: "#dc2626" };
+      return {
+        backgroundColor: "#ef4444",
+        color: "white",
+        borderColor: "#dc2626",
+      };
     case "STAFF":
       return undefined;
     case "USER":
-      return { backgroundColor: "#e5e7eb", color: "#111827", borderColor: "#d1d5db" };
+      return {
+        backgroundColor: "#e5e7eb",
+        color: "#111827",
+        borderColor: "#d1d5db",
+      };
     default:
       return undefined;
   }
@@ -105,12 +134,17 @@ export const getRoleColor = (role: string) => {
   }
 };
 
-
 export interface BaseAction {
   label: string;
   icon: React.ReactNode;
   onClick: (e: React.MouseEvent) => void;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   disabled?: boolean;
   title?: string;
 }
@@ -142,7 +176,6 @@ export interface BaseListItemProps {
   onClick?: () => void;
   className?: string;
 }
-
 
 export function ListItem({
   title,
@@ -194,7 +227,9 @@ export function ListItem({
 
       {avatar && (
         <Avatar className="h-10 w-10 mt-0.5">
-          <AvatarFallback className="text-sm font-medium">{avatar.fallback}</AvatarFallback>
+          <AvatarFallback className="text-sm font-medium">
+            {avatar.fallback}
+          </AvatarFallback>
         </Avatar>
       )}
 
@@ -211,7 +246,10 @@ export function ListItem({
               {title}
             </h3>
             {subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate" title={subtitle}>
+              <p
+                className="text-xs text-muted-foreground mt-0.5 truncate"
+                title={subtitle}
+              >
                 {subtitle}
               </p>
             )}
@@ -261,24 +299,25 @@ export function ListItem({
       </div>
 
       <div className="flex flex-col sm:flex-row items-end gap-1 flex-shrink-0">
-        {actions.map((a, i) => (
-          <Button
-            key={i}
-            variant={a.variant || "ghost"}
-            size="sm"
-            className="h-8 px-2 text-xs min-w-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!a.disabled) a.onClick(e);
-            }}
-            disabled={a.disabled}
-            title={a.title}
-            type="button"
-          >
-            {a.icon}
-            <span className="ml-1 hidden sm:inline">{a.label}</span>
-          </Button>
-        ))}
+        {actions &&
+          actions.map((a, i) => (
+            <Button
+              key={i}
+              variant={a.variant || "ghost"}
+              size="sm"
+              className="h-8 px-2 text-xs min-w-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!a.disabled) a.onClick(e);
+              }}
+              disabled={a.disabled}
+              title={a.title}
+              type="button"
+            >
+              {a.icon}
+              <span className="ml-1 hidden sm:inline">{a.label}</span>
+            </Button>
+          ))}
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ interface AuthData {
 }
 
 export interface UpdateCommentRequest {
+  userId: string;
   ticketId: string;
   commentId: string;
   content: string;
@@ -27,7 +28,7 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     expose: true,
     method: "PUT",
     path: "/tickets/:ticketId/comments/:commentId",
-    auth: true,
+    auth: false, // true,
   },
   async (req) => {
     const authData = getAuthData();
@@ -35,7 +36,7 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       throw APIError.unauthenticated("user not authenticated");
     }
 
-    const userId = authData.userID;
+    const userId = req.userId; // authData.userID;
 
     const existingComment = await prisma.comment.findFirst({
       where: {

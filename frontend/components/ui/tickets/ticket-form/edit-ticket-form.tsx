@@ -1,34 +1,39 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import type { Ticket, Urgency } from "@/lib/types"
-import { getAccessToken } from "@auth0/nextjs-auth0"
-import { BaseTicketForm, type TicketFormValues, type TicketFormErrors } from "./base-ticket-form"
+import { useCallback, useEffect, useState } from "react";
+import type { Ticket, Urgency } from "@/lib/types";
+import { getAccessToken } from "@auth0/nextjs-auth0";
+import {
+  BaseTicketForm,
+  type TicketFormValues,
+  type TicketFormErrors,
+} from "./base-ticket-form";
 
 type Props = {
-  ticket: Ticket | null
-  isOpen: boolean
-  onClose: () => void
-  onSuccess: (updated: Ticket | null) => void
-}
+  ticket: Ticket | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (updated: Ticket | null) => void;
+};
 
 const emptyValues: TicketFormValues = {
   title: "",
   description: "",
-  urgency: "MEDIUM" as Urgency, 
+  urgency: "MEDIUM" as Urgency,
   category: "",
   dueDate: undefined,
-}
+  creatorId: "u1", // TODO: HARDCODED USER
+};
 
 export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
-  const [values, setValues] = useState<TicketFormValues>(emptyValues)
-  const [errors, setErrors] = useState<TicketFormErrors>({})
-  const [loading, setLoading] = useState(false)
+  const [values, setValues] = useState<TicketFormValues>(emptyValues);
+  const [errors, setErrors] = useState<TicketFormErrors>({});
+  const [loading, setLoading] = useState(false);
 
   const getAuthToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local"
-    return await getAccessToken()
-  }, [])
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   useEffect(() => {
     if (isOpen && ticket) {
@@ -38,29 +43,31 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         urgency: ticket.urgency as Urgency,
         category: ticket.category,
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
-      })
-      setErrors({})
+        creatorId: "u1",
+      });
+      setErrors({});
     }
-  }, [isOpen, ticket])
+  }, [isOpen, ticket]);
 
   const onChange = (patch: Partial<TicketFormValues>) =>
-    setValues((prev: any) => ({ ...prev, ...patch }))
+    setValues((prev: any) => ({ ...prev, ...patch }));
 
   const validate = (): boolean => {
-    const next: TicketFormErrors = {}
-    if (!values.title.trim()) next.title = "Title is required"
-    if (!values.description.trim()) next.description = "Description is required"
-    if (!values.category.trim()) next.category = "Category is required"
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
+    const next: TicketFormErrors = {};
+    if (!values.title.trim()) next.title = "Title is required";
+    if (!values.description.trim())
+      next.description = "Description is required";
+    if (!values.category.trim()) next.category = "Category is required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validate() || !ticket) return
-    setLoading(true)
+    e.preventDefault();
+    if (!validate() || !ticket) return;
+    setLoading(true);
     try {
-      const accessToken = await getAuthToken()
+      const accessToken = await getAuthToken();
       const res = await fetch(`/api/tickets/${ticket.id}`, {
         method: "PUT",
         headers: {
@@ -69,17 +76,17 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         },
         cache: "no-store",
         body: JSON.stringify(values),
-      })
-      if (!res.ok) throw new Error("Failed to update ticket")
-      const data = await res.json().catch(() => ({}))
-      onSuccess(data?.ticket ?? null)
-      onClose()
+      });
+      if (!res.ok) throw new Error("Failed to update ticket");
+      const data = await res.json().catch(() => ({}));
+      onSuccess(data?.ticket ?? null);
+      onClose();
     } catch (err) {
-      console.error(err)
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <BaseTicketForm
@@ -92,5 +99,5 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
       onSubmit={onSubmit}
       titleText="Edit Ticket"
     />
-  )
+  );
 }

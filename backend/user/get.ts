@@ -3,24 +3,29 @@ import { prisma } from "../ticket/db";
 import type { User } from "../ticket/types";
 
 export interface GetUserRequest {
-    id: string;
+  id: string;
 }
 
 export interface GetUserResponse {
-    user: User;
+  user: User;
 }
 
-export const get = api<GetUserRequest>(
-    {expose: true, method: "GET", path: "/users/:id", auth: true},
-    async (req) => {
-        const user = await prisma.user.findUnique({
-            where: { id: req.id },
-        })
+export const get = api<GetUserRequest, GetUserResponse>(
+  {
+    expose: true,
+    method: "GET",
+    path: "/users/:id",
+    auth: false, // true,
+  },
+  async (req) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.id },
+    });
 
-        if (!user) {
-            throw APIError.notFound("user not found");
-        }
-
-        return { user }
+    if (!user) {
+      throw APIError.notFound("user not found");
     }
-)
+
+    return { user: user } as GetUserResponse;
+  }
+);

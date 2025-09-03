@@ -12,12 +12,7 @@ interface CommentListProps {
 }
 
 export function CommentList({ ticketId, className }: CommentListProps) {
-  const {
-    data: comments,
-    error,
-    isLoading,
-    refetch,
-  } = useComments(ticketId);
+  const { data: comments, error, isLoading, refetch } = useComments(ticketId);
 
   const commentList = comments || [];
 
@@ -57,7 +52,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         <h3 className="text-lg font-semibold">
           Comments ({commentList.length})
         </h3>
-        
+
         {commentList.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
             No comments yet. Be the first to comment!
@@ -77,7 +72,8 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      <CommentForm ticketId={ticketId} />
+      {/* TODO: HARDCODED USER */}
+      <CommentForm ticketId={ticketId} userId="u1" />
     </div>
   );
 }
