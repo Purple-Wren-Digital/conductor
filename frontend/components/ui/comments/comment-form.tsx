@@ -7,6 +7,7 @@ import { Textarea } from "../textarea";
 import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
+import { Ticket } from "../../../lib/types";
 
 interface CommentFormProps {
   ticketId: string;
@@ -15,12 +16,23 @@ interface CommentFormProps {
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
+const API_BASE = "http://localhost:4000";
+
 export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
-  
+
+  // TODO: REMOVE HARDCODED USER
+  const hardcodedUser = {
+    id: "u1",
+    email: "alice.agent@kw.com",
+    name: "Alice Johnson",
+    role: "AGENT",
+  };
+  // const { user: authUser } = useUser();
+
   const createMutation = useCreateComment();
 
   // Load draft from localStorage on mount
@@ -41,16 +53,92 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   // Save draft to localStorage whenever content changes
   useEffect(() => {
     if (content.trim() || isInternal) {
-      localStorage.setItem(
-        draftKey,
-        JSON.stringify({ content, isInternal })
-      );
+      localStorage.setItem(draftKey, JSON.stringify({ content, isInternal }));
     } else {
       localStorage.removeItem(draftKey);
     }
   }, [content, isInternal, draftKey]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function parseJsonSafe<T>(res: Response): Promise<T> {
+    const ct = res.headers.get("content-type") || "";
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
+      );
+    }
+    if (ct.includes("application/json")) {
+      return res.json();
+    }
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Expected JSON but got ${
+        ct || "unknown content-type"
+      }. First 200 chars:\n${text.slice(0, 200)}`
+    );
+  }
+
+  const fetchTicket = async (ticketId: string) => {
+    if (!ticketId) return;
+    try {
+      // const accessToken = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        // Authorization: `Bearer ${accessToken}`,
+      };
+
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        headers,
+        cache: "no-store",
+      });
+
+      const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
+      console.log("Ticket Data Parsed", ticketData);
+      return ticketData.ticket;
+    } catch (error) {
+      console.log("Failed to fetch ticket for new comment email");
+    }
+  };
+
+  const sendNewCommentEmail = async (ticket: Ticket | null) => {
+    if (!ticket || !ticket.id) {
+      throw new Error("Ticket was null");
+    }
+
+    const ticketNewCommentEmailBody = {
+      emailData: {
+        ticketNumber: ticketId,
+        ticketTitle: ticket?.title,
+        createdOn: ticket?.createdAt,
+        commentedOn: new Date(),
+        commenter: hardcodedUser,
+        comment: content.trim(),
+        isInternal: isInternal,
+        assignee: ticket?.assignee,
+      },
+    };
+    console.log("ticketNewCommentEmailBody", ticketNewCommentEmailBody);
+    try {
+      const response = await fetch("/api/send/newComment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify(ticketNewCommentEmailBody),
+      });
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        const data = await response.json();
+        console.log("Email sent successfully:", data);
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (content.trim()) {
       createMutation.mutate(
@@ -68,6 +156,8 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
           },
         }
       );
+      const ticket = await fetchTicket(ticketId);
+      await sendNewCommentEmail(ticket || null);
     }
   };
 

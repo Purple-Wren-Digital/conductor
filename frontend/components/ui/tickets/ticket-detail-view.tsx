@@ -73,7 +73,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-
+  
+  // TODO: REMOVE HARDCODED USER
+  const hardcodedUser = {
+    id: "u1",
+    email: "alice.agent@kw.com",
+    name: "Alice Johnson",
+    role: "AGENT",
+  };
   // const { user: authUser } = useUser();
 
   // const getAuthToken = useCallback(async () => {
@@ -118,6 +125,51 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     refreshAllData();
   }, [refreshAllData]);
 
+  const sendQuickUpdateEmailNotification = async ({
+    ticket,
+    field,
+    current,
+  }: {
+    ticket: Ticket | null;
+    field: string;
+    current: string;
+  }) => {
+    if (!ticket || !ticket.id) {
+      throw new Error("Ticket was null");
+    }
+
+    const ticketQuickUpdateEmailBody = {
+      emailData: {
+        ticketNumber: ticket.id,
+        ticketTitle: ticket?.title,
+        createdOn: ticket?.createdAt,
+        updatedOn: ticket?.createdAt,
+        editedBy: hardcodedUser,
+        field: field,
+        currentData: current,
+      },
+    };
+
+    try {
+      const response = await fetch("/api/send/quickChange", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify(ticketQuickUpdateEmailBody),
+      });
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        const data = await response.json();
+        console.log("Email sent successfully:", data);
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
+
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
     if (!ticket) return;
 
@@ -137,13 +189,20 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       });
       await parseJsonSafe(res);
       await refreshAllData();
+      if (res.ok) {
+        await sendQuickUpdateEmailNotification({
+          ticket: ticket || null,
+          field: field,
+          current: value,
+        });
+      }
     } catch (error) {
       console.error("Failed to update ticket:", error);
       setTicket(prev);
     }
   };
 
-  const sendEmailNotification = async (
+  const sendReassignmentEmailNotification = async (
     ticket: Ticket | null,
     currentAssignment: UserType | null,
     previousAssignment: UserType | null
@@ -158,13 +217,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: ticket?.title,
         createdOn: ticket?.createdAt,
         updatedOn: ticket?.createdAt,
-        editedBy: {
-          // TODO: HARDCODED USER
-          id: "u1",
-          email: "alice.agent@kw.com",
-          name: "Alice Johnson",
-          role: "AGENT",
-        },
+        editedBy: hardcodedUser,
         currentAssignment: currentAssignment,
         previousAssignment: previousAssignment,
       },
@@ -226,7 +279,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       await parseJsonSafe(res);
       await refreshAllData();
 
-      await sendEmailNotification(
+      await sendReassignmentEmailNotification(
         ticket,
         nextAssignee || null,
         prev?.assignee || null

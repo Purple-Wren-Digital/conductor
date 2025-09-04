@@ -10,75 +10,56 @@ import {
 } from "@react-email/components";
 import type { User as UserType } from "@/lib/types";
 
-export type ReassignedTicketNotificationProps = {
+export type NewCommentNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
   createdOn: Date;
-  updatedOn: Date;
-  editedBy: UserType;
-  currentAssignment: UserType | null;
-  previousAssignment: UserType | null;
+  commenter: UserType;
+  comment: string;
+  isInternal: Boolean;
+  assignee: UserType | null;
 };
 
-const ReassignedTicketNotification = ({
+const NewCommentNotification = ({
   ticketNumber,
   ticketTitle,
   createdOn,
-  updatedOn,
-  editedBy,
-  currentAssignment,
-  previousAssignment,
-}: ReassignedTicketNotificationProps) => {
+  commenter,
+  comment,
+  isInternal,
+}: NewCommentNotificationProps) => {
   return (
     <Html>
       <Head />
-      <Preview>Ticket Reassigned</Preview>
+      <Preview>Comment: "{comment}"</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Ticket Reassigned</Text>
-
-            <Text style={datesText}>
-              {updatedOn &&
-                `Updated: ${new Date(updatedOn).toLocaleDateString()}`}
-            </Text>
+            <Text style={headerText}>New Comment from {commenter?.name}</Text>
             <Text style={datesText}>
               {createdOn &&
-                `Created: ${new Date(createdOn).toLocaleDateString()}`}
+                `Ticket Created: ${new Date(createdOn).toLocaleDateString()}`}
             </Text>
           </Section>
 
           <div style={divider} />
 
           <Section>
-            <Text style={subheaderText}>Title: {ticketTitle}</Text>
-            <Text style={subheaderText}>Id: {ticketNumber}</Text>
-            <Text style={subheaderText}>
-              Reassigned By: {editedBy?.name}{" "}
-              {editedBy?.id && `(${editedBy.id})`}
-            </Text>
+            <Text style={subheaderText}>Ticket Title: {ticketTitle}</Text>
+            <Text style={subheaderText}>Ticket Id: {ticketNumber}</Text>
+            <Text style={subheaderText}>Comment Details:</Text>
           </Section>
 
           <Section>
-            <Text style={subheaderText}>Details</Text>
-
-            <div style={{ marginLeft: 10 }}>
-              <ul>
-                <li>
-                  <Text style={text}>
-                    Current: {currentAssignment?.name}{" "}
-                    {currentAssignment?.id && `(${currentAssignment.id})`}
-                  </Text>
-                </li>
-                <li>
-                  <Text style={text}>
-                    Previous: {previousAssignment?.name}{" "}
-                    {previousAssignment?.id && `(${previousAssignment.id})`}
-                  </Text>
-                </li>
-              </ul>
+            <div style={commentContainer}>
+              {isInternal && <Text style={isInternalText}>Internal Only</Text>}
+              <Text style={text}>"{comment}"</Text>
+              <Text style={text}>
+                Author: {commenter?.name} {commenter?.id && `(${commenter.id})`}
+              </Text>
             </div>
+
             <Button
               href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
@@ -92,7 +73,7 @@ const ReassignedTicketNotification = ({
   );
 };
 
-export default ReassignedTicketNotification;
+export default NewCommentNotification;
 
 const main = {
   fontFamily:
@@ -117,6 +98,11 @@ const text = {
   fontSize: "16px",
   fontWeight: "semibold",
 };
+const isInternalText = {
+  fontSize: "14px",
+  fontWeight: "semibold",
+  color: "darkred",
+};
 
 const divider = {
   backgroundColor: "lightgray",
@@ -134,4 +120,10 @@ const button = {
   textDecoration: "none",
   borderRadius: "10px",
   marginTop: "20px",
+};
+
+const commentContainer = {
+  backgroundColor: "lightgray",
+  padding: "10px 20px",
+  borderRadius: "10px",
 };

@@ -10,34 +10,36 @@ import {
 } from "@react-email/components";
 import type { User as UserType } from "@/lib/types";
 
-export type ReassignedTicketNotificationProps = {
+export type QuickEditTicketNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
   createdOn: Date;
   updatedOn: Date;
   editedBy: UserType;
-  currentAssignment: UserType | null;
-  previousAssignment: UserType | null;
+  field: string; // "urgency" or "status"
+  currentData: string;
 };
 
-const ReassignedTicketNotification = ({
+const QuickEditTicketNotification = ({
   ticketNumber,
   ticketTitle,
   createdOn,
   updatedOn,
   editedBy,
-  currentAssignment,
-  previousAssignment,
-}: ReassignedTicketNotificationProps) => {
+  field,
+  currentData,
+}: QuickEditTicketNotificationProps) => {
   return (
     <Html>
       <Head />
-      <Preview>Ticket Reassigned</Preview>
+      <Preview>
+        Ticket {field} Updated to {currentData}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Ticket Reassigned</Text>
+            <Text style={headerText}>Ticket {field} Updated</Text>
 
             <Text style={datesText}>
               {updatedOn &&
@@ -55,8 +57,7 @@ const ReassignedTicketNotification = ({
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Reassigned By: {editedBy?.name}{" "}
-              {editedBy?.id && `(${editedBy.id})`}
+              Edited By: {editedBy?.name} {editedBy?.id && `(${editedBy.id})`}
             </Text>
           </Section>
 
@@ -67,14 +68,7 @@ const ReassignedTicketNotification = ({
               <ul>
                 <li>
                   <Text style={text}>
-                    Current: {currentAssignment?.name}{" "}
-                    {currentAssignment?.id && `(${currentAssignment.id})`}
-                  </Text>
-                </li>
-                <li>
-                  <Text style={text}>
-                    Previous: {previousAssignment?.name}{" "}
-                    {previousAssignment?.id && `(${previousAssignment.id})`}
+                    Updated {field}: {currentData}
                   </Text>
                 </li>
               </ul>
@@ -92,7 +86,7 @@ const ReassignedTicketNotification = ({
   );
 };
 
-export default ReassignedTicketNotification;
+export default QuickEditTicketNotification;
 
 const main = {
   fontFamily:
