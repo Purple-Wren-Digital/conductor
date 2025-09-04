@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react"; //  useCallback,
+import { useCallback, useEffect, useState } from "react";
 import type { Ticket, TicketTemplate, Urgency } from "@/lib/types";
-// import { getAccessToken } from "@auth0/nextjs-auth0"
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
   BaseTicketForm,
   type TicketFormValues,
   type TicketFormErrors,
 } from "./base-ticket-form";
-import { toast } from "sonner";
 
 type Props = {
   isOpen: boolean;
@@ -22,7 +21,6 @@ const initialValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   category: "",
   dueDate: undefined,
-  creatorId: "u1", // TODO: HARDCODED USER
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
@@ -33,17 +31,17 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
-  // const getAuthToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") return "local"
-  //   return await getAccessToken()
-  // }, [])
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        // const accessToken = await getAuthToken();
+        const accessToken = await getAuthToken();
         const res = await fetch("/api/ticket-templates", {
-          // headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch templates");
@@ -65,7 +63,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen]); //, getAuthToken]);
+  }, [isOpen, getAuthToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -83,7 +81,6 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         urgency: t.urgency,
         category: t.category,
         dueDate: undefined,
-        creatorId: values.creatorId,
       });
     }
   };
@@ -102,28 +99,16 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
   };
 
   const sendEmailNotification = async (ticket: Ticket | null) => {
-    if (
-      !ticket ||
-      !ticket.id ||
-      !ticket?.title ||
-      !ticket?.createdAt ||
-      !ticket?.creator ||
-      !ticket?.creator?.name ||
-      !ticket?.creator?.id
-    ) {
+    if (!ticket || !ticket.id) {
       throw new Error("Ticket was null");
     }
-    console.log("Created ticket information", ticket);
 
     const ticketCreatedEmailBody = {
-      emailData: {
-        ticketNumber: ticket?.id,
-        ticketTitle: ticket?.title,
-        creatorName: ticket?.creator?.name,
-        creatorId: ticket?.creator?.id,
-        createdOn: ticket?.createdAt,
-        dueDate: ticket?.dueDate ? ticket.dueDate : undefined,
-      },
+      ticketNumber: ticket?.id,
+      ticketTitle: ticket?.title,
+      creatorName: ticket?.creator?.name,
+      createdOn: ticket?.createdAt,
+      dueDate: ticket?.dueDate ? ticket.dueDate : undefined,
     };
 
     try {
@@ -133,15 +118,13 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
           "Content-Type": "application/json",
         },
         cache: "no-store",
-        body: JSON.stringify(ticketCreatedEmailBody), // <-- not wrapped
+        body: JSON.stringify(ticketCreatedEmailBody),
       });
 
       if (!response.ok) {
         console.error("Failed to send email, status:", response.status);
       } else {
-        const data = await response.json();
-        console.log("Email sent successfully:", data);
-        toast.success("Ticket created successfully! Confirmation email sent.");
+        await response.json();
       }
     } catch (err) {
       console.error("Failed to send email", err);
@@ -153,12 +136,12 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     if (!validate()) return;
     setLoading(true);
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify(values),

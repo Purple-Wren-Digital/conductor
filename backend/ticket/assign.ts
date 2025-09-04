@@ -1,11 +1,11 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket } from "./types";
+import { getAuthData } from "~encore/auth";
 
 export interface AssignTicketRequest {
   id: string;
   assigneeId: string;
-  // userId: string; // Added userId to request interface
 }
 
 export interface AssignTicketResponse {
@@ -18,9 +18,14 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
     expose: true,
     method: "POST",
     path: "/tickets/:id/assign",
-    auth: false, // true,
+    auth: true,
   },
   async (req) => {
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
     // Check if assignee exists
     const assignee = await prisma.user.findUnique({
       where: { id: req.assigneeId },

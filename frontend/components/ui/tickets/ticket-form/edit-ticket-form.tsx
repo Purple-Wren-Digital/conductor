@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react"; // useCallback,
+import { useCallback, useEffect, useState } from "react";
 import type { Ticket, TicketTemplate, Urgency } from "@/lib/types";
-// import { getAccessToken } from "@auth0/nextjs-auth0"
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
   BaseTicketForm,
   type TicketFormValues,
@@ -22,7 +22,6 @@ const emptyValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   category: "",
   dueDate: undefined,
-  creatorId: "u1", // TODO: HARDCODED USER
 };
 
 export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
@@ -33,17 +32,17 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
-  // const getAuthToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") return "local"
-  //   return await getAccessToken()
-  // }, [])
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        // const accessToken = await getAuthToken();
+        const accessToken = await getAuthToken();
         const res = await fetch("/api/ticket-templates", {
-          // headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch templates");
@@ -62,13 +61,12 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         urgency: ticket.urgency as Urgency,
         category: ticket.category,
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
-        creatorId: "u1", // TODO: HARDCODED USER
       });
       setErrors({});
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket]); //, getAuthToken]);
+  }, [isOpen, ticket, getAuthToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -86,7 +84,6 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         urgency: t.urgency,
         category: t.category,
         dueDate: undefined,
-        creatorId: "u1",
       });
     }
   };
@@ -109,12 +106,12 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     if (!validate() || !ticket?.id) return;
     setLoading(true);
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch(`/api/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({

@@ -1,10 +1,11 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { TicketStatus, Urgency, UserRole } from "./types";
+import { getAuthData } from "~encore/auth";
 
 export interface BulkUpdateRequest {
-  currentUserId: string;
-  currentUserRole: UserRole;
+  // currentUserId: string;
+  // currentUserRole: UserRole;
   ticketIds: string[];
   status?: TicketStatus;
   urgency?: Urgency;
@@ -22,18 +23,23 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
     expose: true,
     method: "PUT",
     path: "/tickets/bulk-update",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
-    // TODO: Implement auth context
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
 
+    const currentUserId = authData.userID;
+    const currentUserRole = authData.userRole;
     // Only staff and admins can bulk update
-    if (req.currentUserRole === "AGENT") {
+    if (currentUserRole === "AGENT") {
       throw APIError.permissionDenied(
         "Only staff and admins can bulk update tickets"
       );
     }
-    if (!req.currentUserId) {
+    if (!currentUserId) {
       throw APIError.permissionDenied("Unauthorized");
     }
 
@@ -67,8 +73,8 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
     };
 
     // Staff can only update tickets assigned to them
-    if (req.currentUserRole === "STAFF") {
-      whereClause.assigneeId = req.currentUserId;
+    if (currentUserRole === "STAFF") {
+      whereClause.assigneeId = currentUserId; // TODO: Prisma v Auth0
     }
 
     // Get the tickets that can be updated

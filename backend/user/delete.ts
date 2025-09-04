@@ -15,7 +15,7 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
     expose: true,
     method: "DELETE",
     path: "/users/:id",
-    auth: false, // true,
+    auth: true,
   },
   async (req) => {
     const actingUserId = "user_1";

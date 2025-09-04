@@ -1,9 +1,10 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
+import { getAuthData } from "~encore/auth";
 
 export interface DeleteTicketRequest {
   ticketId: string;
-  creatorId: string; // ID of the user attempting to delete the ticket
+  creatorId: string;
   userRole: string; // Role of the user attempting to delete the ticket
 }
 
@@ -17,10 +18,13 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     expose: true,
     method: "DELETE",
     path: "/tickets/:ticketId",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
-    // TODO: Implement auth context
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },

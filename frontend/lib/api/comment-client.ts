@@ -5,18 +5,20 @@ import type { Comment } from "@/lib/types";
 
 const API_BASE = "http://localhost:4000";
 
-// async function getAuthToken(): Promise<string> {
-//   if (process.env.NODE_ENV === "development") {
-//     return "local";
-//   }
-//   return await getAccessToken();
-// }
+async function getAuthToken(): Promise<string> {
+  if (process.env.NODE_ENV === "development") {
+    return "local";
+  }
+  return await getAccessToken();
+}
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text || "No body"}`);
+    throw new Error(
+      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
+    );
   }
   if (ct.includes("application/json")) {
     return res.json();
@@ -56,25 +58,25 @@ interface CommentResponse {
 
 class CommentApiClient {
   async listComments(ticketId: string): Promise<ListCommentsResponse> {
-    // const accessToken = await getAuthToken();
+    const accessToken = await getAuthToken();
     const res = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
-      // headers: {
-      //   Authorization: `Bearer ${accessToken}`,
-      // },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
       cache: "no-store",
     });
     return parseJsonSafe<ListCommentsResponse>(res);
   }
 
   async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
-    // const accessToken = await getAuthToken();
+    const accessToken = await getAuthToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({
@@ -88,14 +90,14 @@ class CommentApiClient {
   }
 
   async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
-    // const accessToken = await getAuthToken();
+    const accessToken = await getAuthToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({
@@ -108,13 +110,13 @@ class CommentApiClient {
   }
 
   async deleteComment(request: DeleteCommentRequest): Promise<void> {
-    // const accessToken = await getAuthToken();
+    const accessToken = await getAuthToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {
         method: "DELETE",
         headers: {
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
       }

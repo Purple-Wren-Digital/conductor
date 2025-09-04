@@ -15,7 +15,7 @@ export const list = api<ListCommentsRequest, ListCommentsResponse>(
     expose: true,
     method: "GET",
     path: "/tickets/:ticketId/comments",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     const comments = await prisma.comment.findMany({
@@ -26,6 +26,14 @@ export const list = api<ListCommentsRequest, ListCommentsResponse>(
       orderBy: { createdAt: "asc" },
     });
 
-    return { comments };
+    const formattedComments: Comment[] = comments.map((comment) => ({
+      ...comment,
+      user: {
+        ...comment.user,
+        name: comment.user.name ?? "",
+      },
+    }));
+
+    return { comments: formattedComments };
   }
 );

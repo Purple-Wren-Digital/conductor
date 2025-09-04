@@ -1,6 +1,7 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
+import { getAuthData } from "~encore/auth";
 
 export interface SearchUsersRequest {
   query?: string;
@@ -21,10 +22,15 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
     expose: true,
     method: "GET",
     path: "/users/search",
-    auth: false, // true,
+    auth: true,
   },
   async (req) => {
-    const currentUserRole = "ADMIN" as UserRole;
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+    const currentUserRole = authData.userRole;
+    const userId = authData.userID;
 
     const baseWhere: any = { isActive: true, deletedAt: null };
 
@@ -38,15 +44,20 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         ];
       }
 
-      where.id = "user_1";
+      where.id = userId;
 
       const users = await prisma.user.findMany({
         where,
         take: 1,
       });
 
+      const formattedUsers = users.map((user) => ({
+        ...user,
+        name: user.name ?? "",
+      }));
+
       return {
-        users,
+        users: formattedUsers,
         total: users.length,
         hasMore: false,
       };
@@ -103,8 +114,13 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       prisma.user.count({ where: { ...baseWhere, ...where } }),
     ]);
 
+    const formattedUsers = users.map((user) => ({
+      ...user,
+      name: user.name ?? "",
+    }));
+
     return {
-      users,
+      users: formattedUsers,
       total,
       hasMore: offset + limit < total,
     };

@@ -116,7 +116,7 @@
 //   async (
 //     params: CreateCheckoutSessionParams
 //   ): Promise<CreateCheckoutSessionResponse> => {
-//     const authData = getAuthData();
+//     const authData = await getAuthData();
 //     if (!authData) {
 //       throw APIError.unauthenticated("user not authenticated");
 //     }
@@ -180,7 +180,7 @@
 //     auth: true,
 //   },
 //   async (): Promise<CreatePortalSessionResponse> => {
-//     const authData = getAuthData();
+//     const authData = await getAuthData();
 //     if (!authData) {
 //       throw APIError.unauthenticated("user not authenticated");
 //     }
@@ -219,7 +219,7 @@
 //     auth: true,
 //   },
 //   async (): Promise<GetSubscriptionsResponse> => {
-//     const authData = getAuthData();
+//     const authData = await getAuthData();
 //     if (!authData) {
 //       throw APIError.unauthenticated("user not authenticated");
 //     }

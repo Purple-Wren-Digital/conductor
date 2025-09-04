@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 // import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
 import { Hash, Mail, Shield } from "lucide-react";
 import { UserRole, Ticket } from "@/lib/types";
 import { useQueryClient } from "@tanstack/react-query";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 
 interface UserPrisma {
   id: string;
@@ -33,15 +34,22 @@ const UserProfileLayout = () => {
     null
   );
 
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
+
   const fetchUserFromPrisma = async () => {
     try {
-      const res = await fetch(`/api/users/${userId}`);
+      const accessToken = await getAuthToken();
+      const res = await fetch(`/api/users/${userId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (!res.ok) {
         throw new Error("Failed to fetch user");
       }
       const data = await res.json();
-      console.log("Fetched user data:", data);
       if (data && data?.user) setUser(data.user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -54,13 +62,14 @@ const UserProfileLayout = () => {
 
   const getTicketsForUser = async () => {
     try {
-      const res = await fetch(`/api/tickets?creatorId=${userId}`);
+      const accessToken = await getAuthToken();
+      const res = await fetch(`/api/tickets?creatorId=${userId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (!res.ok) {
         throw new Error("Failed to fetch tickets");
       }
-      console.log("Fetch tickets response:", res);
       const data = await res.json();
-      console.log("Fetched tickets data:", data);
       setTicketsCreated(data.tickets || []);
     } catch (error) {
       console.error("Error fetching user's tickets:", error);
@@ -81,7 +90,6 @@ const UserProfileLayout = () => {
   }));
 
   const handleTicketClick = (ticket: Ticket) => {
-    console.log("handleTicketClick", ticket.id, ticket);
     queryClient.setQueryData(["ticket", ticket.id], { ticket });
     router.push(`/dashboard/tickets/${ticket.id}`);
   };

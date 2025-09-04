@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
+import { getAuthData } from "~encore/auth";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -21,9 +22,14 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     expose: true,
     method: "PUT",
     path: "/tickets/update/:ticketId",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+    const userId = authData.userID;
     const updateData: any = {};
 
     if (req.title !== undefined) updateData.title = req.title;

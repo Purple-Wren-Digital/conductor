@@ -29,18 +29,18 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     expose: true,
     method: "POST",
     path: "/tickets/:ticketId/comments",
-    auth: false, //true,
+    auth: true,
   },
   async (req) => {
-    // const authData = getAuthData();
-    // if (!authData) {
-    //   throw APIError.unauthenticated("user not authenticated");
-    // }
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
 
-    // const userId = authData.userID;
+    const userId = authData.userID;
 
     // Apply rate limiting
-    // commentRateLimiter.checkRateLimit(userId);
+    commentRateLimiter.checkRateLimit(userId);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -62,6 +62,14 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       },
     });
 
-    return { comment };
+    const safeComment = {
+      ...comment,
+      user: {
+        ...comment.user,
+        name: comment.user.name ?? "",
+      },
+    };
+
+    return { comment: safeComment };
   }
 );

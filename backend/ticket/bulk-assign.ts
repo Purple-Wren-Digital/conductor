@@ -1,5 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
+import { getAuthData } from "~encore/auth";
+import { UserRole } from "./types";
 
 export interface BulkAssignRequest {
   ticketIds: string[];
@@ -16,14 +18,17 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
     expose: true,
     method: "POST",
     path: "/tickets/bulk-assign",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
-    // TODO: Implement auth context
-    const currentUserRole = "STAFF"; // Should come from auth context
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const currentUserRole: UserRole = authData.userRole;
 
     // Only staff and admins can bulk assign
-    // @ts-ignore
     if (currentUserRole === "AGENT") {
       throw APIError.permissionDenied(
         "Only staff and admins can bulk assign tickets"

@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
+import { getAuthData } from "~encore/auth";
 
 export interface UpdateUserRequest {
   id: string;
@@ -17,12 +18,15 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     expose: true,
     method: "PUT",
     path: "/users/:id",
-    auth: false, // true,
+    auth: true,
   },
   async (req) => {
-    // TODO: Implement auth context
-    const currentUserId = "user_1";
-    const currentUserRole = "ADMIN" as UserRole;
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+    const currentUserId = authData.userId;
+    const currentUserRole = authData.userRole as UserRole;
 
     const existingUser = await prisma.user.findUnique({
       where: { id: req.id },
@@ -66,6 +70,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       data: updateData,
     });
 
-    return { user: updatedUser };
+    return { user: { ...updatedUser, name: updatedUser.name ?? "" } };
   }
 );

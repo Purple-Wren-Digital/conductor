@@ -6,6 +6,7 @@ import { Comment } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 
 interface CreateCommentParams {
   userId: string;
@@ -30,43 +31,51 @@ export function useComments(ticketId: string) {
   const commentApi = useCommentApi();
   const queryClient = useQueryClient();
 
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
+
   // Handle real-time comment events
-  const handleCommentEvent = useCallback((event: CommentEvent) => {
-    const queryKey = ["comments", ticketId];
-    
-    switch (event.type) {
-      case "comment.created":
-        if (event.comment) {
-          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
-            if (!oldComments) return [event.comment];
-            // Avoid duplicates by checking if comment already exists
-            const exists = oldComments.some(c => c.id === event.comment.id);
-            return exists ? oldComments : [...oldComments, event.comment];
-          });
-        }
-        break;
-      
-      case "comment.updated":
-        if (event.comment) {
-          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
-            if (!oldComments) return [];
-            return oldComments.map(c => 
-              c.id === event.comment.id ? event.comment : c
-            );
-          });
-        }
-        break;
-      
-      case "comment.deleted":
-        if (event.commentId) {
-          queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
-            if (!oldComments) return [];
-            return oldComments.filter(c => c.id !== event.commentId);
-          });
-        }
-        break;
-    }
-  }, [queryClient, ticketId]);
+  const handleCommentEvent = useCallback(
+    (event: CommentEvent) => {
+      const queryKey = ["comments", ticketId];
+
+      switch (event.type) {
+        case "comment.created":
+          if (event.comment) {
+            queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+              if (!oldComments) return [event.comment];
+              // Avoid duplicates by checking if comment already exists
+              const exists = oldComments.some((c) => c.id === event.comment.id);
+              return exists ? oldComments : [...oldComments, event.comment];
+            });
+          }
+          break;
+
+        case "comment.updated":
+          if (event.comment) {
+            queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+              if (!oldComments) return [];
+              return oldComments.map((c) =>
+                c.id === event.comment.id ? event.comment : c
+              );
+            });
+          }
+          break;
+
+        case "comment.deleted":
+          if (event.commentId) {
+            queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
+              if (!oldComments) return [];
+              return oldComments.filter((c) => c.id !== event.commentId);
+            });
+          }
+          break;
+      }
+    },
+    [queryClient, ticketId]
+  );
 
   // Subscribe to real-time events
   useEffect(() => {
@@ -90,7 +99,12 @@ export function useCreateComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ userId, ticketId, content, internal }: CreateCommentParams) => {
+    mutationFn: async ({
+      userId,
+      ticketId,
+      content,
+      internal,
+    }: CreateCommentParams) => {
       const response = await commentApi.createComment({
         userId,
         ticketId,
@@ -104,7 +118,10 @@ export function useCreateComment() {
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
       // Snapshot of previous value
-      const previousComments = queryClient.getQueryData<Comment[]>(["comments", ticketId]);
+      const previousComments = queryClient.getQueryData<Comment[]>([
+        "comments",
+        ticketId,
+      ]);
 
       // Optimistically update with new comment
       const optimisticComment: Comment = {
@@ -123,9 +140,8 @@ export function useCreateComment() {
         },
       };
 
-      queryClient.setQueryData<Comment[]>(
-        ["comments", ticketId],
-        (old) => old ? [...old, optimisticComment] : [optimisticComment]
+      queryClient.setQueryData<Comment[]>(["comments", ticketId], (old) =>
+        old ? [...old, optimisticComment] : [optimisticComment]
       );
 
       return { previousComments, optimisticComment };
@@ -133,7 +149,10 @@ export function useCreateComment() {
     onError: (error: any, variables, context) => {
       // Revert optimistic update on error
       if (context?.previousComments) {
-        queryClient.setQueryData(["comments", variables.ticketId], context.previousComments);
+        queryClient.setQueryData(
+          ["comments", variables.ticketId],
+          context.previousComments
+        );
       }
       toast.error(error.message || "Failed to add comment");
     },
@@ -145,14 +164,14 @@ export function useCreateComment() {
           comment.id === context?.optimisticComment?.id ? newComment : comment
         );
       });
-      
+
       // Simulate real-time event for other clients
       realTimeService.simulateEvent({
         type: "comment.created",
         ticketId,
         comment: newComment,
       });
-      
+
       toast.success("Comment added successfully");
     },
     onSettled: (data, error, { ticketId }) => {
@@ -167,7 +186,12 @@ export function useUpdateComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ticketId, commentId, content, internal }: UpdateCommentParams) => {
+    mutationFn: async ({
+      ticketId,
+      commentId,
+      content,
+      internal,
+    }: UpdateCommentParams) => {
       const response = await commentApi.updateComment({
         ticketId,
         commentId,
@@ -179,7 +203,10 @@ export function useUpdateComment() {
     onMutate: async ({ ticketId, commentId, content, internal }) => {
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
-      const previousComments = queryClient.getQueryData<Comment[]>(["comments", ticketId]);
+      const previousComments = queryClient.getQueryData<Comment[]>([
+        "comments",
+        ticketId,
+      ]);
 
       if (previousComments) {
         const updatedComments = previousComments.map((comment) =>
@@ -194,7 +221,10 @@ export function useUpdateComment() {
     },
     onError: (error: any, variables, context) => {
       if (context?.previousComments) {
-        queryClient.setQueryData(["comments", variables.ticketId], context.previousComments);
+        queryClient.setQueryData(
+          ["comments", variables.ticketId],
+          context.previousComments
+        );
       }
       toast.error(error.message || "Failed to update comment");
     },
@@ -205,7 +235,7 @@ export function useUpdateComment() {
         ticketId,
         comment: updatedComment,
       });
-      
+
       toast.success("Comment updated successfully");
     },
     onSettled: (data, error, { ticketId }) => {
@@ -228,10 +258,15 @@ export function useDeleteComment() {
     onMutate: async ({ ticketId, commentId }) => {
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
-      const previousComments = queryClient.getQueryData<Comment[]>(["comments", ticketId]);
+      const previousComments = queryClient.getQueryData<Comment[]>([
+        "comments",
+        ticketId,
+      ]);
 
       if (previousComments) {
-        const updatedComments = previousComments.filter((comment) => comment.id !== commentId);
+        const updatedComments = previousComments.filter(
+          (comment) => comment.id !== commentId
+        );
         queryClient.setQueryData(["comments", ticketId], updatedComments);
       }
 
@@ -239,7 +274,10 @@ export function useDeleteComment() {
     },
     onError: (error: any, variables, context) => {
       if (context?.previousComments) {
-        queryClient.setQueryData(["comments", variables.ticketId], context.previousComments);
+        queryClient.setQueryData(
+          ["comments", variables.ticketId],
+          context.previousComments
+        );
       }
       toast.error(error.message || "Failed to delete comment");
     },
@@ -250,7 +288,7 @@ export function useDeleteComment() {
         ticketId,
         commentId,
       });
-      
+
       toast.success("Comment deleted successfully");
     },
     onSettled: (data, error, { ticketId }) => {

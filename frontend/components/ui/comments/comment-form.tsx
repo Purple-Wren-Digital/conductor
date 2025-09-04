@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCreateComment } from "@/hooks/use-comments";
 import { Button } from "../button";
 import { Textarea } from "../textarea";
@@ -8,6 +8,7 @@ import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface CommentFormProps {
   ticketId: string;
@@ -25,13 +26,18 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
 
   // TODO: REMOVE HARDCODED USER
-  const hardcodedUser = {
-    id: "u1",
-    email: "alice.agent@kw.com",
-    name: "Alice Johnson",
-    role: "AGENT",
-  };
-  // const { user: authUser } = useUser();
+  // const hardcodedUser = {
+  //   id: "u1",
+  //   email: "alice.agent@kw.com",
+  //   name: "Alice Johnson",
+  //   role: "AGENT",
+  // };
+  const { user: authUser } = useUser();
+
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   const createMutation = useCreateComment();
 
@@ -81,10 +87,10 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        // Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       };
 
       const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
@@ -93,7 +99,6 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       });
 
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
-      console.log("Ticket Data Parsed", ticketData);
       return ticketData.ticket;
     } catch (error) {
       console.log("Failed to fetch ticket for new comment email");
@@ -111,13 +116,12 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
         ticketTitle: ticket?.title,
         createdOn: ticket?.createdAt,
         commentedOn: new Date(),
-        commenter: hardcodedUser,
+        commenter: authUser,
         comment: content.trim(),
         isInternal: isInternal,
         assignee: ticket?.assignee,
       },
     };
-    console.log("ticketNewCommentEmailBody", ticketNewCommentEmailBody);
     try {
       const response = await fetch("/api/send/newComment", {
         method: "POST",
@@ -130,8 +134,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       if (!response.ok) {
         console.error("Failed to send email, status:", response.status);
       } else {
-        const data = await response.json();
-        console.log("Email sent successfully:", data);
+        await response.json();
       }
     } catch (err) {
       console.error("Failed to send email", err);
@@ -185,16 +188,16 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
     const start = textareaRef.current.selectionStart;
     const end = textareaRef.current.selectionEnd;
     const selectedText = content.substring(start, end);
-    
-    const newText = 
+
+    const newText =
       content.substring(0, start) +
       beforeText +
       selectedText +
       afterText +
       content.substring(end);
-    
+
     setContent(newText);
-    
+
     // Set cursor position after formatting
     setTimeout(() => {
       if (textareaRef.current) {
@@ -220,7 +223,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
             className="min-h-[100px] resize-none pr-12"
             disabled={createMutation.isPending}
           />
-          
+
           {/* Simple formatting toolbar */}
           <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
             <button

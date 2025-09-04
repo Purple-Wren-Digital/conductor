@@ -1,5 +1,4 @@
 import { api, APIError } from "encore.dev/api";
-// import { getAuthData } from "encore.dev/internal/auth/mod";
 import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 
@@ -10,7 +9,6 @@ interface AuthData {
 }
 
 export interface DeleteCommentRequest {
-  userID: string;
   ticketId: string;
   commentId: string;
 }
@@ -28,12 +26,12 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     auth: false, //true,
   },
   async (req) => {
-    // const authData = getAuthData();
-    // if (!authData) {
-    //   throw APIError.unauthenticated("user not authenticated");
-    // }
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
 
-    const userId = req.userID; // authData.userID;
+    const userId = authData.userID;
 
     const comment = await prisma.comment.findFirst({
       where: {

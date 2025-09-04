@@ -32,7 +32,7 @@ import type {
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
-// import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -102,23 +102,23 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     name: "Alice Johnson",
     role: "AGENT",
   };
-  // const { user: authUser } = useUser();
+  const { user: authUser } = useUser();
 
-  // const getAuthToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") {
-  //     return "local";
-  //   }
-  //   return await getAccessToken();
-  // }, []);
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") {
+      return "local";
+    }
+    return await getAccessToken();
+  }, []);
 
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        // Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       };
 
       const [ticketRes, usersRes] = await Promise.all([
@@ -140,7 +140,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [ticketId]); //, getAuthToken]);
+  }, [ticketId, getAuthToken]);
 
   useEffect(() => {
     refreshAllData();

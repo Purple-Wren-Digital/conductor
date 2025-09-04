@@ -42,7 +42,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import type { Ticket, TicketStatus, Urgency, User } from "@/lib/types";
 import { EditTicketForm } from "./ticket-form/edit-ticket-form";
 import { CreateTicketForm } from "./ticket-form/create-ticket-form";
-// import { getAccessToken } from "@auth0/nextjs-auth0";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
   useQuery,
   useMutation,
@@ -120,10 +120,10 @@ export function TicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  // const getAuthToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") return "local";
-  //   return await getAccessToken();
-  // }, []);
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -174,9 +174,9 @@ export function TicketList() {
   >({
     queryKey: ticketsQueryKey,
     queryFn: async (): Promise<TicketsResponse> => {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch(`/api/tickets/search?${queryParams.toString()}`, {
-        // headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch tickets");
@@ -197,9 +197,9 @@ export function TicketList() {
   >({
     queryKey: ["users"],
     queryFn: async (): Promise<UsersResponse> => {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch("/api/users", {
-        // headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch users");
@@ -218,12 +218,12 @@ export function TicketList() {
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch("/api/tickets/bulk-assign", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -242,12 +242,12 @@ export function TicketList() {
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch("/api/tickets/bulk-update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -270,12 +270,12 @@ export function TicketList() {
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
@@ -607,7 +607,9 @@ export function TicketList() {
                     handleSelectTicket(ticket.id, checked)
                   }
                   onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
-                  onClose={(e: React.MouseEvent) => handleQuickClose(e, ticket.id)}
+                  onClose={(e: React.MouseEvent) =>
+                    handleQuickClose(e, ticket.id)
+                  }
                   onClick={() => handleTicketClick(ticket)} // ⬅️ navigate & seed cache
                 />
               ))}

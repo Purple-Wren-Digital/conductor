@@ -35,7 +35,7 @@ export type TicketFormValues = {
   urgency: Urgency;
   category: string;
   dueDate?: Date;
-  creatorId: string;
+  // creatorId: string;
 };
 
 export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
@@ -110,7 +110,6 @@ export function BaseTicketForm({
       </div>
     );
   }, [showTemplateSelect, selectedTemplateId, onChangeTemplateId, templates]);
-  
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

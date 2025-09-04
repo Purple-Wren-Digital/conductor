@@ -4,7 +4,7 @@ import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
 import type { User, UserRole } from "@/lib/types";
-// import { getAccessToken } from "@auth0/nextjs-auth0";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,10 +72,10 @@ export function UserManagement() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // const getAuthToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") return "local";
-  //   return await getAccessToken();
-  // }, []);
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -84,10 +84,10 @@ export function UserManagement() {
     if (selectedRole !== "all") params.append("role", selectedRole);
 
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const response = await fetch(`/api/users/search?${params.toString()}`, {
         headers: {
-          //  Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
@@ -411,8 +411,8 @@ export function UserManagement() {
                 {isSubmitting
                   ? "Saving..."
                   : editingUser
-                  ? "Update User"
-                  : "Create User"}
+                    ? "Update User"
+                    : "Create User"}
               </Button>
             </div>
           </form>

@@ -28,10 +28,10 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     expose: true,
     method: "PUT",
     path: "/tickets/:ticketId/comments/:commentId",
-    auth: false, // true,
+    auth: true,
   },
   async (req) => {
-    const authData = getAuthData();
+    const authData = await getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
@@ -66,6 +66,14 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       },
     });
 
-    return { comment: updatedComment };
+    const safeUpdatedComment = {
+      ...updatedComment,
+      user: {
+        ...updatedComment.user,
+        name: updatedComment.user.name ?? "",
+      },
+    };
+
+    return { comment: safeUpdatedComment };
   }
 );
