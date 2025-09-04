@@ -21,17 +21,17 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
-import { useState, useEffect, useCallback} from "react"; // , useMemo 
+import { useState, useEffect, useCallback } from "react"; // , useMemo
 import { format } from "date-fns";
 import type {
   Ticket,
-  // Comment,
   User as UserType,
   TicketStatus,
   Urgency,
 } from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
+import { toast } from "sonner";
 // import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface TicketDetailViewProps {
@@ -143,6 +143,54 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
+  const sendEmailNotification = async (
+    ticket: Ticket | null,
+    currentAssignment: UserType | null,
+    previousAssignment: UserType | null
+  ) => {
+    if (!ticket || !ticket.id) {
+      throw new Error("Ticket was null");
+    }
+
+    const ticketReassignmentEmailBody = {
+      emailData: {
+        ticketNumber: ticket.id,
+        ticketTitle: ticket?.title,
+        createdOn: ticket?.createdAt,
+        updatedOn: ticket?.createdAt,
+        editedBy: {
+          // TODO: HARDCODED USER
+          id: "u1",
+          email: "alice.agent@kw.com",
+          name: "Alice Johnson",
+          role: "AGENT",
+        },
+        currentAssignment: currentAssignment,
+        previousAssignment: previousAssignment,
+      },
+    };
+
+    try {
+      const response = await fetch("/api/send/reassignTicket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify(ticketReassignmentEmailBody),
+      });
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        const data = await response.json();
+        console.log("Email sent successfully:", data);
+        toast.success("Ticket reassigned! Confirmation email sent.");
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
+
   const handleAssigneeChange = async (newAssigneeId: string) => {
     if (!ticket) return;
 
@@ -177,12 +225,17 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       });
       await parseJsonSafe(res);
       await refreshAllData();
+
+      await sendEmailNotification(
+        ticket,
+        nextAssignee || null,
+        prev?.assignee || null
+      );
     } catch (error) {
       console.error("Failed to assign ticket", error);
       setTicket(prev);
     }
   };
-
 
   const getStatusColor = (status: TicketStatus) => {
     switch (status) {

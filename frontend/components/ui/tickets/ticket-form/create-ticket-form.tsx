@@ -116,7 +116,6 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     console.log("Created ticket information", ticket);
 
     const ticketCreatedEmailBody = {
-      emailType: "createdTicket",
       emailData: {
         ticketNumber: ticket?.id,
         ticketTitle: ticket?.title,
@@ -124,7 +123,6 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         creatorId: ticket?.creator?.id,
         createdOn: ticket?.createdAt,
         dueDate: ticket?.dueDate ? ticket.dueDate : undefined,
-        // ticketLink: `https://example.com/${ticket?.id}`,
       },
     };
 
@@ -135,7 +133,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
           "Content-Type": "application/json",
         },
         cache: "no-store",
-        body: JSON.stringify({ ticketCreatedEmailBody }),
+        body: JSON.stringify(ticketCreatedEmailBody), // <-- not wrapped
       });
 
       if (!response.ok) {

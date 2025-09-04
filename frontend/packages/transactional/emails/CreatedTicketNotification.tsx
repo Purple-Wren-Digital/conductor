@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   Body,
   Button,
@@ -10,7 +9,7 @@ import {
   Text,
 } from "@react-email/components";
 
-type CreatedTicketEmailProps = {
+type CreatedTicketNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
   creatorName: string;
@@ -19,14 +18,14 @@ type CreatedTicketEmailProps = {
   dueDate?: Date;
 };
 
-export const CreatedTicketTemplate = ({
+const CreatedTicketNotification = ({
   ticketTitle,
   ticketNumber,
   creatorName,
   creatorId,
   createdOn,
   dueDate,
-}: CreatedTicketEmailProps) => {
+}: CreatedTicketNotificationProps) => {
   return (
     <Html>
       <Head />
@@ -41,21 +40,23 @@ export const CreatedTicketTemplate = ({
           <div style={divider} />
 
           <Section>
-            <Text style={ticketDetailsText}>
+            <Text style={subheaderText}>Details</Text>
+            <Text style={labelText}>
               Created On:
               {createdOn &&
                 `${new Date(createdOn).toLocaleDateString()} at
                 ${new Date(createdOn).toLocaleTimeString()}`}
             </Text>
-            <Text style={ticketDetailsText}>Title: {ticketTitle}</Text>
-            <Text style={ticketDetailsText}>Id: #{ticketNumber}</Text>
+            <Text style={labelText}>Title: {ticketTitle}</Text>
+            <Text style={labelText}>Id: {ticketNumber}</Text>
             {dueDate && (
-              <Text style={ticketDetailsText}>
-                Due: #{new Date(dueDate).toLocaleDateString()}
+              <Text style={labelText}>
+                Due: {new Date(dueDate).toLocaleDateString()}
               </Text>
             )}
-            <Text style={ticketDetailsText}>
-              Created By: {creatorName}, {creatorId}
+            <Text style={labelText}>
+              Created By: {creatorName && creatorName}
+              {creatorId && `(${creatorId})`}
             </Text>
 
             <Text style={text}>
@@ -65,7 +66,7 @@ export const CreatedTicketTemplate = ({
               href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
-              View Ticket #{ticketNumber}
+              View Ticket
             </Button>
           </Section>
         </Container>
@@ -74,7 +75,7 @@ export const CreatedTicketTemplate = ({
   );
 };
 
-export default CreatedTicketTemplate;
+export default CreatedTicketNotification;
 
 const main = {
   fontFamily:
@@ -96,9 +97,17 @@ const divider = {
   borderRadius: "10px",
   opacity: "50%",
 };
-const ticketDetailsText = { fontSize: "18px", fontWeight: "semibold" };
+
+const subheaderText = { fontSize: "20px", fontWeight: "semibold" };
+const labelText = { fontSize: "18px", fontWeight: "semibold" };
+const datesText = {
+  fontSize: "16px",
+  fontWeight: "semibold",
+  color: "gray",
+};
 const text = {
   fontSize: "16px",
+  fontWeight: "semibold",
   marginTop: "40px",
   marginBottom: "40px",
 };
