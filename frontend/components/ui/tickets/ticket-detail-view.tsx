@@ -31,13 +31,19 @@ import type {
 } from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
-import { toast } from "sonner";
+import { hasDueDateChanged } from "./utils";
 // import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface TicketDetailViewProps {
   ticketId: string;
   onClose?: () => void;
 }
+
+export type PossibleChangesProps = {
+  label: string;
+  originalValue: string | null;
+  newValue: string;
+};
 
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
@@ -73,7 +79,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-  
+
   // TODO: REMOVE HARDCODED USER
   const hardcodedUser = {
     id: "u1",
@@ -162,8 +168,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       if (!response.ok) {
         console.error("Failed to send email, status:", response.status);
       } else {
-        const data = await response.json();
-        console.log("Email sent successfully:", data);
+        await response.json();
       }
     } catch (err) {
       console.error("Failed to send email", err);
@@ -235,12 +240,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       if (!response.ok) {
         console.error("Failed to send email, status:", response.status);
       } else {
-        const data = await response.json();
-        console.log("Email sent successfully:", data);
-        toast.success("Ticket reassigned! Confirmation email sent.");
+        await response.json();
       }
     } catch (err) {
-      console.error("Failed to send email", err);
+      console.error("Failed to send reassignment email", err);
     }
   };
 
@@ -355,6 +358,133 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       </div>
     );
   }
+  const findChangedFormValues = ({
+    oldTicket,
+    updatedTicket,
+  }: {
+    oldTicket: Ticket;
+    updatedTicket: Ticket;
+  }) => {
+    let changedValues: PossibleChangesProps[] = [];
+    const dueDateChanged = hasDueDateChanged(
+      oldTicket?.dueDate,
+      updatedTicket?.dueDate
+    );
+    if (dueDateChanged.isChanged !== "unchanged") {
+      changedValues = [
+        ...changedValues,
+        {
+          label: "Due Date",
+          originalValue: oldTicket?.dueDate
+            ? `${new Date(oldTicket.dueDate).toLocaleDateString()}`
+            : "N/a",
+          newValue: updatedTicket?.dueDate
+            ? `${new Date(updatedTicket.dueDate).toLocaleDateString()}`
+            : "N/a",
+        },
+      ];
+    }
+
+    if (oldTicket.urgency !== updatedTicket?.urgency) {
+      changedValues = [
+        ...changedValues,
+        {
+          label: "Urgency",
+          originalValue: oldTicket.urgency,
+          newValue: updatedTicket?.urgency,
+        },
+      ];
+    }
+
+    if (oldTicket.category !== updatedTicket?.category) {
+      changedValues = [
+        ...changedValues,
+        {
+          label: "Category",
+          originalValue: oldTicket.category,
+          newValue: updatedTicket.category,
+        },
+      ];
+    }
+    if (oldTicket.description !== ticket?.description) {
+      changedValues = [
+        ...changedValues,
+        {
+          label: "Description",
+          originalValue: oldTicket.description,
+          newValue: updatedTicket.description,
+        },
+      ];
+    }
+
+    if (oldTicket.title !== updatedTicket.title) {
+      changedValues = [
+        ...changedValues,
+        {
+          label: "Title",
+          originalValue: oldTicket.title,
+          newValue: updatedTicket.title,
+        },
+      ];
+    }
+    return changedValues;
+  };
+  const sendTicketEditsEmailNotification = async ({
+    oldTicket,
+    updatedTicket,
+  }: {
+    oldTicket: Ticket;
+    updatedTicket: Ticket | null;
+  }) => {
+    if (!updatedTicket || !updatedTicket.id) {
+      throw new Error("Updated ticket was null");
+    }
+
+    const ticketEdits = findChangedFormValues({ oldTicket, updatedTicket });
+    if (!ticketEdits) {
+      throw new Error("No changes to ticket found");
+    }
+
+    const ticketEditedEmailBody = {
+      emailData: {
+        ticketNumber: ticket?.id,
+        ticketTitle: ticket?.title,
+        createdOn: ticket?.createdAt,
+        updatedOn: ticket?.updatedAt,
+        changedDetails: ticketEdits,
+        editor: hardcodedUser,
+      },
+    };
+    try {
+      const response = await fetch("/api/send/editTicket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify(ticketEditedEmailBody),
+      });
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        await response.json();
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
+
+  // const handleFormSuccess = async (updated: Ticket | null) => {
+  //   if (updated) {
+  //     await sendTicketEditsEmailNotification({
+  //       oldTicket: ticket,
+  //       updatedTicket: updated,
+  //     });
+  //     setTicket((prev) => (prev ? { ...prev, ...updated } : updated));
+  //   }
+  //   setShowEditForm(false);
+  //   void (await refreshAllData());
+  // };
 
   return (
     <div className="space-y-6">
@@ -524,10 +654,16 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticket={ticket ?? undefined}
         isOpen={showEditForm}
         onClose={() => setShowEditForm(false)}
-        onSuccess={(updated) => {
-          if (updated) setTicket(updated);
+        onSuccess={async (updated: Ticket | null) => {
+          if (updated) {
+            await sendTicketEditsEmailNotification({
+              oldTicket: ticket,
+              updatedTicket: updated,
+            });
+            setTicket((prev) => (prev ? { ...prev, ...updated } : updated));
+          }
           setShowEditForm(false);
-          void refreshAllData();
+          void (await refreshAllData());
         }}
       />
     </div>

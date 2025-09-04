@@ -20,7 +20,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
   {
     expose: true,
     method: "PUT",
-    path: "/tickets/:ticketId",
+    path: "/tickets/update/:ticketId",
     auth: false, // true
   },
   async (req) => {

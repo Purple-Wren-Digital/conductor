@@ -165,8 +165,10 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
       });
       if (!res.ok) throw new Error("Failed to create ticket");
       const data = await res.json().catch(() => ({}));
+      if (data && data?.ticket) {
+        await sendEmailNotification(data.ticket);
+      }
       onSuccess(data?.ticket ?? null);
-      await sendEmailNotification(data?.ticket ?? null);
       onClose();
     } catch (err) {
       console.error(err);
