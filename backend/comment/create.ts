@@ -17,6 +17,7 @@ export interface CreateCommentRequest {
   ticketId: string;
   content: string;
   internal?: boolean;
+  userId: string;
 }
 
 export interface CreateCommentResponse {
@@ -28,15 +29,15 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     expose: true,
     method: "POST",
     path: "/tickets/:ticketId/comments",
-    auth: true,
+    auth: false, //true,
   },
   async (req) => {
-    const authData = getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
+    // const authData = getAuthData();
+    // if (!authData) {
+    //   throw APIError.unauthenticated("user not authenticated");
+    // }
 
-    const userId = authData.userID;
+    // const userId = authData.userID;
 
     // Apply rate limiting
     // commentRateLimiter.checkRateLimit(userId);
@@ -53,7 +54,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       data: {
         content: processCommentContent(req.content),
         ticketId: req.ticketId,
-        userId: userId,
+        userId: req.userId,
         internal: req.internal || false,
       },
       include: {
