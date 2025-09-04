@@ -1,12 +1,11 @@
+import type { User as UserType } from "@/lib/types";
 import {
   Body,
   Button,
-  Column,
   Container,
   Head,
   Html,
   Preview,
-  Row,
   Section,
   Text,
 } from "@react-email/components";
@@ -21,6 +20,7 @@ export type EditedTicketNotificationProps = {
   ticketNumber: string;
   createdOn: Date;
   updatedOn: Date;
+  editedBy: UserType;
   changedDetails: PossibleChangesProps[];
 };
 
@@ -28,6 +28,7 @@ const EditedTicketNotification = ({
   ticketNumber,
   createdOn,
   updatedOn,
+  editedBy,
   changedDetails,
 }: EditedTicketNotificationProps) => {
   return (
@@ -54,6 +55,9 @@ const EditedTicketNotification = ({
 
           <Section>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
+            <Text style={subheaderText}>
+              Edited by: {editedBy?.name} {editedBy?.id && `(${editedBy.id})`}
+            </Text>
           </Section>
 
           <Section>

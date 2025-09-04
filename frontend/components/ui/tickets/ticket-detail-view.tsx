@@ -45,6 +45,21 @@ export type PossibleChangesProps = {
   newValue: string;
 };
 
+type emailNotificationTypes = {
+  updatedTicket: Ticket;
+  quickUpdate?: {
+    field: string;
+    current: string;
+  };
+  reassignmentUpdate?: {
+    currentAssignment: UserType | null;
+    previousAssignment: UserType | null;
+  };
+  fullEdits?: {
+    oldTicket: Ticket;
+  };
+};
+
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
   "AWAITING_RESPONSE",
@@ -131,233 +146,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     refreshAllData();
   }, [refreshAllData]);
 
-  const sendQuickUpdateEmailNotification = async ({
-    ticket,
-    field,
-    current,
-  }: {
-    ticket: Ticket | null;
-    field: string;
-    current: string;
-  }) => {
-    if (!ticket || !ticket.id) {
-      throw new Error("Ticket was null");
-    }
-
-    const ticketQuickUpdateEmailBody = {
-      emailData: {
-        ticketNumber: ticket.id,
-        ticketTitle: ticket?.title,
-        createdOn: ticket?.createdAt,
-        updatedOn: ticket?.createdAt,
-        editedBy: hardcodedUser,
-        field: field,
-        currentData: current,
-      },
-    };
-
-    try {
-      const response = await fetch("/api/send/quickChange", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify(ticketQuickUpdateEmailBody),
-      });
-      if (!response.ok) {
-        console.error("Failed to send email, status:", response.status);
-      } else {
-        await response.json();
-      }
-    } catch (err) {
-      console.error("Failed to send email", err);
-    }
-  };
-
-  const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
-    if (!ticket) return;
-
-    const prev = ticket;
-    setTicket({ ...ticket, [field]: value });
-
-    try {
-      // const accessToken = await getAuthToken();
-      const res = await fetch(`${API_BASE}/tickets/${ticket.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({ [field]: value }),
-      });
-      await parseJsonSafe(res);
-      await refreshAllData();
-      if (res.ok) {
-        await sendQuickUpdateEmailNotification({
-          ticket: ticket || null,
-          field: field,
-          current: value,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to update ticket:", error);
-      setTicket(prev);
-    }
-  };
-
-  const sendReassignmentEmailNotification = async (
-    ticket: Ticket | null,
-    currentAssignment: UserType | null,
-    previousAssignment: UserType | null
-  ) => {
-    if (!ticket || !ticket.id) {
-      throw new Error("Ticket was null");
-    }
-
-    const ticketReassignmentEmailBody = {
-      emailData: {
-        ticketNumber: ticket.id,
-        ticketTitle: ticket?.title,
-        createdOn: ticket?.createdAt,
-        updatedOn: ticket?.createdAt,
-        editedBy: hardcodedUser,
-        currentAssignment: currentAssignment,
-        previousAssignment: previousAssignment,
-      },
-    };
-
-    try {
-      const response = await fetch("/api/send/reassignTicket", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify(ticketReassignmentEmailBody),
-      });
-      if (!response.ok) {
-        console.error("Failed to send email, status:", response.status);
-      } else {
-        await response.json();
-      }
-    } catch (err) {
-      console.error("Failed to send reassignment email", err);
-    }
-  };
-
-  const handleAssigneeChange = async (newAssigneeId: string) => {
-    if (!ticket) return;
-
-    const prev = ticket;
-    const nextAssignee =
-      newAssigneeId === "unassigned"
-        ? undefined
-        : users.find((u) => u.id === newAssigneeId);
-    setTicket({
-      ...ticket,
-      assignee: nextAssignee
-        ? ({
-            id: nextAssignee.id,
-            name: nextAssignee.name,
-            role: nextAssignee.role,
-          } as any)
-        : undefined,
-    });
-
-    try {
-      // const accessToken = await getAuthToken();
-      const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          assigneeId: newAssigneeId === "unassigned" ? null : newAssigneeId,
-        }),
-      });
-      await parseJsonSafe(res);
-      await refreshAllData();
-
-      await sendReassignmentEmailNotification(
-        ticket,
-        nextAssignee || null,
-        prev?.assignee || null
-      );
-    } catch (error) {
-      console.error("Failed to assign ticket", error);
-      setTicket(prev);
-    }
-  };
-
-  const getStatusColor = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return "default";
-      case "IN_PROGRESS":
-        return "default";
-      case "ASSIGNED":
-        return "secondary";
-      case "AWAITING_RESPONSE":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getUrgencyColor = (urgency: Urgency) => {
-    switch (urgency) {
-      case "HIGH":
-        return "destructive";
-      case "MEDIUM":
-        return "default";
-      case "LOW":
-        return "secondary";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getStatusIcon = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return <CheckCircle className="h-4 w-4" />;
-      case "IN_PROGRESS":
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <AlertTriangle className="h-4 w-4" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Loading ticket…</p>
-      </div>
-    );
-  }
-
-  if (!ticket) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">
-          Ticket not found or could not be loaded.
-        </p>
-        {onClose && (
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="mt-4 bg-transparent"
-          >
-            Go Back
-          </Button>
-        )}
-      </div>
-    );
-  }
   const findChangedFormValues = ({
     oldTicket,
     updatedTicket,
@@ -429,40 +217,67 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
     return changedValues;
   };
-  const sendTicketEditsEmailNotification = async ({
-    oldTicket,
-    updatedTicket,
-  }: {
-    oldTicket: Ticket;
-    updatedTicket: Ticket | null;
-  }) => {
-    if (!updatedTicket || !updatedTicket.id) {
-      throw new Error("Updated ticket was null");
+
+  const sendEmailNotification = async (updates: emailNotificationTypes) => {
+    if (!updates || !updates?.updatedTicket || !updates?.updatedTicket.id) {
+      throw new Error("Ticket was null");
+    }
+    const updatedTicket = updates?.updatedTicket;
+
+    let url: string = "";
+    let body = {};
+
+    if (updates?.quickUpdate) {
+      url = "/api/send/quickChange";
+      body = {
+        ticketNumber: updatedTicket.id,
+        ticketTitle: updatedTicket?.title,
+        createdOn: updatedTicket?.createdAt,
+        updatedOn: updatedTicket?.createdAt,
+        editedBy: hardcodedUser,
+        field: updates?.quickUpdate?.field,
+        currentData: updates?.quickUpdate?.current,
+      };
     }
 
-    const ticketEdits = findChangedFormValues({ oldTicket, updatedTicket });
-    if (!ticketEdits) {
-      throw new Error("No changes to ticket found");
+    if (updates?.reassignmentUpdate) {
+      url = "/api/send/reassignTicket";
+      body = {
+        ticketNumber: updatedTicket.id,
+        ticketTitle: updatedTicket?.title,
+        createdOn: updatedTicket?.createdAt,
+        updatedOn: updatedTicket?.createdAt,
+        editedBy: hardcodedUser,
+        currentAssignment: updates?.reassignmentUpdate?.currentAssignment,
+        previousAssignment: updates?.reassignmentUpdate?.previousAssignment,
+      };
     }
 
-    const ticketEditedEmailBody = {
-      emailData: {
-        ticketNumber: ticket?.id,
-        ticketTitle: ticket?.title,
-        createdOn: ticket?.createdAt,
-        updatedOn: ticket?.updatedAt,
+    if (updates?.fullEdits && updates?.fullEdits?.oldTicket) {
+      const oldTicket = updates?.fullEdits?.oldTicket;
+      const ticketEdits = findChangedFormValues({ oldTicket, updatedTicket });
+      if (!ticketEdits) {
+        throw new Error("No changes to ticket found");
+      }
+      url = "/api/send/reassignTicket";
+      body = {
+        ticketNumber: updatedTicket.id,
+        ticketTitle: updatedTicket?.title,
+        createdOn: updatedTicket?.createdAt,
+        updatedOn: updatedTicket?.createdAt,
+        editedBy: hardcodedUser,
         changedDetails: ticketEdits,
-        editor: hardcodedUser,
-      },
-    };
+      };
+    }
+
     try {
-      const response = await fetch("/api/send/editTicket", {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         cache: "no-store",
-        body: JSON.stringify(ticketEditedEmailBody),
+        body: JSON.stringify(body),
       });
       if (!response.ok) {
         console.error("Failed to send email, status:", response.status);
@@ -474,17 +289,150 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
-  // const handleFormSuccess = async (updated: Ticket | null) => {
-  //   if (updated) {
-  //     await sendTicketEditsEmailNotification({
-  //       oldTicket: ticket,
-  //       updatedTicket: updated,
-  //     });
-  //     setTicket((prev) => (prev ? { ...prev, ...updated } : updated));
-  //   }
-  //   setShowEditForm(false);
-  //   void (await refreshAllData());
-  // };
+  const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
+    if (!ticket) return;
+
+    const prev = ticket;
+    setTicket({ ...ticket, [field]: value });
+
+    try {
+      // const accessToken = await getAuthToken();
+      const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({ [field]: value }),
+      });
+      await parseJsonSafe(res);
+      await refreshAllData();
+      if (res.ok && ticket) {
+        await sendEmailNotification({
+          updatedTicket: ticket || null,
+          quickUpdate: { field: field, current: value },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update ticket:", error);
+      setTicket(prev);
+    }
+  };
+
+  const handleAssigneeChange = async (newAssigneeId: string) => {
+    if (!ticket) return;
+
+    const prev = ticket;
+    const nextAssignee =
+      newAssigneeId === "unassigned"
+        ? undefined
+        : users.find((u) => u.id === newAssigneeId);
+    setTicket({
+      ...ticket,
+      assignee: nextAssignee
+        ? ({
+            id: nextAssignee.id,
+            name: nextAssignee.name,
+            role: nextAssignee.role,
+          } as any)
+        : undefined,
+    });
+
+    try {
+      // const accessToken = await getAuthToken();
+      const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          assigneeId: newAssigneeId === "unassigned" ? null : newAssigneeId,
+        }),
+      });
+      await parseJsonSafe(res);
+      await refreshAllData();
+
+      await sendEmailNotification({
+        updatedTicket: ticket,
+        reassignmentUpdate: {
+          currentAssignment: nextAssignee || null,
+          previousAssignment: prev?.assignee || null,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to assign ticket", error);
+      setTicket(prev);
+    }
+  };
+
+  const getStatusColor = (status: TicketStatus) => {
+    switch (status) {
+      case "RESOLVED":
+        return "default";
+      case "IN_PROGRESS":
+        return "default";
+      case "ASSIGNED":
+        return "secondary";
+      case "AWAITING_RESPONSE":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
+
+  const getUrgencyColor = (urgency: Urgency) => {
+    switch (urgency) {
+      case "HIGH":
+        return "destructive";
+      case "MEDIUM":
+        return "default";
+      case "LOW":
+        return "secondary";
+      default:
+        return "secondary";
+    }
+  };
+
+  const getStatusIcon = (status: TicketStatus) => {
+    switch (status) {
+      case "RESOLVED":
+        return <CheckCircle className="h-4 w-4" />;
+      case "IN_PROGRESS":
+        return <Clock className="h-4 w-4" />;
+      default:
+        return <AlertTriangle className="h-4 w-4" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Loading ticket…</p>
+      </div>
+    );
+  }
+
+  if (!ticket) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">
+          Ticket not found or could not be loaded.
+        </p>
+        {onClose && (
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="mt-4 bg-transparent"
+          >
+            Go Back
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -656,9 +604,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         onClose={() => setShowEditForm(false)}
         onSuccess={async (updated: Ticket | null) => {
           if (updated) {
-            await sendTicketEditsEmailNotification({
-              oldTicket: ticket,
+            await sendEmailNotification({
               updatedTicket: updated,
+              fullEdits: { oldTicket: ticket },
             });
             setTicket((prev) => (prev ? { ...prev, ...updated } : updated));
           }

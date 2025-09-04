@@ -4,21 +4,22 @@ import { Resend } from "resend";
 import QuickEditTicketNotification from "../../../../packages/transactional/emails/QuickEditTicketNotification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const DEV = process.env.NEXT_PUBLIC_VERCEL_ENV;
 
 export async function POST(req: NextRequest) {
-  const { emailData } = await req.json();
-  console.error("edit ticket: email data", emailData);
+  const emailData = await req.json();
 
   if (!emailData) {
     return Response.json({ error: "Missing email data" }, { status: 400 });
   }
 
-  const fieldFormatted = emailData?.field && emailData?.field === "urgency" ? "Urgency" : "Status"
+  const fieldFormatted =
+    emailData?.field && emailData?.field === "urgency" ? "Urgency" : "Status";
   try {
     const { data, error } = await resend.emails.send({
       from: "Conductor Ticketing <onboarding@resend.dev>",
       to: ["delivered@resend.dev"], // TODO: editor, assignee emails
-      subject: `DEV Conductor: ${fieldFormatted} Updates for Ticket (${emailData?.ticketNumber})`, // TODO: PROD Subject
+      subject: `${DEV && "DEV "}Conductor: ${fieldFormatted} Updates for Ticket (${emailData?.ticketNumber})`, // TODO: PROD Subject
       react: QuickEditTicketNotification({
         ticketNumber: emailData?.ticketNumber,
         ticketTitle: emailData?.ticketTitle,

@@ -29,7 +29,7 @@ const CreatedTicketNotification = ({
   return (
     <Html>
       <Head />
-      <Preview>Ticket {ticketNumber} Created Successfully</Preview>
+      <Preview>Created Ticket #{ticketNumber}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
