@@ -13,6 +13,8 @@ export interface Ticket {
   status: TicketStatus;
   urgency: Urgency;
   category: string;
+  creatorId?: string;
+  assigneeId?: string | null;
   creator: User | null;
   assignee: User | null;
   dueDate: Date | null;

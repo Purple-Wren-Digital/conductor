@@ -33,6 +33,7 @@ import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -94,15 +95,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-
-  // TODO: REMOVE HARDCODED USER
-  const hardcodedUser = {
-    id: "u1",
-    email: "alice.agent@kw.com",
-    name: "Alice Johnson",
-    role: "AGENT",
-  };
+  
   const { user: authUser } = useUser();
+  const { user, permissions, role } = useUserRole();
 
   const getAuthToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
@@ -234,7 +229,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: hardcodedUser,
+        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
         field: updates?.quickUpdate?.field,
         currentData: updates?.quickUpdate?.current,
       };
@@ -247,7 +242,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: hardcodedUser,
+        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
         currentAssignment: updates?.reassignmentUpdate?.currentAssignment,
         previousAssignment: updates?.reassignmentUpdate?.previousAssignment,
       };
@@ -265,7 +260,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: hardcodedUser,
+        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
         changedDetails: ticketEdits,
       };
     }
@@ -448,15 +443,18 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             #{ticket.id.substring(0, 8)}...
           </h1>
         </div>
-        <div className="ml-auto">
-          <Button
-            variant="outline"
-            onClick={() => setShowEditForm(true)}
-            className="gap-2"
-          >
-            <Edit className="h-4 w-4" /> Edit Ticket
-          </Button>
-        </div>
+        {(permissions?.canReassignTicket || 
+          (role === "AGENT" && ticket.assigneeId === user?.id)) && (
+          <div className="ml-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditForm(true)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" /> Edit Ticket
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -541,6 +539,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   onValueChange={(value: TicketStatus) =>
                     handleUpdateTicket("status", value)
                   }
+                  disabled={role === "AGENT" && ticket.assigneeId !== user?.id}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -554,45 +553,51 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Urgency</Label>
-                <Select
-                  value={ticket.urgency}
-                  onValueChange={(value: Urgency) =>
-                    handleUpdateTicket("urgency", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {urgencyOptions.map((urgency) => (
-                      <SelectItem key={urgency} value={urgency}>
-                        {urgency}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Assignee</Label>
-                <Select
-                  value={ticket.assignee?.id || "unassigned"}
-                  onValueChange={handleAssigneeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              
+              {permissions?.canReassignTicket && (
+                <div className="space-y-2">
+                  <Label>Urgency</Label>
+                  <Select
+                    value={ticket.urgency}
+                    onValueChange={(value: Urgency) =>
+                      handleUpdateTicket("urgency", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {urgencyOptions.map((urgency) => (
+                        <SelectItem key={urgency} value={urgency}>
+                          {urgency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {permissions?.canReassignTicket && (
+                <div className="space-y-2">
+                  <Label>Assignee</Label>
+                  <Select
+                    value={ticket.assignee?.id || "unassigned"}
+                    onValueChange={handleAssigneeChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name} ({u.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

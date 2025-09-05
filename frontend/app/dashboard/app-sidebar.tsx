@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,72 +10,43 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-// import { useUser } from "@auth0/nextjs-auth0";
 import {
   Cog,
   LayoutDashboard,
   Wallet,
   Users as UsersIcon,
   CircleUserRound,
+  Ticket,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { UserRole } from "@/lib/types";
-
-interface UserPrisma {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-  isActive: boolean;
-  picture?: string;
-}
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
-  // TODO: HARD CODED USER
-  // const { user } = useUser();
-  const [user, setUser] = useState<UserPrisma | null>(null);
-  const userId = "u1";
+  const { user, permissions, isLoading } = useUserRole();
 
-  const fetchUserFromPrisma = async (id: string) => {
-    try {
-      const res = await fetch(`/api/users/${id}`);
-
-      // console.log("App Sidebar - Fetch response:", res);
-      if (!res.ok) {
-        throw new Error("Failed to fetch user");
-      }
-      const data = await res.json();
-      // console.log("App Sidebar - Fetched user data:", data);
-      if (data && data?.user) setUser(data.user);
-    } catch (error) {
-      console.error("App Sidebar - Error fetching user:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserFromPrisma(userId);
-  }, []);
+  if (isLoading) {
+    return (
+      <Sidebar {...rest} className={cn(className, "border-r")}>
+        <SidebarContent>
+          <div className="p-4">Loading...</div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar {...rest} className={cn(className, "border-r")}>
       <SidebarHeader>
         <div className="p-4 border-b">
-          <div className="flex items-center gap-2">
-            {user?.picture && (
-              <img
-                src={user.picture}
-                alt={user.name || "User"}
-                className="w-8 h-8 rounded-full"
-              />
-            )}
-            <div>
-              <p className="font-medium text-sm">{user?.name || "User"}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
-            </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-medium text-sm">{user?.name || "User"}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <p className="text-xs text-muted-foreground capitalize">
+              {user?.role?.toLowerCase()} • {user?.marketCenter?.name || "Global"}
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -93,31 +64,45 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/dashboard/subscription">
-                  <Wallet /> Subscription
+                <Link href="/dashboard/tickets">
+                  <Ticket /> Tickets
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/users">
-                  <UsersIcon /> User Management
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {permissions?.canManageTeam && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/users">
+                    <UsersIcon /> Team Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canAccessReports && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/reports">
+                    <FileText /> Reports
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canAccessSettings && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/settings">
+                    <Cog /> Settings
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/dashboard/settings">
-                  <Cog /> Settings
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href={`/dashboard/profile/${userId}`}>
+                <Link href={`/dashboard/profile/${user?.id}`}>
                   <CircleUserRound /> Profile
                 </Link>
               </SidebarMenuButton>

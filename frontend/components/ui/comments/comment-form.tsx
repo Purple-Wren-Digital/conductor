@@ -9,6 +9,7 @@ import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 interface CommentFormProps {
   ticketId: string;
@@ -24,15 +25,9 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
-
-  // TODO: REMOVE HARDCODED USER
-  // const hardcodedUser = {
-  //   id: "u1",
-  //   email: "alice.agent@kw.com",
-  //   name: "Alice Johnson",
-  //   role: "AGENT",
-  // };
+  
   const { user: authUser } = useUser();
+  const { permissions } = useUserRole();
 
   const getAuthToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -255,17 +250,20 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="internal"
-            checked={isInternal}
-            onCheckedChange={setIsInternal}
-            disabled={createMutation.isPending}
-          />
-          <Label htmlFor="internal" className="text-sm">
-            Internal note (staff only)
-          </Label>
-        </div>
+        {permissions?.canCreateInternalComments && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="internal"
+              checked={isInternal}
+              onCheckedChange={setIsInternal}
+              disabled={createMutation.isPending}
+            />
+            <Label htmlFor="internal" className="text-sm">
+              Internal note (staff only)
+            </Label>
+          </div>
+        )}
+        {!permissions?.canCreateInternalComments && <div />}
 
         <Button
           type="submit"
