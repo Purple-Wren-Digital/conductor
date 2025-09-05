@@ -7,12 +7,13 @@ export interface TicketCategory {
   id: string;
   name: string;
   description?: string;
-  defaultAssigneeId?: string;
-  defaultAssignee?: {
+  marketCenterId: string;
+  defaultAssigneeId: string | null;
+  defaultAssignee: {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,7 +54,7 @@ export const createCategory = api<
     expose: true,
     method: "POST",
     path: "/settings/categories",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     // TODO: Get market center from auth context
@@ -105,6 +106,13 @@ export const createCategory = api<
     const safeCategory = {
       ...category,
       description: category.description ?? undefined,
+      defaultAssigneeId: category.defaultAssigneeId ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
     };
 
     return { category: safeCategory };
@@ -119,7 +127,7 @@ export const updateCategory = api<
     expose: true,
     method: "PUT",
     path: "/settings/categories/:id",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     // TODO: Get market center from auth context
@@ -181,7 +189,19 @@ export const updateCategory = api<
       },
     });
 
-    return { category };
+    const safeCategory = {
+      ...category,
+      description: category.description ?? undefined,
+      defaultAssigneeId: category.defaultAssigneeId ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
+    };
+
+    return { category: safeCategory };
   }
 );
 
@@ -190,7 +210,7 @@ export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
     expose: true,
     method: "DELETE",
     path: "/settings/categories/:id",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     // TODO: Get market center from auth context
@@ -221,7 +241,7 @@ export const listCategories = api<{}, ListCategoriesResponse>(
     expose: true,
     method: "GET",
     path: "/settings/categories",
-    auth: false, // true
+    auth: true,
   },
   async () => {
     // TODO: Get market center from auth context
@@ -248,10 +268,15 @@ export const listCategories = api<{}, ListCategoriesResponse>(
     const categories = categoriesFound.map((cat) => ({
       ...cat,
       description: cat.description ?? undefined,
-      defaultAssigneeId: cat.defaultAssigneeId ?? undefined,
-      defaultAssignee: cat.defaultAssignee ?? undefined,
+      defaultAssigneeId: cat.defaultAssigneeId ?? null,
+      defaultAssignee: cat.defaultAssignee
+        ? {
+            ...cat.defaultAssignee,
+            name: cat.defaultAssignee.name ?? "",
+          }
+        : null,
     }));
 
-    return { categories };
+    return { categories: categories };
   }
 );

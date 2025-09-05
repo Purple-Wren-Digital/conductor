@@ -98,7 +98,7 @@ describe("Category Management", () => {
 
     it("should create a category without default assignee", async () => {
       const mockCategory = {
-        id: "cat_1",
+        id: "cat_2",
         name: "General",
         description: "General inquiries",
         marketCenterId: "market_center_1",
@@ -114,6 +114,7 @@ describe("Category Management", () => {
       const result = await createCategory({
         name: "General",
         description: "General inquiries",
+        defaultAssigneeId: undefined,
       });
 
       expect(result.category).toEqual(mockCategory);
