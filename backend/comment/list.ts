@@ -1,6 +1,8 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
+import { getUserContext } from "../auth/user-context";
+import { canViewInternalComments } from "../auth/permissions";
 
 export interface ListCommentsRequest {
   ticketId: string;
@@ -18,8 +20,16 @@ export const list = api<ListCommentsRequest, ListCommentsResponse>(
     auth: true,
   },
   async (req) => {
+    const userContext = await getUserContext();
+    const canSeeInternal = await canViewInternalComments(userContext);
+
+    const where: any = { ticketId: req.ticketId };
+    if (!canSeeInternal) {
+      where.internal = false;
+    }
+
     const comments = await prisma.comment.findMany({
-      where: { ticketId: req.ticketId },
+      where,
       include: {
         user: true,
       },

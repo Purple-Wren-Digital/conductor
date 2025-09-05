@@ -12,6 +12,7 @@ export interface ListTicketsRequest {
   creatorId?: Query<string>;
   category?: Query<string>;
   search?: Query<string>;
+  marketCenterId?: Query<string>;
   limit?: Query<number>;
   offset?: Query<number>;
 }
@@ -33,7 +34,25 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
-    const scopeFilter = getTicketScopeFilter(userContext);
+    let scopeFilter = getTicketScopeFilter(userContext);
+    
+    if (userContext.role === "ADMIN" && req.marketCenterId) {
+      scopeFilter = {
+        OR: [
+          {
+            creator: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
+            assignee: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+        ],
+      };
+    }
+    
     const where: any = { ...scopeFilter };
 
     if (req.status && req.status.length > 0) {

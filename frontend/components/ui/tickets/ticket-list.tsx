@@ -53,6 +53,7 @@ import {
 } from "@tanstack/react-query";
 
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
+import { TeamSwitcher } from "@/components/ui/team-switcher";
 
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
@@ -79,7 +80,7 @@ const defaultActiveStatuses: TicketStatus[] = [
 export function TicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { permissions } = useUserRole();
+  const { permissions, role } = useUserRole();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -97,6 +98,7 @@ export function TicketList() {
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
@@ -135,6 +137,7 @@ export function TicketList() {
     if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
+    if (selectedMarketCenterId && role === "ADMIN") params.append("marketCenterId", selectedMarketCenterId);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -148,6 +151,8 @@ export function TicketList() {
     selectedUrgencies,
     selectedAssignee,
     selectedCreator,
+    selectedMarketCenterId,
+    role,
     dateFrom,
     dateTo,
     sortBy,
@@ -343,13 +348,24 @@ export function TicketList() {
           <div className="flex items-center justify-between">
             <CardTitle>Tickets ({totalTickets})</CardTitle>
 
-            {/* Primary action */}
-            {permissions?.canCreateTicket && (
-              <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Create Ticket
-              </Button>
-            )}
+            <div className="flex items-center gap-4">
+              {role === "ADMIN" && (
+                <TeamSwitcher 
+                  selectedMarketCenterId={selectedMarketCenterId}
+                  onMarketCenterChange={(id) => {
+                    setSelectedMarketCenterId(id);
+                    setCurrentPage(1);
+                  }}
+                />
+              )}
+              
+              {permissions?.canCreateTicket && (
+                <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Create Ticket
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4 mt-4">
