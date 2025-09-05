@@ -6,7 +6,7 @@ import type { User, UserRole } from "../ticket/types";
 export interface CreateUserRequest {
   email: string;
   name: string;
-  password: string;  
+  password: string;
   role?: UserRole;
 }
 
@@ -14,11 +14,10 @@ export interface CreateUserResponse {
   user: User;
 }
 
-
 export const create = api<CreateUserRequest, CreateUserResponse>(
   { expose: true, method: "POST", path: "/users" },
   async (req) => {
-    if (process.env.NODE_ENV !== 'development') {
+    if (process.env.NODE_ENV !== "development") {
       const isSignUpSuccessful = await signUpWithAuth0(
         req.email,
         req.password,
@@ -37,6 +36,6 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       },
     });
 
-    return { user };
+    return { user: { ...user, name: user.name ?? "" } };
   }
 );

@@ -1,5 +1,4 @@
 import { api, APIError } from "encore.dev/api";
-// import { getAuthData } from "encore.dev/internal/auth/mod";
 import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 
@@ -24,10 +23,10 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     expose: true,
     method: "DELETE",
     path: "/tickets/:ticketId/comments/:commentId",
-    auth: true,
+    auth: false, //true,
   },
   async (req) => {
-    const authData = getAuthData();
+    const authData = await getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }

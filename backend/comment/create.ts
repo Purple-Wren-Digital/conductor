@@ -17,6 +17,7 @@ export interface CreateCommentRequest {
   ticketId: string;
   content: string;
   internal?: boolean;
+  userId: string;
 }
 
 export interface CreateCommentResponse {
@@ -31,7 +32,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = getAuthData();
+    const authData = await getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
@@ -53,7 +54,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       data: {
         content: processCommentContent(req.content),
         ticketId: req.ticketId,
-        userId: userId,
+        userId: req.userId,
         internal: req.internal || false,
       },
       include: {
@@ -61,6 +62,14 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       },
     });
 
-    return { comment };
+    const safeComment = {
+      ...comment,
+      user: {
+        ...comment.user,
+        name: comment.user.name ?? "",
+      },
+    };
+
+    return { comment: safeComment };
   }
 );

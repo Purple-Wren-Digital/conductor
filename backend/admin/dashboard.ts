@@ -28,12 +28,16 @@ export const health = api(
  * A simple authenticated API endpoint that returns some fake data
  */
 export const getDashboardData = api(
-	{ method: "GET", expose: true, auth: true },
-	(): DashboardData => {
-		return {
-			totalUsers: 100,
-			totalOrders: 50,
-			totalRevenue: 1000,
-		};
-	},
+  {
+    method: "GET",
+    expose: true,
+    auth: false, //true
+  },
+  (): DashboardData => {
+    return {
+      totalUsers: 100,
+      totalOrders: 50,
+      totalRevenue: 1000,
+    };
+  }
 );

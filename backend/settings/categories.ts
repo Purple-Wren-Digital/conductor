@@ -7,12 +7,13 @@ export interface TicketCategory {
   id: string;
   name: string;
   description?: string;
-  defaultAssigneeId?: string;
-  defaultAssignee?: {
+  marketCenterId: string;
+  defaultAssigneeId: string | null;
+  defaultAssignee: {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,8 +46,16 @@ export interface ListCategoriesResponse {
   categories: TicketCategory[];
 }
 
-export const createCategory = api<CreateCategoryRequest, CreateCategoryResponse>(
-  { expose: true, method: "POST", path: "/settings/categories", auth: true },
+export const createCategory = api<
+  CreateCategoryRequest,
+  CreateCategoryResponse
+>(
+  {
+    expose: true,
+    method: "POST",
+    path: "/settings/categories",
+    auth: true,
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -93,12 +102,33 @@ export const createCategory = api<CreateCategoryRequest, CreateCategoryResponse>
       },
     });
 
-    return { category };
+    // Ensure description is never null
+    const safeCategory = {
+      ...category,
+      description: category.description ?? undefined,
+      defaultAssigneeId: category.defaultAssigneeId ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
+    };
+
+    return { category: safeCategory };
   }
 );
 
-export const updateCategory = api<{ id: string } & UpdateCategoryRequest, UpdateCategoryResponse>(
-  { expose: true, method: "PUT", path: "/settings/categories/:id", auth: true },
+export const updateCategory = api<
+  { id: string } & UpdateCategoryRequest,
+  UpdateCategoryResponse
+>(
+  {
+    expose: true,
+    method: "PUT",
+    path: "/settings/categories/:id",
+    auth: true,
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -159,12 +189,29 @@ export const updateCategory = api<{ id: string } & UpdateCategoryRequest, Update
       },
     });
 
-    return { category };
+    const safeCategory = {
+      ...category,
+      description: category.description ?? undefined,
+      defaultAssigneeId: category.defaultAssigneeId ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
+    };
+
+    return { category: safeCategory };
   }
 );
 
 export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
-  { expose: true, method: "DELETE", path: "/settings/categories/:id", auth: true },
+  {
+    expose: true,
+    method: "DELETE",
+    path: "/settings/categories/:id",
+    auth: true,
+  },
   async (req) => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
@@ -190,12 +237,17 @@ export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
 );
 
 export const listCategories = api<{}, ListCategoriesResponse>(
-  { expose: true, method: "GET", path: "/settings/categories", auth: true },
+  {
+    expose: true,
+    method: "GET",
+    path: "/settings/categories",
+    auth: true,
+  },
   async () => {
     // TODO: Get market center from auth context
     const mockMarketCenterId = "market_center_1";
 
-    const categories = await prisma.ticketCategory.findMany({
+    const categoriesFound = await prisma.ticketCategory.findMany({
       where: {
         marketCenterId: mockMarketCenterId,
       },
@@ -209,10 +261,22 @@ export const listCategories = api<{}, ListCategoriesResponse>(
         },
       },
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
 
-    return { categories };
+    const categories = categoriesFound.map((cat) => ({
+      ...cat,
+      description: cat.description ?? undefined,
+      defaultAssigneeId: cat.defaultAssigneeId ?? null,
+      defaultAssignee: cat.defaultAssignee
+        ? {
+            ...cat.defaultAssignee,
+            name: cat.defaultAssignee.name ?? "",
+          }
+        : null,
+    }));
+
+    return { categories: categories };
   }
 );

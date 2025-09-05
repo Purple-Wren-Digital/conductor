@@ -12,12 +12,7 @@ interface CommentListProps {
 }
 
 export function CommentList({ ticketId, className }: CommentListProps) {
-  const {
-    data: comments,
-    error,
-    isLoading,
-    refetch,
-  } = useComments(ticketId);
+  const { data: comments, error, isLoading, refetch } = useComments(ticketId);
 
   const commentList = comments || [];
 
@@ -77,7 +72,8 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      <CommentForm ticketId={ticketId} />
+      {/* TODO: HARDCODED USER */}
+      <CommentForm ticketId={ticketId} userId="u1" />
     </div>
   );
 }

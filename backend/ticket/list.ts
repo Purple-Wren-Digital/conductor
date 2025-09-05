@@ -1,7 +1,8 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
+import { getAuthData } from "~encore/auth";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -20,8 +21,17 @@ export interface ListTicketsResponse {
 }
 
 export const list = api<ListTicketsRequest, ListTicketsResponse>(
-  { expose: true, method: "GET", path: "/tickets", auth: true },
+  {
+    expose: true,
+    method: "GET",
+    path: "/tickets",
+    auth: true,
+  },
   async (req) => {
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
@@ -73,6 +83,18 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
 
     const formattedTickets: Ticket[] = tickets.map((ticket) => ({
       ...ticket,
+      title: ticket.title ?? "",
+      description: ticket.description ?? "",
+      status: ticket.status ?? ("ASSIGNED" as TicketStatus),
+      urgency: ticket.urgency ?? ("MEDIUM" as Urgency),
+      category: ticket.category ?? "",
+      creator: {
+        ...ticket.creator,
+        name: ticket.creator.name ?? "",
+      },
+      assignee: ticket.assignee
+        ? { ...ticket.assignee, name: ticket.assignee.name ?? "" }
+        : null,
       commentCount: ticket._count.comments,
     }));
 

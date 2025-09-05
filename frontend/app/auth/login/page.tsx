@@ -12,6 +12,12 @@ export default async function Home() {
     );
   }
 
+  if (session) {
+    // Try to find user from prisma
+    // If user not found in prisma with Auth0 Id, then go to sign up page
+    // If user found, navigate to dashboard
+  }
+
   return (
     <main>
       <h1>Welcome, {session.user.name}!</h1>

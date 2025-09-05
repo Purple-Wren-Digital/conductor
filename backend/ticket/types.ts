@@ -1,5 +1,6 @@
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
+  | "DRAFT"
   | "ASSIGNED"
   | "AWAITING_RESPONSE"
   | "IN_PROGRESS"
@@ -23,14 +24,16 @@ export interface Ticket {
   urgency: Urgency;
   category: string;
   creatorId?: string;
-  assigneeId: string | null;
+  assigneeId?: string | null;
   dueDate: Date | null;
-  resolvedAt: Date | null;
+  resolvedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  creator: User | null;
-  assignee: User | null;
-  commentCount: number | null;
+  creator?: User;
+  assignee?: User | null;
+  commentCount?: number | null;
+  deletedAt?: Date | null;
+  isActive?: boolean;
 }
 
 export interface Comment {

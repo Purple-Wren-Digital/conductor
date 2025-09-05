@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
+import { getAuthData } from "~encore/auth";
 
 export interface UpdateUserRequest {
   id: string;
@@ -13,11 +14,19 @@ export interface UpdateUserResponse {
 }
 
 export const update = api<UpdateUserRequest, UpdateUserResponse>(
-  { expose: true, method: "PUT", path: "/users/:id", auth: true },
+  {
+    expose: true,
+    method: "PUT",
+    path: "/users/:id",
+    auth: true,
+  },
   async (req) => {
-    // TODO: Implement auth context
-    const currentUserId = "user_1";
-    const currentUserRole = "ADMIN" as UserRole;
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+    const currentUserId = authData.userId;
+    const currentUserRole = authData.userRole as UserRole;
 
     const existingUser = await prisma.user.findUnique({
       where: { id: req.id },
@@ -40,7 +49,9 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         throw APIError.permissionDenied("Staff can only update agent profiles");
       }
       if (!isStaff && !isAdmin) {
-        throw APIError.permissionDenied("Insufficient permissions to update other users");
+        throw APIError.permissionDenied(
+          "Insufficient permissions to update other users"
+        );
       }
     }
 
@@ -59,6 +70,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       data: updateData,
     });
 
-    return { user: updatedUser };
+    return { user: { ...updatedUser, name: updatedUser.name ?? "" } };
   }
 );

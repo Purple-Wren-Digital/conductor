@@ -12,6 +12,7 @@ interface AuthData {
 }
 
 export interface UpdateCommentRequest {
+  userId: string;
   ticketId: string;
   commentId: string;
   content: string;
@@ -30,12 +31,12 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = getAuthData();
+    const authData = await getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
 
-    const userId = authData.userID;
+    const userId = req.userId; // authData.userID;
 
     const existingComment = await prisma.comment.findFirst({
       where: {
@@ -65,6 +66,14 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       },
     });
 
-    return { comment: updatedComment };
+    const safeUpdatedComment = {
+      ...updatedComment,
+      user: {
+        ...updatedComment.user,
+        name: updatedComment.user.name ?? "",
+      },
+    };
+
+    return { comment: safeUpdatedComment };
   }
 );

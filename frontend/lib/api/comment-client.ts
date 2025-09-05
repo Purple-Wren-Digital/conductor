@@ -16,7 +16,9 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text || "No body"}`);
+    throw new Error(
+      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
+    );
   }
   if (ct.includes("application/json")) {
     return res.json();
@@ -28,6 +30,7 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 }
 
 interface CreateCommentRequest {
+  userId: string;
   ticketId: string;
   content: string;
   internal: boolean;
@@ -67,47 +70,57 @@ class CommentApiClient {
 
   async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
     const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        content: request.content,
-        internal: request.internal,
-      }),
-    });
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          userId: request.userId,
+          content: request.content,
+          internal: request.internal,
+        }),
+      }
+    );
     return parseJsonSafe<CommentResponse>(res);
   }
 
   async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
     const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        content: request.content,
-        internal: request.internal,
-      }),
-    });
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          content: request.content,
+          internal: request.internal,
+        }),
+      }
+    );
     return parseJsonSafe<CommentResponse>(res);
   }
 
   async deleteComment(request: DeleteCommentRequest): Promise<void> {
     const accessToken = await getAuthToken();
-    const res = await fetch(`${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      }
+    );
     await parseJsonSafe(res);
   }
 }

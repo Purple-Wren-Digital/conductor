@@ -1,5 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
+import { getAuthData } from "~encore/auth";
+import { UserRole } from "./types";
 
 export interface BulkAssignRequest {
   ticketIds: string[];
@@ -12,15 +14,25 @@ export interface BulkAssignResponse {
 }
 
 export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
-  { expose: true, method: "POST", path: "/tickets/bulk-assign", auth: true },
+  {
+    expose: true,
+    method: "POST",
+    path: "/tickets/bulk-assign",
+    auth: true,
+  },
   async (req) => {
-    // TODO: Implement auth context
-    const currentUserRole = "STAFF"; // Should come from auth context
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const currentUserRole: UserRole = authData.userRole;
 
     // Only staff and admins can bulk assign
-    // @ts-ignore
     if (currentUserRole === "AGENT") {
-      throw APIError.permissionDenied("Only staff and admins can bulk assign tickets");
+      throw APIError.permissionDenied(
+        "Only staff and admins can bulk assign tickets"
+      );
     }
 
     // Validate assignee exists
@@ -49,8 +61,8 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       },
     });
 
-    const existingIds = existingTickets.map(t => t.id);
-    const failed = req.ticketIds.filter(id => !existingIds.includes(id));
+    const existingIds = existingTickets.map((t) => t.id);
+    const failed = req.ticketIds.filter((id) => !existingIds.includes(id));
 
     // Update only the existing tickets
     const result = await prisma.ticket.updateMany({

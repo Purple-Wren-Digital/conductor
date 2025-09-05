@@ -1,25 +1,44 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCreateComment } from "@/hooks/use-comments";
 import { Button } from "../button";
 import { Textarea } from "../textarea";
 import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
+import { Ticket } from "../../../lib/types";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 
 interface CommentFormProps {
   ticketId: string;
+  userId: string;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-export function CommentForm({ ticketId }: CommentFormProps) {
+const API_BASE = "http://localhost:4000";
+
+export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
-  
+
+  // TODO: REMOVE HARDCODED USER
+  // const hardcodedUser = {
+  //   id: "u1",
+  //   email: "alice.agent@kw.com",
+  //   name: "Alice Johnson",
+  //   role: "AGENT",
+  // };
+  const { user: authUser } = useUser();
+
+  const getAuthToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
+
   const createMutation = useCreateComment();
 
   // Load draft from localStorage on mount
@@ -40,20 +59,94 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   // Save draft to localStorage whenever content changes
   useEffect(() => {
     if (content.trim() || isInternal) {
-      localStorage.setItem(
-        draftKey,
-        JSON.stringify({ content, isInternal })
-      );
+      localStorage.setItem(draftKey, JSON.stringify({ content, isInternal }));
     } else {
       localStorage.removeItem(draftKey);
     }
   }, [content, isInternal, draftKey]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function parseJsonSafe<T>(res: Response): Promise<T> {
+    const ct = res.headers.get("content-type") || "";
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
+      );
+    }
+    if (ct.includes("application/json")) {
+      return res.json();
+    }
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Expected JSON but got ${
+        ct || "unknown content-type"
+      }. First 200 chars:\n${text.slice(0, 200)}`
+    );
+  }
+
+  const fetchTicket = async (ticketId: string) => {
+    if (!ticketId) return;
+    try {
+      const accessToken = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      };
+
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        headers,
+        cache: "no-store",
+      });
+
+      const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
+      return ticketData.ticket;
+    } catch (error) {
+      console.log("Failed to fetch ticket for new comment email");
+    }
+  };
+
+  const sendNewCommentEmail = async (ticket: Ticket | null) => {
+    if (!ticket || !ticket.id) {
+      throw new Error("Ticket was null");
+    }
+
+    const ticketNewCommentEmailBody = {
+      emailData: {
+        ticketNumber: ticketId,
+        ticketTitle: ticket?.title,
+        createdOn: ticket?.createdAt,
+        commentedOn: new Date(),
+        commenter: authUser,
+        comment: content.trim(),
+        isInternal: isInternal,
+        assignee: ticket?.assignee,
+      },
+    };
+    try {
+      const response = await fetch("/api/send/newComment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify(ticketNewCommentEmailBody),
+      });
+      if (!response.ok) {
+        console.error("Failed to send email, status:", response.status);
+      } else {
+        await response.json();
+      }
+    } catch (err) {
+      console.error("Failed to send email", err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (content.trim()) {
       createMutation.mutate(
         {
+          userId,
           ticketId,
           content: content.trim(),
           internal: isInternal,
@@ -66,6 +159,8 @@ export function CommentForm({ ticketId }: CommentFormProps) {
           },
         }
       );
+      const ticket = await fetchTicket(ticketId);
+      await sendNewCommentEmail(ticket || null);
     }
   };
 
@@ -93,16 +188,16 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     const start = textareaRef.current.selectionStart;
     const end = textareaRef.current.selectionEnd;
     const selectedText = content.substring(start, end);
-    
-    const newText = 
+
+    const newText =
       content.substring(0, start) +
       beforeText +
       selectedText +
       afterText +
       content.substring(end);
-    
+
     setContent(newText);
-    
+
     // Set cursor position after formatting
     setTimeout(() => {
       if (textareaRef.current) {
@@ -128,7 +223,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
             className="min-h-[100px] resize-none pr-12"
             disabled={createMutation.isPending}
           />
-          
+
           {/* Simple formatting toolbar */}
           <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
             <button
