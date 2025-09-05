@@ -3,25 +3,29 @@ import { getPrisma } from "./db";
 import { TeamInviteRequest } from "./types";
 import auth0Management from "./auth0-client";
 import crypto from 'crypto';
+import { getUserContext } from "../auth/user-context";
+import { canManageTeam } from "../auth/permissions";
 
 export const inviteTeamMember = api(
-  { method: "POST", path: "/settings/team/invite", auth: false },
+  { method: "POST", path: "/settings/team/invite", auth: true },
   async ({ email, role }: TeamInviteRequest): Promise<{ success: boolean; invitationId: string }> => {
-    const mockUserId = "user_1";
+    const userContext = await getUserContext();
     const prisma = getPrisma();
+
+    // Check if user can manage team
+    const canManage = await canManageTeam(userContext);
+    if (!canManage) {
+      throw APIError.permissionDenied("You do not have permission to invite team members");
+    }
 
     // Find the user and their market center
     const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
+      where: { id: userContext.userId },
       include: { marketCenter: true }
     });
 
     if (!user) {
       throw APIError.notFound("User not found");
-    }
-
-    if (user.role !== 'ADMIN') {
-      throw APIError.permissionDenied("Only administrators can invite team members");
     }
 
     if (!user.marketCenter) {

@@ -1,11 +1,10 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import { canDeleteTicket } from "../auth/permissions";
 
 export interface DeleteTicketRequest {
   ticketId: string;
-  creatorId: string;
-  userRole: string; // Role of the user attempting to delete the ticket
 }
 
 export interface DeleteTicketResponse {
@@ -21,9 +20,11 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+    
+    const canDelete = await canDeleteTicket(userContext);
+    if (!canDelete) {
+      throw APIError.permissionDenied("You do not have permission to delete tickets");
     }
 
     const ticket = await prisma.ticket.findUnique({
@@ -32,16 +33,6 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
 
     if (!ticket) {
       throw APIError.notFound("Ticket not found");
-    }
-
-    // Permission check: admins can delete anything, creators can delete their own tickets
-    const isAdmin = req.userRole === "ADMIN";
-    const isCreator = ticket.creatorId === req.creatorId;
-
-    if (!isAdmin && !isCreator) {
-      throw APIError.permissionDenied(
-        "You can only delete tickets you created"
-      );
     }
 
     // Delete ticket (comments will cascade delete due to schema relation)

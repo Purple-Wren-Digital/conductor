@@ -1,7 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import { canAccessTicket } from "../auth/permissions";
 
 export interface GetTicketRequest {
   ticketId: string;
@@ -19,9 +20,11 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+
+    const hasAccess = await canAccessTicket(userContext, req.ticketId);
+    if (!hasAccess) {
+      throw APIError.permissionDenied("You do not have permission to view this ticket");
     }
 
     const ticket = await prisma.ticket.findUnique({
