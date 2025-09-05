@@ -11,7 +11,6 @@ export interface CreateTicketRequest {
   category: string;
   urgency: Urgency;
   dueDate?: Date;
-  // creatorId: string;
 }
 
 export interface CreateTicketResponse {
@@ -32,7 +31,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
       if (!authData) {
         throw APIError.unauthenticated("user not authenticated");
       }
-      const userId = authData.userID;
+      const userId = "u1"; // TODO: authData.userID;
 
       // Apply auto-assignment (checks category defaults first, then rules)
       const assigneeId = await applyAutoAssignment({

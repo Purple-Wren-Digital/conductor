@@ -26,13 +26,13 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
 
   // TODO: REMOVE HARDCODED USER
-  // const hardcodedUser = {
-  //   id: "u1",
-  //   email: "alice.agent@kw.com",
-  //   name: "Alice Johnson",
-  //   role: "AGENT",
-  // };
-  const { user: authUser } = useUser();
+  // const { user: authUser } = useUser();
+  const hardcodedUser = {
+    id: "u1",
+    email: "alice.agent@kw.com",
+    name: "Alice Johnson",
+    role: "AGENT",
+  };
 
   const getAuthToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -101,7 +101,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
       return ticketData.ticket;
     } catch (error) {
-      console.log("Failed to fetch ticket for new comment email");
+      console.error("Failed to fetch ticket for new comment email");
     }
   };
 
@@ -111,16 +111,14 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
     }
 
     const ticketNewCommentEmailBody = {
-      emailData: {
-        ticketNumber: ticketId,
-        ticketTitle: ticket?.title,
-        createdOn: ticket?.createdAt,
-        commentedOn: new Date(),
-        commenter: authUser,
-        comment: content.trim(),
-        isInternal: isInternal,
-        assignee: ticket?.assignee,
-      },
+      ticketNumber: ticketId,
+      ticketTitle: ticket?.title,
+      createdOn: ticket?.createdAt,
+      commentedOn: new Date(),
+      commenter: hardcodedUser, // authUser,
+      comment: content.trim(),
+      isInternal: isInternal,
+      assignee: ticket?.assignee,
     };
     try {
       const response = await fetch("/api/send/newComment", {

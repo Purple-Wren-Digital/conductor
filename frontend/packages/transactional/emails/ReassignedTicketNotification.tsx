@@ -73,7 +73,10 @@ const ReassignedTicketNotification = ({
                 </li>
                 <li>
                   <Text style={text}>
-                    Previous: {previousAssignment?.name}{" "}
+                    Previous:{" "}
+                    {previousAssignment?.name
+                      ? previousAssignment.name
+                      : "Unassigned"}{" "}
                     {previousAssignment?.id && `(${previousAssignment.id})`}
                   </Text>
                 </li>

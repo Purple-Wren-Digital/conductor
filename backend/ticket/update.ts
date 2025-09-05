@@ -29,7 +29,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
     }
-    const userId = authData.userID;
+    const userId = "u1"; // TODO: authData.userID;
     const updateData: any = {};
 
     if (req.title !== undefined) updateData.title = req.title;

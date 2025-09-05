@@ -96,13 +96,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [showEditForm, setShowEditForm] = useState(false);
 
   // TODO: REMOVE HARDCODED USER
+  // const { user: authUser } = useUser();
   const hardcodedUser = {
     id: "u1",
     email: "alice.agent@kw.com",
     name: "Alice Johnson",
     role: "AGENT",
   };
-  const { user: authUser } = useUser();
 
   const getAuthToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
@@ -194,7 +194,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         },
       ];
     }
-    if (oldTicket.description !== ticket?.description) {
+    if (oldTicket.description !== updatedTicket.description) {
       changedValues = [
         ...changedValues,
         {
@@ -259,7 +259,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       if (!ticketEdits) {
         throw new Error("No changes to ticket found");
       }
-      url = "/api/send/reassignTicket";
+      url = "/api/send/editTicket";
       body = {
         ticketNumber: updatedTicket.id,
         ticketTitle: updatedTicket?.title,
@@ -296,24 +296,24 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
       });
-      await parseJsonSafe(res);
-      await refreshAllData();
       if (res.ok && ticket) {
         await sendEmailNotification({
           updatedTicket: ticket || null,
           quickUpdate: { field: field, current: value },
         });
       }
+      await parseJsonSafe(res);
+      await refreshAllData();
     } catch (error) {
       console.error("Failed to update ticket:", error);
       setTicket(prev);
@@ -340,12 +340,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     });
 
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuthToken();
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({

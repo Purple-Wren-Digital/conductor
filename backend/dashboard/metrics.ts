@@ -9,7 +9,7 @@ export interface GetMetricsResponse {
 export const getMetrics = api<void, GetMetricsResponse>(
   { expose: true, method: "GET", path: "/dashboard/metrics" },
   async () => {
-    await ready; 
+    await ready;
 
     const totalTickets = await prisma.ticket.count();
 
@@ -36,6 +36,7 @@ export const getMetrics = api<void, GetMetricsResponse>(
       AWAITING_RESPONSE: 0,
       IN_PROGRESS: 0,
       RESOLVED: 0,
+      DRAFT: 0,
     };
 
     statusCounts.forEach((item) => {
@@ -62,7 +63,7 @@ export const getMetrics = api<void, GetMetricsResponse>(
       totalTickets,
       openTickets,
       overdueTickets,
-      avgResponseTime: 2.5, 
+      avgResponseTime: 2.5,
       ticketsByStatus,
       ticketsByUrgency,
     };

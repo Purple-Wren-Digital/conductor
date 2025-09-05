@@ -13,7 +13,7 @@ type Props = {
   ticket: Ticket | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (created: Ticket | null) => void;
+  onSuccess: (updated: Ticket | null) => void;
 };
 
 const emptyValues: TicketFormValues = {
@@ -116,9 +116,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         cache: "no-store",
         body: JSON.stringify({
           ...values,
-          dueDate: values.dueDate
-            ? new Date(values.dueDate).toISOString()
-            : null,
+          dueDate: values.dueDate ? values.dueDate : undefined,
         }),
       });
       if (!res.ok) {
