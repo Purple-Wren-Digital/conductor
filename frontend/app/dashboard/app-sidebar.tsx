@@ -20,18 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { UserRole } from "@/lib/types";
 
-interface UserPrisma {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-  isActive: boolean;
-  picture?: string;
-}
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;

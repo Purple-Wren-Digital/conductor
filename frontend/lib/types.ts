@@ -35,6 +35,8 @@ export interface PrismaUser {
   name: string;
   role: UserRole;
   createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
 }
 
 export interface Comment {
@@ -64,6 +66,13 @@ export interface TicketTemplate {
   ticketDescription: string;
   category: string;
   urgency: Urgency;
+}
+
+export interface ProfileTemplate {
+  id: string;
+  name: string;
+  email: string;
+  isActive?: boolean
 }
 
 export interface TicketSearchParams {

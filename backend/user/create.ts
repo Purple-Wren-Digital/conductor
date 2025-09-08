@@ -30,6 +30,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
         email: req.email,
         name: req.name,
         role: req.role || "AGENT",
+        isActive: true,
       },
     });
 
