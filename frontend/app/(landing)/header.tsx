@@ -17,9 +17,9 @@ import Link from "next/link";
 import { useStore } from "../store-provider";
 
 export function Header() {
-  const { user: auth0User, isLoading } = useUser();
+  const [isSignUpClicked, setIsSignUpClicked] = useState(false);
 
-  const [isUserDataLoading, setIsUserDataLoading] = useState(isLoading);
+  const { user: auth0User, isLoading } = useUser();
   const { prismaUser, setPrismaUser } = useStore();
 
   const getAuthToken = useCallback(async () => {
@@ -27,7 +27,29 @@ export function Header() {
     return await getAccessToken();
   }, []);
 
-  const createPrismaUser = async () => {
+  const fetchAndSetExistingPrismaUser = async () => {
+    if (!auth0User || !auth0User?.email) throw new Error("No email to search");
+    const accessToken = await getAuthToken();
+    const response = await fetch(`/api/users/email/${auth0User.email}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      const data: { user: PrismaUser } = await response.json();
+      if (data && data?.user) {
+        setPrismaUser(data.user);
+        return;
+      }
+    }
+    setPrismaUser(null);
+  };
+
+  const createAndSetNewPrismaUser = async () => {
     if (!auth0User || !auth0User?.email) {
       throw new Error("no user information");
     }
@@ -41,67 +63,29 @@ export function Header() {
       cache: "no-store",
       body: JSON.stringify({
         email: auth0User.email,
-        name: "Testing",
+        name: auth0User.name ?? "",
         role: "AGENT",
       }),
     });
     if (response.ok) {
       const data: { user: PrismaUser } = await response.json();
       if (data && data?.user) {
-        return data.user;
+        setPrismaUser(data.user);
+        return;
       }
     }
-  };
-
-  const getPrismaUser = async () => {
-    if (!auth0User || !auth0User?.email) throw new Error("No email to search");
-    const accessToken = await getAuthToken();
-    const response = await fetch(`/api/users/email/${auth0User.email}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data;
-    }
-  };
-
-  const fetchAndSetPrismaUser = async () => {
-    setIsUserDataLoading(true);
-    const foundUser = await getPrismaUser();
-    if (foundUser) {
-      console.log("Found Prisma User!");
-      setPrismaUser(foundUser);
-      setIsUserDataLoading(false);
-
-      return;
-    }
-    const createdUser = await createPrismaUser();
-
-    if (createdUser) {
-      console.log("Created Prisma User as an AGENT!");
-      setPrismaUser(createdUser);
-      setIsUserDataLoading(false);
-      return;
-    }
-
-    if (!createdUser || !foundUser) {
-      console.error("Unable to find or create user");
-    }
     setPrismaUser(null);
-    setIsUserDataLoading(false);
   };
 
   useEffect(() => {
     if (!auth0User) return;
 
-    fetchAndSetPrismaUser();
-  }, [auth0User]);
+    if (isSignUpClicked) {
+      createAndSetNewPrismaUser();
+    } else {
+      fetchAndSetExistingPrismaUser();
+    }
+  }, [auth0User, isSignUpClicked]);
 
   return (
     <header className="border-b">
@@ -165,27 +149,57 @@ export function Header() {
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
+        <div className="flex items-center gap-4">
+          {auth0User && prismaUser && (
+            <>
+              <Button
+                asChild
+                variant="outline"
+                disabled={isLoading || !prismaUser}
+              >
+                <Link href="/dashboard">
+                  Dashboard <ArrowRight />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                disabled={isLoading || !prismaUser}
+              >
+                <a href="/auth/logout" onClick={() => setPrismaUser(null)}>
+                  Logout
+                </a>
+              </Button>
+            </>
+          )}
+          {(!auth0User || !prismaUser) && (
+            <>
+              <Button
+                asChild
+                variant="secondary"
+                disabled={isLoading || !prismaUser}
+              >
+                <a
+                  href="/auth/login"
+                  onClick={() => {
+                    setIsSignUpClicked(false);
+                  }}
+                >
+                  Log in
+                </a>
+              </Button>
 
-        {isUserDataLoading ? (
-          <Button disabled>Loading...</Button>
-        ) : prismaUser ? (
-          <div className="flex items-center gap-4">
-            <Button asChild variant="outline">
-              <Link href="/dashboard">
-                Dashboard <ArrowRight />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <a href="/auth/logout">Logout</a>
-            </Button>
-          </div>
-        ) : (
-          <Button asChild>
-            <a href="/auth/login">
-              Sign in <ArrowRight />
-            </a>
-          </Button>
-        )}
+              <Button asChild disabled={isLoading}>
+                <a
+                  href="/auth/login?screen_hint=signup"
+                  onClick={() => setIsSignUpClicked(true)}
+                >
+                  <p>Sign up</p>
+                </a>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

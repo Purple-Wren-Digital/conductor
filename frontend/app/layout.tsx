@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     template: "%s | Encore.ts SaaS Starter",
-    default: "Encore.ts SaaS Starter",
+    default: "Conductor Ticketing",
   },
   description:
     "An SaaS Starter template using Encore.ts, Nextjs, Auth0, Stripe, Tailwind and shadcn/ui.",

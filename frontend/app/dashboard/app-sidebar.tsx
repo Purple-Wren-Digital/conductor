@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-// import { useUser } from "@auth0/nextjs-auth0";
+import { useStore } from "../store-provider";
 import {
   Cog,
   LayoutDashboard,
@@ -35,46 +35,29 @@ interface UserPrisma {
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
-  // TODO: HARD CODED USER
-  // const { user } = useUser();
-  const [user, setUser] = useState<UserPrisma | null>(null);
-  const userId = "u1";
-
-  const fetchUserFromPrisma = async (id: string) => {
-    try {
-      const res = await fetch(`/api/users/${id}`);
-
-      // console.log("App Sidebar - Fetch response:", res);
-      if (!res.ok) {
-        throw new Error("Failed to fetch user");
-      }
-      const data = await res.json();
-      // console.log("App Sidebar - Fetched user data:", data);
-      if (data && data?.user) setUser(data.user);
-    } catch (error) {
-      console.error("App Sidebar - Error fetching user:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserFromPrisma(userId);
-  }, []);
+  const { prismaUser } = useStore();
 
   return (
     <Sidebar {...rest} className={cn(className, "border-r")}>
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
-            {user?.picture && (
-              <img
-                src={user.picture}
-                alt={user.name || "User"}
-                className="w-8 h-8 rounded-full"
-              />
-            )}
-            <div>
-              <p className="font-medium text-sm">{user?.name || "User"}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <div className="flex flex-col gap-1">
+              <p className="font-medium text-sm">
+                {prismaUser && prismaUser?.name
+                  ? `${prismaUser.name}`
+                  : "User name not set"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {prismaUser && prismaUser?.email}
+              </p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {prismaUser &&
+                  prismaUser?.role &&
+                  prismaUser?.role?.toLowerCase()}{" "}
+                • Global
+                {/* TODO: Market center set up: prismaUser?.marketCenter?.name || "Global" */}
+              </p>
             </div>
           </div>
         </div>
@@ -115,13 +98,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href={`/dashboard/profile/${userId}`}>
-                  <CircleUserRound /> Profile
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {prismaUser && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href={`/dashboard/profile/${prismaUser.id}`}>
+                    <CircleUserRound /> Profile
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
