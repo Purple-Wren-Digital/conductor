@@ -8,7 +8,7 @@ export interface GetUserRequest {
 }
 
 export interface GetUserResponse {
-  user: User | null;
+  user: User;
 }
 
 export const getByEmail = api<GetUserRequest, GetUserResponse>(
