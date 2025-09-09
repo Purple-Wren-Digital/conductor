@@ -16,6 +16,11 @@ export interface User {
   updatedAt: Date;
   isActive: boolean;
   auth0Id: string;
+  marketCenterId: string | null;
+  marketCenter?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface Ticket {

@@ -2,8 +2,8 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, Urgency } from "./types";
 import { applyAutoAssignment } from "./auto-assignment";
-import { getAuthData } from "~encore/auth";
-// import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import { canCreateTicket } from "../auth/permissions";
 
 export interface CreateTicketRequest {
   title: string;
@@ -27,11 +27,12 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
   },
   async (req) => {
     try {
-      const authData = await getAuthData();
-      if (!authData) {
-        throw APIError.unauthenticated("user not authenticated");
+      const userContext = await getUserContext();
+      
+      const canCreate = await canCreateTicket(userContext);
+      if (!canCreate) {
+        throw APIError.permissionDenied("You do not have permission to create tickets");
       }
-      const userId = "u1"; // TODO: authData.userID;
 
       // Apply auto-assignment (checks category defaults first, then rules)
       const assigneeId = await applyAutoAssignment({
@@ -39,7 +40,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         urgency: req.urgency,
         title: req.title,
         description: req.description,
-        creatorId: userId,
+        creatorId: userContext.userId,
       });
 
       const ticket = await prisma.ticket.create({
@@ -48,7 +49,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
           description: req.description,
           category: req.category,
           urgency: req.urgency,
-          creatorId: userId,
+          creatorId: userContext.userId,
           assigneeId: assigneeId,
           dueDate: req.dueDate,
         },

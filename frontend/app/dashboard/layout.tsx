@@ -42,6 +42,7 @@ export default function DashboardLayout({
     setPrismaUser(null);
   };
 
+  // TODO: CURRENT USER PERSISTENCE
   useEffect(() => {
     if (!auth0User) {
       console.error(

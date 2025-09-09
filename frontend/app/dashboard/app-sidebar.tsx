@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,14 +18,27 @@ import {
   Wallet,
   Users as UsersIcon,
   CircleUserRound,
+  Ticket,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
+  const { user, permissions, isLoading } = useUserRole();
   const { prismaUser } = useStore();
+
+  if (isLoading) {
+    return (
+      <Sidebar {...rest} className={cn(className, "border-r")}>
+        <SidebarContent>
+          <div className="p-4">Loading...</div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar {...rest} className={cn(className, "border-r")}>
@@ -44,8 +58,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 {prismaUser &&
                   prismaUser?.role &&
                   prismaUser?.role?.toLowerCase()}{" "}
-                • Global
-                {/* TODO: Market center set up: prismaUser?.marketCenter?.name || "Global" */}
+                • {user?.marketCenter?.name || "Global"}
               </p>
             </div>
           </div>
@@ -65,27 +78,41 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/dashboard/subscription">
-                  <Wallet /> Subscription
+                <Link href="/dashboard/tickets">
+                  <Ticket /> Tickets
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/users">
-                  <UsersIcon /> User Management
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {permissions?.canManageTeam && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/users">
+                    <UsersIcon /> Team Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
 
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/settings">
-                  <Cog /> Settings
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {permissions?.canAccessReports && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/reports">
+                    <FileText /> Reports
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canAccessSettings && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/settings">
+                    <Cog /> Settings
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
 
             {prismaUser && (
               <SidebarMenuItem>

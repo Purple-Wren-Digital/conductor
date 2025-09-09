@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import { getAuthData } from "~encore/auth";
-import { UserRole } from "./types";
+import { getUserContext } from "../auth/user-context";
+import { canReassignTicket, getTicketScopeFilter } from "../auth/permissions";
 
 export interface BulkAssignRequest {
   ticketIds: string[];
@@ -21,17 +21,13 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
+    const userContext = await getUserContext();
 
-    const currentUserRole: UserRole = authData.userRole;
-
-    // Only staff and admins can bulk assign
-    if (currentUserRole === "AGENT") {
+    // Check if user can reassign tickets
+    const canReassign = await canReassignTicket(userContext);
+    if (!canReassign) {
       throw APIError.permissionDenied(
-        "Only staff and admins can bulk assign tickets"
+        "You do not have permission to bulk assign tickets"
       );
     }
 
@@ -44,17 +40,27 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       throw APIError.notFound("Assignee not found");
     }
 
-    // Validate assignee can be assigned tickets (not an agent)
-    if (assignee.role === "AGENT") {
-      throw APIError.unavailable("Cannot assign tickets to agents");
+    // For STAFF, ensure they can only assign to users in their market center
+    if (userContext.role === "STAFF" && userContext.marketCenterId) {
+      if (assignee.marketCenterId !== userContext.marketCenterId) {
+        throw APIError.permissionDenied("You can only assign tickets to users in your team");
+      }
     }
 
-    // First, verify which tickets exist
+    // Get ticket scope filter
+    const scopeFilter = getTicketScopeFilter(userContext);
+    
+    // First, verify which tickets exist and user has access to
     const existingTickets = await prisma.ticket.findMany({
       where: {
-        id: {
-          in: req.ticketIds,
-        },
+        AND: [
+          {
+            id: {
+              in: req.ticketIds,
+            },
+          },
+          scopeFilter,
+        ],
       },
       select: {
         id: true,

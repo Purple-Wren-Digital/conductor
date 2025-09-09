@@ -20,6 +20,8 @@ export interface Ticket {
   status: TicketStatus;
   urgency: Urgency;
   category: string;
+  creatorId?: string;
+  assigneeId?: string | null;
   creator: PrismaUser | null;
   assignee: PrismaUser | null;
   dueDate: Date | null;
@@ -38,6 +40,11 @@ export interface PrismaUser {
   updatedAt?: Date;
   isActive: boolean;
   auth0Id: string;
+  marketCenterId: string | null;
+  marketCenter?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface Comment {

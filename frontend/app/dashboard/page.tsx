@@ -1,21 +1,37 @@
 "use client";
 
-import { DashboardOverview } from "@/components/ui/dashboard/dashboard-overview";
-import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { AgentDashboard } from "@/components/dashboard/agent-dashboard";
+import { StaffDashboard } from "@/components/dashboard/staff-dashboard";
+import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 
 export default function DashboardPage() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ticket Dashboard</h1>
-          <p className="text-muted-foreground">Manage and track support tickets efficiently</p>
+  const { role, isLoading } = useUserRole();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
+    );
+  }
 
-      <TicketTabs />
-
-      <DashboardOverview />
-    </div>
-  );
+  switch (role) {
+    case "ADMIN":
+      return <AdminDashboard />;
+    case "STAFF":
+      return <StaffDashboard />;
+    case "AGENT":
+      return <AgentDashboard />;
+    default:
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            Unable to determine your role. Please contact support.
+          </p>
+        </div>
+      );
+  }
 }

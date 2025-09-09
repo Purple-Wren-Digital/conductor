@@ -1,8 +1,9 @@
-import { api, APIError } from "encore.dev/api";
+import { api } from "encore.dev/api";
 import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import { getTicketScopeFilter } from "../auth/permissions";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -11,6 +12,7 @@ export interface ListTicketsRequest {
   creatorId?: Query<string>;
   category?: Query<string>;
   search?: Query<string>;
+  marketCenterId?: Query<string>;
   limit?: Query<number>;
   offset?: Query<number>;
 }
@@ -28,14 +30,30 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
+    const userContext = await getUserContext();
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
-    const where: any = {};
+    let scopeFilter = getTicketScopeFilter(userContext);
+    
+    if (userContext.role === "ADMIN" && req.marketCenterId) {
+      scopeFilter = {
+        OR: [
+          {
+            creator: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
+            assignee: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+        ],
+      };
+    }
+    
+    const where: any = { ...scopeFilter };
 
     if (req.status && req.status.length > 0) {
       where.status = { in: req.status };
@@ -58,10 +76,18 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     }
 
     if (req.search) {
-      where.OR = [
-        { title: { contains: req.search, mode: "insensitive" } },
-        { description: { contains: req.search, mode: "insensitive" } },
-      ];
+      const searchCondition = {
+        OR: [
+          { title: { contains: req.search, mode: "insensitive" } },
+          { description: { contains: req.search, mode: "insensitive" } },
+        ],
+      };
+      
+      if (scopeFilter.OR) {
+        where.AND = [scopeFilter, searchCondition];
+      } else {
+        where.OR = searchCondition.OR;
+      }
     }
 
     const [tickets, total] = await Promise.all([

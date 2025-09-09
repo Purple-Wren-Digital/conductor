@@ -21,6 +21,7 @@ import {
   useUpdateTeamMemberRole 
 } from "@/hooks/use-settings";
 import { toast } from "sonner";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 const inviteFormSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -54,6 +55,7 @@ export default function TeamManagement() {
   const inviteTeamMember = useInviteTeamMember();
   const removeTeamMember = useRemoveTeamMember();
   const updateTeamMemberRole = useUpdateTeamMemberRole();
+  const { role, permissions } = useUserRole();
   
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<{id: string, currentRole: string} | null>(null);
@@ -132,13 +134,14 @@ export default function TeamManagement() {
                 Manage your team members, roles, and invitations
               </CardDescription>
             </div>
-            <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Invite Member
-                </Button>
-              </DialogTrigger>
+            {permissions?.canManageTeam && (
+              <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Invite Member
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Invite Team Member</DialogTitle>
@@ -174,17 +177,23 @@ export default function TeamManagement() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {Object.entries(ROLE_DESCRIPTIONS).map(([role, description]) => (
-                                <SelectItem key={role} value={role}>
-                                  <div className="flex items-center gap-2">
-                                    {getRoleIcon(role)}
-                                    <div>
-                                      <div className="font-medium">{role}</div>
-                                      <div className="text-xs text-muted-foreground">{description}</div>
+                              {Object.entries(ROLE_DESCRIPTIONS)
+                                .filter(([roleOption]) => {
+                                  if (role === "ADMIN") return true;
+                                  if (role === "STAFF") return roleOption !== "ADMIN";
+                                  return false;
+                                })
+                                .map(([roleOption, description]) => (
+                                  <SelectItem key={roleOption} value={roleOption}>
+                                    <div className="flex items-center gap-2">
+                                      {getRoleIcon(roleOption)}
+                                      <div>
+                                        <div className="font-medium">{roleOption}</div>
+                                        <div className="text-xs text-muted-foreground">{description}</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </SelectItem>
-                              ))}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -210,6 +219,7 @@ export default function TeamManagement() {
                 </Form>
               </DialogContent>
             </Dialog>
+          )}
           </div>
         </CardHeader>
       </Card>
@@ -259,19 +269,20 @@ export default function TeamManagement() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Dialog 
-                          open={editingMember?.id === member.id} 
-                          onOpenChange={(open) => !open && setEditingMember(null)}
-                        >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setEditingMember({id: member.id, currentRole: member.role})}
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
+                        {permissions?.canChangeUserRoles && (
+                          <Dialog 
+                            open={editingMember?.id === member.id} 
+                            onOpenChange={(open) => !open && setEditingMember(null)}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingMember({id: member.id, currentRole: member.role})}
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Update Role</DialogTitle>
@@ -308,7 +319,9 @@ export default function TeamManagement() {
                             </div>
                           </DialogContent>
                         </Dialog>
+                      )}
                         
+                        {permissions?.canManageTeam && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
@@ -334,6 +347,7 @@ export default function TeamManagement() {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                      )}
                       </div>
                     </TableCell>
                   </TableRow>

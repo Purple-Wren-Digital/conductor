@@ -1,7 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import type { TicketStatus, Urgency, UserRole } from "./types";
-import { getAuthData } from "~encore/auth";
+import type { TicketStatus, Urgency } from "./types";
+import { getUserContext } from "../auth/user-context";
+import { canModifyTicket, getTicketScopeFilter } from "../auth/permissions";
 
 export interface BulkUpdateRequest {
   // currentUserId: string;
@@ -26,21 +27,13 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
+    const userContext = await getUserContext();
 
-    const currentUserId = authData.userID;
-    const currentUserRole = authData.userRole;
     // Only staff and admins can bulk update
-    if (currentUserRole === "AGENT") {
+    if (userContext.role === "AGENT") {
       throw APIError.permissionDenied(
         "Only staff and admins can bulk update tickets"
       );
-    }
-    if (!currentUserId) {
-      throw APIError.permissionDenied("Unauthorized");
     }
 
     // Build update data
@@ -65,17 +58,20 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
       throw APIError.invalidArgument("No fields to update");
     }
 
+    // Get ticket scope filter
+    const scopeFilter = getTicketScopeFilter(userContext);
+    
     // First, find which tickets are valid for update
     const whereClause: any = {
-      id: {
-        in: req.ticketIds,
-      },
+      AND: [
+        {
+          id: {
+            in: req.ticketIds,
+          },
+        },
+        scopeFilter,
+      ],
     };
-
-    // Staff can only update tickets assigned to them
-    if (currentUserRole === "STAFF") {
-      whereClause.assigneeId = currentUserId; // TODO: Prisma v Auth0
-    }
 
     // Get the tickets that can be updated
     const validTickets = await prisma.ticket.findMany({
