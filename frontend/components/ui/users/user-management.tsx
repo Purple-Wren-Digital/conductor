@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
-import type { User, UserRole } from "@/lib/types";
+import type { PrismaUser, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ import { Search, Plus, Users, Shield, Mail } from "lucide-react";
 
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
 
-interface UserWithStats extends User {
+interface UserWithStats extends PrismaUser {
   ticketsAssigned?: number;
   ticketsCreated?: number;
   lastActive?: Date;
@@ -72,7 +72,7 @@ export function UserManagement() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
@@ -84,7 +84,7 @@ export function UserManagement() {
     if (selectedRole !== "all") params.append("role", selectedRole);
 
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const response = await fetch(`/api/users/search?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -92,7 +92,7 @@ export function UserManagement() {
       });
       if (!response.ok) throw new Error("Failed to fetch users");
       const data = await response.json();
-      const usersWithStats = data.users.map((user: User) => ({
+      const usersWithStats = data.users.map((user: PrismaUser) => ({
         ...user,
         createdAt: new Date(user.createdAt),
         ticketsAssigned: 0,
@@ -105,7 +105,7 @@ export function UserManagement() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchQuery, selectedRole]); //, getAuthToken]);
+  }, [debouncedSearchQuery, selectedRole, getAuth0AccessToken]);
 
   useEffect(() => {
     fetchUsers();
@@ -135,10 +135,10 @@ export function UserManagement() {
     if (!userToDelete) return;
     try {
       setDeleting(true);
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const response = await fetch(`/api/users/${userToDelete.id}`, {
         method: "DELETE",
-        // headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -178,7 +178,7 @@ export function UserManagement() {
     const method = isEditing ? "PUT" : "POST";
 
     try {
-      // const accessToken = await getAuthToken();
+      // const accessToken = await getAuth0AccessToken();
       const response = await fetch(url, {
         method,
         headers: {

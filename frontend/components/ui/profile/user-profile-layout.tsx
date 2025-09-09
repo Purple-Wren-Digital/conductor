@@ -34,14 +34,14 @@ const UserProfileLayout = () => {
     null
   );
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
 
   const fetchUserFromPrisma = async () => {
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`/api/users/${userId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -62,7 +62,7 @@ const UserProfileLayout = () => {
 
   const getTicketsForUser = async () => {
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`/api/tickets?creatorId=${userId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

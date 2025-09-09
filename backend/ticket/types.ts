@@ -14,6 +14,8 @@ export interface User {
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+  isActive: boolean;
+  auth0Id: string;
 }
 
 export interface Ticket {

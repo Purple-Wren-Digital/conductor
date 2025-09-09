@@ -32,7 +32,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
@@ -40,7 +40,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const accessToken = await getAuthToken();
+        const accessToken = await getAuth0AccessToken();
         const res = await fetch("/api/ticket-templates", {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
@@ -66,7 +66,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket, getAuthToken]);
+  }, [isOpen, ticket, getAuth0AccessToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -106,7 +106,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     if (!validate() || !ticket?.id) return;
     setLoading(true);
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`/api/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {

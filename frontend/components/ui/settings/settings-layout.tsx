@@ -1,6 +1,11 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs/base-tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs/base-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Users, Tag, History, LogOut, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,8 +15,10 @@ import TeamManagement from "./team-management";
 import TicketCategories from "./ticket-categories";
 import AuditLog from "./audit-log";
 import ImportExport from "./import-export";
+import { useStore } from "../../../app/store-provider";
 
 export default function SettingsLayout() {
+  const { setPrismaUser } = useStore();
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -35,7 +42,10 @@ export default function SettingsLayout() {
             <Tag className="h-4 w-4" />
             Categories
           </TabsTrigger>
-          <TabsTrigger value="import-export" className="flex items-center gap-2">
+          <TabsTrigger
+            value="import-export"
+            className="flex items-center gap-2"
+          >
             <Download className="h-4 w-4" />
             Import/Export
           </TabsTrigger>
@@ -76,7 +86,7 @@ export default function SettingsLayout() {
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/api/auth/logout">
+                <Link href="/auth/logout" onClick={() => setPrismaUser(null)}>
                   Sign out <LogOut className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

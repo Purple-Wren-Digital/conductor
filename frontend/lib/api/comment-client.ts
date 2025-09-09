@@ -5,7 +5,7 @@ import type { Comment } from "@/lib/types";
 
 const API_BASE = "http://localhost:4000";
 
-async function getAuthToken(): Promise<string> {
+async function getAuth0AccessToken(): Promise<string> {
   if (process.env.NODE_ENV === "development") {
     return "local";
   }
@@ -58,7 +58,7 @@ interface CommentResponse {
 
 class CommentApiClient {
   async listComments(ticketId: string): Promise<ListCommentsResponse> {
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const res = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -69,7 +69,7 @@ class CommentApiClient {
   }
 
   async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments`,
       {
@@ -90,7 +90,7 @@ class CommentApiClient {
   }
 
   async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {
@@ -110,7 +110,7 @@ class CommentApiClient {
   }
 
   async deleteComment(request: DeleteCommentRequest): Promise<void> {
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {

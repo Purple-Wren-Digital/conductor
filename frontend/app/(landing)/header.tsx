@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0"; // handleLogout
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -9,12 +11,84 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { useUser } from "@auth0/nextjs-auth0";
+import { PrismaUser } from "@/lib/types";
 import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
+import { useStore } from "../store-provider";
+import { useRouter } from "next/navigation";
 
 export function Header() {
-  const { user, isLoading } = useUser();
+  const router = useRouter();
+
+  const [isSignUpClicked, setIsSignUpClicked] = useState(false);
+
+  const { user: auth0User, isLoading } = useUser();
+  const { prismaUser, setPrismaUser } = useStore();
+
+  const getAuth0AccessToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
+
+  const fetchAndSetExistingPrismaUser = async () => {
+    if (!auth0User || !auth0User?.email) throw new Error("No email to search");
+    const accessToken = await getAuth0AccessToken();
+    const response = await fetch(`/api/users/email/${auth0User.email}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      const data: { user: PrismaUser } = await response.json();
+      if (data && data?.user) {
+        setPrismaUser(data.user);
+        return;
+      }
+    }
+    setPrismaUser(null);
+  };
+
+  const createAndSetNewPrismaUser = async () => {
+    if (!auth0User || !auth0User?.email) {
+      throw new Error("no user information");
+    }
+    const accessToken = await getAuth0AccessToken();
+    const response = await fetch("api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        email: auth0User.email,
+        name: auth0User.name ?? "",
+        role: "AGENT",
+      }),
+    });
+    if (response.ok) {
+      const data: { user: PrismaUser } = await response.json();
+      if (data && data?.user) {
+        setPrismaUser(data.user);
+        return;
+      }
+    }
+    setPrismaUser(null);
+  };
+
+  useEffect(() => {
+    if (!auth0User) return;
+
+    if (isSignUpClicked) {
+      createAndSetNewPrismaUser();
+    } else {
+      fetchAndSetExistingPrismaUser();
+    }
+  }, [auth0User, isSignUpClicked]);
 
   return (
     <header className="border-b">
@@ -23,7 +97,6 @@ export function Header() {
           <House className="size-5 mr-1" strokeWidth={2.5} /> Conductor
           Ticketing
         </Link>
-
         <NavigationMenu>
           <NavigationMenuList>
             <NavigationMenuItem>
@@ -79,27 +152,59 @@ export function Header() {
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
+        <div className="flex items-center gap-4">
+          {auth0User && prismaUser && (
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                disabled={isLoading || !prismaUser}
+                onClick={() => {
+                  setPrismaUser(null);
+                  router.push("/auth/logout");
+                }}
+              >
+                <p>Log Out</p>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                disabled={isLoading || !prismaUser}
+                onClick={() => router.push("/dashboard")}
+              >
+                <p>
+                  Dashboard <ArrowRight />
+                </p>
+              </Button>
+            </>
+          )}
+          {(!auth0User || !prismaUser) && (
+            <>
+              <Button
+                asChild
+                variant="secondary"
+                disabled={isLoading}
+                onClick={() => {
+                  setIsSignUpClicked(false);
+                  router.push("/auth/login");
+                }}
+              >
+                <p>Log in</p>
+              </Button>
 
-        {isLoading ? (
-          <Button disabled>Loading...</Button>
-        ) : user ? (
-          <div className="flex items-center gap-4">
-            <Button asChild variant="outline">
-              <Link href="/dashboard">
-                Dashboard <ArrowRight />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <a href="/auth/logout">Logout</a>
-            </Button>
-          </div>
-        ) : (
-          <Button asChild>
-            <a href="/auth/login">
-              Sign in <ArrowRight />
-            </a>
-          </Button>
-        )}
+              <Button
+                asChild
+                disabled={isLoading}
+                onClick={() => {
+                  setIsSignUpClicked(true);
+                  router.push("/auth/login?screen_hint=signup");
+                }}
+              >
+                <p>Sign up</p>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
