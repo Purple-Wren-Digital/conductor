@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback } from "react"; // , useMemo
 import { format } from "date-fns";
 import type {
   Ticket,
-  User as UserType,
+  PrismaUser,
   TicketStatus,
   Urgency,
 } from "@/lib/types";
@@ -52,8 +52,8 @@ type emailNotificationTypes = {
     current: string;
   };
   reassignmentUpdate?: {
-    currentAssignment: UserType | null;
-    previousAssignment: UserType | null;
+    currentAssignment: PrismaUser | null;
+    previousAssignment: PrismaUser | null;
   };
   fullEdits?: {
     oldTicket: Ticket;
@@ -91,7 +91,7 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [users, setUsers] = useState<UserType[]>([]);
+  const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
 
@@ -104,7 +104,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     role: "AGENT",
   };
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
       return "local";
     }
@@ -115,7 +115,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -130,7 +130,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       ]);
 
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
-      const usersData = await parseJsonSafe<{ users: UserType[] }>(usersRes);
+      const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
 
       setTicket(ticketData.ticket);
       setUsers(usersData.users || []);
@@ -140,7 +140,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [ticketId, getAuthToken]);
+  }, [ticketId, getAuth0AccessToken]);
 
   useEffect(() => {
     refreshAllData();
@@ -296,7 +296,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
@@ -340,7 +340,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     });
 
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {

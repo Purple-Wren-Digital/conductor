@@ -22,14 +22,14 @@ export function Header() {
   const { user: auth0User, isLoading } = useUser();
   const { prismaUser, setPrismaUser } = useStore();
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
 
   const fetchAndSetExistingPrismaUser = async () => {
     if (!auth0User || !auth0User?.email) throw new Error("No email to search");
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const response = await fetch(`/api/users/email/${auth0User.email}`, {
       method: "GET",
       headers: {
@@ -53,7 +53,7 @@ export function Header() {
     if (!auth0User || !auth0User?.email) {
       throw new Error("no user information");
     }
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const response = await fetch("api/users", {
       method: "POST",
       headers: {

@@ -126,7 +126,7 @@ if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
   );
 }
 
-async function getAuthToken() {
+async function getAuth0AccessToken() {
   // In development, always use "local" token
   if (process.env.NODE_ENV === "development") {
     return "local";
@@ -143,7 +143,7 @@ async function getAuthToken() {
 }
 
 async function fetchApi(path: string, options: RequestInit = {}) {
-  const token = await getAuthToken();
+  const token = await getAuth0AccessToken();
   const response = await fetch(`${environment}${path}`, {
     ...options,
     headers: {

@@ -15,14 +15,14 @@ export default function DashboardLayout({
   const { setPrismaUser } = useStore();
   const { user: auth0User } = useUser();
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
 
   const persistUserContext = async () => {
     if (!auth0User || !auth0User?.email) throw new Error("No email to search");
-    const accessToken = await getAuthToken();
+    const accessToken = await getAuth0AccessToken();
     const response = await fetch(`/api/users/email/${auth0User.email}`, {
       method: "GET",
       headers: {
