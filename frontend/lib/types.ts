@@ -73,7 +73,7 @@ export interface ProfileTemplate {
   id: string;
   name: string;
   email: string;
-  isActive?: boolean
+  isActive?: boolean;
 }
 
 export interface TicketSearchParams {

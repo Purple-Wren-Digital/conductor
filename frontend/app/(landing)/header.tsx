@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0"; // handleLogout
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -15,8 +15,11 @@ import { PrismaUser } from "@/lib/types";
 import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "../store-provider";
+import { useRouter } from "next/navigation";
 
 export function Header() {
+  const router = useRouter();
+
   const [isSignUpClicked, setIsSignUpClicked] = useState(false);
 
   const { user: auth0User, isLoading } = useUser();
@@ -154,21 +157,24 @@ export function Header() {
             <>
               <Button
                 asChild
-                variant="outline"
+                variant="ghost"
                 disabled={isLoading || !prismaUser}
+                onClick={() => {
+                  setPrismaUser(null);
+                  router.push("/auth/logout");
+                }}
               >
-                <Link href="/dashboard">
-                  Dashboard <ArrowRight />
-                </Link>
+                <p>Log Out</p>
               </Button>
               <Button
                 asChild
-                variant="ghost"
+                variant="outline"
                 disabled={isLoading || !prismaUser}
+                onClick={() => router.push("/dashboard")}
               >
-                <a href="/auth/logout" onClick={() => setPrismaUser(null)}>
-                  Logout
-                </a>
+                <p>
+                  Dashboard <ArrowRight />
+                </p>
               </Button>
             </>
           )}
@@ -177,25 +183,24 @@ export function Header() {
               <Button
                 asChild
                 variant="secondary"
-                disabled={isLoading || !prismaUser}
+                disabled={isLoading}
+                onClick={() => {
+                  setIsSignUpClicked(false);
+                  router.push("/auth/login");
+                }}
               >
-                <a
-                  href="/auth/login"
-                  onClick={() => {
-                    setIsSignUpClicked(false);
-                  }}
-                >
-                  Log in
-                </a>
+                <p>Log in</p>
               </Button>
 
-              <Button asChild disabled={isLoading}>
-                <a
-                  href="/auth/login?screen_hint=signup"
-                  onClick={() => setIsSignUpClicked(true)}
-                >
-                  <p>Sign up</p>
-                </a>
+              <Button
+                asChild
+                disabled={isLoading}
+                onClick={() => {
+                  setIsSignUpClicked(true);
+                  router.push("/auth/login?screen_hint=signup");
+                }}
+              >
+                <p>Sign up</p>
               </Button>
             </>
           )}
