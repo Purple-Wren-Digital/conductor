@@ -18,7 +18,7 @@ import ImportExport from "./import-export";
 import { useStore } from "../../../app/store-provider";
 
 export default function SettingsLayout() {
-  const { setPrismaUser } = useStore();
+  const { setCurrentUser } = useStore();
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -86,7 +86,7 @@ export default function SettingsLayout() {
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/auth/logout" onClick={() => setPrismaUser(null)}>
+                <Link href="/auth/logout" onClick={() => setCurrentUser(null)}>
                   Sign out <LogOut className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
 import type { Ticket } from "@/lib/types";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 
@@ -22,21 +23,25 @@ export function TicketListItemWrapper({
   onClose?: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
-  const { permissions, user } = useUserRole();
-  
+  const { currentUser } = useStore();
+  const { permissions } = useUserRole();
+
   const canEdit = React.useMemo(() => {
     if (!permissions) return false;
     if (permissions.canReassignTicket) return true;
-    if (user?.role === "AGENT" && ticket.assigneeId === user.id) return true;
+    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id)
+      return true;
     return false;
-  }, [permissions, user, ticket.assigneeId]);
+  }, [permissions, currentUser, ticket.assigneeId]);
 
   const canClose = React.useMemo(() => {
     if (!permissions) return false;
-    if (user?.role === "ADMIN" || user?.role === "STAFF") return true;
-    if (user?.role === "AGENT" && ticket.assigneeId === user.id) return true;
+    if (currentUser?.role === "ADMIN" || currentUser?.role === "STAFF")
+      return true;
+    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id)
+      return true;
     return false;
-  }, [permissions, user, ticket.assigneeId]);
+  }, [permissions, currentUser, ticket.assigneeId]);
 
   const showCheckbox = permissions?.canBulkUpdate || false;
 

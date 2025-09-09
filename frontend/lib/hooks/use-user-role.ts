@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { PrismaUser } from "../types";
+import { useStore } from "@/app/store-provider";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 
@@ -79,6 +80,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
 
 export function useUserRole() {
   const { user: auth0User, isLoading: auth0Loading } = useUser();
+  const { currentUser } = useStore();
 
   const {
     data: PrismaUser,
@@ -108,17 +110,19 @@ export function useUserRole() {
         throw new Error("Failed to fetch user data");
       }
 
-      return response.json();
+      const data = await response.json();
+      if (!data) {
+        throw new Error("Failed to fetch user data");
+      }
+      return data as PrismaUser;
     },
     enabled: !!auth0User || process.env.NODE_ENV === "development",
     staleTime: 5 * 60 * 1000,
   });
-
   const role = PrismaUser?.role as UserRole | undefined;
   const permissions = role ? getUserPermissions(role) : null;
 
   return {
-    user: PrismaUser,
     role,
     permissions,
     isLoading: auth0Loading || userLoading,

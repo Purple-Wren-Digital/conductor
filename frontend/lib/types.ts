@@ -1,8 +1,8 @@
 import { Dispatch, SetStateAction } from "react";
 
 export type AppContext = {
-  prismaUser: PrismaUser | null;
-  setPrismaUser: Dispatch<SetStateAction<PrismaUser | null>>;
+  currentUser: PrismaUser | null;
+  setCurrentUser: Dispatch<SetStateAction<PrismaUser | null>>;
 };
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";

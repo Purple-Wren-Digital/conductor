@@ -9,6 +9,8 @@ import { Hash, Mail, Shield } from "lucide-react";
 import { UserRole, Ticket } from "@/lib/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 interface UserPrisma {
   id: string;
@@ -26,10 +28,10 @@ type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 const UserProfileLayout = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
-
+  const { currentUser } = useStore();
+  const { permissions } = useUserRole();
   const { userId } = useParams<{ userId: string }>();
 
-  const [user, setUser] = React.useState<UserPrisma | null>(null);
   const [ticketsCreated, setTicketsCreated] = React.useState<Ticket[] | null>(
     null
   );
@@ -37,27 +39,6 @@ const UserProfileLayout = () => {
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
-  }, []);
-
-  const fetchUserFromPrisma = async () => {
-    try {
-      const accessToken = await getAuth0AccessToken();
-      const res = await fetch(`/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch user");
-      }
-      const data = await res.json();
-      if (data && data?.user) setUser(data.user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserFromPrisma();
   }, []);
 
   const getTicketsForUser = async () => {
@@ -70,16 +51,19 @@ const UserProfileLayout = () => {
         throw new Error("Failed to fetch tickets");
       }
       const data = await res.json();
-      setTicketsCreated(data.tickets || []);
+      if (data && data?.tickets) {
+        setTicketsCreated(data.tickets);
+      }
+      setTicketsCreated([]);
     } catch (error) {
       console.error("Error fetching user's tickets:", error);
     }
   };
 
   useEffect(() => {
-    if (!user || !user?.id) return;
+    if (!currentUser || !currentUser?.id) return;
     getTicketsForUser();
-  }, [user]);
+  }, [currentUser]);
 
   const mappedTicketsCreated = ticketsCreated?.map((ticket: Ticket) => ({
     ...ticket,
@@ -101,12 +85,12 @@ const UserProfileLayout = () => {
           <div className="flex gap-2 flex-row justify-between items-center">
             <div className="flex flex-col gap-1">
               <CardTitle className="text-xl text-foreground pt-4 ">
-                {user?.name || "User not found"}
+                {currentUser?.name || "User not found"}
               </CardTitle>
 
               <div className="flex gap-2 flex-row items-center">
                 <p className="text-m text-muted-foreground semi-bold">
-                  {user?.isActive ? "Active" : "Inactive"} User
+                  {currentUser?.isActive ? "Active" : "Inactive"} User
                 </p>
               </div>
             </div>
@@ -121,34 +105,32 @@ const UserProfileLayout = () => {
             <p className="text-l font-bold">Information</p>
             <div className="flex gap-2 flex-row items-center">
               <Hash className="h-4 w-4" />
-              <p className="text-sm"> {userId || ""}</p>
+              <p className="text-sm"> {currentUser?.id || ""}</p>
             </div>
             <div className="flex gap-2 flex-row items-center">
               <Shield className="h-4 w-4" />
-              <p className="text-sm">{user?.role || ""}</p>
+              <p className="text-sm">{currentUser?.role || ""}</p>
             </div>
             <div className="flex gap-2 flex-row items-center">
               <Mail className="h-4 w-4" />
-              <p className="text-sm">{user?.email || ""}</p>
+              <p className="text-sm">{currentUser?.email || ""}</p>
             </div>
           </div>
           <div className="flex gap-2 flex-row mt-4 mb-4">
             <p className="text-xs text-muted-foreground">
-              {user && user.createdAt
-                ? `Created: ${new Date(
-                    user.createdAt
-                  ).toLocaleDateString()} ${new Date(
-                    user.createdAt
-                  ).toLocaleTimeString()}`
+              {currentUser?.createdAt
+                ? `Created on ${new Date(
+                    currentUser.createdAt
+                  ).toLocaleDateString()}`
                 : ""}
             </p>
             <p className="text-xs text-muted-foreground">|</p>
             <p className="text-xs text-muted-foreground">
-              {user && user.updatedAt
-                ? `Updated ${new Date(
-                    user.updatedAt
+              {currentUser?.updatedAt
+                ? `Updated on ${new Date(
+                    currentUser.updatedAt
                   ).toLocaleDateString()} at ${new Date(
-                    user.updatedAt
+                    currentUser.updatedAt
                   ).toLocaleTimeString()}`
                 : ""}
             </p>

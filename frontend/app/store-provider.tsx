@@ -4,8 +4,8 @@ import { AppContext, PrismaUser } from "@/lib/types";
 import { createContext, useContext, useMemo, useState } from "react";
 
 export const StoreContext = createContext({
-  prismaUser: {} as PrismaUser | null,
-  setPrismaUser: (prismaUser: PrismaUser | null) => {},
+  currentUser: {} as PrismaUser | null,
+  setCurrentUser: (currentUser: PrismaUser | null) => {},
 });
 
 export const useStore = () => useContext(StoreContext);
@@ -15,13 +15,13 @@ export default function StoreProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [prismaUser, setPrismaUser] = useState<PrismaUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<PrismaUser | null>(null);
   const value: AppContext = useMemo(() => {
     return {
-      prismaUser,
-      setPrismaUser,
+      currentUser,
+      setCurrentUser,
     };
-  }, [prismaUser]);
+  }, [currentUser]);
 
   return (
     <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

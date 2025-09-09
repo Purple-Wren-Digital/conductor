@@ -8,8 +8,9 @@ import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 interface CommentFormProps {
   ticketId: string;
@@ -26,7 +27,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
 
-  const { user: authUser } = useUser();
+  const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
   const getAuth0AccessToken = useCallback(async () => {
@@ -110,7 +111,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       ticketTitle: ticket?.title,
       createdOn: ticket?.createdAt,
       commentedOn: new Date(),
-      commenter: hardcodedUser, // authUser,
+      commenter: currentUser,
       comment: content.trim(),
       isInternal: isInternal,
       assignee: ticket?.assignee,

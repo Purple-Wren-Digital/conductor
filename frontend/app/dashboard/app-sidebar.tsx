@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,7 +14,6 @@ import { useStore } from "../store-provider";
 import {
   Cog,
   LayoutDashboard,
-  Wallet,
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
@@ -27,14 +25,26 @@ import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
-  const { user, permissions, isLoading } = useUserRole();
-  const { prismaUser } = useStore();
+  const { permissions, isLoading } = useUserRole();
+  const { currentUser } = useStore();
 
   if (isLoading) {
     return (
       <Sidebar {...rest} className={cn(className, "border-r")}>
         <SidebarContent>
           <div className="p-4">Loading...</div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Sidebar {...rest} className={cn(className, "border-r")}>
+        <SidebarContent>
+          <div className="p-4">
+            Cannot find your account. Please contact support.
+          </div>
         </SidebarContent>
       </Sidebar>
     );
@@ -47,18 +57,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <div className="flex items-center gap-2">
             <div className="flex flex-col gap-1">
               <p className="font-medium text-sm">
-                {prismaUser && prismaUser?.name
-                  ? `${prismaUser.name}`
-                  : "User name not set"}
+                {currentUser?.name ? `${currentUser.name}` : "User name not set"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {prismaUser && prismaUser?.email}
+                {currentUser?.email}
               </p>
               <p className="text-xs text-muted-foreground capitalize">
-                {prismaUser &&
-                  prismaUser?.role &&
-                  prismaUser?.role?.toLowerCase()}{" "}
-                • {user?.marketCenter?.name || "Global"}
+                {currentUser?.role && currentUser?.role?.toLowerCase()} •{" "}
+                {currentUser?.marketCenter?.name || "Global"}
               </p>
             </div>
           </div>
@@ -114,15 +120,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             )}
 
-            {prismaUser && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href={`/dashboard/profile/${prismaUser.id}`}>
-                    <CircleUserRound /> Profile
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href={`/dashboard/profile/${currentUser.id}`}>
+                  <CircleUserRound /> Profile
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

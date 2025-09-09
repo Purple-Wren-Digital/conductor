@@ -9,24 +9,24 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 
 export function AgentDashboard() {
-  const { user } = useUserRole();
+  const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading } = useQuery({
-    queryKey: ["agent-tickets", user?.id],
+    queryKey: ["agent-tickets", currentUser?.id],
     queryFn: async () => {
       const accessToken =
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
       const response = await fetch(
-        `/api/tickets/search?assigneeId=${user?.id}`,
+        `/api/tickets/search?assigneeId=${currentUser?.id}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -36,7 +36,7 @@ export function AgentDashboard() {
       if (!response.ok) throw new Error("Failed to fetch tickets");
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!currentUser?.id,
   });
 
   const tickets = ticketsData?.tickets || [];
@@ -69,7 +69,7 @@ export function AgentDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {user?.name}
+          Welcome back, {currentUser?.name}
         </h1>
         <p className="text-muted-foreground">Here are your assigned tickets</p>
       </div>

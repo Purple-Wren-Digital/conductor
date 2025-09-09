@@ -23,7 +23,7 @@ export function Header() {
   const [isSignUpClicked, setIsSignUpClicked] = useState(false);
 
   const { user: auth0User, isLoading } = useUser();
-  const { prismaUser, setPrismaUser } = useStore();
+  const { currentUser, setCurrentUser } = useStore();
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -45,11 +45,11 @@ export function Header() {
     if (response.ok) {
       const data: { user: PrismaUser } = await response.json();
       if (data && data?.user) {
-        setPrismaUser(data.user);
+        setCurrentUser(data.user);
         return;
       }
     }
-    setPrismaUser(null);
+    setCurrentUser(null);
   };
 
   const createAndSetNewPrismaUser = async () => {
@@ -73,11 +73,11 @@ export function Header() {
     if (response.ok) {
       const data: { user: PrismaUser } = await response.json();
       if (data && data?.user) {
-        setPrismaUser(data.user);
+        setCurrentUser(data.user);
         return;
       }
     }
-    setPrismaUser(null);
+    setCurrentUser(null);
   };
 
   useEffect(() => {
@@ -153,14 +153,14 @@ export function Header() {
           </NavigationMenuList>
         </NavigationMenu>
         <div className="flex items-center gap-4">
-          {auth0User && prismaUser && (
+          {auth0User && currentUser && (
             <>
               <Button
                 asChild
                 variant="ghost"
-                disabled={isLoading || !prismaUser}
+                disabled={isLoading || !currentUser}
                 onClick={() => {
-                  setPrismaUser(null);
+                  setCurrentUser(null);
                   router.push("/auth/logout");
                 }}
               >
@@ -169,7 +169,7 @@ export function Header() {
               <Button
                 asChild
                 variant="outline"
-                disabled={isLoading || !prismaUser}
+                disabled={isLoading || !currentUser}
                 onClick={() => router.push("/dashboard")}
               >
                 <p>
@@ -178,7 +178,7 @@ export function Header() {
               </Button>
             </>
           )}
-          {(!auth0User || !prismaUser) && (
+          {(!auth0User || !currentUser) && (
             <>
               <Button
                 asChild

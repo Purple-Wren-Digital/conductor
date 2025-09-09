@@ -29,6 +29,7 @@ import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -92,8 +93,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [showEditForm, setShowEditForm] = useState(false);
 
   const { user: authUser } = useUser();
-
-  const { user, permissions, role } = useUserRole(); // TODO: Current User Persistence with useUserRole()
+  const { currentUser } = useStore();
+  const { permissions, role } = useUserRole(); // TODO: Current User Persistence with useUserRole()
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
@@ -225,7 +226,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || {
+        editedBy: currentUser || {
           id: "",
           email: authUser?.email || "",
           name: authUser?.name || "",
@@ -243,7 +244,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || {
+        editedBy: currentUser || {
           id: "",
           email: authUser?.email || "",
           name: authUser?.name || "",
@@ -266,7 +267,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || {
+        editedBy: currentUser || {
           id: "",
           email: authUser?.email || "",
           name: authUser?.name || "",
@@ -455,7 +456,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           </h1>
         </div>
         {(permissions?.canReassignTicket ||
-          (role === "AGENT" && ticket.assigneeId === user?.id)) && (
+          (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
           <div className="ml-auto">
             <Button
               variant="outline"
@@ -550,7 +551,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   onValueChange={(value: TicketStatus) =>
                     handleUpdateTicket("status", value)
                   }
-                  disabled={role === "AGENT" && ticket.assigneeId !== user?.id}
+                  disabled={
+                    role === "AGENT" && ticket.assigneeId !== currentUser?.id
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />

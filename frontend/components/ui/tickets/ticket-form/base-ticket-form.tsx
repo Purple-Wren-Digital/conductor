@@ -35,7 +35,6 @@ export type TicketFormValues = {
   urgency: Urgency;
   category: string;
   dueDate?: Date;
-  // creatorId: string;
 };
 
 export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
