@@ -1,4 +1,5 @@
 import { api, APIError } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 // import { signUpWithAuth0 } from "../auth/auth";
@@ -16,6 +17,11 @@ export interface CreateUserResponse {
 export const create = api<CreateUserRequest, CreateUserResponse>(
   { expose: true, method: "POST", path: "/users", auth: false },
   async (req) => {
+    const authData = await getAuthData();
+    if (!authData || !authData.userID) {
+      throw APIError.unauthenticated("User not authenticated");
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email: req.email },
     });
@@ -31,10 +37,9 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
         name: req.name,
         role: req.role || "AGENT",
         isActive: true,
+        auth0Id: authData.userID,
       },
     });
-
-    console.log("New Prisma User", newUser);
 
     return {
       user: { ...newUser, name: newUser.name ?? "" },

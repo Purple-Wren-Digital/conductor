@@ -34,9 +34,10 @@ export interface PrismaUser {
   email: string;
   name: string;
   role: UserRole;
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: Date;
+  updatedAt?: Date;
   isActive: boolean;
+  auth0Id: string;
 }
 
 export interface Comment {
