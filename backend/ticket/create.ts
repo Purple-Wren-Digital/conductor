@@ -28,19 +28,24 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
   async (req) => {
     try {
       const userContext = await getUserContext();
-      
+
       const canCreate = await canCreateTicket(userContext);
+
+      console.log("CREATE TICKET PERMISSIONS?", canCreate);
       if (!canCreate) {
-        throw APIError.permissionDenied("You do not have permission to create tickets");
+        throw APIError.permissionDenied(
+          "You do not have permission to create tickets"
+        );
       }
 
       // Apply auto-assignment (checks category defaults first, then rules)
+
       const assigneeId = await applyAutoAssignment({
         category: req.category,
         urgency: req.urgency,
         title: req.title,
         description: req.description,
-        creatorId: userContext.userId,
+        creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
       });
 
       const ticket = await prisma.ticket.create({

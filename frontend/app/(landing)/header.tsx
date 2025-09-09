@@ -66,7 +66,7 @@ export function Header() {
       cache: "no-store",
       body: JSON.stringify({
         email: auth0User.email,
-        name: auth0User.name ?? "",
+        name: auth0User?.name || auth0User?.nickname || "",
         role: "AGENT",
       }),
     });

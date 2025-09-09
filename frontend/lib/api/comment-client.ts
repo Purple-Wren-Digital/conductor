@@ -2,8 +2,7 @@
 
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import type { Comment } from "@/lib/types";
-
-const API_BASE = "http://localhost:4000";
+import { API_BASE } from "./utils";
 
 async function getAuth0AccessToken(): Promise<string> {
   if (process.env.NODE_ENV === "development") {
@@ -30,7 +29,6 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 }
 
 interface CreateCommentRequest {
-  userId: string;
   ticketId: string;
   content: string;
   internal: boolean;
@@ -80,7 +78,6 @@ class CommentApiClient {
         },
         cache: "no-store",
         body: JSON.stringify({
-          userId: request.userId,
           content: request.content,
           internal: request.internal,
         }),

@@ -168,6 +168,31 @@ export function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
+  const handleCreateAuth0UserFirst = async () => {
+    try {
+      const response = await fetch("api/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          password: formData.password,
+          username: formData.name.split(" ").join(""),
+        }),
+      });
+
+      if (!response || !response.ok) {
+        throw new Error(`${response.status} Error Response`);
+      }
+      const data = await response.json();
+      console.log("Auth0 Data", data);
+    } catch (error) {
+      console.error("Failed to create Auth0 user:", error);
+    }
+  };
+
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -177,25 +202,27 @@ export function UserManagement() {
     const url = isEditing ? `/api/users/${editingUser.id}` : "/api/users";
     const method = isEditing ? "PUT" : "POST";
 
+    const auth0UserCreated = await handleCreateAuth0UserFirst();
+
     try {
       // const accessToken = await getAuth0AccessToken();
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message ||
-            `Failed to ${isEditing ? "update" : "create"} user`
-        );
-      }
-      setShowUserForm(false);
-      await fetchUsers();
+      // const response = await fetch(url, {
+      //   method,
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     Authorization: `Bearer ${accessToken}`,
+      //   },
+      //   body: JSON.stringify(formData),
+      // });
+      // if (!response.ok) {
+      //   const errorData = await response.json().catch(() => ({}));
+      //   throw new Error(
+      //     errorData.message ||
+      //       `Failed to ${isEditing ? "update" : "create"} user`
+      //   );
+      // }
+      // setShowUserForm(false);
+      // await fetchUsers();
     } catch (error) {
       console.error(error);
     } finally {

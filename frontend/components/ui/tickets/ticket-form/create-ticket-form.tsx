@@ -8,6 +8,7 @@ import {
   type TicketFormValues,
   type TicketFormErrors,
 } from "./base-ticket-form";
+import { API_BASE } from "@/lib/api/utils";
 
 type Props = {
   isOpen: boolean;
@@ -133,11 +134,12 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("submitting new ticket");
     if (!validate()) return;
     setLoading(true);
     try {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/tickets", {
+      const res = await fetch(`${API_BASE}/tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

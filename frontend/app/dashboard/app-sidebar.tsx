@@ -57,7 +57,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <div className="flex items-center gap-2">
             <div className="flex flex-col gap-1">
               <p className="font-medium text-sm">
-                {currentUser?.name ? `${currentUser.name}` : "User name not set"}
+                {currentUser?.name
+                  ? `${currentUser.name}`
+                  : "User name not set"}
               </p>
               <p className="text-xs text-muted-foreground">
                 {currentUser?.email}
@@ -122,7 +124,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href={`/dashboard/profile/${currentUser.id}`}>
+                <Link href={`/dashboard/profile`}>
                   <CircleUserRound /> Profile
                 </Link>
               </SidebarMenuButton>

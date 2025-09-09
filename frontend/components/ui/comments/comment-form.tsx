@@ -11,6 +11,7 @@ import { Ticket } from "../../../lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
+import { API_BASE } from "@/lib/api/utils";
 
 interface CommentFormProps {
   ticketId: string;
@@ -18,8 +19,6 @@ interface CommentFormProps {
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
-
-const API_BASE = "http://localhost:4000";
 
 export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [content, setContent] = useState("");
@@ -90,6 +89,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       };
 
       const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        method: "GET",
         headers,
         cache: "no-store",
       });
