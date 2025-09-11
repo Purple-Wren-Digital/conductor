@@ -11,14 +11,26 @@ import { Settings, Users, Tag, History, LogOut, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import GeneralSettings from "./general-settings";
-import TeamManagement from "./team-management";
+import TeamManagement from "./team/team-management";
 import TicketCategories from "./ticket-categories";
 import AuditLog from "./audit-log";
 import ImportExport from "./import-export";
 import { useStore } from "../../../app/store-provider";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SettingsLayout() {
+  const router = useRouter();
   const { setCurrentUser } = useStore();
+
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") ?? "general";
+
+  const handleTabChange = (newTab: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", newTab);
+    router.replace(`?${params.toString()}`);
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -28,7 +40,7 @@ export default function SettingsLayout() {
         </p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />

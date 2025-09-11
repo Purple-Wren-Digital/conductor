@@ -52,20 +52,20 @@ export interface SettingsAuditLogEntry {
 
 export interface TeamInviteRequest {
   email: string;
-  role: 'AGENT' | 'STAFF' | 'ADMIN';
+  role: "AGENT" | "STAFF" | "ADMIN";
 }
 
 export interface TeamMember {
   id: string;
   email: string;
   name: string;
-  role: 'AGENT' | 'STAFF' | 'ADMIN';
+  role: "AGENT" | "STAFF" | "ADMIN";
   isActive: boolean;
   createdAt: Date;
 }
 
 export interface UpdateMemberRoleRequest {
-  role: 'AGENT' | 'STAFF' | 'ADMIN';
+  role: "AGENT" | "STAFF" | "ADMIN";
 }
 
 export interface AuditLogResponse {
@@ -137,7 +137,7 @@ async function getAuth0AccessToken() {
   if (!tokenResponse.ok) {
     throw new Error("Failed to get access token");
   }
-  
+
   const { accessToken } = await tokenResponse.json();
   return accessToken;
 }
@@ -147,8 +147,8 @@ async function fetchApi(path: string, options: RequestInit = {}) {
   const response = await fetch(`${environment}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
   });
@@ -163,12 +163,14 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 
 export const settingsApi = {
   getMarketCenterSettings: async (): Promise<MarketCenterSettings> => {
-    return fetchApi('/settings/market-center');
+    return fetchApi("/settings/market-center");
   },
 
-  updateMarketCenterSettings: async (request: SettingsUpdateRequest): Promise<MarketCenterSettings> => {
-    return fetchApi('/settings/market-center', {
-      method: 'PUT',
+  updateMarketCenterSettings: async (
+    request: SettingsUpdateRequest
+  ): Promise<MarketCenterSettings> => {
+    return fetchApi("/settings/market-center", {
+      method: "PUT",
       body: JSON.stringify(request),
     });
   },
@@ -178,60 +180,91 @@ export const settingsApi = {
   },
 
   getTeamMembers: async (): Promise<TeamMembersResponse> => {
-    return fetchApi('/settings/team/members');
+    const token = await getAuth0AccessToken();
+
+    return fetchApi("/settings/team/members", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
   },
 
-  inviteTeamMember: async (request: TeamInviteRequest): Promise<{ success: boolean }> => {
-    return fetchApi('/settings/team/invite', {
-      method: 'POST',
+  inviteTeamMember: async (
+    request: TeamInviteRequest
+  ): Promise<{ success: boolean }> => {
+    return fetchApi("/settings/team/invite", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   },
 
   removeTeamMember: async (userId: string): Promise<{ success: boolean }> => {
     return fetchApi(`/settings/team/remove/${userId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
-  updateTeamMemberRole: async (userId: string, request: UpdateMemberRoleRequest): Promise<TeamMember> => {
+  updateTeamMemberRole: async (
+    userId: string,
+    request: UpdateMemberRoleRequest
+  ): Promise<TeamMember> => {
     return fetchApi(`/settings/team/role/${userId}`, {
-      method: 'PUT',
+      method: "PUT",
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateTeamMemberData: async (
+    userId: string,
+    request: UpdateMemberRoleRequest
+  ): Promise<TeamMember> => {
+    return fetchApi(`/settings/team/member/${userId}`, {
+      method: "PUT",
       body: JSON.stringify(request),
     });
   },
 
   getTicketCategories: async (): Promise<TicketCategoriesResponse> => {
-    return fetchApi('/settings/categories');
+    return fetchApi("/settings/categories");
   },
 
-  createTicketCategory: async (name: string, defaultAssigneeId?: string): Promise<TicketCategory> => {
-    return fetchApi('/settings/categories', {
-      method: 'POST',
+  createTicketCategory: async (
+    name: string,
+    defaultAssigneeId?: string
+  ): Promise<TicketCategory> => {
+    return fetchApi("/settings/categories", {
+      method: "POST",
       body: JSON.stringify({ name, defaultAssigneeId }),
     });
   },
 
-  updateTicketCategory: async (id: string, data: { name?: string; defaultAssigneeId?: string; isActive?: boolean }): Promise<TicketCategory> => {
+  updateTicketCategory: async (
+    id: string,
+    data: { name?: string; defaultAssigneeId?: string; isActive?: boolean }
+  ): Promise<TicketCategory> => {
     return fetchApi(`/settings/categories/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deleteTicketCategory: async (id: string): Promise<{ success: boolean }> => {
     return fetchApi(`/settings/categories/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   exportSettings: async (): Promise<SettingsExportData> => {
-    return fetchApi('/settings/export');
+    return fetchApi("/settings/export");
   },
 
-  importSettings: async (request: SettingsImportRequest): Promise<SettingsImportResponse> => {
-    return fetchApi('/settings/import', {
-      method: 'POST',
+  importSettings: async (
+    request: SettingsImportRequest
+  ): Promise<SettingsImportResponse> => {
+    return fetchApi("/settings/import", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   },

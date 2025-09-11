@@ -134,7 +134,6 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("submitting new ticket");
     if (!validate()) return;
     setLoading(true);
     try {

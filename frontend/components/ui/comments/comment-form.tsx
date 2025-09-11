@@ -15,12 +15,11 @@ import { API_BASE } from "@/lib/api/utils";
 
 interface CommentFormProps {
   ticketId: string;
-  userId: string;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-export function CommentForm({ ticketId, userId }: CommentFormProps) {
+export function CommentForm({ ticketId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -137,10 +136,11 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser || currentUser?.id) return;
     if (content.trim()) {
       createMutation.mutate(
         {
-          userId,
+          userId: currentUser?.id,
           ticketId,
           content: content.trim(),
           internal: isInternal,
@@ -250,19 +250,21 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
 
       <div className="flex items-center justify-between">
         {permissions?.canCreateInternalComments && (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="internal"
-              checked={isInternal}
-              onCheckedChange={setIsInternal}
-              disabled={createMutation.isPending}
-            />
-            <Label htmlFor="internal" className="text-sm">
-              Internal note (staff only)
-            </Label>
-          </div>
+          <>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="internal"
+                checked={isInternal}
+                onCheckedChange={setIsInternal}
+                disabled={createMutation.isPending}
+              />
+              <Label htmlFor="internal" className="text-sm">
+                Internal note (staff only)
+              </Label>
+            </div>
+            <div />
+          </>
         )}
-        {!permissions?.canCreateInternalComments && <div />}
 
         <Button
           type="submit"

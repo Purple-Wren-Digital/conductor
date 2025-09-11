@@ -1,8 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ListItem, getCategoryStyle, getStatusBadgeStyle, getUrgencyBadgeStyle, getStatusColor, getUrgencyColor } from "./base-list-item";
+import {
+  ListItem,
+  getCategoryStyle,
+  getStatusBadgeStyle,
+  getUrgencyBadgeStyle,
+} from "./base-list-item";
 import type { Ticket } from "@/lib/types";
+import { getStatusColor, getUrgencyColor } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
@@ -54,9 +60,13 @@ export function TicketListItem({
       ]}
       metadata={[
         { label: `Created by ${ticket.creator?.name || "N/A"}` },
-        ...(ticket.assignee ? [{ label: `Assigned to ${ticket.assignee.name}` }] : []),
+        ...(ticket.assignee
+          ? [{ label: `Assigned to ${ticket.assignee.name}` }]
+          : []),
         { label: `Created ${format(new Date(ticket.createdAt), "PP")}` },
-        ...(ticket.updatedAt ? [{ label: `Updated ${format(new Date(ticket.updatedAt), "PPp")}` }] : []),
+        ...(ticket.updatedAt
+          ? [{ label: `Updated ${format(new Date(ticket.updatedAt), "PPp")}` }]
+          : []),
         ...(ticket.commentCount
           ? [
               {
@@ -70,8 +80,18 @@ export function TicketListItem({
         {
           label: "Edit",
           icon: (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
           ),
           onClick: onEdit,
@@ -79,8 +99,18 @@ export function TicketListItem({
         {
           label: "Close",
           icon: (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           ),
           onClick: onClose,

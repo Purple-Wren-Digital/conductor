@@ -44,7 +44,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
     let scopeFilter = getTicketScopeFilter(userContext);
-    
+
     if (userContext.role === "ADMIN" && req.marketCenterId) {
       scopeFilter = {
         OR: [
@@ -61,7 +61,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         ],
       };
     }
-    
+
     const where: Prisma.TicketWhereInput = { ...scopeFilter };
 
     if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
@@ -81,11 +81,18 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.query) {
       const searchCondition = {
         OR: [
-          { title: { contains: req.query, mode: "insensitive" } },
-          { description: { contains: req.query, mode: "insensitive" } },
+          {
+            title: { contains: req.query, mode: Prisma.QueryMode.insensitive },
+          },
+          {
+            description: {
+              contains: req.query,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
         ],
       };
-      
+
       if (scopeFilter.OR) {
         where.AND = [scopeFilter, searchCondition];
         delete where.OR;

@@ -96,45 +96,6 @@ export function getRoleBadgeStyle(
   }
 }
 
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case "RESOLVED":
-      return "success";
-    case "IN_PROGRESS":
-      return "default";
-    case "ASSIGNED":
-      return "secondary";
-    case "AWAITING_RESPONSE":
-      return "outline";
-    default:
-      return "secondary";
-  }
-};
-export const getUrgencyColor = (urgency: string) => {
-  switch (urgency) {
-    case "HIGH":
-      return "destructive";
-    case "MEDIUM":
-      return "orange";
-    case "LOW":
-      return "warning";
-    default:
-      return "secondary";
-  }
-};
-export const getRoleColor = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "destructive";
-    case "STAFF":
-      return "default";
-    case "USER":
-      return "secondary";
-    default:
-      return "secondary";
-  }
-};
-
 export interface BaseAction {
   label: string;
   icon: React.ReactNode;

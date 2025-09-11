@@ -1,12 +1,12 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
-import { UpdateMemberRoleRequest } from "./types";
+import { UpdateMemberRequest } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canChangeUserRoles } from "../auth/permissions";
 
 export const updateMemberRole = api(
   { method: "PUT", path: "/settings/team/members/:id/role", auth: true },
-  async ({ id, role }: { id: string } & UpdateMemberRoleRequest): Promise<{ success: boolean }> => {
+  async ({ id, role }: { id: string } & UpdateMemberRequest): Promise<{ success: boolean }> => {
     const userContext = await getUserContext();
     const prisma = getPrisma();
 

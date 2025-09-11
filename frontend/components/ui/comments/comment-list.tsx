@@ -49,16 +49,12 @@ export function CommentList({ ticketId, className }: CommentListProps) {
   return (
     <div className={className}>
       <div className="space-y-4 mb-6">
-        <h3 className="text-lg font-semibold">
-          Comments ({commentList.length})
-        </h3>
-        
         {commentList.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
             No comments yet. Be the first to comment!
           </p>
         ) : (
-          <ScrollArea className="max-h-96">
+          <ScrollArea className="h-100">
             <div className="space-y-4 pr-4">
               {commentList.map((comment: Comment) => (
                 <CommentItem
@@ -72,8 +68,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      {/* TODO: HARDCODED USER */}
-      <CommentForm ticketId={ticketId} userId="u1" />
+      <CommentForm ticketId={ticketId} />
     </div>
   );
 }

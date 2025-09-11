@@ -14,6 +14,7 @@ import { Ticket, Users, TrendingUp, AlertCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TicketTabs } from "../ui/tabs/ticket-tabs";
 
 export function StaffDashboard() {
   const { currentUser } = useStore();
@@ -111,6 +112,8 @@ export function StaffDashboard() {
         </Button>
       </div>
 
+      <TicketTabs />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -124,7 +127,7 @@ export function StaffDashboard() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">High Priority</CardTitle>
@@ -137,7 +140,7 @@ export function StaffDashboard() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Unassigned</CardTitle>

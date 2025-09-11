@@ -13,23 +13,13 @@ export interface UserPermissions {
   canViewAllTickets: boolean;
   canViewInternalComments: boolean;
   canCreateInternalComments: boolean;
+  canManageAllUsers: boolean;
+  canCreateTeam: boolean;
   canManageTeam: boolean;
   canChangeUserRoles: boolean;
   canAccessSettings: boolean;
   canAccessReports: boolean;
 }
-
-// export interface PrismaUser {
-//   id: string;
-//   email: string;
-//   name: string;
-//   role: UserRole;
-//   marketCenterId: string | null;
-//   marketCenter?: {
-//     id: string;
-//     name: string;
-//   } | null;
-// }
 
 export function getUserPermissions(role: UserRole): UserPermissions {
   switch (role) {
@@ -42,6 +32,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: true,
         canViewInternalComments: true,
         canCreateInternalComments: true,
+        canManageAllUsers: true,
+        canCreateTeam: true,
         canManageTeam: true,
         canChangeUserRoles: true,
         canAccessSettings: true,
@@ -56,6 +48,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: false,
         canViewInternalComments: true,
         canCreateInternalComments: true,
+        canManageAllUsers: false,
+        canCreateTeam: false,
         canManageTeam: true,
         canChangeUserRoles: false,
         canAccessSettings: true,
@@ -70,6 +64,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: false,
         canViewInternalComments: false,
         canCreateInternalComments: false,
+        canManageAllUsers: false,
+        canCreateTeam: false,
         canManageTeam: false,
         canChangeUserRoles: false,
         canAccessSettings: false,
@@ -80,7 +76,6 @@ export function getUserPermissions(role: UserRole): UserPermissions {
 
 export function useUserRole() {
   const { user: auth0User, isLoading: auth0Loading } = useUser();
-  const { currentUser } = useStore();
 
   const {
     data: PrismaUser,
