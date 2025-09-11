@@ -20,7 +20,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { getRoleDescription, ROLE_DESCRIPTIONS, ROLE_ICONS } from "@/lib/utils";
+import {
+  getRoleDescription,
+  ROLE_DESCRIPTIONS,
+  ROLE_ICONS,
+  roleOptions,
+} from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -30,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useInviteTeamMember, useListTeamMembers } from "@/hooks/use-settings";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { UserRole, useUserRole } from "@/lib/hooks/use-user-role";
 import { Mail, User } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -47,7 +52,13 @@ const inviteFormSchema = z.object({
 type InviteFormData = z.infer<typeof inviteFormSchema>;
 
 export default function TeamInvite() {
-  const { role } = useUserRole();
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    role: "AGENT",
+  });
+  const { permissions } = useUserRole();
   const { isLoading } = useListTeamMembers();
 
   const inviteTeamMember = useInviteTeamMember();
@@ -81,7 +92,7 @@ export default function TeamInvite() {
     <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
       <DialogTrigger
         asChild
-        disabled={true} // {isLoading} // TODO: Email notification and logic
+        disabled={isLoading} // TODO: Email notification and logic
       >
         <Button>
           <Mail className="h-4 w-4 mr-2" />
@@ -95,83 +106,87 @@ export default function TeamInvite() {
             Send an invitation to join your market center team
           </DialogDescription>
         </DialogHeader>
-        <Form {...inviteForm}>
-          <form
-            onSubmit={inviteForm.handleSubmit(onInviteSubmit)}
-            className="space-y-4"
-          >
-            <FormField
-              control={inviteForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Enter email address"
-                      type="email"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <form
+          onSubmit={inviteForm.handleSubmit(onInviteSubmit)}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium">
+              Full Name *
+            </label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="Enter full name"
+              className={formErrors.name ? "border-destructive" : ""}
             />
-            <FormField
-              control={inviteForm.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem className="h-32">
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Object.entries(ROLE_DESCRIPTIONS)
-                        .filter(([roleOption]) => {
-                          if (role === "ADMIN") return true;
-                          if (role === "STAFF") return roleOption !== "ADMIN";
-                          return false;
-                        })
-                        .map(([roleOption, description]) => (
-                          <SelectItem key={roleOption} value={roleOption}>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(roleOption)}
-                              <div>
-                                <div className="font-medium">{roleOption}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {getRoleDescription(role)}
-                                </div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+            {formErrors.name && (
+              <p className="text-sm text-destructive">{formErrors.name}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email Address *
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder="Enter email address"
+              className={formErrors.email ? "border-destructive" : ""}
             />
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowInviteDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={inviteTeamMember.isPending}>
-                {inviteTeamMember.isPending ? "Sending..." : "Send Invitation"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+            {formErrors.email && (
+              <p className="text-sm text-destructive">{formErrors.email}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Role *</label>
+            <Select
+              value={formData.role}
+              onValueChange={(value: UserRole) =>
+                setFormData({ ...formData, role: value })
+              }
+              disabled={!permissions?.canChangeUserRoles}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    <div className="flex items-center gap-2">
+                      {getRoleIcon(role)}
+                      {role}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowInviteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              // disabled={inviteTeamMember.isPending}
+              disabled={true} 
+            >
+              {inviteTeamMember.isPending ? "Sending..." : "Send Invitation"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -93,21 +93,21 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            {permissions?.canManageTeam && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/settings?tab=team">
-                    <Folder /> Team Management
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/users">
                     <UsersIcon /> User Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {!permissions?.canManageAllUsers && permissions?.canManageTeam && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/settings?tab=team">
+                    <Folder /> Team Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

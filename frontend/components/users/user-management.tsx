@@ -3,9 +3,9 @@
 import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
-import type { PrismaUser, UserFormData, UserRole } from "@/lib/types";
+import type { PrismaUser, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,26 +24,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
-import { Search, Plus, Users, User } from "lucide-react";
-
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { Search, Users, Mail, User } from "lucide-react";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
-import { ROLE_ICONS, roleOptions } from "@/lib/utils";
+import { ROLE_ICONS } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface UserWithStats extends PrismaUser {
   ticketsAssigned?: number;
   ticketsCreated?: number;
   lastActive?: Date;
 }
+
 interface UserFormData {
   name: string;
   email: string;
-  isActive: boolean;
-  role: "AGENT" | "STAFF" | "ADMIN";
-  password?: "";
+  role: UserRole;
+  password?: string;
 }
 
-export function UserManagement() {
-  const router = useRouter();
+const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
+
+export default function UserManagement() {
+  // const router = useRouter();
 
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +59,6 @@ export function UserManagement() {
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
     email: "",
-    isActive: true, //TODO: user.isActive,
     role: "AGENT",
     password: "",
   });
@@ -66,6 +68,8 @@ export function UserManagement() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithStats | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const { permissions } = useUserRole();
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
@@ -113,25 +117,14 @@ export function UserManagement() {
 
   const handleCreateUser = () => {
     setEditingUser(null);
-    setFormData({
-      name: "",
-      isActive: true,
-      email: "",
-      role: "AGENT",
-      password: "",
-    });
+    setFormData({ name: "", email: "", role: "AGENT", password: "" });
     setFormErrors({});
     setShowUserForm(true);
   };
 
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
-    setFormData({
-      name: user.name,
-      isActive: user.isActive,
-      email: user.email,
-      role: user.role,
-    });
+    setFormData({ name: user.name, email: user.email, role: user.role });
     setFormErrors({});
     setShowUserForm(true);
   };
@@ -179,44 +172,17 @@ export function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleCreateAuth0UserFirst = async () => {
-    try {
-      const response = await fetch("api/admin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          name: formData.name,
-          password: formData.password,
-          username: formData.name.split(" ").join(""),
-        }),
-      });
-
-      if (!response || !response.ok) {
-        throw new Error(`${response.status} Error Response`);
-      }
-      const data = await response.json();
-      console.log("Auth0 Data", data);
-    } catch (error) {
-      console.error("Failed to create Auth0 user:", error);
-    }
-  };
-
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!validateForm()) return;
     setIsSubmitting(true);
 
     const isEditing = !!editingUser;
-    const url = isEditing ? `/users/${editingUser.id}` : "/users";
+    const url = isEditing
+      ? `/api/users/${editingUser.id}/update`
+      : "/api/users";
     const method = isEditing ? "PUT" : "POST";
-
-    // const auth0UserCreated = await handleCreateAuth0UserFirst();
-    // if (!isEditing && !auth0UserCreated) {
-    //   throw new Error('Failed to create Auth0 user, so not going any firther')
-    // }
 
     try {
       const accessToken = await getAuth0AccessToken();
@@ -226,8 +192,12 @@ export function UserManagement() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(
+          isEditing ? formData : { ...formData, auth0Id: "", viaAdmin: true }
+        ),
       });
+
+      console.log("handleSubmitForm()", response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
@@ -235,6 +205,11 @@ export function UserManagement() {
             `Failed to ${isEditing ? "update" : "create"} user`
         );
       }
+      toast.success(
+        isEditing
+          ? `${formData.name} has been updated`
+          : `Invitation sent to ${formData.email}`
+      );
       setShowUserForm(false);
       await fetchUsers();
     } catch (error) {
@@ -264,8 +239,8 @@ export function UserManagement() {
               </p>
             </div>
             <Button onClick={handleCreateUser} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add User
+              <Mail className="h-4 w-4" />
+              Invite New User
             </Button>
           </div>
 
@@ -324,7 +299,7 @@ export function UserManagement() {
                   user={user}
                   onEdit={() => handleEditUser(user)}
                   onDelete={() => openDeleteModal(user)} // open modal
-                  onView={() => router.push(`/dashboard/profile/${user.id}`)}
+                  // onView={() => router.push(`/dashboard/profile/${user.id}`)}
                 />
               ))}
 
@@ -338,11 +313,12 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
+      {/* CREATE/EDIT USER */}
       <Dialog open={showUserForm} onOpenChange={setShowUserForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingUser ? "Edit User" : "Add New User"}
+              {editingUser ? "Edit User" : "Invite New User"}
             </DialogTitle>
           </DialogHeader>
 
@@ -384,29 +360,6 @@ export function UserManagement() {
               )}
             </div>
 
-            {!editingUser && (
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password *
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  placeholder="Enter a secure password"
-                  className={formErrors.password ? "border-destructive" : ""}
-                />
-                {formErrors.password && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.password}
-                  </p>
-                )}
-              </div>
-            )}
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Role *</label>
               <Select
@@ -414,6 +367,7 @@ export function UserManagement() {
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
+                disabled={!permissions?.canChangeUserRoles}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -440,18 +394,25 @@ export function UserManagement() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? "Saving..."
-                  : editingUser
-                    ? "Update User"
-                    : "Create User"}
-              </Button>
+              {editingUser && (
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Update User"}
+                </Button>
+              )}
+              {!editingUser && (
+                <Button
+                  type="submit"
+                  disabled={true} //{isSubmitting}
+                >
+                  {isSubmitting ? "Saving..." : "Send Invitation"}
+                </Button>
+              )}
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* DELETE USER */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
