@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useInviteTeamMember, useTeamMembers } from "@/hooks/use-settings";
+import { useInviteTeamMember, useListTeamMembers } from "@/hooks/use-settings";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   getRoleDescription,
@@ -59,7 +59,7 @@ const inviteFormSchema = z.object({
 type InviteFormData = z.infer<typeof inviteFormSchema>;
 
 export default function TeamManagement() {
-  const { isLoading } = useTeamMembers();
+  const { isLoading } = useListTeamMembers();
   const { role, permissions } = useUserRole();
   const inviteTeamMember = useInviteTeamMember();
   const [showInviteDialog, setShowInviteDialog] = useState(false);

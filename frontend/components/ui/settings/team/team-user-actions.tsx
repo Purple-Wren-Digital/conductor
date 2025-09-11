@@ -1,6 +1,6 @@
 import { Dispatch, JSX, SetStateAction, useCallback, useState } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useRemoveTeamMember } from "@/hooks/use-settings";
+import { settingsKeys, useRemoveTeamMember } from "@/hooks/use-settings";
 import { TeamMember } from "@/lib/api/settings";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { UserRole } from "@/lib/types";
@@ -37,46 +37,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-
 import { API_BASE } from "@/lib/api/utils";
-
-type EditingMember = {
-  id: string;
-  currentRole: string;
-} | null;
+import { useQueryClient } from "@tanstack/react-query";
+import { EditMemberProp } from "./team-table";
 
 type TeamUserActionsProps = {
   member: TeamMember;
-  editingMember: EditingMember;
-  setEditingMember: Dispatch<
-    SetStateAction<{
-      id: string;
-      currentRole: string;
-    } | null>
-  >;
+  editingMember: EditMemberProp | null;
+  setEditingMember: Dispatch<SetStateAction<EditMemberProp | null>>;
   getRoleIcon: (role: string) => JSX.Element;
 };
 
-type UserFormDataStaffProps = {
+type UserFormProps = {
+  id: string;
   name: string;
   isActive: boolean;
   email: string;
-  role: "STAFF" | "AGENT" | "ADMIN";
+  role: UserRole;
 };
 
-// Menu drop down for team management
 export default function TeamUserActions({
   member,
   editingMember,
   setEditingMember,
   getRoleIcon,
 }: TeamUserActionsProps) {
-  const [formData, setFormData] = useState<UserFormDataStaffProps>({
+  const [formData, setFormData] = useState<UserFormProps>({
+    id: member.id,
     name: member?.name || "",
     isActive: member?.isActive || false,
     email: member?.email || "",
     role: member.role || "AGENT",
   });
+  const queryClient = useQueryClient();
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,10 +91,28 @@ export default function TeamUserActions({
     }
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = "Required";
+    if (role === "ADMIN" && !formData.role) errors.role = "Required";
+    if (!formData.email.trim()) {
+      errors.email = "Required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmitUserUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // TODO: FORM VALIDATION
+
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      toast.error("Invalid input(s)");
+      return;
+    }
     try {
       const accessToken = await getAuth0AccessToken();
       const response = await fetch(`${API_BASE}/users/${member.id}/update`, {
@@ -110,32 +122,55 @@ export default function TeamUserActions({
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          id: member.id,
-          name: formData.name,
-          role: formData.role,
+          id: formData.id,
+          name: formData.name.trim(),
+          role: role === "ADMIN" ? formData.role : undefined,
           isActive: formData.isActive,
-          email: formData.email,
+          email: formData.email.trim(),
         }),
       });
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error("Update failed:", response.status, errText);
-      } else {
-        console.log("Update success", await response.json());
+        throw new Error(`Update failed: ${errText}`);
       }
+      const data = await response.json();
+      const updatedUser = data?.user as TeamMember | undefined;
+
+      if (!updatedUser) {
+        throw new Error(`Update failed: Could not parse response.json()`);
+      } else {
+        queryClient.setQueryData(settingsKeys.teamMembers(), (oldData: any) => {
+          if (!oldData) return oldData;
+          const members = Array.isArray(oldData.members) ? oldData.members : [];
+          const idx = members.findIndex((m: any) => m.id === updatedUser.id);
+          let newMembers;
+          if (idx === -1) {
+            newMembers = [updatedUser, ...members];
+          } else {
+            newMembers = members.map((m: any) =>
+              m.id === updatedUser.id ? { ...m, ...updatedUser } : m
+            );
+          }
+          return {
+            ...oldData,
+            members: newMembers,
+          };
+        });
+      }
+      toast.success(`${formData.name} has been updated`);
+      setEditingMember(null); // closes dialog
     } catch (error) {
+      toast.error(`Failed to update ${member.name}`);
       console.error("Failed to update user", error);
+      queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
     } finally {
       setIsSubmitting(false);
-      setEditingMember(null); // closes dialog
     }
   };
 
   return (
     <div className="flex items-center justify-end gap-2">
-      {/* STAFF: EDIT User - email, name, isActive */}
-      {/* ADMIN: + Change Role */}
       <Dialog
         open={editingMember?.id === member.id}
         onOpenChange={(open) => !open && setEditingMember(null)}
@@ -144,12 +179,7 @@ export default function TeamUserActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              setEditingMember({
-                id: member.id,
-                currentRole: member.role,
-              })
-            }
+            onClick={() => setEditingMember({ id: member.id })}
           >
             <Edit3 className="h-4 w-4" />
           </Button>
@@ -161,7 +191,14 @@ export default function TeamUserActions({
           </DialogHeader>
           <form onSubmit={handleSubmitUserUpdate} className="space-y-4 py-4">
             <div className="flex gap-3 items-center justify-between">
-              <Label className="font-bold">User Role:</Label>
+              <div>
+                <Label className="font-bold">User Role:</Label>
+                {formErrors?.role && (
+                  <p className="text-sm text-destructive pt-1">
+                    {formErrors.role}
+                  </p>
+                )}
+              </div>
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) =>
@@ -202,9 +239,16 @@ export default function TeamUserActions({
               </div>
             </div>
             <div className="flex gap-3 items-center justify-between">
-              <Label htmlFor="name" className="font-bold">
-                Full Name:
-              </Label>
+              <div>
+                <Label htmlFor="name" className="font-bold">
+                  Full Name:
+                </Label>
+                {formErrors?.name && (
+                  <p className="text-sm text-destructive pt-1">
+                    {formErrors.name}
+                  </p>
+                )}
+              </div>
               <Input
                 id="name"
                 value={formData.name}
@@ -215,13 +259,21 @@ export default function TeamUserActions({
                   });
                 }}
                 disabled={isSubmitting}
-                className="w-7/12"
+                className={`w-7/12 ${formErrors?.name && "border-destructive"}`}
               />
             </div>
+
             <div className="flex gap-3 items-center justify-between">
-              <Label htmlFor="email" className="font-bold">
-                Email:
-              </Label>
+              <div>
+                <Label htmlFor="email" className="font-bold">
+                  Email:
+                </Label>
+                {formErrors?.email && (
+                  <p className="text-sm text-destructive pt-1">
+                    {formErrors.email}
+                  </p>
+                )}
+              </div>
               <Input
                 id="email"
                 value={formData.email}
@@ -231,7 +283,7 @@ export default function TeamUserActions({
                     email: e.target.value,
                   });
                 }}
-                className="w-7/12"
+                className={`w-7/12 ${formErrors?.email && "border-destructive"}`}
               />
             </div>
             <div className="flex justify-center pt-8">
@@ -244,7 +296,6 @@ export default function TeamUserActions({
         </DialogContent>
       </Dialog>
 
-      {/* STAFF: REMOVE User */}
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button

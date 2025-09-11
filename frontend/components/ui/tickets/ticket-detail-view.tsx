@@ -30,6 +30,8 @@ import { hasDueDateChanged } from "./utils";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
+import { getStatusColor, getUrgencyColor, parseJsonSafe } from "@/lib/utils";
+import { API_BASE } from "@/lib/api/utils";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -64,27 +66,6 @@ const statusOptions: TicketStatus[] = [
   "RESOLVED",
 ];
 const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
-
-const API_BASE = "http://localhost:4000";
-
-async function parseJsonSafe<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") || "";
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
-    );
-  }
-  if (ct.includes("application/json")) {
-    return res.json();
-  }
-  const text = await res.text().catch(() => "");
-  throw new Error(
-    `Expected JSON but got ${
-      ct || "unknown content-type"
-    }. First 200 chars:\n${text.slice(0, 200)}`
-  );
-}
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -372,34 +353,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } catch (error) {
       console.error("Failed to assign ticket", error);
       setTicket(prev);
-    }
-  };
-
-  const getStatusColor = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return "default";
-      case "IN_PROGRESS":
-        return "default";
-      case "ASSIGNED":
-        return "secondary";
-      case "AWAITING_RESPONSE":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getUrgencyColor = (urgency: Urgency) => {
-    switch (urgency) {
-      case "HIGH":
-        return "destructive";
-      case "MEDIUM":
-        return "default";
-      case "LOW":
-        return "secondary";
-      default:
-        return "secondary";
     }
   };
 

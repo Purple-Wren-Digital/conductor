@@ -21,7 +21,7 @@ import {
   useCreateTicketCategory, 
   useUpdateTicketCategory, 
   useDeleteTicketCategory,
-  useTeamMembers 
+  useListTeamMembers 
 } from "@/hooks/use-settings";
 import { toast } from "sonner";
 
@@ -34,7 +34,7 @@ type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
 export default function TicketCategories() {
   const { data: categoriesData, isLoading: categoriesLoading } = useTicketCategories();
-  const { data: teamData } = useTeamMembers();
+  const { data: teamData } = useListTeamMembers();
   const createCategory = useCreateTicketCategory();
   const updateCategory = useUpdateTicketCategory();
   const deleteCategory = useDeleteTicketCategory();

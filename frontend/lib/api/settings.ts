@@ -182,7 +182,7 @@ export const settingsApi = {
   getTeamMembers: async (): Promise<TeamMembersResponse> => {
     const token = await getAuth0AccessToken();
 
-    return fetchApi("/settings/team/members", {
+    return await fetchApi("/settings/team/members", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

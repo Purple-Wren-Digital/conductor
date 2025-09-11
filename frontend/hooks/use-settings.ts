@@ -45,7 +45,7 @@ export function useSettingsAuditLog(page = 1, limit = 10) {
   });
 }
 
-export function useTeamMembers() {
+export function useListTeamMembers() {
   return useQuery({
     queryKey: settingsKeys.teamMembers(),
     queryFn: () => settingsApi.getTeamMembers(),
@@ -75,6 +75,18 @@ export function useRemoveTeamMember() {
 }
 
 export function useUpdateTeamMemberRole() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ userId, request }: { userId: string; request: UpdateMemberRoleRequest }) => 
+      settingsApi.updateTeamMemberRole(userId, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
+    },
+  });
+}
+
+export function useUpdateTeamMemberInformation() {
   const queryClient = useQueryClient();
   
   return useMutation({

@@ -43,18 +43,10 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.notFound("User not found");
     }
 
-    // Users can update their own profile, but only their name
-    // Staff can update agents, but not their roles
-    // Admins can update anyone
-    if (!isOwnProfile) {
-      if (isStaff && existingUser.role !== "AGENT") {
-        throw APIError.permissionDenied("Staff can only update agent profiles");
-      }
-      if (!isStaff && !isAdmin) {
-        throw APIError.permissionDenied(
-          "Insufficient permissions to update other users"
-        );
-      }
+    if (!isOwnProfile && (!isStaff || !isAdmin)) {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to update other users"
+      );
     }
 
     // Only admins can change roles
@@ -66,8 +58,10 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const updateUserData: any = {};
     if (req.name !== undefined) updateUserData.name = req.name;
     if (req.role !== undefined && isAdmin) updateUserData.role = req.role;
-    if (req.isActive !== undefined) updateUserData.isActive = req.isActive;
-    if (req.email !== undefined) updateUserData.email = req.email;
+    if (req.isActive !== undefined && (isAdmin || isStaff))
+      updateUserData.isActive = req.isActive;
+    if (req.email !== undefined && (isAdmin || isStaff))
+      updateUserData.email = req.email;
 
     const updatedUser = await prisma.user.update({
       where: { id: req.id },
