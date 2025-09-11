@@ -39,12 +39,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { API_BASE } from "@/lib/api/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { EditMemberProp } from "./team-table";
 
 type TeamUserActionsProps = {
+  self: boolean;
+  cannotUpdateAdmin: boolean;
   member: TeamMember;
-  editingMember: EditMemberProp | null;
-  setEditingMember: Dispatch<SetStateAction<EditMemberProp | null>>;
+  editingMember: {
+    id: string;
+  } | null;
+  setEditingMember: Dispatch<
+    SetStateAction<{
+      id: string;
+    } | null>
+  >;
   getRoleIcon: (role: string) => JSX.Element;
 };
 
@@ -57,6 +64,8 @@ type UserFormProps = {
 };
 
 export default function TeamUserActions({
+  self,
+  cannotUpdateAdmin,
   member,
   editingMember,
   setEditingMember,
@@ -180,6 +189,7 @@ export default function TeamUserActions({
             variant="outline"
             size="sm"
             onClick={() => setEditingMember({ id: member.id })}
+            disabled={cannotUpdateAdmin}
           >
             <Edit3 className="h-4 w-4" />
           </Button>
@@ -204,7 +214,9 @@ export default function TeamUserActions({
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
-                disabled={isSubmitting || !permissions?.canChangeUserRoles}
+                disabled={
+                  isSubmitting || !permissions?.canChangeUserRoles || self
+                }
               >
                 <SelectTrigger className="w-7/12">
                   <SelectValue />
@@ -234,7 +246,7 @@ export default function TeamUserActions({
                       isActive: checked,
                     })
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || self}
                 />
               </div>
             </div>
@@ -302,6 +314,7 @@ export default function TeamUserActions({
             variant="outline"
             size="sm"
             className="text-destructive hover:text-destructive"
+            disabled={self || cannotUpdateAdmin}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

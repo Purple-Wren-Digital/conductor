@@ -22,20 +22,17 @@ import { useListTeamMembers } from "@/hooks/use-settings";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { ROLE_COLORS, ROLE_ICONS } from "@/lib/utils";
 import TeamUserActions from "@/components/ui/settings/team/team-user-actions";
-import { useRouter } from "next/navigation";
-
-export type EditMemberProp = {
-  id: string;
-};
+import { useStore } from "@/app/store-provider";
 
 export default function TeamTable() {
+  const { currentUser } = useStore();
   const { data: teamData, isLoading } = useListTeamMembers();
 
   const { permissions } = useUserRole();
 
-  const [editingMember, setEditingMember] = useState<EditMemberProp | null>(
-    null
-  );
+  const [editingMember, setEditingMember] = useState<{
+    id: string;
+  } | null>(null);
 
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
@@ -47,7 +44,9 @@ export default function TeamTable() {
       <CardHeader>
         <CardTitle>Current Team Members</CardTitle>
         <CardDescription>
-          {teamData?.total || 0} active team members
+          {/* {teamData?.total || 0}  */}
+          {teamData?.members ? teamData.members.length : "0"} active team
+          members
         </CardDescription>
       </CardHeader>
       <CardContent className="min-h-10">
@@ -63,45 +62,57 @@ export default function TeamTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teamData.members.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{member.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {member.email}
+              {teamData.members.map((member) => {
+                const self = member.id === currentUser?.id;
+                const cannotUpdateAdmin =
+                  currentUser?.role !== "ADMIN" && member.role === "ADMIN";
+                return (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">
+                          {member.name}
+                          {self && " (You)"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {member.email}
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={ROLE_COLORS[member.role]}
-                      className="flex items-center gap-1 w-fit"
-                    >
-                      {getRoleIcon(member.role)}
-                      {member.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={member.isActive ? "default" : "secondary"}>
-                      {member.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(member.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {permissions?.canManageTeam && (
-                      <TeamUserActions
-                        member={member}
-                        editingMember={editingMember}
-                        setEditingMember={setEditingMember}
-                        getRoleIcon={getRoleIcon}
-                      />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={ROLE_COLORS[member.role]}
+                        className="flex items-center gap-1 w-fit"
+                      >
+                        {getRoleIcon(member.role)}
+                        {member.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={member.isActive ? "default" : "secondary"}
+                      >
+                        {member.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(member.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {permissions?.canManageTeam && (
+                        <TeamUserActions
+                          self={self}
+                          cannotUpdateAdmin={cannotUpdateAdmin}
+                          member={member}
+                          editingMember={editingMember}
+                          setEditingMember={setEditingMember}
+                          getRoleIcon={getRoleIcon}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

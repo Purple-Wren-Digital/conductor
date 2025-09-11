@@ -8,13 +8,10 @@ import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/api/utils";
-import { PrismaUser, Ticket } from "@/lib/types";
+import { PrismaUser } from "@/lib/types";
 import { parseJsonSafe } from "@/lib/utils";
 import { RotateCcw, Save } from "lucide-react";
-import { User } from "@auth0/nextjs-auth0/types";
 import { toast } from "sonner";
-
-type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 
 const EditUserProfile = () => {
   const { currentUser, setCurrentUser } = useStore();
@@ -27,15 +24,20 @@ const EditUserProfile = () => {
   const [lastName, setLastName] = useState<string>(
     currentUser?.name ? currentUser?.name.split(" ")[1] : ""
   );
+  const [email, setEmail] = useState<string>(currentUser?.email || "");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const firstNameInputRef = useRef<HTMLInputElement | null>(null);
-  const lastNameInputRef = useRef<HTMLInputElement | null>(null);
+  const lastFetchedUpdatedAtRef = useRef<string | null>(null);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!firstName.trim()) errors.firstName = "First name is required";
     if (!lastName.trim()) errors.lastName = "Last name is required";
+    if (!email.trim()) {
+      errors.email = "Required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Invalid email format";
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -44,35 +46,6 @@ const EditUserProfile = () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
-
-  const refreshAllData = useCallback(async () => {
-    setIsUpdating(true);
-    try {
-      const accessToken = await getAuth0AccessToken();
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      };
-
-      const response = await fetch(`${API_BASE}/users/${currentUser?.id}`, {
-        headers,
-        cache: "no-store",
-      });
-
-      const userUpdatedData = await parseJsonSafe<{ user: PrismaUser }>(
-        response
-      );
-      setCurrentUser(userUpdatedData.user);
-    } catch (err) {
-      console.error("Error refreshing current user data:", err);
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [currentUser, getAuth0AccessToken]);
-
-  useEffect(() => {
-    refreshAllData();
-  }, [refreshAllData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,10 +76,17 @@ const EditUserProfile = () => {
           body: JSON.stringify({
             id: currentUser?.id,
             name: `${firstName} ${lastName}`,
+            email: email,
           }),
         }
       );
       if (response.ok) {
+        const data = await response.json();
+
+        if (!data || !data?.user) {
+          throw new Error("No current user data");
+        }
+        setCurrentUser(data.user);
         toast.success("Profile updated");
       }
     } catch (error) {
@@ -130,6 +110,7 @@ const EditUserProfile = () => {
   const handleReset = () => {
     setFirstName(currentUser?.name ? currentUser?.name.split(" ")[0] : "");
     setLastName(currentUser?.name ? currentUser?.name.split(" ")[1] : "");
+    setEmail(currentUser?.email || "");
     setFormErrors({});
     setIsFormLoading(false);
   };
@@ -138,64 +119,76 @@ const EditUserProfile = () => {
     <form
       onSubmit={handleSubmit}
       onReset={handleReset}
-      className="space-y-4 pt-6 border-t"
+      className="pt-6 border-t"
     >
       <div className="flex flex-row items-center justify-between pb-5">
         <CardTitle className="text-l font-bold">Edit Profile</CardTitle>
-        <Button
-          variant="ghost"
-          type="reset"
-          disabled={isUpdating || isFormLoading}
-        >
-          <RotateCcw />
-          <p>Reset</p>
-        </Button>
+        <div className="flex flex-row items-center gap-4">
+          <Button
+            variant="secondary"
+            type="reset"
+            disabled={isUpdating || isFormLoading}
+            aria-label="Reset Profile Form"
+          >
+            <RotateCcw />
+          </Button>
+          <Button
+            type="submit"
+            disabled={isUpdating || isFormLoading}
+            aria-label="Submit updates for profile"
+          >
+            <Save className="h-4 w-4" />
+            {isFormLoading
+              ? "Refreshing..."
+              : isFormLoading
+                ? "Saving..."
+                : "Save Profile"}
+          </Button>
+        </div>
       </div>
 
-      <div className="flex w-full gap-10 items-center ">
-        <div className="flex gap-3 flex-col w-1/3 h-25">
+      <div className="flex w-full gap-3 items-center flex-wrap">
+        <div className="flex gap-3 flex-col w-1/3">
           <Label htmlFor="username">First Name</Label>
           <Input
-            ref={firstNameInputRef}
             id="firstName"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={"Enter your first name"}
-            className={formErrors.firstName ? "border-destructive" : ""}
+            className={formErrors?.firstName && "border-destructive"}
           />
-          {formErrors.firstName && (
-            <p className="text-sm text-destructive">{formErrors.firstName}</p>
-          )}
+          <p className="text-sm text-destructive h-5">
+            {formErrors?.firstName}
+          </p>
         </div>
-        <div className="flex gap-3 flex-col w-1/3 h-25">
+        <div className="flex gap-3 flex-col w-1/3">
           <Label htmlFor="username">Last Name</Label>
           <Input
-            ref={lastNameInputRef}
             id="lastName"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={"Enter your last name"}
-            className={formErrors.lastName ? "border-destructive" : ""}
+            className={formErrors.lastName && "border-destructive"}
           />
-          {formErrors.lastName && (
-            <p className="text-sm text-destructive">{formErrors.lastName}</p>
-          )}
+          <p className="text-sm text-destructive  h-5">
+            {formErrors?.lastName}
+          </p>
+        </div>
+        <div className="flex gap-3 flex-col w-1/3">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={"Enter your email"}
+            className={formErrors?.email && "border-destructive"}
+          />
+          <p className="text-sm text-destructive  h-5">{formErrors?.email}</p>
         </div>
       </div>
-      <Button
-        type="submit"
-        variant={"secondary"}
-        disabled={isUpdating || isFormLoading}
-      >
-        <Save className="h-4 w-4" />
-        {isFormLoading
-          ? "Refreshing..."
-          : isFormLoading
-            ? "Saving..."
-            : "Save Profile"}
-      </Button>
     </form>
   );
 };

@@ -3,7 +3,7 @@
 import React from "react";
 import { useStore } from "@/app/store-provider";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import EditUserProfile from "@/components/profile/edit-profile/edit-profile-form";
+import EditUserProfile from "@/components/profile/edit-profile-form";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { IdCard, Mail, User } from "lucide-react";
 import { getRoleDescription, ROLE_ICONS } from "@/lib/utils";
