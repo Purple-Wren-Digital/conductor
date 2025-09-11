@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
-import type { PrismaUser, UserRole } from "@/lib/types";
+import type { PrismaUser, UserFormData, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,24 +24,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
-import { Search, Plus, Users, Shield, Mail } from "lucide-react";
+import { Search, Plus, Users, User } from "lucide-react";
 
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
+import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 
 interface UserWithStats extends PrismaUser {
   ticketsAssigned?: number;
   ticketsCreated?: number;
   lastActive?: Date;
 }
-
 interface UserFormData {
   name: string;
   email: string;
-  role: UserRole;
-  password?: string;
+  isActive: boolean;
+  role: "AGENT" | "STAFF" | "ADMIN";
+  password?: "";
 }
-
-const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
 
 export function UserManagement() {
   const router = useRouter();
@@ -57,6 +56,7 @@ export function UserManagement() {
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
     email: "",
+    isActive: true, //TODO: user.isActive,
     role: "AGENT",
     password: "",
   });
@@ -113,14 +113,25 @@ export function UserManagement() {
 
   const handleCreateUser = () => {
     setEditingUser(null);
-    setFormData({ name: "", email: "", role: "AGENT", password: "" });
+    setFormData({
+      name: "",
+      isActive: true,
+      email: "",
+      role: "AGENT",
+      password: "",
+    });
     setFormErrors({});
     setShowUserForm(true);
   };
 
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role });
+    setFormData({
+      name: user.name,
+      isActive: user.isActive,
+      email: user.email,
+      role: user.role,
+    });
     setFormErrors({});
     setShowUserForm(true);
   };
@@ -199,30 +210,33 @@ export function UserManagement() {
     setIsSubmitting(true);
 
     const isEditing = !!editingUser;
-    const url = isEditing ? `/api/users/${editingUser.id}` : "/api/users";
+    const url = isEditing ? `/users/${editingUser.id}` : "/users";
     const method = isEditing ? "PUT" : "POST";
 
-    const auth0UserCreated = await handleCreateAuth0UserFirst();
+    // const auth0UserCreated = await handleCreateAuth0UserFirst();
+    // if (!isEditing && !auth0UserCreated) {
+    //   throw new Error('Failed to create Auth0 user, so not going any firther')
+    // }
 
     try {
-      // const accessToken = await getAuth0AccessToken();
-      // const response = await fetch(url, {
-      //   method,
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${accessToken}`,
-      //   },
-      //   body: JSON.stringify(formData),
-      // });
-      // if (!response.ok) {
-      //   const errorData = await response.json().catch(() => ({}));
-      //   throw new Error(
-      //     errorData.message ||
-      //       `Failed to ${isEditing ? "update" : "create"} user`
-      //   );
-      // }
-      // setShowUserForm(false);
-      // await fetchUsers();
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(formData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            `Failed to ${isEditing ? "update" : "create"} user`
+        );
+      }
+      setShowUserForm(false);
+      await fetchUsers();
     } catch (error) {
       console.error(error);
     } finally {
@@ -230,17 +244,9 @@ export function UserManagement() {
     }
   };
 
-  const getRoleIcon = (role: UserRole) => {
-    switch (role) {
-      case "ADMIN":
-        return <Shield className="h-3 w-3" />;
-      case "STAFF":
-        return <Users className="h-3 w-3" />;
-      case "AGENT":
-        return <Mail className="h-3 w-3" />;
-      default:
-        return <Users className="h-3 w-3" />;
-    }
+  const getRoleIcon = (role: string) => {
+    const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
+    return <Icon className="h-4 w-4" />;
   };
 
   return (
