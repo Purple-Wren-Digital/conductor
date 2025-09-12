@@ -19,12 +19,12 @@ export const getTeamMembers = api(
     }
 
     // Get the user scope filter
-    const userScopeFilter = getUserScopeFilter(userContext);
+    // const userScopeFilter = getUserScopeFilter(userContext);
 
     // Get active team members
     const members = await prisma.user.findMany({
       where: {
-        ...userScopeFilter,
+        // ...userScopeFilter,
         deletedAt: null,
         isActive: true,
       },

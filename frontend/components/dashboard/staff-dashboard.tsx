@@ -15,44 +15,45 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
-
+import { API_BASE } from "@/lib/api/utils";
+// TODO: Market Center/Team Backend
 export function StaffDashboard() {
   const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
-    queryKey: ["team-tickets", currentUser?.marketCenterId],
+    queryKey: ["all-tickets"], // ["team-tickets", currentUser?.marketCenterId],
     queryFn: async () => {
       const accessToken =
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
-      const response = await fetch(`/api/tickets/search`, {
+      const response = await fetch(`${API_BASE}/tickets/search`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch tickets");
-      return response.json();
+      return await response.json();
     },
-    enabled: !!currentUser?.marketCenterId,
+    // enabled: !!currentUser?.marketCenterId,
   });
 
   const { data: usersData } = useQuery({
-    queryKey: ["team-members", currentUser?.marketCenterId],
+    queryKey: ["all-users"], //  ["team-members", currentUser?.marketCenterId],
     queryFn: async () => {
       const accessToken =
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
-      const response = await fetch(`/api/users`, {
+      const response = await fetch(`${API_BASE}/users`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
-      return response.json();
+      return await response.json();
     },
-    enabled: !!currentUser?.marketCenterId,
+    // enabled: !!currentUser?.marketCenterId,
   });
 
   const tickets = ticketsData?.tickets || [];

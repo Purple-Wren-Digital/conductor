@@ -2,6 +2,8 @@ import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { prisma } from "../ticket/db";
 
+// TODO: More granular STAFF permissions by market center/team
+
 export async function requireRole(
   userContext: UserContext,
   requiredRoles: string[]
@@ -19,7 +21,7 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
-  if (userContext.role === "ADMIN") {
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF") {
     return true;
   }
 
@@ -119,7 +121,6 @@ export async function canManageTeam(
   userContext: UserContext
 ): Promise<boolean> {
   // TODO: member id for STAFF ( only can manage own team)
-
   return userContext.role === "STAFF" || userContext.role === "ADMIN";
 }
 
@@ -139,20 +140,22 @@ export function getTicketScopeFilter(userContext: UserContext) {
   }
 
   if (userContext.role === "STAFF" && userContext.marketCenterId) {
-    return {
-      OR: [
-        {
-          creator: {
-            marketCenterId: userContext.marketCenterId,
-          },
-        },
-        {
-          assignee: {
-            marketCenterId: userContext.marketCenterId,
-          },
-        },
-      ],
-    };
+    return {};
+
+    // return {
+    //   OR: [
+    //     {
+    //       // creator: { TODO:
+    //       //   marketCenterId: userContext.marketCenterId,
+    //       // },
+    //     },
+    //     // {
+    //     //   assignee: {
+    //     //     marketCenterId: userContext.marketCenterId,
+    //     //   },
+    //     // },
+    //   ],
+    // };
   }
 
   return { id: "impossible-id" };

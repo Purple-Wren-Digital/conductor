@@ -44,9 +44,7 @@ export default function TeamTable() {
       <CardHeader>
         <CardTitle>Current Team Members</CardTitle>
         <CardDescription>
-          {/* {teamData?.total || 0}  */}
-          {teamData?.members ? teamData.members.length : "0"} active team
-          members
+          {teamData?.members ? teamData.members.length : "0"} Active Members
         </CardDescription>
       </CardHeader>
       <CardContent className="min-h-10">

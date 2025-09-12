@@ -31,9 +31,14 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const userContext = await getUserContext();
 
     // Permission checks
-    const isOwnProfile = await canModifyOwnProfile(userContext, req.id);
-    const isStaff = await canManageTeam(userContext);
-    const isAdmin = (await canChangeUserRoles(userContext)) && isStaff;
+    const canModifyUsers = await canManageTeam(userContext);
+    const isAdmin = await canChangeUserRoles(userContext);
+
+    if (!canModifyUsers) {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to update other users"
+      );
+    }
 
     const existingUser = await prisma.user.findUnique({
       where: { id: req.id },
@@ -43,25 +48,14 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.notFound("User not found");
     }
 
-    if (!isOwnProfile && (!isStaff || !isAdmin)) {
-      throw APIError.permissionDenied(
-        "Insufficient permissions to update other users"
-      );
-    }
-
-    // Only admins can change roles
-    if (req.role && req.role !== existingUser.role && !isAdmin) {
-      throw APIError.permissionDenied("Only admins can change user roles");
-    }
-
     // Build update data object
     const updateUserData: any = {};
-    if (req.name !== undefined) updateUserData.name = req.name;
-    if (req.role !== undefined && isAdmin) updateUserData.role = req.role;
-    if (req.isActive !== undefined && (isAdmin || isStaff))
-      updateUserData.isActive = req.isActive;
-    if (req.email !== undefined && (isAdmin || isStaff))
-      updateUserData.email = req.email;
+    if (req.name !== existingUser.name) updateUserData.name = req.name;
+    if (req.role !== existingUser.role && isAdmin)
+      updateUserData.role = req.role;
+    // if (req.isActive !== undefined && (isAdmin))
+    //   updateUserData.isActive = req.isActive;
+    if (req.email !== existingUser.email) updateUserData.email = req.email; // TODO: update email in Auth0 for existing user as well
 
     const updatedUser = await prisma.user.update({
       where: { id: req.id },

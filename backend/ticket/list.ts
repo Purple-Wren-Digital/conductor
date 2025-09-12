@@ -35,24 +35,24 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const offset = req.offset || 0;
 
     let scopeFilter = getTicketScopeFilter(userContext);
-    
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
-      scopeFilter = {
-        OR: [
-          {
-            creator: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-          {
-            assignee: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-        ],
-      };
-    }
-    
+
+    // if (userContext.role === "ADMIN" && req.marketCenterId) {
+    //   scopeFilter = {
+    //     OR: [
+    //       {
+    //         creator: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //       {
+    //         assignee: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //     ],
+    //   };
+    // }
+
     const where: any = { ...scopeFilter };
 
     if (req.status && req.status.length > 0) {
@@ -82,12 +82,12 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
           { description: { contains: req.search, mode: "insensitive" } },
         ],
       };
-      
-      if (scopeFilter.OR) {
-        where.AND = [scopeFilter, searchCondition];
-      } else {
-        where.OR = searchCondition.OR;
-      }
+
+      // if (scopeFilter.OR) {
+      //   where.AND = [scopeFilter, searchCondition];
+      // } else {
+      where.OR = searchCondition.OR;
+      // }
     }
 
     const [tickets, total] = await Promise.all([

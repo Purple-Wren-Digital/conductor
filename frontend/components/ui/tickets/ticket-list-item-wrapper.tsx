@@ -29,8 +29,9 @@ export function TicketListItemWrapper({
   const canEdit = React.useMemo(() => {
     if (!permissions) return false;
     if (permissions.canReassignTicket) return true;
-    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id)
+    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id) {
       return true;
+    }
     return false;
   }, [permissions, currentUser, ticket.assigneeId]);
 
