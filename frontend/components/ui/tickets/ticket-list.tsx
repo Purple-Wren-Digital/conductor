@@ -54,6 +54,7 @@ import {
 
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
+import { useStore } from "@/app/store-provider";
 
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
@@ -81,6 +82,7 @@ export function TicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
+  const { currentUser } = useStore();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -96,7 +98,9 @@ export function TicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>(
+    role === "AGENT" ? `${currentUser?.id}` : "all"
+  );
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
     string | null

@@ -12,6 +12,7 @@ import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import { API_BASE } from "@/lib/api/utils";
+import { parseJsonSafe } from "@/lib/utils";
 
 interface CommentFormProps {
   ticketId: string;
@@ -59,25 +60,6 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     }
   }, [content, isInternal, draftKey]);
 
-  async function parseJsonSafe<T>(res: Response): Promise<T> {
-    const ct = res.headers.get("content-type") || "";
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
-      );
-    }
-    if (ct.includes("application/json")) {
-      return res.json();
-    }
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Expected JSON but got ${
-        ct || "unknown content-type"
-      }. First 200 chars:\n${text.slice(0, 200)}`
-    );
-  }
-
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
@@ -116,10 +98,12 @@ export function CommentForm({ ticketId }: CommentFormProps) {
       assignee: ticket?.assignee,
     };
     try {
+      const accessToken = await getAuth0AccessToken();
       const response = await fetch("/api/send/newComment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify(ticketNewCommentEmailBody),
@@ -136,11 +120,11 @@ export function CommentForm({ ticketId }: CommentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || currentUser?.id) return;
+    // if (!currentUser?.id) return;
     if (content.trim()) {
       createMutation.mutate(
         {
-          userId: currentUser?.id,
+          userId: currentUser?.id as string,
           ticketId,
           content: content.trim(),
           internal: isInternal,
