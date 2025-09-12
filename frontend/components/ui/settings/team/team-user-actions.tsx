@@ -5,7 +5,7 @@ import { TeamMember } from "@/lib/api/settings";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { UserRole } from "@/lib/types";
 import { roleOptions } from "@/lib/utils";
-import { Trash2, Save, Edit3 } from "lucide-react";
+import { Save, Edit3, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,12 +91,42 @@ export default function TeamUserActions({
     return await getAccessToken();
   }, []);
 
+  // TODO: Remove Team Member, not delete user
   const handleRemoveMember = async (memberId: string, memberName: string) => {
+    setIsSubmitting(true);
+
     try {
-      await removeTeamMember.mutateAsync(memberId);
+      // await removeTeamMember.mutateAsync(memberId);
+      // const accessToken = await getAuth0AccessToken();
+      // const response = await fetch(`${API_BASE}/users/${memberId}`, {
+      //   method: "DELETE",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     Authorization: `Bearer ${accessToken}`,
+      //   },
+      //   body: JSON.stringify({ id: memberId }),
+      // });
+      // const data = await response.json();
+      // if (!response.ok)
+      //   throw new Error(data.message || "Failed to deactivate user");
+      // // toast.success(`Deactivated user: ${memberId}`);
+      // queryClient.setQueryData(settingsKeys.teamMembers(), (oldData: any) => {
+      //   if (!oldData) return oldData;
+
+      //   const members = Array.isArray(oldData.members) ? oldData.members : [];
+      //   const newMembers = members.filter((m: any) => m.id !== memberId);
+
+      //   return {
+      //     ...oldData,
+      //     members: newMembers,
+      //   };
+      // });
       toast.success(`${memberName} has been removed from the team`);
     } catch (error) {
+      console.error("Team Management - Failed to remove team member", error);
       toast.error("Failed to remove team member");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -192,6 +222,7 @@ export default function TeamUserActions({
             disabled={cannotUpdateAdmin}
           >
             <Edit3 className="h-4 w-4" />
+            Edit
           </Button>
         </DialogTrigger>
         <DialogContent>
@@ -308,6 +339,7 @@ export default function TeamUserActions({
         </DialogContent>
       </Dialog>
 
+      {/* TODO: REMOVE FROM TEAM, NOT DELETE USER */}
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
@@ -316,7 +348,8 @@ export default function TeamUserActions({
             className="text-destructive hover:text-destructive"
             disabled={self || cannotUpdateAdmin}
           >
-            <Trash2 className="h-4 w-4" />
+            <MinusCircle className="h-4 w-4" />
+            Remove
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
@@ -332,6 +365,7 @@ export default function TeamUserActions({
             <AlertDialogAction
               onClick={() => handleRemoveMember(member.id, member.name)}
               className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={true}
             >
               Remove Member
             </AlertDialogAction>

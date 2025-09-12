@@ -182,3 +182,9 @@ export async function canModifyUsers(
 ): Promise<boolean> {
   return userContext.role === "ADMIN";
 }
+
+export async function canDeactivateUsers(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}

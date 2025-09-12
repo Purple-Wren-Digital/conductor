@@ -201,8 +201,14 @@ export const settingsApi = {
   },
 
   removeTeamMember: async (userId: string): Promise<{ success: boolean }> => {
-    return fetchApi(`/settings/team/remove/${userId}`, {
+    const token = await getAuth0AccessToken();
+    return fetchApi(`/users/${userId}`, {
       method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: userId }),
     });
   },
 
