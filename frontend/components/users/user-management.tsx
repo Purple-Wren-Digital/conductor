@@ -143,15 +143,22 @@ export default function UserManagement() {
       const response = await fetch(`/api/users/${userToDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ id: userToDelete.id }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok)
-        throw new Error(data.message || "Failed to deactivate user");
+      if (!response.ok) {
+        throw new Error("Failed to deactivate user");
+      }
+      const data = await response.json();
+      if (!data) {
+        throw new Error("Failed to deactivate user");
+      }
+      toast.success(`${userToDelete?.name} was deactivated`);
       setConfirmOpen(false);
       setUserToDelete(null);
       await fetchUsers();
     } catch (error) {
-      console.error(error);
+      console.error("Server error", error);
+      toast.error("Error: Unable to deactivate user");
     } finally {
       setDeleting(false);
     }

@@ -27,17 +27,17 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.id },
-      select: { id: true, deletedAt: true },
+      where: { id: req.id, isActive: true },
+      select: { id: true, isActive: true, deletedAt: true },
     });
     if (!user) throw APIError.notFound("User not found");
 
-    if (user.deletedAt) {
+    if (user?.deletedAt) {
       return { success: true, message: "User already deactivated" };
     }
 
     await prisma.user.update({
-      where: { id: req.id, isActive: false },
+      where: { id: req.id },
       data: { isActive: false, deletedAt: new Date() },
     });
 
