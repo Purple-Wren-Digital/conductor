@@ -136,8 +136,11 @@ export function useCreateComment() {
           name: "You",
           email: "",
           role: "AGENT",
-          createdAt: new Date().toISOString(),
+          createdAt: new Date(),
           isActive: true,
+          updatedAt: new Date(),
+          auth0Id: "",
+          marketCenterId: null,
         },
       };
 

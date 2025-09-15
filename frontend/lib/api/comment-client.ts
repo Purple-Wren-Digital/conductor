@@ -29,6 +29,7 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 }
 
 interface CreateCommentRequest {
+  userId: string;
   ticketId: string;
   content: string;
   internal: boolean;

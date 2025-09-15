@@ -92,43 +92,43 @@ export default function TeamUserActions({
   }, []);
 
   // TODO: Remove Team Member, not delete user
-  const handleRemoveMember = async (memberId: string, memberName: string) => {
-    setIsSubmitting(true);
+  // const handleRemoveMember = async (memberId: string, memberName: string) => {
+  //   setIsSubmitting(true);
 
-    try {
-      // await removeTeamMember.mutateAsync(memberId);
-      // const accessToken = await getAuth0AccessToken();
-      // const response = await fetch(`${API_BASE}/users/${memberId}`, {
-      //   method: "DELETE",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${accessToken}`,
-      //   },
-      //   body: JSON.stringify({ id: memberId }),
-      // });
-      // const data = await response.json();
-      // if (!response.ok)
-      //   throw new Error(data.message || "Failed to deactivate user");
-      // // toast.success(`Deactivated user: ${memberId}`);
-      // queryClient.setQueryData(settingsKeys.teamMembers(), (oldData: any) => {
-      //   if (!oldData) return oldData;
+  //   try {
+  //     // await removeTeamMember.mutateAsync(memberId);
+  //     // const accessToken = await getAuth0AccessToken();
+  //     // const response = await fetch(`${API_BASE}/users/${memberId}`, {
+  //     //   method: "DELETE",
+  //     //   headers: {
+  //     //     "Content-Type": "application/json",
+  //     //     Authorization: `Bearer ${accessToken}`,
+  //     //   },
+  //     //   body: JSON.stringify({ id: memberId }),
+  //     // });
+  //     // const data = await response.json();
+  //     // if (!response.ok)
+  //     //   throw new Error(data.message || "Failed to deactivate user");
+  //     // // toast.success(`Deactivated user: ${memberId}`);
+  //     // queryClient.setQueryData(settingsKeys.teamMembers(), (oldData: any) => {
+  //     //   if (!oldData) return oldData;
 
-      //   const members = Array.isArray(oldData.members) ? oldData.members : [];
-      //   const newMembers = members.filter((m: any) => m.id !== memberId);
+  //     //   const members = Array.isArray(oldData.members) ? oldData.members : [];
+  //     //   const newMembers = members.filter((m: any) => m.id !== memberId);
 
-      //   return {
-      //     ...oldData,
-      //     members: newMembers,
-      //   };
-      // });
-      toast.success(`${memberName} has been removed from the team`);
-    } catch (error) {
-      console.error("Team Management - Failed to remove team member", error);
-      toast.error("Failed to remove team member");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  //     //   return {
+  //     //     ...oldData,
+  //     //     members: newMembers,
+  //     //   };
+  //     // });
+  //     toast.success(`${memberName} has been removed from the team`);
+  //   } catch (error) {
+  //     console.error("Team Management - Failed to remove team member", error);
+  //     toast.error("Failed to remove team member");
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -277,7 +277,9 @@ export default function TeamUserActions({
                       isActive: checked,
                     })
                   }
-                  disabled={isSubmitting || self}
+                  disabled={
+                    isSubmitting || self || !permissions?.canChangeUserRoles
+                  }
                 />
               </div>
             </div>
@@ -363,7 +365,7 @@ export default function TeamUserActions({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => handleRemoveMember(member.id, member.name)}
+              onClick={() => console.log("Clicked handleRemoveMember()")} // handleRemoveMember(member.id, member.name)}
               className="bg-destructive text-white hover:bg-destructive/90"
               disabled={true}
             >

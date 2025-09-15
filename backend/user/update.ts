@@ -12,7 +12,7 @@ export interface UpdateUserRequest {
   id: string;
   name?: string;
   role?: UserRole;
-  isActive?: boolean;
+  // isActive?: boolean;
   email?: string;
 }
 

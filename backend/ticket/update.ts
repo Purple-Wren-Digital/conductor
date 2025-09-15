@@ -28,13 +28,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    // TODO: double check user context for prisma user role
-    
     const canModify = await canModifyTicket(userContext, req.ticketId);
     if (!canModify) {
-      throw APIError.permissionDenied("You do not have permission to modify this ticket");
+      throw APIError.permissionDenied(
+        "You do not have permission to modify this ticket"
+      );
     }
-    
+
     const updateData: any = {};
 
     if (req.title !== undefined) updateData.title = req.title;

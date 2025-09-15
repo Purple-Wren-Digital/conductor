@@ -255,7 +255,7 @@ export function StaffDashboard() {
             </div>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard/users">Manage Team</Link>
+                <Link href="/dashboard/settings?tab=team">Manage Team</Link>
               </Button>
             </div>
           </CardContent>
