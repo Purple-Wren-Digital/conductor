@@ -8,7 +8,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { User as UserType } from "@/lib/types";
+import type { PrismaUser as UserType } from "@/lib/types";
 
 export type ReassignedTicketNotificationProps = {
   ticketNumber: string;
