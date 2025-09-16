@@ -2,14 +2,15 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
-import type { UserRole } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useUserRole } from "@/lib/hooks/use-user-role";
-import { Users, UserPlus } from "lucide-react";
-import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
-import UserCreate from "./user-creation";
 import { useStore } from "@/app/store-provider";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import type { UserRole } from "@/lib/types";
+import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
+import { Users, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import UserCreate from "./user-creation";
 
 type Auth0User = {
   user_id: string;
@@ -19,25 +20,39 @@ type Auth0User = {
   username: string;
   user_metadata: {
     created: Date | null;
-    createdBy: string; // auth0Id of the Admin who created this user
+    createdBy: string;
     invited: boolean;
     invitedOn: Date | null;
     role: UserRole;
   };
 };
 
+type InviteUserResendType = {
+  newUserName: string;
+  newUserEmail: string;
+  newUserRole: UserRole;
+  inviterName: string;
+  inviterEmail: string;
+  inviteLink: string;
+};
+
 export default function UserInvitationManagement() {
   const [users, setUsers] = useState<any[]>([]);
-  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  // const [searchQuery, setSearchQuery] = useState("");
+  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  // const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
+
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
 
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
-  const handleCreateUser = () => {
-    setShowCreateUserForm(true);
-  };
+  // useEffect(() => {
+  //   const handler = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
+  //   return () => clearTimeout(handler);
+  // }, [searchQuery]);
 
   const fetchManagementToken = useCallback(async () => {
     try {
@@ -59,145 +74,6 @@ export default function UserInvitationManagement() {
     }
   }, []);
 
-  const generatePasswordResetLink = async (auth0Id: string, token: string) => {
-    try {
-      const response = await fetch("/api/admin/auth0PasswordReset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ auth0Id: auth0Id }),
-      });
-      console.log("Password reset response:", response);
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to generate password reset link"
-        );
-      }
-      const data = await response.json();
-      console.log("Password reset data:", data);
-      const inviteLink = data.ticket;
-      if (!inviteLink) {
-        throw new Error("No password reset link returned from Auth0");
-      }
-      return inviteLink;
-    } catch (error) {
-      console.error("Error generating password reset link:", error);
-      return null;
-    }
-  };
-
-  const sendSingUpInviteEmail = async ({
-    newUserName,
-    newUserEmail,
-    newUserRole,
-    inviterName,
-    inviterEmail,
-    inviteLink,
-  }: {
-    newUserName: string;
-    newUserEmail: string;
-    newUserRole: UserRole;
-    inviterName: string;
-    inviterEmail: string;
-    inviteLink: string;
-  }) => {
-    try {
-      // Send invitation email with link via Resend
-      const response = await fetch("/api/send/inviteUser", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          newUserName: newUserName,
-          newUserEmail: newUserEmail,
-          newUserRole: newUserRole,
-          inviterName: inviterName,
-          inviterEmail: inviterEmail,
-          inviteLink: inviteLink,
-        } as {
-          newUserName: string;
-          newUserEmail: string;
-          newUserRole: UserRole;
-          inviterName: string;
-          inviterEmail: string;
-          inviteLink: string;
-        }),
-      });
-      console.log("Invite email response:", response);
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to send invitation email"
-        );
-      }
-      return true;
-    } catch (error) {
-      console.error("Resend unable to send invite email:", error);
-      return false;
-    }
-  };
-
-  const handleInviteUser = async (user: Auth0User) => {
-    setIsSendingInvitation(true);
-    console.log("Sending invitation to user:", user);
-    try {
-      // Get password reset link from Auth0
-      const token = await fetchManagementToken();
-      if (!token) {
-        throw new Error("No management token available");
-      }
-      const inviteLink = await generatePasswordResetLink(user.user_id, token);
-      if (!inviteLink) {
-        throw new Error("No password reset link returned from Auth0");
-      }
-      const emailResult = await sendSingUpInviteEmail({
-        newUserName: user.name,
-        newUserEmail: user.email,
-        newUserRole: user?.user_metadata?.role || "AGENT",
-        inviterName: currentUser?.name || "Admin",
-        inviterEmail: currentUser?.email || "onboarding@resend.dev", // TODO: tech support email ?
-        inviteLink: inviteLink,
-      });
-
-      if (!emailResult) {
-        throw new Error("No password reset link sent with Resend");
-      }
-
-      // Update user metadata to mark as invited
-      // const updateResponse = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/users/${user.auth0Id}`, {
-      //   method: "PATCH", // Permission update:users
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Accept: "application/json",
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      //   body: JSON.stringify({
-      //     user_metadata: {
-      //       invited: true,
-      //       invitedOn: new Date(),
-      //     },
-      //   }),
-      // });
-      // if (!updateResponse.ok) {
-      //   throw new Error(
-      //     updateResponse?.statusText
-      //       ? updateResponse.statusText
-      //       : "Failed to update user metadata"
-      //   );
-      // }
-    } catch (error) {
-      console.error("Error sending invitation:", error);
-    } finally {
-      setIsSendingInvitation(false);
-    }
-  };
-
   const fetchCreatedUsers = async () => {
     if (!permissions?.canManageAllUsers) return;
     setLoading(true);
@@ -209,7 +85,7 @@ export default function UserInvitationManagement() {
       }
 
       const response = await fetch(`/api/admin/auth0Users`, {
-        method: "GET", // Permission read:users
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -235,9 +111,141 @@ export default function UserInvitationManagement() {
   };
 
   useEffect(() => {
-    if (!permissions?.canManageAllUsers) return;
     fetchCreatedUsers();
-  }, []); // permissions, fetchCreatedUsers
+  }, []);
+
+  const generatePasswordResetLink = async (auth0Id: string, token: string) => {
+    try {
+      const response = await fetch("/api/admin/auth0PasswordReset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ auth0Id: auth0Id }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to generate password reset link"
+        );
+      }
+      const data = await response.json();
+      if (!data || !data?.ticket) {
+        throw new Error("No password reset link returned from Auth0");
+      }
+
+      return data.ticket;
+    } catch (error) {
+      console.error("Error generating password reset link:", error);
+      return null;
+    }
+  };
+
+  const sendSingUpInviteEmail = async ({
+    newUserName,
+    newUserEmail,
+    newUserRole,
+    inviterName,
+    inviterEmail,
+    inviteLink,
+  }: InviteUserResendType) => {
+    try {
+      const response = await fetch("/api/send/inviteUser", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          newUserName: newUserName,
+          newUserEmail: newUserEmail,
+          newUserRole: newUserRole,
+          inviterName: inviterName,
+          inviterEmail: inviterEmail,
+          inviteLink: inviteLink,
+        } as InviteUserResendType),
+      });
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to send invitation email"
+        );
+      }
+      return true;
+    } catch (error) {
+      console.error("Resend unable to send invite email:", error);
+      return false;
+    }
+  };
+
+  const updateAuth0UserMetadata = async (auth0Id: string, token: string) => {
+    try {
+      const response = await fetch(`/api/admin/auth0Users`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_id: auth0Id }),
+      });
+      console.log("Update user metadata response:", response);
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to update user metadata"
+        );
+      }
+      return true;
+    } catch (error) {
+      console.error("Failed to update user metadata:", error);
+      return false;
+    }
+  };
+
+  const handleInviteUser = async (user: Auth0User) => {
+    setIsSendingInvitation(true);
+    try {
+      const token = await fetchManagementToken();
+      if (!token) {
+        throw new Error("No management token available");
+      }
+      //  Generate password reset link from Auth0
+      const inviteLink = await generatePasswordResetLink(user.user_id, token);
+      if (!inviteLink) {
+        throw new Error("No password reset link returned from Auth0");
+      }
+      // Send email with Resend
+      const emailResult = await sendSingUpInviteEmail({
+        newUserName: user.name,
+        newUserEmail: user.email,
+        newUserRole: user?.user_metadata?.role || "AGENT",
+        inviterName: currentUser?.name || "Admin",
+        inviterEmail: currentUser?.email || "onboarding@resend.dev", // TODO: tech support email ?
+        inviteLink: inviteLink,
+      });
+
+      if (!emailResult) {
+        throw new Error("Resend failed to send invitation email");
+      }
+
+      // Update user metadata to mark as invited
+      const metadataResult = await updateAuth0UserMetadata(user.user_id, token);
+      if (!metadataResult) {
+        throw new Error("Failed to update user metadata after invitation");
+      }
+      // Refresh user list to show updated status
+      await fetchCreatedUsers();
+      toast.success(`Invitation sent to ${user.email}`);
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+    } finally {
+      setIsSendingInvitation(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -254,7 +262,7 @@ export default function UserInvitationManagement() {
               </p>
             </div>
             <Button
-              onClick={handleCreateUser}
+              onClick={() => setShowCreateUserForm(true)}
               className="gap-2"
               disabled={!permissions?.canCreateUsers || isSendingInvitation}
             >

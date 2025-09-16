@@ -78,6 +78,7 @@ export default function UserManagement() {
   }, []);
 
   const fetchUsers = useCallback(async () => {
+    if (!permissions?.canManageAllUsers) return;
     setLoading(true);
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
@@ -108,14 +109,8 @@ export default function UserManagement() {
   }, [debouncedSearchQuery, selectedRole, getAuth0AccessToken]);
 
   useEffect(() => {
-    if (!permissions?.canManageAllUsers) return;
     fetchUsers();
   }, [fetchUsers]);
-
-  const handleCreateUser = () => {
-    setEditingUser(null);
-    setShowCreateUserForm(true);
-  };
 
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
@@ -239,7 +234,10 @@ export default function UserManagement() {
               </p>
             </div>
             <Button
-              onClick={handleCreateUser}
+              onClick={() => {
+                setEditingUser(null);
+                setShowCreateUserForm(true);
+              }}
               className="gap-2"
               disabled={!permissions?.canCreateUsers}
             >
