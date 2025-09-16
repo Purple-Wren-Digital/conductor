@@ -3,25 +3,21 @@
 import * as React from "react";
 import { ListItem, getRoleBadgeStyle } from "./base-list-item";
 import type { PrismaUser } from "@/lib/types";
-import {
-  //Eye,
-  Mail,
-  Calendar as CalendarIcon,
-} from "lucide-react";
+import { Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { getRoleColor } from "@/lib/utils";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function UserListItem({
   user,
   onEdit,
   onDelete,
-  // onView,
 }: {
   user: PrismaUser & { ticketsAssigned?: number; ticketsCreated?: number };
   onEdit: () => void;
   onDelete: () => void;
-  // onView: () => void;
 }) {
+  const { permissions } = useUserRole();
   return (
     <ListItem
       id={user.id}
@@ -52,6 +48,7 @@ export function UserListItem({
       actions={[
         {
           label: "Edit",
+          disabled: !permissions?.canManageAllUsers,
           icon: (
             <svg
               className="h-4 w-4"
@@ -71,6 +68,7 @@ export function UserListItem({
         },
         {
           label: "Deactivate",
+          disabled: !permissions?.canDeactivateUsers,
           icon: (
             <svg
               className="h-4 w-4"
@@ -89,7 +87,6 @@ export function UserListItem({
           onClick: onDelete,
           variant: "ghost",
         },
-        // { label: "View", icon: <Eye />, onClick: onView, variant: "outline" },
       ]}
     />
   );

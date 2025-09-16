@@ -76,13 +76,13 @@ export function AdminDashboard() {
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
-      const response = await fetch(`/api/market-centers`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) return { marketCenters: [] };
-      return response.json();
+      // const response = await fetch(`/api/market-centers`, {
+      //   headers: {
+      //     Authorization: `Bearer ${accessToken}`,
+      //   },
+      // });
+      // if (!response.ok) return { marketCenters: [] };
+      // return response.json();
     },
   });
 

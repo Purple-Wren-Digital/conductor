@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect, useCallback } from "react";
 import type { PrismaUser, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
@@ -24,10 +23,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import { Search, Users, Mail, User } from "lucide-react";
+import { Search, Users, Mail, User, UserPlus } from "lucide-react";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
 import { ROLE_ICONS } from "@/lib/utils";
 import { toast } from "sonner";
+import UserCreate from "./user-creation";
 
 interface UserWithStats extends PrismaUser {
   ticketsAssigned?: number;
@@ -35,11 +35,10 @@ interface UserWithStats extends PrismaUser {
   lastActive?: Date;
 }
 
-interface UserFormData {
+interface UserEditFormData {
   name: string;
   email: string;
   role: UserRole;
-  password?: string;
 }
 
 const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
@@ -51,13 +50,13 @@ export default function UserManagement() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
 
-  const [showUserForm, setShowUserForm] = useState(false);
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
+  const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithStats | null>(null);
-  const [formData, setFormData] = useState<UserFormData>({
+  const [editUserFormData, setEditUserFormData] = useState<UserEditFormData>({
     name: "",
     email: "",
     role: "AGENT",
-    password: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,21 +108,80 @@ export default function UserManagement() {
   }, [debouncedSearchQuery, selectedRole, getAuth0AccessToken]);
 
   useEffect(() => {
+    if (!permissions?.canManageAllUsers) return;
     fetchUsers();
   }, [fetchUsers]);
 
   const handleCreateUser = () => {
     setEditingUser(null);
-    setFormData({ name: "", email: "", role: "AGENT", password: "" });
-    setFormErrors({});
-    setShowUserForm(true);
+    setShowCreateUserForm(true);
   };
 
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role });
+    setEditUserFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
     setFormErrors({});
-    setShowUserForm(true);
+    setShowEditUserForm(true);
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!editUserFormData.name.trim()) errors.name = "Name is required";
+    if (!editUserFormData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editUserFormData.email)) {
+      errors.email = "Invalid email format";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmitEditUserForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm() || !permissions?.canManageAllUsers) return;
+    setIsSubmitting(true);
+    if (!editingUser || !editingUser?.id)
+      throw new Error("Missing editing user ID");
+
+    const url = `/api/users/${editingUser.id}/update`;
+    const method = "PUT";
+
+    try {
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(editUserFormData),
+      });
+
+      console.log("handleSubmitForm()", response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update user`);
+      }
+      toast.success(`${editUserFormData.name} has been updated`);
+      setShowEditUserForm(false);
+      await fetchUsers();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setFormErrors({});
+      setEditUserFormData({
+        name: "",
+        email: "",
+        role: "AGENT",
+      });
+      setEditingUser(null);
+      setIsSubmitting(false);
+    }
   };
 
   // Open confirm modal instead of window.confirm
@@ -133,7 +191,7 @@ export default function UserManagement() {
   };
 
   const confirmDelete = async () => {
-    if (!userToDelete) return;
+    if (!permissions?.canDeactivateUsers || !userToDelete) return;
     try {
       setDeleting(true);
       const accessToken = await getAuth0AccessToken();
@@ -161,68 +219,6 @@ export default function UserManagement() {
     }
   };
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Invalid email format";
-    }
-    if (!editingUser && (!formData.password || formData.password.length < 8)) {
-      errors.password = "Password must be at least 8 characters";
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-
-    const isEditing = !!editingUser;
-    const url = isEditing
-      ? `/api/users/${editingUser.id}/update`
-      : "/api/users";
-    const method = isEditing ? "PUT" : "POST";
-
-    try {
-      const accessToken = await getAuth0AccessToken();
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(
-          isEditing ? formData : { ...formData, auth0Id: "", viaAdmin: true }
-        ),
-      });
-
-      console.log("handleSubmitForm()", response);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message ||
-            `Failed to ${isEditing ? "update" : "create"} user`
-        );
-      }
-      toast.success(
-        isEditing
-          ? `${formData.name} has been updated`
-          : `Invitation sent to ${formData.email}`
-      );
-      setShowUserForm(false);
-      await fetchUsers();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
     return <Icon className="h-4 w-4" />;
@@ -239,12 +235,16 @@ export default function UserManagement() {
                 User Management ({users.length})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage users, roles, and permissions
+                Manage active users, roles, and permissions
               </p>
             </div>
-            <Button onClick={handleCreateUser} className="gap-2">
-              <Mail className="h-4 w-4" />
-              Invite New User
+            <Button
+              onClick={handleCreateUser}
+              className="gap-2"
+              disabled={!permissions?.canCreateUsers}
+            >
+              <UserPlus className="h-4 w-4" />
+              Create New User
             </Button>
           </div>
 
@@ -303,7 +303,6 @@ export default function UserManagement() {
                   user={user}
                   onEdit={() => handleEditUser(user)}
                   onDelete={() => openDeleteModal(user)} // open modal
-                  // onView={() => router.push(`/dashboard/profile/${user.id}`)}
                 />
               ))}
 
@@ -317,25 +316,32 @@ export default function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* CREATE/EDIT USER */}
-      <Dialog open={showUserForm} onOpenChange={setShowUserForm}>
+      {/* CREATE USER */}
+      <UserCreate
+        showCreateUserForm={showCreateUserForm}
+        setShowCreateUserForm={setShowCreateUserForm}
+      />
+
+      {/* EDIT USER */}
+      <Dialog open={showEditUserForm} onOpenChange={setShowEditUserForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingUser ? "Edit User" : "Invite New User"}
-            </DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitForm} className="space-y-4">
+          <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Full Name *
               </label>
               <Input
                 id="name"
-                value={formData.name}
+                value={editUserFormData.name}
                 onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
+                  setEditUserFormData({
+                    ...editUserFormData,
+                    name: e.target.value,
+                  })
                 }
                 placeholder="Enter full name"
                 className={formErrors.name ? "border-destructive" : ""}
@@ -352,9 +358,12 @@ export default function UserManagement() {
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={editUserFormData.email}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setEditUserFormData({
+                    ...editUserFormData,
+                    email: e.target.value,
+                  })
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
@@ -367,9 +376,9 @@ export default function UserManagement() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Role *</label>
               <Select
-                value={formData.role}
+                value={editUserFormData.role}
                 onValueChange={(value: UserRole) =>
-                  setFormData({ ...formData, role: value })
+                  setEditUserFormData({ ...editUserFormData, role: value })
                 }
                 disabled={!permissions?.canChangeUserRoles}
               >
@@ -393,7 +402,7 @@ export default function UserManagement() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowUserForm(false)}
+                onClick={() => setShowEditUserForm(false)}
                 disabled={isSubmitting}
               >
                 Cancel
@@ -401,14 +410,6 @@ export default function UserManagement() {
               {editingUser && (
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Saving..." : "Update User"}
-                </Button>
-              )}
-              {!editingUser && (
-                <Button
-                  type="submit"
-                  disabled={true} //{isSubmitting}
-                >
-                  {isSubmitting ? "Saving..." : "Send Invitation"}
                 </Button>
               )}
             </div>
@@ -449,7 +450,7 @@ export default function UserManagement() {
               type="button"
               variant="destructive"
               onClick={confirmDelete}
-              disabled={deleting}
+              disabled={deleting || !permissions?.canDeactivateUsers}
             >
               {deleting ? "Deactivating..." : "Deactivate"}
             </Button>

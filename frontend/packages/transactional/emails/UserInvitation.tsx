@@ -12,41 +12,39 @@ import {
 
 type NewUserInvitationProps = {
   newUserName: string;
-  newUserId: string;
   newUserEmail: string;
   newUserRole: UserRole;
   inviterName: string;
-  inviterId: string;
   inviterEmail: string;
+  inviteLink: string;
 };
 
 const NewUserInvitation = ({
   newUserName,
-  newUserId,
   newUserEmail,
   newUserRole,
   inviterName,
-  inviterId,
   inviterEmail,
+  inviteLink,
 }: NewUserInvitationProps) => {
   return (
     <Html>
       <Head />
-      <Preview>Invitation to join Conductor Ticketing</Preview>
+      <Preview>Join Conductor Ticketing</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Invitation to Conductor Ticketing</Text>
+            <Text style={headerText}>Join Conductor Ticketing</Text>
           </Section>
 
           <div style={divider} />
 
           <Section>
             <div style={{ marginBottom: "40px" }}>
-              <Text style={subheaderText}>Victoria,</Text>
+              <Text style={subheaderText}>{newUserName},</Text>
               <Text style={subheaderText}>
-                Jane Doe sent you an invite to join their team on Conductor!
+                {inviterName} sent you an invite to join Conductor Ticketing!
               </Text>
             </div>
 
@@ -54,23 +52,22 @@ const NewUserInvitation = ({
               <b>Invitation Details</b>
             </Text>
 
-            <Text style={labelText}>Name: Victoria McNorrill</Text>
-            <Text style={labelText}>Email: email@testing.com</Text>
-            <Text style={labelText}>Role: Agent</Text>
+            <Text style={labelText}>Name: {newUserName}</Text>
+            <Text style={labelText}>Email: {newUserEmail}</Text>
+            <Text style={labelText}>Role: {newUserRole}</Text>
 
             <Text style={text}>
-              Click below to sign up now with this email address.
+              Click below to set your password and sign up with this email
+              address:
             </Text>
-            <Button
-              // href={`http://localhost:3000/}`} // TODO: Production url
-              style={button}
-            >
+            <Button href={inviteLink} style={button}>
               Sign up
             </Button>
 
             <Text style={datesText}>
-              If any of this information is incorrect, please contact Jane Doe
-              to resend an invitation with your correct details.
+              If any of this information is incorrect, please contact{" "}
+              {inviterName} at {inviterEmail} to resend an invitation with your
+              correct details.
             </Text>
           </Section>
         </Container>

@@ -4,21 +4,26 @@ import { NextResponse, NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     // Local development mode - check for dev token override
-    if (process.env.NODE_ENV === "development" && process.env.LOCAL_DEV_AUTH_BYPASS === "true") {
+    if (
+      process.env.NODE_ENV === "development" &&
+      process.env.LOCAL_DEV_AUTH_BYPASS === "true"
+    ) {
       const { searchParams } = new URL(request.url);
       const devUser = searchParams.get("user");
       const devEmail = searchParams.get("email");
-      
+
       // Generate custom dev token
       if (devUser || devEmail) {
         const token = `dev:${devUser || "dev-user-123"}:${devEmail || "dev@localhost.com"}`;
         console.log("🔧 Generated local dev token:", token);
         return NextResponse.json({ accessToken: token });
       }
-      
+
       // Default dev token
       console.log("🔧 Using default local dev token");
-      return NextResponse.json({ accessToken: "dev:dev-user-123:dev@localhost.com" });
+      return NextResponse.json({
+        accessToken: "dev:dev-user-123:dev@localhost.com",
+      });
     }
 
     const session = await auth0.getSession(request);

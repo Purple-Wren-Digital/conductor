@@ -13,10 +13,12 @@ export interface UserPermissions {
   canViewAllTickets: boolean;
   canViewInternalComments: boolean;
   canCreateInternalComments: boolean;
+  canCreateUsers: boolean;
   canManageAllUsers: boolean;
   canCreateTeam: boolean;
   canManageTeam: boolean;
   canChangeUserRoles: boolean;
+  canDeactivateUsers: boolean;
   canAccessSettings: boolean;
   canAccessReports: boolean;
 }
@@ -32,10 +34,12 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: true,
         canViewInternalComments: true,
         canCreateInternalComments: true,
+        canCreateUsers: true,
         canManageAllUsers: true,
         canCreateTeam: true,
         canManageTeam: true,
         canChangeUserRoles: true,
+        canDeactivateUsers: true,
         canAccessSettings: true,
         canAccessReports: true,
       };
@@ -48,10 +52,12 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: false,
         canViewInternalComments: true,
         canCreateInternalComments: true,
+        canCreateUsers: false,
         canManageAllUsers: false,
         canCreateTeam: false,
         canManageTeam: true,
         canChangeUserRoles: false,
+        canDeactivateUsers: false,
         canAccessSettings: true,
         canAccessReports: false,
       };
@@ -64,10 +70,12 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllTickets: false,
         canViewInternalComments: false,
         canCreateInternalComments: false,
+        canCreateUsers: false,
         canManageAllUsers: false,
         canCreateTeam: false,
         canManageTeam: false,
         canChangeUserRoles: false,
+        canDeactivateUsers: false,
         canAccessSettings: false,
         canAccessReports: false,
       };
