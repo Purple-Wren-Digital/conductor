@@ -19,9 +19,10 @@ export interface RuleConditions {
   urgency?: Urgency[];
   keywords?: string[];
   creatorRole?: UserRole[];
-  timeOfDay?: { // Assign based on time
+  timeOfDay?: {
+    // Assign based on time
     start: string; // "09:00"
-    end: string;   // "17:00"
+    end: string; // "17:00"
   };
   dayOfWeek?: number[]; // 0-6 (Sunday-Saturday)
 }
@@ -118,15 +119,21 @@ export const createRule = api<CreateRuleRequest, CreateRuleResponse>(
 
     // Only admins can create assignment rules
     if (currentUserRole !== "ADMIN") {
-      throw APIError.permissionDenied("Only admins can create assignment rules");
+      throw APIError.permissionDenied(
+        "Only admins can create assignment rules"
+      );
     }
 
     // Validate action has at least one assignment method
-    if (!req.action.assignToUserId && 
-        !req.action.assignToRole && 
-        !req.action.assignToNextAvailable && 
-        !req.action.roundRobin) {
-      throw APIError.invalidArgument("Assignment rule must specify an assignment action");
+    if (
+      !req.action.assignToUserId &&
+      !req.action.assignToRole &&
+      !req.action.assignToNextAvailable &&
+      !req.action.roundRobin
+    ) {
+      throw APIError.invalidArgument(
+        "Assignment rule must specify an assignment action"
+      );
     }
 
     // Validate user exists if assignToUserId is specified
@@ -147,7 +154,9 @@ export const createRule = api<CreateRuleRequest, CreateRuleResponse>(
         },
       });
       if (users.length !== req.action.roundRobin.userIds.length) {
-        throw APIError.invalidArgument("One or more users in round-robin list not found");
+        throw APIError.invalidArgument(
+          "One or more users in round-robin list not found"
+        );
       }
     }
 
@@ -255,15 +264,11 @@ function matchesConditions(ticket: any, conditions: RuleConditions): boolean {
 
     const { start, end } = conditions.timeOfDay;
     if (start < end) {
-      // Normal range (e.g., 09:00-17:00)
-      if (currentTime < start || currentTime > end) {
-        return false;
-      }
+      // Normal range
+      if (currentTime < start || currentTime > end) return false;
     } else {
-      // Overnight range (e.g., 17:00-09:00)
-      if (currentTime < start && currentTime > end) {
-        return false;
-      }
+      // Overnight range
+      if (!(currentTime >= start || currentTime <= end)) return false;
     }
   }
 
@@ -304,10 +309,10 @@ async function executeAction(action: RuleAction): Promise<string | null> {
   if (action.roundRobin) {
     const { userIds, lastAssignedIndex = -1 } = action.roundRobin;
     const nextIndex = (lastAssignedIndex + 1) % userIds.length;
-    
+
     // Update the index for next time (in production, persist this)
     action.roundRobin.lastAssignedIndex = nextIndex;
-    
+
     return userIds[nextIndex];
   }
 
