@@ -41,7 +41,7 @@ export function UserListItem({
         { label: `${user.ticketsAssigned ?? 0} assigned` },
         { label: `${user.ticketsCreated ?? 0} created` },
         {
-          label: `Joined ${format(new Date(user.createdAt), "MMM d, yyyy")}`,
+          label: `Created ${format(new Date(user.createdAt), "MMM d, yyyy")}`,
           icon: <CalendarIcon className="h-3 w-3" />,
         },
       ]}

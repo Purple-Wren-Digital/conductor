@@ -12,15 +12,11 @@ export async function GET(req: Request) {
       { status: 401 }
     );
   }
-  // TODO: Fetches newly created users (with user_metadata field)
-  // Sorted by most recently created first
-  // Limited to 20 results
   // https://auth0.com/docs/manage-users/user-search
   const params = new URLSearchParams({
-    q: "_exists_:user_metadata.invited",
     search_engine: "v3",
-    per_page: "20",
-    sort: "user_metadata.created:-1",
+    // per_page: "20", // TODO: how to filter this..
+    sort: "created_at:-1",
   });
 
   try {
@@ -43,7 +39,6 @@ export async function GET(req: Request) {
     }
 
     const data = await response.json();
-    console.log("GET /api/admin/auth0Users data:", data);
 
     return NextResponse.json({ users: data }, { status: 200 });
   } catch (error) {
@@ -84,8 +79,7 @@ export async function POST(req: Request) {
         name: body.name,
         email: body.email,
         email_verified: false,
-        username: body.name.split(" ").join(""),
-        password: `${body.name.split(" ").join("")}-${Math.random().toString(36).slice(-8)}`, // Temporary password, will be reset on first login
+        password: `${body.name.split(" ").join("")}-${Math.random().toString(36).slice(-8)}`, // Temporary password, will be reset when invited to join
         user_metadata: {
           role: body.role || "AGENT",
           createdBy: body.createdBy,
@@ -95,14 +89,17 @@ export async function POST(req: Request) {
       }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(
-        response?.statusText ? response.statusText : "Failed to create user"
+      return NextResponse.json(
+        {
+          statusText:
+            data && data?.message ? data.message : "Failed to create user",
+        },
+        { status: response.status }
       );
     }
-
-    const data = await response.json();
-    console.log("handleSubmitCreateUserForm() data:", data);
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
@@ -130,6 +127,25 @@ export async function PATCH(req: Request) {
     );
   }
 
+  let updates = {};
+
+  if (body?.invited && body?.invitedOn) {
+    updates = {
+      invited: body.invited,
+      invitedOn: body.invitedOn,
+    };
+  } else if (body?.accepted && body?.acceptedOn) {
+    updates = {
+      accepted: body.accepted,
+      acceptedOn: body.acceptedOn,
+    };
+  } else {
+    return NextResponse.json(
+      { error: "Missing data in request body" },
+      { status: 400 }
+    );
+  }
+
   try {
     const updateResponse = await fetch(
       `https://${AUTH0_DOMAIN}/api/v2/users/${body.user_id}`,
@@ -140,12 +156,7 @@ export async function PATCH(req: Request) {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          user_metadata: {
-            invited: true,
-            invitedOn: new Date(),
-          },
-        }),
+        body: JSON.stringify({ user_metadata: updates }),
       }
     );
     if (!updateResponse.ok) {

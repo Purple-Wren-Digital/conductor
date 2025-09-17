@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import { Search, Users, Mail, User, UserPlus } from "lucide-react";
+import { Search, Users, User, UserPlus } from "lucide-react";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
 import { ROLE_ICONS } from "@/lib/utils";
 import { toast } from "sonner";
@@ -77,7 +77,7 @@ export default function UserManagement() {
     return await getAccessToken();
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchActiveUsers = useCallback(async () => {
     if (!permissions?.canManageAllUsers) return;
     setLoading(true);
     const params = new URLSearchParams();
@@ -109,8 +109,8 @@ export default function UserManagement() {
   }, [debouncedSearchQuery, selectedRole, getAuth0AccessToken]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchActiveUsers();
+  }, [fetchActiveUsers]);
 
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
@@ -164,7 +164,7 @@ export default function UserManagement() {
       }
       toast.success(`${editUserFormData.name} has been updated`);
       setShowEditUserForm(false);
-      await fetchUsers();
+      await fetchActiveUsers();
     } catch (error) {
       console.error(error);
     } finally {
@@ -205,7 +205,7 @@ export default function UserManagement() {
       toast.success(`${userToDelete?.name} was deactivated`);
       setConfirmOpen(false);
       setUserToDelete(null);
-      await fetchUsers();
+      await fetchActiveUsers();
     } catch (error) {
       console.error("Server error", error);
       toast.error("Error: Unable to deactivate user");

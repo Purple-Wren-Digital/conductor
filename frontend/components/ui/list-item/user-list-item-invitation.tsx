@@ -17,6 +17,9 @@ export function InvitationUserListItem({
   disabled,
   user,
   onInvite,
+  selectable,
+  selected,
+  onSelect,
   // onRemove,
 }: {
   disabled: boolean;
@@ -24,7 +27,6 @@ export function InvitationUserListItem({
     name: string;
     email: string;
     emailVerified: boolean;
-    username: string;
     user_metadata: {
       created: Date | null;
       createdBy: string; // auth0 user
@@ -36,7 +38,9 @@ export function InvitationUserListItem({
     };
   };
   onInvite: () => void;
-  // onRemove: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void; // onRemove: () => void;
 }) {
   const { permissions } = useUserRole();
 
@@ -45,16 +49,16 @@ export function InvitationUserListItem({
     return <Icon className="h-3 w-3" />;
   };
   const invitationSent = user?.user_metadata?.invitedOn
-    ? ` - Invited on ${new Date(user.user_metadata.invitedOn).toLocaleDateString()}`
+    ? ` - Invited ${new Date(user.user_metadata.invitedOn).toLocaleDateString()}`
     : "";
   const acceptedDate = user?.user_metadata?.acceptedOn
-    ? ` - Accepted on ${new Date(user.user_metadata.acceptedOn).toLocaleDateString()}`
+    ? ` - Accepted ${new Date(user.user_metadata.acceptedOn).toLocaleDateString()}`
     : "";
-  const subtitle = `${user?.user_metadata?.accepted ? "Accepted" : user?.user_metadata?.invited ? "Pending" : "No Invite Sent"}${acceptedDate}${invitationSent}`;
+  const subtitle = `${user?.user_metadata?.accepted ? "Complete" : user?.user_metadata?.invited ? "Pending" : "No Invite Sent"}${acceptedDate}${invitationSent}`;
   return (
     <ListItem
-      id={user.username}
-      title={`${user.name} (${user.username})`}
+      id={user.name}
+      title={`${user.name}`}
       subtitle={subtitle}
       avatar={{
         fallback: user.name
@@ -62,8 +66,6 @@ export function InvitationUserListItem({
           .map((n: string) => n[0])
           .join(""),
       }}
-      // TODO: Badges marking invitation status
-      // primaryBadges, secondaryBadges
       metadata={[
         {
           label: user.user_metadata.role,
@@ -71,7 +73,7 @@ export function InvitationUserListItem({
         },
         { label: user.email, icon: <Mail className="h-3 w-3" /> },
         {
-          label: `Created: ${user?.user_metadata?.created ? new Date(user.user_metadata.created).toLocaleDateString() : "N/A"}`,
+          label: `Created ${user?.user_metadata?.created ? new Date(user.user_metadata.created).toLocaleDateString() : "N/A"}`,
           icon: <CalendarIcon className="h-3 w-3" />,
         },
       ]}
@@ -88,6 +90,9 @@ export function InvitationUserListItem({
           ),
         },
       ]}
+      selectable={selectable}
+      selected={selected}
+      onSelect={onSelect}
     />
   );
 }

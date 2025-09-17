@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import type { UserRole } from "@/lib/types";
+import type { PrismaUser, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +23,8 @@ import { User } from "lucide-react";
 import { ROLE_ICONS } from "@/lib/utils";
 import { toast } from "sonner";
 import { useStore } from "@/app/store-provider";
+import { getAccessToken } from "@auth0/nextjs-auth0";
+import { API_BASE } from "@/lib/api/utils";
 
 interface CreateAuth0UserRequest {
   createdBy: string; // current user's auth0id
@@ -62,6 +64,11 @@ export default function UserCreate({
 
   const { permissions } = useUserRole();
 
+  const getAuth0AccessToken = useCallback(async () => {
+    if (process.env.NODE_ENV === "development") return "local";
+    return await getAccessToken();
+  }, []);
+
   const fetchManagementToken = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/managementToken", {
@@ -99,49 +106,12 @@ export default function UserCreate({
     return Object.keys(errors).length === 0;
   };
 
-  // const handleInviteUser = async (user: any) => {
-  //   try {
-  //     console.log("Inviting user with data:", user);
-  //     const response = await fetch("/api/admin/inviteUser", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         id: user.user_id,
-  //         managementToken: await fetchManagementToken(),
-  //       }),
-  //     });
-  //     console.log("/api/admin/inviteUser Response", response);
-  //     if (!response || !response.ok) {
-  //       throw new Error("Failed to invite user");
-  //     }
-  //     const data = await response.json();
-  //     console.log("Invite User Response Data:", data);
-  //     // return true;
-  //   } catch (error) {
-  //     console.error("Failed to invite user: ", error);
-  //     return false;
-  //   }
-  // };
-
-  const handleSubmitCreateUserForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!permissions?.canCreateUsers) {
-      toast.error("You do not have permission to create users.");
-      return;
-    }
-    setFormErrors({});
-
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-
+  const createNewAuth0User = async () => {
     try {
       const token = await fetchManagementToken();
       if (!token) {
         throw new Error("No management token available");
       }
-
       const response = await fetch("/api/admin/auth0Users", {
         method: "POST",
         headers: {
@@ -161,18 +131,74 @@ export default function UserCreate({
 
       console.log("response from /api/admin/createUser:", response);
       console.log("data from /api/admin/createUser:", data);
-
-      // const emailSent = await handleInviteUser(data);
-      // toast.success("User created and invitation email sent!");
-      // if (emailSent) {
-      // console.log("Invite Email Sent?", emailSent);
+      return data;
     } catch (error) {
-      console.error("Failed to create Auth0 User: ", error);
-      toast.error(
-        error instanceof Error
-          ? `Failed to Create User: ${error.message}`
-          : "Failed to Create User"
-      );
+      console.error("Failed to create new Auth0 User", error);
+      return null;
+    }
+  };
+
+  const createNewPrismaUser = async (auth0Id: string) => {
+    if (!auth0Id) {
+      throw new Error("Missing auth0Id");
+    }
+    try {
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(`${API_BASE}/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          email: newUserFormData.email,
+          name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
+          role: newUserFormData.role || "AGENT",
+          auth0Id: auth0Id,
+          viaAdmin: true,
+        }),
+      });
+      if (response.ok) {
+        const data: { user: PrismaUser } = await response.json();
+        return data;
+      }
+    } catch (error) {
+      console.error("Failed to create prisma user", error);
+      return null;
+    }
+  };
+
+  const handleSubmitCreateUserForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!permissions?.canCreateUsers) {
+      toast.error("You do not have permission to create users.");
+      return;
+    }
+    setFormErrors({});
+    if (!validateForm()) {
+      toast.error("Invalid input(s)");
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const newAuth0User = await createNewAuth0User();
+      console.log("New Auth0 User", newAuth0User);
+      if (!newAuth0User || !newAuth0User?.user_id) {
+        throw new Error("Failed to create new Auth0 User");
+      }
+      const newPrismaUser = await createNewPrismaUser(newAuth0User.user_id);
+      if (!newPrismaUser) {
+        throw new Error(
+          "Auth0 user created, but Failed to create new Prisma User"
+        );
+      }
+      setShowCreateUserForm(false);
+      toast.success("User created! Remember to send the invitation.");
+    } catch (error) {
+      console.error("Failed to create new user: ", error);
+      toast.error("Failed to Create User");
     } finally {
       setIsSubmitting(false);
     }
@@ -290,13 +316,13 @@ export default function UserCreate({
               <Button
                 type="button"
                 variant="outline"
-                // onClick={() => setShowCreateUserForm(false)}
+                onClick={() => setShowCreateUserForm(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Create User and Send Invite"}
+                {isSubmitting ? "Saving..." : "Create User"}
               </Button>
             </div>
           </form>

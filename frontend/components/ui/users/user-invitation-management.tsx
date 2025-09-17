@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { UserRole } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
-import { Users, UserPlus } from "lucide-react";
+import { Users, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import UserCreate from "./user-creation";
 
@@ -17,7 +17,6 @@ type Auth0User = {
   name: string;
   email: string;
   emailVerified: boolean;
-  username: string;
   user_metadata: {
     created: Date | null;
     createdBy: string;
@@ -28,7 +27,6 @@ type Auth0User = {
 };
 
 type InviteUserResendType = {
-  newUserName: string;
   newUserEmail: string;
   newUserRole: UserRole;
   inviterName: string;
@@ -36,21 +34,40 @@ type InviteUserResendType = {
   inviteLink: string;
 };
 
+type Auth0UserMetadataType = {
+  auth0Id: string;
+  token: string;
+  invited?: boolean;
+  invitedOn?: Date;
+  accepted?: boolean;
+  acceptedOn?: Date;
+};
+
 export default function UserInvitationManagement() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  // const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
+  const [newAuth0Users, setNewAuth0Users] = useState<any[]>([]);
+  const [selectedNewUsers, setSelectedNewUsers] = useState<any[]>([]);
 
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // const [searchQuery, setSearchQuery] = useState("");
+  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  const totalUsers: number = newAuth0Users.length ?? 0;
+  const totalPages = Math.ceil(totalUsers / itemsPerPage);
 
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
   // useEffect(() => {
-  //   const handler = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
+  //   const handler = setTimeout(() => {
+  //     setDebouncedSearchQuery(searchQuery);
+  //     setCurrentPage(1);
+  //   }, 500);
   //   return () => clearTimeout(handler);
   // }, [searchQuery]);
 
@@ -74,9 +91,9 @@ export default function UserInvitationManagement() {
     }
   }, []);
 
-  const fetchCreatedUsers = async () => {
+  const fetchNewAuth0Users = async () => {
     if (!permissions?.canManageAllUsers) return;
-    setLoading(true);
+    setLoadingUsers(true);
 
     try {
       const token = await fetchManagementToken();
@@ -99,19 +116,19 @@ export default function UserInvitationManagement() {
       }
       const data = await response.json();
       if (data && data?.users && data?.users.length) {
-        setUsers(data.users);
+        setNewAuth0Users(data.users);
         return;
       }
-      setUsers([]);
+      setNewAuth0Users([]);
     } catch (error) {
       console.error("Error fetching unverified users:", error);
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   };
 
   useEffect(() => {
-    fetchCreatedUsers();
+    fetchNewAuth0Users();
   }, []);
 
   const generatePasswordResetLink = async (auth0Id: string, token: string) => {
@@ -145,7 +162,6 @@ export default function UserInvitationManagement() {
   };
 
   const sendSingUpInviteEmail = async ({
-    newUserName,
     newUserEmail,
     newUserRole,
     inviterName,
@@ -159,7 +175,6 @@ export default function UserInvitationManagement() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          newUserName: newUserName,
           newUserEmail: newUserEmail,
           newUserRole: newUserRole,
           inviterName: inviterName,
@@ -181,15 +196,37 @@ export default function UserInvitationManagement() {
     }
   };
 
-  const updateAuth0UserMetadata = async (auth0Id: string, token: string) => {
+  const updateAuth0UserMetadata = async (metadata: Auth0UserMetadataType) => {
+    let body: {
+      user_id: string;
+      invited?: boolean;
+      invitedOn?: Date;
+      accepted?: boolean;
+      acceptedOn?: Date;
+    };
+    if (metadata.auth0Id && metadata?.invited && metadata?.invitedOn) {
+      body = {
+        user_id: metadata.auth0Id,
+        invited: metadata.invited,
+        invitedOn: metadata.invitedOn,
+      };
+    } else if (metadata.auth0Id && metadata?.accepted && metadata?.acceptedOn) {
+      body = {
+        user_id: metadata.auth0Id,
+        accepted: metadata.accepted,
+        acceptedOn: metadata.acceptedOn,
+      };
+    } else {
+      throw new Error("Nothing to update");
+    }
     try {
       const response = await fetch(`/api/admin/auth0Users`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${metadata.token}`,
         },
-        body: JSON.stringify({ user_id: auth0Id }),
+        body: JSON.stringify(body),
       });
       console.log("Update user metadata response:", response);
       if (!response.ok) {
@@ -220,7 +257,6 @@ export default function UserInvitationManagement() {
       }
       // Send email with Resend
       const emailResult = await sendSingUpInviteEmail({
-        newUserName: user.name,
         newUserEmail: user.email,
         newUserRole: user?.user_metadata?.role || "AGENT",
         inviterName: currentUser?.name || "Admin",
@@ -233,17 +269,72 @@ export default function UserInvitationManagement() {
       }
 
       // Update user metadata to mark as invited
-      const metadataResult = await updateAuth0UserMetadata(user.user_id, token);
+      const metadataResult = await updateAuth0UserMetadata({
+        auth0Id: user.user_id,
+        token: token,
+        invited: true,
+        invitedOn: new Date(),
+      });
       if (!metadataResult) {
         throw new Error("Failed to update user metadata after invitation");
       }
       // Refresh user list to show updated status
-      await fetchCreatedUsers();
+      await fetchNewAuth0Users();
       toast.success(`Invitation sent to ${user.email}`);
     } catch (error) {
       console.error("Error sending invitation:", error);
     } finally {
       setIsSendingInvitation(false);
+    }
+  };
+
+  const handleSelectUser = async (selectedUser: any, checked: boolean) => {
+    setSelectedNewUsers((prev) =>
+      checked
+        ? [...prev, selectedUser]
+        : prev.filter((user) => user.email !== selectedUser.email)
+    );
+  };
+
+  const handleMarkUsersAsAccepted = async () => {
+    if (!selectedNewUsers || !selectedNewUsers.length) {
+      throw new Error("no users selected");
+    }
+    setLoadingUsers(true);
+
+    try {
+      const acceptedOn = new Date();
+      const token = await fetchManagementToken();
+      if (!token) {
+        throw new Error("No management token available");
+      }
+      const results = await Promise.allSettled(
+        selectedNewUsers.map((user) =>
+          updateAuth0UserMetadata({
+            auth0Id: user.user_id,
+            accepted: true,
+            acceptedOn,
+            token: token,
+          })
+        )
+      );
+      console.log("Mark Accepted Results -", results);
+      const failed = results.filter((r) => r.status === "rejected");
+
+      if (failed.length) {
+        console.error("Some users failed to update:", failed);
+        toast.error(`Failed to update ${failed.length} user(s)`);
+      } else {
+        toast.success("All selected users marked as accepted");
+      }
+      setSelectedNewUsers([]);
+      await fetchNewAuth0Users();
+      return;
+    } catch (error) {
+      console.error("Failed to mark user(s) as accepted:", error);
+      toast.error("Failed to mark user(s) as accepted");
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -255,7 +346,7 @@ export default function UserInvitationManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                New Users ({users.length})
+                New Users ({newAuth0Users.length})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create and invite new users to join Conductor Ticketing
@@ -264,15 +355,32 @@ export default function UserInvitationManagement() {
             <Button
               onClick={() => setShowCreateUserForm(true)}
               className="gap-2"
-              disabled={!permissions?.canCreateUsers || isSendingInvitation}
+              disabled={
+                !permissions?.canCreateUsers ||
+                isSendingInvitation ||
+                loadingUsers
+              }
             >
               <UserPlus className="h-4 w-4" />
               Create New User
             </Button>
           </div>
+          <div className="flex items-center gap-4 mt-4">
+            <Button
+              variant="outline"
+              onClick={handleMarkUsersAsAccepted}
+              disabled={
+                loadingUsers ||
+                !permissions?.canManageAllUsers ||
+                !selectedNewUsers.length
+              }
+            >
+              <p>Mark User(s) as Accepted</p>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {loading && users.length === 0 ? (
+          {loadingUsers && newAuth0Users.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -283,21 +391,25 @@ export default function UserInvitationManagement() {
           ) : (
             <div
               className={`space-y-4 transition-opacity duration-300 ${
-                loading ? "opacity-50 pointer-events-none" : "opacity-100"
+                loadingUsers ? "opacity-50 pointer-events-none" : "opacity-100"
               }`}
             >
-              {users.map((user, index) => (
+              {newAuth0Users.map((user, index) => (
                 <InvitationUserListItem
                   key={index}
                   disabled={
                     isSendingInvitation ||
                     !permissions?.canManageAllUsers ||
-                    user?.user_metadata.accepted
+                    user?.user_metadata?.accepted
                   }
                   onInvite={() => handleInviteUser(user)}
+                  selected={selectedNewUsers.includes(user)}
+                  onSelect={(checked: boolean) =>
+                    handleSelectUser(user, checked)
+                  }
+                  selectable={!user?.user_metadata?.accepted}
                   user={{
                     name: user.name,
-                    username: user.username,
                     email: user.email,
                     emailVerified: user.email_verified,
                     user_metadata: {
@@ -319,11 +431,43 @@ export default function UserInvitationManagement() {
                 />
               ))}
 
-              {users.length === 0 && !loading && (
+              {newAuth0Users.length === 0 && !loadingUsers && (
                 <div className="text-center py-8 text-muted-foreground">
                   No users found matching your criteria.
                 </div>
               )}
+            </div>
+          )}
+          {totalPages > 1 && ( // TODO: check logic
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                {Math.min(currentPage * itemsPerPage, totalUsers)} of{" "}
+                {totalUsers} Users
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 1}
+                  type="button"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </Button>
+                <span className="text-sm">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage === totalPages}
+                  type="button"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
