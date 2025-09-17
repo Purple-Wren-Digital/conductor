@@ -7,6 +7,7 @@ export interface TicketCategory {
   id: string;
   name: string;
   description?: string;
+  marketCenterId: string;
   defaultAssigneeId: string | null;
   defaultAssignee: {
     id: string;
@@ -53,7 +54,7 @@ export const createCategory = api<
     expose: true,
     method: "POST",
     path: "/settings/categories",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     // TODO: Get market center from auth context
@@ -106,7 +107,12 @@ export const createCategory = api<
       ...category,
       description: category.description ?? undefined,
       defaultAssigneeId: category.defaultAssigneeId ?? null,
-      defaultAssignee: category.defaultAssignee ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
     };
 
     return { category: safeCategory };
@@ -187,7 +193,12 @@ export const updateCategory = api<
       ...category,
       description: category.description ?? undefined,
       defaultAssigneeId: category.defaultAssigneeId ?? null,
-      defaultAssignee: category.defaultAssignee ?? null,
+      defaultAssignee: category.defaultAssignee
+        ? {
+            ...category.defaultAssignee,
+            name: category.defaultAssignee.name ?? "",
+          }
+        : null,
     };
 
     return { category: safeCategory };
@@ -199,7 +210,7 @@ export const deleteCategory = api<{ id: string }, DeleteCategoryResponse>(
     expose: true,
     method: "DELETE",
     path: "/settings/categories/:id",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
     // TODO: Get market center from auth context
@@ -230,7 +241,7 @@ export const listCategories = api<{}, ListCategoriesResponse>(
     expose: true,
     method: "GET",
     path: "/settings/categories",
-    auth: false, // true
+    auth: true,
   },
   async () => {
     // TODO: Get market center from auth context
@@ -258,9 +269,14 @@ export const listCategories = api<{}, ListCategoriesResponse>(
       ...cat,
       description: cat.description ?? undefined,
       defaultAssigneeId: cat.defaultAssigneeId ?? null,
-      defaultAssignee: cat.defaultAssignee ?? null,
+      defaultAssignee: cat.defaultAssignee
+        ? {
+            ...cat.defaultAssignee,
+            name: cat.defaultAssignee.name ?? "",
+          }
+        : null,
     }));
 
-    return { categories };
+    return { categories: categories };
   }
 );
