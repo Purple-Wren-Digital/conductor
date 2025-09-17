@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { UserRole } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
-import { Users, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import UserCreate from "./user-creation";
 
@@ -22,6 +23,8 @@ type Auth0User = {
     createdBy: string;
     invited: boolean;
     invitedOn: Date | null;
+    accepted: boolean;
+    acceptedOn: Date | null;
     role: UserRole;
   };
 };
@@ -44,6 +47,8 @@ type Auth0UserMetadataType = {
 };
 
 export default function UserInvitationManagement() {
+  const router = useRouter();
+
   const [newAuth0Users, setNewAuth0Users] = useState<any[]>([]);
   const [selectedNewUsers, setSelectedNewUsers] = useState<any[]>([]);
 
@@ -54,14 +59,20 @@ export default function UserInvitationManagement() {
   // const [searchQuery, setSearchQuery] = useState("");
   // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  // const [currentPage, setCurrentPage] = useState(1);
+  // const [itemsPerPage] = useState(10);
 
-  const totalUsers: number = newAuth0Users.length ?? 0;
-  const totalPages = Math.ceil(totalUsers / itemsPerPage);
+  // const newAuth0Users = data?.users ?? [];
+  // const totalUsers = data?.total ?? 0;
+  // const totalUsers = newAuth0Users.length ?? 0;
+  // const totalPages = Math.ceil(totalUsers / itemsPerPage);
 
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
+
+  const handleRefresh = () => {
+    router.refresh();
+  };
 
   // useEffect(() => {
   //   const handler = setTimeout(() => {
@@ -280,6 +291,7 @@ export default function UserInvitationManagement() {
       }
       // Refresh user list to show updated status
       await fetchNewAuth0Users();
+      handleRefresh();
       toast.success(`Invitation sent to ${user.email}`);
     } catch (error) {
       console.error("Error sending invitation:", error);
@@ -327,8 +339,10 @@ export default function UserInvitationManagement() {
       } else {
         toast.success("All selected users marked as accepted");
       }
-      setSelectedNewUsers([]);
       await fetchNewAuth0Users();
+      handleRefresh();
+      setSelectedNewUsers([]);
+
       return;
     } catch (error) {
       console.error("Failed to mark user(s) as accepted:", error);
@@ -438,12 +452,12 @@ export default function UserInvitationManagement() {
               )}
             </div>
           )}
-          {totalPages > 1 && ( // TODO: check logic
+          {/* {totalPages > 1 && ( // TODO: check logic
             <div className="flex items-center justify-between pt-4">
               <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
                 {Math.min(currentPage * itemsPerPage, totalUsers)} of{" "}
-                {totalUsers} Users
+                {totalUsers} Total Users
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -469,7 +483,7 @@ export default function UserInvitationManagement() {
                 </Button>
               </div>
             </div>
-          )}
+          )} */}
         </CardContent>
       </Card>
 

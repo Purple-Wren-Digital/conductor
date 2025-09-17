@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   // https://auth0.com/docs/manage-users/user-search
   const params = new URLSearchParams({
     search_engine: "v3",
-    // per_page: "20", // TODO: how to filter this..
+    per_page: "100", // TODO: Pagination
     sort: "created_at:-1",
   });
 

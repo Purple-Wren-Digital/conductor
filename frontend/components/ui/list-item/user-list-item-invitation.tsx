@@ -26,7 +26,7 @@ export function InvitationUserListItem({
   user: {
     name: string;
     email: string;
-    emailVerified: boolean;
+    emailVerified?: boolean;
     user_metadata: {
       created: Date | null;
       createdBy: string; // auth0 user
