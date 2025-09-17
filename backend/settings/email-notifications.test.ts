@@ -29,7 +29,7 @@ import { notifySettingsChange } from "./notifications";
 
 describe("Email Notifications", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it("should format section names correctly", () => {

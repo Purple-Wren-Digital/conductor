@@ -44,7 +44,7 @@ const CreatedTicketNotification = ({
             <Text style={labelText}>
               Created On:
               {createdOn &&
-                `${new Date(createdOn).toLocaleDateString()} at
+                ` ${new Date(createdOn).toLocaleDateString()} at
                 ${new Date(createdOn).toLocaleTimeString()}`}
             </Text>
             <Text style={labelText}>Title: {ticketTitle}</Text>

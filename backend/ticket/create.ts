@@ -11,7 +11,6 @@ export interface CreateTicketRequest {
   category: string;
   urgency: Urgency;
   dueDate?: Date;
-  // creatorId: string;
 }
 
 export interface CreateTicketResponse {

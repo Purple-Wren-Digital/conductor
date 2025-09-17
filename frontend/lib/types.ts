@@ -1,3 +1,10 @@
+import { Dispatch, SetStateAction } from "react";
+
+export type AppContext = {
+  prismaUser: PrismaUser | null;
+  setPrismaUser: Dispatch<SetStateAction<PrismaUser | null>>;
+};
+
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
   | "ASSIGNED"
@@ -15,8 +22,8 @@ export interface Ticket {
   category: string;
   creatorId?: string;
   assigneeId?: string | null;
-  creator: User | null;
-  assignee: User | null;
+  creator: PrismaUser | null;
+  assignee: PrismaUser | null;
   dueDate: Date | null;
   createdAt: Date;
   commentCount: number | null;
@@ -24,12 +31,15 @@ export interface Ticket {
   comments?: Comment[];
 }
 
-export interface User {
+export interface PrismaUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-  createdAt: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  isActive: boolean;
+  auth0Id: string;
 }
 
 export interface Comment {
@@ -40,7 +50,7 @@ export interface Comment {
   internal: boolean;
   createdAt: Date;
   updatedAt?: Date;
-  user?: User;
+  user?: PrismaUser;
 }
 
 export interface DashboardMetrics {
@@ -59,6 +69,13 @@ export interface TicketTemplate {
   ticketDescription: string;
   category: string;
   urgency: Urgency;
+}
+
+export interface ProfileTemplate {
+  id: string;
+  name: string;
+  email: string;
+  isActive?: boolean;
 }
 
 export interface TicketSearchParams {

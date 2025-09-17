@@ -31,7 +31,7 @@ export function useComments(ticketId: string) {
   const commentApi = useCommentApi();
   const queryClient = useQueryClient();
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
@@ -137,6 +137,7 @@ export function useCreateComment() {
           email: "",
           role: "AGENT",
           createdAt: new Date().toISOString(),
+          isActive: true,
         },
       };
 

@@ -48,7 +48,7 @@ import { applyAutoAssignment } from "./ticket/auto-assignment";
 const mockPrisma = hoisted.mockPrisma;
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("Category Auto-Routing Integration", () => {
@@ -151,6 +151,7 @@ describe("Category Auto-Routing Integration", () => {
 
   it("should return null when no category match and no rules match", async () => {
     mockPrisma.ticketCategory.findFirst.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     const ticket = {
       category: "Unknown Category",

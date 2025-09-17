@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback } from "react"; // , useMemo
 import { format } from "date-fns";
 import type {
   Ticket,
-  User as UserType,
+  PrismaUser,
   TicketStatus,
   Urgency,
 } from "@/lib/types";
@@ -53,8 +53,8 @@ type emailNotificationTypes = {
     current: string;
   };
   reassignmentUpdate?: {
-    currentAssignment: UserType | null;
-    previousAssignment: UserType | null;
+    currentAssignment: PrismaUser | null;
+    previousAssignment: PrismaUser | null;
   };
   fullEdits?: {
     oldTicket: Ticket;
@@ -92,14 +92,14 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [users, setUsers] = useState<UserType[]>([]);
+  const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
   
   const { user: authUser } = useUser();
   const { user, permissions, role } = useUserRole();
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
       return "local";
     }
@@ -110,7 +110,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -125,7 +125,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       ]);
 
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
-      const usersData = await parseJsonSafe<{ users: UserType[] }>(usersRes);
+      const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
 
       setTicket(ticketData.ticket);
       setUsers(usersData.users || []);
@@ -135,7 +135,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [ticketId, getAuthToken]);
+  }, [ticketId, getAuth0AccessToken]);
 
   useEffect(() => {
     refreshAllData();
@@ -189,7 +189,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         },
       ];
     }
-    if (oldTicket.description !== ticket?.description) {
+    if (oldTicket.description !== updatedTicket.description) {
       changedValues = [
         ...changedValues,
         {
@@ -254,7 +254,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       if (!ticketEdits) {
         throw new Error("No changes to ticket found");
       }
-      url = "/api/send/reassignTicket";
+      url = "/api/send/editTicket";
       body = {
         ticketNumber: updatedTicket.id,
         ticketTitle: updatedTicket?.title,
@@ -291,24 +291,24 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
       });
-      await parseJsonSafe(res);
-      await refreshAllData();
       if (res.ok && ticket) {
         await sendEmailNotification({
           updatedTicket: ticket || null,
           quickUpdate: { field: field, current: value },
         });
       }
+      await parseJsonSafe(res);
+      await refreshAllData();
     } catch (error) {
       console.error("Failed to update ticket:", error);
       setTicket(prev);
@@ -335,12 +335,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     });
 
     try {
-      // const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({

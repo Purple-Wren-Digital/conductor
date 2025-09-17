@@ -25,11 +25,11 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
-  
+
   const { user: authUser } = useUser();
   const { permissions } = useUserRole();
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
@@ -82,7 +82,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -96,7 +96,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
       return ticketData.ticket;
     } catch (error) {
-      console.log("Failed to fetch ticket for new comment email");
+      console.error("Failed to fetch ticket for new comment email");
     }
   };
 
@@ -106,16 +106,14 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
     }
 
     const ticketNewCommentEmailBody = {
-      emailData: {
-        ticketNumber: ticketId,
-        ticketTitle: ticket?.title,
-        createdOn: ticket?.createdAt,
-        commentedOn: new Date(),
-        commenter: authUser,
-        comment: content.trim(),
-        isInternal: isInternal,
-        assignee: ticket?.assignee,
-      },
+      ticketNumber: ticketId,
+      ticketTitle: ticket?.title,
+      createdOn: ticket?.createdAt,
+      commentedOn: new Date(),
+      commenter: hardcodedUser, // authUser,
+      comment: content.trim(),
+      isInternal: isInternal,
+      assignee: ticket?.assignee,
     };
     try {
       const response = await fetch("/api/send/newComment", {

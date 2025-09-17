@@ -21,7 +21,7 @@ vi.mock("./db", () => ({
 import { getDashboardData } from "./dashboard";
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("getDashboardData", () => {

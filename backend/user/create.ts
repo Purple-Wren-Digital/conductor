@@ -1,12 +1,12 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
-import { signUpWithAuth0 } from "../auth/auth";
 import type { User, UserRole } from "../ticket/types";
+// import { signUpWithAuth0 } from "../auth/auth";
 
 export interface CreateUserRequest {
   email: string;
   name: string;
-  password: string;
   role?: UserRole;
 }
 
@@ -15,27 +15,34 @@ export interface CreateUserResponse {
 }
 
 export const create = api<CreateUserRequest, CreateUserResponse>(
-  { expose: true, method: "POST", path: "/users" },
+  { expose: true, method: "POST", path: "/users", auth: false },
   async (req) => {
-    if (process.env.NODE_ENV !== "development") {
-      const isSignUpSuccessful = await signUpWithAuth0(
-        req.email,
-        req.password,
-        req.name
-      );
-      if (!isSignUpSuccessful) {
-        throw new Error("Auth0 user signup failed");
-      }
+    const authData = await getAuthData();
+    if (!authData || !authData.userID) {
+      throw APIError.unauthenticated("User not authenticated");
     }
 
-    const user = await prisma.user.create({
+    const existingUser = await prisma.user.findUnique({
+      where: { email: req.email },
+    });
+
+    if (existingUser) {
+      // TODO: how to check duplicate emails for Auth0 Accounts (extension or custom?)
+      return { user: { ...existingUser, name: existingUser.name ?? "" } };
+    }
+
+    const newUser = await prisma.user.create({
       data: {
         email: req.email,
         name: req.name,
         role: req.role || "AGENT",
+        isActive: true,
+        auth0Id: authData.userID,
       },
     });
 
-    return { user: { ...user, name: user.name ?? "" } };
+    return {
+      user: { ...newUser, name: newUser.name ?? "" },
+    };
   }
 );

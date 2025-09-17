@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { format, startOfDay, endOfDay } from "date-fns";
-import type { Ticket, TicketStatus, Urgency, User } from "@/lib/types";
+import type { Ticket, TicketStatus, Urgency, PrismaUser } from "@/lib/types";
 import { EditTicketForm } from "./ticket-form/edit-ticket-form";
 import { CreateTicketForm } from "./ticket-form/create-ticket-form";
 import { getAccessToken } from "@auth0/nextjs-auth0";
@@ -69,7 +69,7 @@ type SortDir = "asc" | "desc";
 type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 
 type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };
-type UsersResponse = { users: User[] };
+type UsersResponse = { users: PrismaUser[] };
 
 const defaultActiveStatuses: TicketStatus[] = [
   "ASSIGNED",
@@ -124,7 +124,7 @@ export function TicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const getAuthToken = useCallback(async () => {
+  const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
@@ -181,7 +181,7 @@ export function TicketList() {
   >({
     queryKey: ticketsQueryKey,
     queryFn: async (): Promise<TicketsResponse> => {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`/api/tickets/search?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -204,7 +204,7 @@ export function TicketList() {
   >({
     queryKey: ["users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch("/api/users", {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -215,7 +215,7 @@ export function TicketList() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const users: User[] = usersData?.users ?? [];
+  const users: PrismaUser[] = usersData?.users ?? [];
 
   const queryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: ["tickets"] });
@@ -225,7 +225,7 @@ export function TicketList() {
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch("/api/tickets/bulk-assign", {
         method: "POST",
         headers: {
@@ -249,7 +249,7 @@ export function TicketList() {
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch("/api/tickets/bulk-update", {
         method: "PUT",
         headers: {
@@ -277,7 +277,7 @@ export function TicketList() {
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = await getAuthToken();
+      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
@@ -490,7 +490,7 @@ export function TicketList() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All assignees</SelectItem>
-                        {users.map((user: User) => (
+                        {users.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
                           </SelectItem>
@@ -513,7 +513,7 @@ export function TicketList() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All creators</SelectItem>
-                        {users.map((user: User) => (
+                        {users.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
                           </SelectItem>
@@ -692,7 +692,7 @@ export function TicketList() {
                 <SelectValue placeholder="Select a user..." />
               </SelectTrigger>
               <SelectContent>
-                {users.map((user: User) => (
+                {users.map((user: PrismaUser) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.name}
                   </SelectItem>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useStore } from "../store-provider";
 import {
   Cog,
   LayoutDashboard,
@@ -45,7 +47,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <p className="font-medium text-sm">{user?.name || "User"}</p>
             <p className="text-xs text-muted-foreground">{user?.email}</p>
             <p className="text-xs text-muted-foreground capitalize">
-              {user?.role?.toLowerCase()} • {user?.marketCenter?.name || "Global"}
+              {user?.role?.toLowerCase()} •{" "}
+              {user?.marketCenter?.name || "Global"}
             </p>
           </div>
         </div>
