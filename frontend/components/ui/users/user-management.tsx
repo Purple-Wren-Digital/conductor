@@ -157,7 +157,6 @@ export default function UserManagement() {
         body: JSON.stringify(editUserFormData),
       });
 
-      console.log("handleSubmitForm()", response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to update user`);

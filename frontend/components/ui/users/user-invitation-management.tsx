@@ -239,7 +239,6 @@ export default function UserInvitationManagement() {
         },
         body: JSON.stringify(body),
       });
-      console.log("Update user metadata response:", response);
       if (!response.ok) {
         throw new Error(
           response?.statusText
@@ -330,7 +329,6 @@ export default function UserInvitationManagement() {
           })
         )
       );
-      console.log("Mark Accepted Results -", results);
       const failed = results.filter((r) => r.status === "rejected");
 
       if (failed.length) {

@@ -128,9 +128,6 @@ export default function UserCreate({
         throw new Error(response.statusText || "Failed to create user");
       }
       const data = await response.json();
-
-      console.log("response from /api/admin/createUser:", response);
-      console.log("data from /api/admin/createUser:", data);
       return data;
     } catch (error) {
       console.error("Failed to create new Auth0 User", error);
@@ -184,7 +181,6 @@ export default function UserCreate({
 
     try {
       const newAuth0User = await createNewAuth0User();
-      console.log("New Auth0 User", newAuth0User);
       if (!newAuth0User || !newAuth0User?.user_id) {
         throw new Error("Failed to create new Auth0 User");
       }
