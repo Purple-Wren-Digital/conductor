@@ -49,8 +49,6 @@ const mockPrisma = hoisted.mockPrisma;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  // Prevent fallback rules from matching
-  // ASSIGNMENT_RULES = [];
 });
 
 describe("Category Auto-Routing Integration", () => {
@@ -161,7 +159,6 @@ describe("Category Auto-Routing Integration", () => {
       title: "Minor issue",
       description: "This is not urgent",
       creatorId: "user_client_1",
-      // assigneeId: null,
     };
 
     const assigneeId = await applyAutoAssignment(ticket);
