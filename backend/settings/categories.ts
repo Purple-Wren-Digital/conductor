@@ -7,7 +7,7 @@ export interface TicketCategory {
   id: string;
   name: string;
   description?: string;
-  marketCenterId: string;
+  // marketCenterId: string | null;
   defaultAssigneeId: string | null;
   defaultAssignee: {
     id: string;

@@ -15,11 +15,11 @@ import { useStore } from "../store-provider";
 import {
   Cog,
   LayoutDashboard,
-  Wallet,
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
   FileText,
+  Folder,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
@@ -27,7 +27,8 @@ import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
-  const { user, permissions, isLoading } = useUserRole();
+  const { permissions, isLoading } = useUserRole();
+  const { currentUser } = useStore();
 
   if (isLoading) {
     return (
@@ -39,17 +40,37 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     );
   }
 
+  if (!currentUser) {
+    return (
+      <Sidebar {...rest} className={cn(className, "border-r")}>
+        <SidebarContent>
+          <div className="p-4">
+            Cannot find your account. Please contact support.
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
   return (
     <Sidebar {...rest} className={cn(className, "border-r")}>
       <SidebarHeader>
         <div className="p-4 border-b">
-          <div className="flex flex-col gap-1">
-            <p className="font-medium text-sm">{user?.name || "User"}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">
-              {user?.role?.toLowerCase()} •{" "}
-              {user?.marketCenter?.name || "Global"}
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
+              <p className="font-medium text-sm">
+                {currentUser?.name
+                  ? `${currentUser.name}`
+                  : "User name not set"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {currentUser?.email}
+              </p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {currentUser?.role && currentUser?.role?.toLowerCase()} •{" "}
+                {currentUser?.marketCenter?.name || "Global"}
+              </p>
+            </div>
           </div>
         </div>
       </SidebarHeader>
@@ -73,11 +94,21 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            {permissions?.canManageTeam && (
+            {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/users">
-                    <UsersIcon /> Team Management
+                    <UsersIcon /> User Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {!permissions?.canManageAllUsers && permissions?.canManageTeam && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/settings?tab=team">
+                    <Folder /> Team Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -105,7 +136,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href={`/dashboard/profile/${user?.id}`}>
+                <Link href={`/dashboard/profile`}>
                   <CircleUserRound /> Profile
                 </Link>
               </SidebarMenuButton>

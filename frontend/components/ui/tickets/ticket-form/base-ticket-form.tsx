@@ -35,7 +35,6 @@ export type TicketFormValues = {
   urgency: Urgency;
   category: string;
   dueDate?: Date;
-  // creatorId: string;
 };
 
 export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
@@ -66,12 +65,20 @@ export type BaseTicketFormProps = {
 
 const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 const categoryOptions = [
-  "Maintenance",
-  "Document Request",
-  "Marketing Materials",
-  "Showing Request",
+  "Appraisals",
+  "Client Comments",
   "Compliance",
-  "IT Issue",
+  "Contracts",
+  "Documents",
+  "Feature Request",
+  "Financial",
+  "Inspections",
+  "Listings",
+  "Maintenance",
+  "Marketing",
+  "Onboarding",
+  "Showing Request",
+  "Technical",
   "Other",
 ];
 

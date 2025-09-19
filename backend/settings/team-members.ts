@@ -9,21 +9,24 @@ export const getTeamMembers = api(
   async (): Promise<{ members: TeamMember[]; invitations: any[] }> => {
     const userContext = await getUserContext();
     const prisma = getPrisma();
+    // TODO: member id
 
     // Only STAFF and ADMIN can view team members
-    if (userContext.role === 'AGENT') {
-      throw APIError.permissionDenied("Insufficient permissions to view team members");
+    if (userContext.role === "AGENT") {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to view team members"
+      );
     }
 
     // Get the user scope filter
-    const userScopeFilter = getUserScopeFilter(userContext);
+    // const userScopeFilter = getUserScopeFilter(userContext);
 
     // Get active team members
     const members = await prisma.user.findMany({
       where: {
-        ...userScopeFilter,
+        // ...userScopeFilter,
         deletedAt: null,
-        isActive: true
+        isActive: true,
       },
       select: {
         id: true,
@@ -31,36 +34,45 @@ export const getTeamMembers = api(
         name: true,
         role: true,
         isActive: true,
-        createdAt: true
+        createdAt: true,
       },
-      orderBy: [
-        { role: 'asc' },
-        { name: 'asc' }
-      ]
+      orderBy: [{ role: "asc" }, { name: "asc" }],
     });
 
     // Get pending invitations
     const invitations = await prisma.teamInvitation.findMany({
       where: {
         marketCenterId: userContext.marketCenterId || undefined,
-        status: 'PENDING',
+        status: "PENDING",
         expiresAt: {
-          gt: new Date()
-        }
+          gt: new Date(),
+        },
       },
       select: {
         id: true,
         email: true,
         role: true,
         createdAt: true,
-        expiresAt: true
+        expiresAt: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
+    let safeMembers: TeamMember[] | [];
+
+    if (!members || !members.length) {
+      safeMembers = [] as TeamMember[];
+    } else {
+      safeMembers = members.map((member) => {
+        return {
+          ...member,
+          name: member?.name || "",
+        };
+      });
+    }
 
     return {
-      members,
-      invitations
+      members: safeMembers,
+      invitations,
     };
   }
 );

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
-
+import { useStore } from "@/app/store-provider";
 
 export function hashString(str: string) {
   let h = 0;
@@ -96,45 +96,6 @@ export function getRoleBadgeStyle(
   }
 }
 
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case "RESOLVED":
-      return "success";
-    case "IN_PROGRESS":
-      return "default";
-    case "ASSIGNED":
-      return "secondary";
-    case "AWAITING_RESPONSE":
-      return "outline";
-    default:
-      return "secondary";
-  }
-};
-export const getUrgencyColor = (urgency: string) => {
-  switch (urgency) {
-    case "HIGH":
-      return "destructive";
-    case "MEDIUM":
-      return "orange";
-    case "LOW":
-      return "warning";
-    default:
-      return "secondary";
-  }
-};
-export const getRoleColor = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "destructive";
-    case "STAFF":
-      return "default";
-    case "USER":
-      return "secondary";
-    default:
-      return "secondary";
-  }
-};
-
 export interface BaseAction {
   label: string;
   icon: React.ReactNode;
@@ -178,7 +139,6 @@ export interface BaseListItemProps {
   className?: string;
 }
 
-
 export function ListItem({
   title,
   subtitle,
@@ -194,6 +154,8 @@ export function ListItem({
   className,
 }: BaseListItemProps) {
   const isClickable = !!onClick;
+
+  const { currentUser } = useStore();
 
   return (
     <div
@@ -216,7 +178,7 @@ export function ListItem({
           : undefined
       }
     >
-      {selectable && (
+      {selectable && currentUser?.role !== "AGENT" && (
         <Checkbox
           checked={selected}
           onCheckedChange={(v) => onSelect?.(!!v)}
@@ -300,27 +262,29 @@ export function ListItem({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-end gap-1 flex-shrink-0">
-        {actions &&
-          actions.map((a, i) => (
-            <Button
-              key={i}
-              variant={a.variant || "ghost"}
-              size="sm"
-              className="h-8 px-2 text-xs min-w-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!a.disabled) a.onClick(e);
-              }}
-              disabled={a.disabled}
-              title={a.title}
-              type="button"
-            >
-              {a.icon}
-              <span className="ml-1 hidden sm:inline">{a.label}</span>
-            </Button>
-          ))}
-      </div>
+      {currentUser?.role !== "AGENT" && (
+        <div className="flex flex-col sm:flex-row items-end gap-1 flex-shrink-0">
+          {actions &&
+            actions.map((a, i) => (
+              <Button
+                key={i}
+                variant={a.variant || "ghost"}
+                size="sm"
+                className="h-8 px-2 text-xs min-w-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!a.disabled) a.onClick(e);
+                }}
+                disabled={a.disabled}
+                title={a.title}
+                type="button"
+              >
+                {a.icon}
+                <span className="ml-1 hidden sm:inline">{a.label}</span>
+              </Button>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

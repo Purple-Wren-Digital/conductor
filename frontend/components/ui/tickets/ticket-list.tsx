@@ -54,6 +54,7 @@ import {
 
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
+import { useStore } from "@/app/store-provider";
 
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
@@ -81,6 +82,7 @@ export function TicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
+  const { currentUser } = useStore();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -96,9 +98,13 @@ export function TicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>(
+    role === "AGENT" ? `${currentUser?.id}` : "all"
+  );
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
-  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string | null>(null);
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
+    string | null
+  >(null);
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
@@ -137,7 +143,8 @@ export function TicketList() {
     if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
-    if (selectedMarketCenterId && role === "ADMIN") params.append("marketCenterId", selectedMarketCenterId);
+    if (selectedMarketCenterId && role === "ADMIN")
+      params.append("marketCenterId", selectedMarketCenterId);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -187,7 +194,8 @@ export function TicketList() {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch tickets");
-      return res.json();
+      const data = await res.json();
+      return data;
     },
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
@@ -350,7 +358,7 @@ export function TicketList() {
 
             <div className="flex items-center gap-4">
               {role === "ADMIN" && (
-                <TeamSwitcher 
+                <TeamSwitcher
                   selectedMarketCenterId={selectedMarketCenterId}
                   onMarketCenterChange={(id) => {
                     setSelectedMarketCenterId(id);
@@ -358,7 +366,7 @@ export function TicketList() {
                   }}
                 />
               )}
-              
+
               {permissions?.canCreateTicket && (
                 <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
                   <Plus className="h-4 w-4" />

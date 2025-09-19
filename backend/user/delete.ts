@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import { UserRole } from "@prisma/client";
+import { getUserContext } from "../auth/user-context";
+import { canDeactivateUsers } from "../auth/permissions";
 
 export interface DeleteUserRequest {
   id: string;
@@ -18,24 +19,20 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
     auth: true,
   },
   async (req) => {
-    const actingUserId = "user_1";
-    const actingUserRoles: UserRole[] = [UserRole.ADMIN];
+    const userContext = await getUserContext();
+
+    const isAdmin = await canDeactivateUsers(userContext);
+    if (!isAdmin) {
+      throw APIError.permissionDenied("Only admins delete/deactivate users");
+    }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.id },
-      select: { id: true, deletedAt: true },
+      where: { id: req.id, isActive: true },
+      select: { id: true, isActive: true, deletedAt: true },
     });
     if (!user) throw APIError.notFound("User not found");
 
-    const isAdmin = actingUserRoles.includes(UserRole.ADMIN);
-    const isSelf = actingUserId === user.id;
-    if (!isAdmin && !isSelf) {
-      throw APIError.permissionDenied(
-        "Only admins and the actual user can delete the user."
-      );
-    }
-
-    if (user.deletedAt) {
+    if (user?.deletedAt) {
       return { success: true, message: "User already deactivated" };
     }
 

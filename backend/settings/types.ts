@@ -61,6 +61,6 @@ export interface TeamMember {
   createdAt: Date;
 }
 
-export interface UpdateMemberRoleRequest {
+export interface UpdateMemberRequest {
   role: 'AGENT' | 'STAFF' | 'ADMIN';
 }

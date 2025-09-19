@@ -11,6 +11,7 @@ import { Badge } from "../badge";
 import { SafeHtml } from "../safe-html";
 import { formatDistanceToNow } from "date-fns";
 import { Edit2, Trash2, Check, X } from "lucide-react";
+import { useStore } from "@/app/store-provider";
 
 interface CommentItemProps {
   comment: Comment;
@@ -18,14 +19,14 @@ interface CommentItemProps {
 }
 
 export function CommentItem({ comment, ticketId }: CommentItemProps) {
-  const { user } = useUser();
+  const { currentUser } = useStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
-  
+
   const updateMutation = useUpdateComment();
   const deleteMutation = useDeleteComment();
 
-  const isOwnComment = user?.sub === comment.user?.id;
+  const isOwnComment = currentUser?.id === comment.user?.id;
 
   const handleSave = () => {
     if (editContent.trim() !== comment.content) {
@@ -54,12 +55,10 @@ export function CommentItem({ comment, ticketId }: CommentItemProps) {
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this comment?")) {
-      deleteMutation.mutate(
-        {
-          ticketId,
-          commentId: comment.id,
-        }
-      );
+      deleteMutation.mutate({
+        ticketId,
+        commentId: comment.id,
+      });
     }
   };
 
@@ -86,7 +85,9 @@ export function CommentItem({ comment, ticketId }: CommentItemProps) {
             {comment.user?.name || "Unknown User"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+            {formatDistanceToNow(new Date(comment.createdAt), {
+              addSuffix: true,
+            })}
           </p>
           {comment.internal && (
             <Badge variant="secondary" className="text-xs">
@@ -120,7 +121,7 @@ export function CommentItem({ comment, ticketId }: CommentItemProps) {
           </div>
         ) : (
           <div>
-            <SafeHtml 
+            <SafeHtml
               content={comment.content}
               className="text-sm text-foreground break-words"
             />

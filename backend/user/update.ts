@@ -1,12 +1,19 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import {
+  canChangeUserRoles,
+  canManageTeam,
+  canModifyOwnProfile,
+} from "../auth/permissions";
 
 export interface UpdateUserRequest {
   id: string;
   name?: string;
   role?: UserRole;
+  // isActive?: boolean;
+  email?: string;
 }
 
 export interface UpdateUserResponse {
@@ -17,16 +24,21 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
   {
     expose: true,
     method: "PUT",
-    path: "/users/:id",
-    auth: true,
+    path: "/users/:id/update",
+    auth: false,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+
+    // Permission checks
+    const canModifyUsers = await canManageTeam(userContext);
+    const isAdmin = await canChangeUserRoles(userContext);
+
+    if (!canModifyUsers) {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to update other users"
+      );
     }
-    const currentUserId = authData.userId;
-    const currentUserRole = authData.userRole as UserRole;
 
     const existingUser = await prisma.user.findUnique({
       where: { id: req.id },
@@ -36,38 +48,18 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.notFound("User not found");
     }
 
-    // Permission checks
-    const isOwnProfile = currentUserId === req.id;
-    const isAdmin = currentUserRole === "ADMIN";
-    const isStaff = currentUserRole === "STAFF";
-
-    // Users can update their own profile
-    // Staff can update agents
-    // Admins can update anyone
-    if (!isOwnProfile) {
-      if (isStaff && existingUser.role !== "AGENT") {
-        throw APIError.permissionDenied("Staff can only update agent profiles");
-      }
-      if (!isStaff && !isAdmin) {
-        throw APIError.permissionDenied(
-          "Insufficient permissions to update other users"
-        );
-      }
-    }
-
-    // Only admins can change roles
-    if (req.role && req.role !== existingUser.role && !isAdmin) {
-      throw APIError.permissionDenied("Only admins can change user roles");
-    }
-
     // Build update data object
-    const updateData: any = {};
-    if (req.name !== undefined) updateData.name = req.name;
-    if (req.role !== undefined && isAdmin) updateData.role = req.role;
+    const updateUserData: any = {};
+    if (req.name !== existingUser.name) updateUserData.name = req.name;
+    if (req.role !== existingUser.role && isAdmin)
+      updateUserData.role = req.role;
+    // if (req.isActive !== undefined && (isAdmin))
+    //   updateUserData.isActive = req.isActive;
+    if (req.email !== existingUser.email) updateUserData.email = req.email; // TODO: update email in Auth0 for existing user as well
 
     const updatedUser = await prisma.user.update({
       where: { id: req.id },
-      data: updateData,
+      data: updateUserData,
     });
 
     return { user: { ...updatedUser, name: updatedUser.name ?? "" } };

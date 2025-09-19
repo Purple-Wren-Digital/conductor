@@ -8,11 +8,13 @@ export interface SeedResponse {
 }
 
 const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-const subDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - n);
+const addDays = (d: Date, n: number) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const subDays = (d: Date, n: number) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate() - n);
 
 export const seedData = api<void, SeedResponse>(
-  { expose: true, method: "POST", path: "/seed" },
+  { expose: true, method: "POST", path: "/seed", auth: false },
   async () => {
     console.log("Seeding database...");
 
@@ -22,22 +24,82 @@ export const seedData = api<void, SeedResponse>(
 
     const users = await prisma.user.createManyAndReturn({
       data: [
-        { id: "u1", email: "alice.agent@kw.com", name: "Alice Johnson", role: UserRole.AGENT },
-        { id: "u2", email: "bob.staff@kw.com", name: "Bob Smith", role: UserRole.STAFF },
-        { id: "u3", email: "clara.admin@kw.com", name: "Clara Davis", role: UserRole.ADMIN },
-        { id: "u4", email: "dan.agent@kw.com", name: "Dan Williams", role: UserRole.AGENT },
-        { id: "u5", email: "emma.staff@kw.com", name: "Emma Brown", role: UserRole.STAFF },
-        { id: "u6", email: "frank.agent@kw.com", name: "Frank Miller", role: UserRole.AGENT },
-        { id: "u7", email: "gina.staff@kw.com", name: "Gina Wilson", role: UserRole.STAFF },
-        { id: "u8", email: "henry.agent@kw.com", name: "Henry Clark", role: UserRole.AGENT },
-        { id: "u9", email: "isla.staff@kw.com", name: "Isla Martinez", role: UserRole.STAFF },
-        { id: "u10", email: "jack.agent@kw.com", name: "Jack Lee", role: UserRole.AGENT },
+        {
+          id: "u1",
+          email: "alice.agent@kw.com",
+          name: "Alice Johnson",
+          role: UserRole.AGENT,
+          auth0Id: "auth-u1",
+        },
+        {
+          id: "u2",
+          email: "bob.staff@kw.com",
+          name: "Bob Smith",
+          role: UserRole.STAFF,
+          auth0Id: "auth-u2",
+        },
+        {
+          id: "u3",
+          email: "clara.admin@kw.com",
+          name: "Clara Davis",
+          role: UserRole.ADMIN,
+          auth0Id: "auth-u3",
+        },
+        {
+          id: "u4",
+          email: "dan.agent@kw.com",
+          name: "Dan Williams",
+          role: UserRole.AGENT,
+          auth0Id: "auth-u4",
+        },
+        {
+          id: "u5",
+          email: "emma.staff@kw.com",
+          name: "Emma Brown",
+          role: UserRole.STAFF,
+          auth0Id: "auth-u5",
+        },
+        {
+          id: "u6",
+          email: "frank.agent@kw.com",
+          name: "Frank Miller",
+          role: UserRole.AGENT,
+          auth0Id: "auth-u6",
+        },
+        {
+          id: "u7",
+          email: "gina.staff@kw.com",
+          name: "Gina Wilson",
+          role: UserRole.STAFF,
+          auth0Id: "auth-u7",
+        },
+        {
+          id: "u8",
+          email: "henry.agent@kw.com",
+          name: "Henry Clark",
+          role: UserRole.AGENT,
+          auth0Id: "auth-u8",
+        },
+        {
+          id: "u9",
+          email: "isla.staff@kw.com",
+          name: "Isla Martinez",
+          role: UserRole.STAFF,
+          auth0Id: "auth-u9",
+        },
+        {
+          id: "u10",
+          email: "jack.agent@kw.com",
+          name: "Jack Lee",
+          role: UserRole.AGENT,
+          auth0Id: "auth-u10",
+        },
       ],
     });
 
-    const agents = users.filter(u => u.role === UserRole.AGENT);
-    const staff = users.filter(u => u.role === UserRole.STAFF);
-    const admin = users.find(u => u.role === UserRole.ADMIN)!;
+    const agents = users.filter((u) => u.role === UserRole.AGENT);
+    const staff = users.filter((u) => u.role === UserRole.STAFF);
+    const admin = users.find((u) => u.role === UserRole.ADMIN)!;
     const now = new Date();
 
     const templates: Array<
@@ -48,7 +110,8 @@ export const seedData = api<void, SeedResponse>(
     > = [
       {
         title: "Contract deadline for 123 Maple St",
-        description: "Financing contingency expires tomorrow, awaiting appraisal report.",
+        description:
+          "Financing contingency expires tomorrow, awaiting appraisal report.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
         category: "Contracts",
@@ -60,7 +123,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Client viewed property; need follow-up on feedback.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.MEDIUM,
-        category: "Client Follow-up",
+        category: "Showing Request",
         createdAt: subDays(now, 3),
         dueDate: subDays(now, 1),
       },
@@ -83,10 +146,11 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Client complaint about agent",
-        description: "Mr. Smith reports unresponsive agent on inspection issue.",
+        description:
+          "Mr. Smith reports unresponsive agent on inspection issue.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
-        category: "Client Relations",
+        category: "Client Comments",
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 2),
       },
@@ -101,7 +165,8 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Document Request: HOA bylaws",
-        description: "Buyer for 555 Cedar Ct requested HOA bylaws and statements.",
+        description:
+          "Buyer for 555 Cedar Ct requested HOA bylaws and statements.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.LOW,
         category: "Documents",
@@ -171,7 +236,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Mark Main, Broad, and Church properties as sold.",
         status: TicketStatus.RESOLVED,
         urgency: Urgency.LOW,
-        category: "Website",
+        category: "Marketing",
         createdAt: subDays(now, 20),
         resolvedAt: subDays(now, 18),
       },
@@ -219,23 +284,30 @@ export const seedData = api<void, SeedResponse>(
       },
     ];
 
-    const ticketsToCreate: Prisma.TicketCreateManyInput[] = templates.map(t => {
-      const base: Prisma.TicketCreateManyInput = {
-        title: t.title,
-        description: t.description,
-        status: t.status,
-        urgency: t.urgency,
-        category: t.category,
-        creatorId: rand(agents).id,
-        assigneeId: rand(staff).id, 
-        createdAt: t.createdAt,
-        dueDate: t.dueDate ?? null,
-        resolvedAt: t.status === TicketStatus.RESOLVED ? (t.resolvedAt ?? subDays(now, 1)) : null,
-      };
-      return base;
-    });
+    const ticketsToCreate: Prisma.TicketCreateManyInput[] = templates.map(
+      (t) => {
+        const base: Prisma.TicketCreateManyInput = {
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          urgency: t.urgency,
+          category: t.category,
+          creatorId: rand(agents).id,
+          assigneeId: rand(staff).id,
+          createdAt: t.createdAt,
+          dueDate: t.dueDate ?? null,
+          resolvedAt:
+            t.status === TicketStatus.RESOLVED
+              ? t.resolvedAt ?? subDays(now, 1)
+              : null,
+        };
+        return base;
+      }
+    );
 
-    const tickets = await prisma.ticket.createManyAndReturn({ data: ticketsToCreate });
+    const tickets = await prisma.ticket.createManyAndReturn({
+      data: ticketsToCreate,
+    });
 
     const comments: Prisma.CommentCreateManyInput[] = [];
     for (const ticket of tickets) {
@@ -269,6 +341,8 @@ export const seedData = api<void, SeedResponse>(
     await prisma.comment.createMany({ data: comments });
 
     console.log("Seed completed.");
-    return { message: "Seeded 10 users, 20 varied tickets, each with ≥2 comments." };
+    return {
+      message: "Seeded 10 users, 20 varied tickets, each with ≥2 comments.",
+    };
   }
 );

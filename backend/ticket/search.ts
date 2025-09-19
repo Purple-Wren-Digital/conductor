@@ -44,24 +44,24 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
     let scopeFilter = getTicketScopeFilter(userContext);
-    
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
-      scopeFilter = {
-        OR: [
-          {
-            creator: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-          {
-            assignee: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-        ],
-      };
-    }
-    
+
+    // if (userContext.role === "ADMIN" && req.marketCenterId) {
+    //   scopeFilter = {
+    //     OR: [
+    //       {
+    //         creator: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //       {
+    //         assignee: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //     ],
+    //   };
+    // }
+
     const where: Prisma.TicketWhereInput = { ...scopeFilter };
 
     if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
@@ -81,17 +81,24 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.query) {
       const searchCondition = {
         OR: [
-          { title: { contains: req.query, mode: "insensitive" } },
-          { description: { contains: req.query, mode: "insensitive" } },
+          {
+            title: { contains: req.query, mode: Prisma.QueryMode.insensitive },
+          },
+          {
+            description: {
+              contains: req.query,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
         ],
       };
-      
-      if (scopeFilter.OR) {
-        where.AND = [scopeFilter, searchCondition];
-        delete where.OR;
-      } else {
-        where.OR = searchCondition.OR;
-      }
+
+      // if (scopeFilter?.OR) {
+      //   where.AND = [scopeFilter, searchCondition];
+      //   delete where.OR;
+      // } else {
+      where.OR = searchCondition.OR;
+      // }
     }
 
     if (req.dateFrom || req.dateTo) {
@@ -140,30 +147,19 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         break;
     }
 
-    type Row = Prisma.TicketGetPayload<{
+    const tickets = await prisma.ticket.findMany({
+      //   where,
       include: {
-        creator: true;
-        assignee: true;
-        _count: { select: { comments: true } };
-      };
-    }>;
-
-    const [rows, total] = await Promise.all([
-      prisma.ticket.findMany({
-        where,
-        include: {
-          creator: true,
-          assignee: true,
-          _count: { select: { comments: true } },
-        },
-        orderBy,
-        take: limit,
-        skip: offset,
-      }) as Promise<Row[]>,
-      prisma.ticket.count({ where }),
-    ]);
-
-    const tickets: Ticket[] = rows.map((r) => ({
+        creator: true,
+        assignee: true,
+        _count: { select: { comments: true } },
+      },
+      orderBy,
+      take: limit,
+      skip: offset,
+    });
+    const total = await prisma.ticket.count();
+    const ticketsMapped: Ticket[] = tickets.map((r) => ({
       ...r,
       title: r.title ?? "",
       description: r.description ?? "",
@@ -180,6 +176,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       commentCount: r._count.comments,
     }));
 
-    return { tickets, total };
+    return { tickets: ticketsMapped, total: total };
   }
 );

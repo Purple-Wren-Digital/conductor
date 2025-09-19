@@ -38,11 +38,14 @@ export const me = api<void, GetCurrentUserResponse>(
       email: user.email,
       name: user.name ?? "",
       role: user.role,
+      isActive: user.isActive,
       marketCenterId: user.marketCenterId,
-      marketCenter: user.marketCenter ? {
-        id: user.marketCenter.id,
-        name: user.marketCenter.name,
-      } : null,
+      marketCenter: user.marketCenter
+        ? {
+            id: user.marketCenter.id,
+            name: user.marketCenter.name,
+          }
+        : null,
     };
   }
 );

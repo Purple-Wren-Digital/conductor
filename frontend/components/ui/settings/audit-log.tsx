@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { History, Search, Filter, ChevronLeft, ChevronRight, Eye, Calendar, User, Settings } from "lucide-react";
-import { useSettingsAuditLog, useTeamMembers } from "@/hooks/use-settings";
+import { useSettingsAuditLog, useListTeamMembers } from "@/hooks/use-settings";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog/base-dialog";
 
 const ACTION_COLORS = {
@@ -38,7 +38,7 @@ export default function AuditLog() {
   const [sectionFilter, setSectionFilter] = useState<string>("");
   
   const { data: auditData, isLoading } = useSettingsAuditLog(currentPage, pageSize);
-  const { data: teamData } = useTeamMembers();
+  const { data: teamData } = useListTeamMembers();
   
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
 

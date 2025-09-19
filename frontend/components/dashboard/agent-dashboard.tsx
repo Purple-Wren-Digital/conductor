@@ -1,37 +1,52 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 
 export function AgentDashboard() {
-  const { user } = useUserRole();
+  const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading } = useQuery({
-    queryKey: ["agent-tickets", user?.id],
+    queryKey: ["agent-tickets", currentUser?.id],
     queryFn: async () => {
-      const accessToken = process.env.NODE_ENV === "development" ? "local" : await getAccessToken();
-      const response = await fetch(`/api/tickets/search?assigneeId=${user?.id}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const accessToken =
+        process.env.NODE_ENV === "development"
+          ? "local"
+          : await getAccessToken();
+      const response = await fetch(
+        `/api/tickets/search?assigneeId=${currentUser?.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch tickets");
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!currentUser?.id,
   });
 
   const tickets = ticketsData?.tickets || [];
-  
+
   const stats = {
     assigned: tickets.filter((t: any) => t.status === "ASSIGNED").length,
     inProgress: tickets.filter((t: any) => t.status === "IN_PROGRESS").length,
-    awaitingResponse: tickets.filter((t: any) => t.status === "AWAITING_RESPONSE").length,
+    awaitingResponse: tickets.filter(
+      (t: any) => t.status === "AWAITING_RESPONSE"
+    ).length,
     resolved: tickets.filter((t: any) => t.status === "RESOLVED").length,
   };
 
@@ -53,9 +68,13 @@ export function AgentDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Welcome back, {currentUser?.name}
+        </h1>
         <p className="text-muted-foreground">Here are your assigned tickets</p>
       </div>
+
+      <TicketTabs />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -65,10 +84,12 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.assigned}</div>
-            <p className="text-xs text-muted-foreground">Tickets awaiting action</p>
+            <p className="text-xs text-muted-foreground">
+              Tickets awaiting action
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
@@ -76,21 +97,27 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.inProgress}</div>
-            <p className="text-xs text-muted-foreground">Currently working on</p>
+            <p className="text-xs text-muted-foreground">
+              Currently working on
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Awaiting Response</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Awaiting Response
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.awaitingResponse}</div>
-            <p className="text-xs text-muted-foreground">Waiting for customer</p>
+            <p className="text-xs text-muted-foreground">
+              Waiting for customer
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Resolved</CardTitle>
@@ -98,7 +125,9 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.resolved}</div>
-            <p className="text-xs text-muted-foreground">Completed this month</p>
+            <p className="text-xs text-muted-foreground">
+              Completed this month
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -116,19 +145,29 @@ export function AgentDashboard() {
               .filter((t: any) => t.status !== "RESOLVED")
               .slice(0, 5)
               .map((ticket: any) => (
-                <div key={ticket.id} className="flex items-center justify-between p-2 rounded hover:bg-muted">
+                <div
+                  key={ticket.id}
+                  className="flex items-center justify-between p-2 rounded hover:bg-muted"
+                >
                   <div className="flex-1">
-                    <Link href={`/dashboard/tickets/${ticket.id}`} className="font-medium hover:underline">
+                    <Link
+                      href={`/dashboard/tickets/${ticket.id}`}
+                      className="font-medium hover:underline"
+                    >
                       {ticket.title}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      #{ticket.id.substring(0, 8)} • {ticket.status.replace("_", " ")}
+                      #{ticket.id.substring(0, 8)} •{" "}
+                      {ticket.status.replace("_", " ")}
                     </p>
                   </div>
                 </div>
               ))}
-            {tickets.filter((t: any) => t.status !== "RESOLVED").length === 0 && (
-              <p className="text-muted-foreground text-center py-4">No active tickets</p>
+            {tickets.filter((t: any) => t.status !== "RESOLVED").length ===
+              0 && (
+              <p className="text-muted-foreground text-center py-4">
+                No active tickets
+              </p>
             )}
           </div>
           <div className="mt-4">

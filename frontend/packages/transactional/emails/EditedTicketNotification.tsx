@@ -1,4 +1,4 @@
-import type { User as UserType } from "@/lib/types";
+import type { PrismaUser as UserType } from "@/lib/types";
 import {
   Body,
   Button,

@@ -8,25 +8,25 @@ import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
+import { API_BASE } from "@/lib/api/utils";
+import { parseJsonSafe } from "@/lib/utils";
 
 interface CommentFormProps {
   ticketId: string;
-  userId: string;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-const API_BASE = "http://localhost:4000";
-
-export function CommentForm({ ticketId, userId }: CommentFormProps) {
+export function CommentForm({ ticketId }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
 
-  const { user: authUser } = useUser();
+  const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
   const getAuth0AccessToken = useCallback(async () => {
@@ -60,25 +60,6 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
     }
   }, [content, isInternal, draftKey]);
 
-  async function parseJsonSafe<T>(res: Response): Promise<T> {
-    const ct = res.headers.get("content-type") || "";
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
-      );
-    }
-    if (ct.includes("application/json")) {
-      return res.json();
-    }
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Expected JSON but got ${
-        ct || "unknown content-type"
-      }. First 200 chars:\n${text.slice(0, 200)}`
-    );
-  }
-
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
@@ -89,6 +70,7 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       };
 
       const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        method: "GET",
         headers,
         cache: "no-store",
       });
@@ -110,16 +92,18 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
       ticketTitle: ticket?.title,
       createdOn: ticket?.createdAt,
       commentedOn: new Date(),
-      commenter: hardcodedUser, // authUser,
+      commenter: currentUser,
       comment: content.trim(),
       isInternal: isInternal,
       assignee: ticket?.assignee,
     };
     try {
+      const accessToken = await getAuth0AccessToken();
       const response = await fetch("/api/send/newComment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         cache: "no-store",
         body: JSON.stringify(ticketNewCommentEmailBody),
@@ -136,10 +120,11 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // if (!currentUser?.id) return;
     if (content.trim()) {
       createMutation.mutate(
         {
-          userId,
+          userId: currentUser?.id as string,
           ticketId,
           content: content.trim(),
           internal: isInternal,
@@ -249,19 +234,21 @@ export function CommentForm({ ticketId, userId }: CommentFormProps) {
 
       <div className="flex items-center justify-between">
         {permissions?.canCreateInternalComments && (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="internal"
-              checked={isInternal}
-              onCheckedChange={setIsInternal}
-              disabled={createMutation.isPending}
-            />
-            <Label htmlFor="internal" className="text-sm">
-              Internal note (staff only)
-            </Label>
-          </div>
+          <>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="internal"
+                checked={isInternal}
+                onCheckedChange={setIsInternal}
+                disabled={createMutation.isPending}
+              />
+              <Label htmlFor="internal" className="text-sm">
+                Internal note (staff only)
+              </Label>
+            </div>
+            <div />
+          </>
         )}
-        {!permissions?.canCreateInternalComments && <div />}
 
         <Button
           type="submit"

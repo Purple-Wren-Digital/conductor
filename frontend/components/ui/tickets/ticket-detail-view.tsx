@@ -23,17 +23,15 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react"; // , useMemo
 import { format } from "date-fns";
-import type {
-  Ticket,
-  PrismaUser,
-  TicketStatus,
-  Urgency,
-} from "@/lib/types";
+import type { Ticket, PrismaUser, TicketStatus, Urgency } from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
+import { getStatusColor, getUrgencyColor, parseJsonSafe } from "@/lib/utils";
+import { API_BASE } from "@/lib/api/utils";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -69,35 +67,15 @@ const statusOptions: TicketStatus[] = [
 ];
 const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 
-const API_BASE = "http://localhost:4000";
-
-async function parseJsonSafe<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") || "";
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
-    );
-  }
-  if (ct.includes("application/json")) {
-    return res.json();
-  }
-  const text = await res.text().catch(() => "");
-  throw new Error(
-    `Expected JSON but got ${
-      ct || "unknown content-type"
-    }. First 200 chars:\n${text.slice(0, 200)}`
-  );
-}
-
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-  
+
   const { user: authUser } = useUser();
-  const { user, permissions, role } = useUserRole();
+  const { currentUser } = useStore();
+  const { permissions, role } = useUserRole(); // TODO: Current User Persistence with useUserRole()
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
@@ -229,7 +207,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
+        editedBy: currentUser || {
+          id: "",
+          email: authUser?.email || "",
+          name: authUser?.name || "",
+          role: "AGENT",
+        },
         field: updates?.quickUpdate?.field,
         currentData: updates?.quickUpdate?.current,
       };
@@ -242,7 +225,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
+        editedBy: currentUser || {
+          id: "",
+          email: authUser?.email || "",
+          name: authUser?.name || "",
+          role: "AGENT",
+        },
         currentAssignment: updates?.reassignmentUpdate?.currentAssignment,
         previousAssignment: updates?.reassignmentUpdate?.previousAssignment,
       };
@@ -260,7 +248,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ticketTitle: updatedTicket?.title,
         createdOn: updatedTicket?.createdAt,
         updatedOn: updatedTicket?.createdAt,
-        editedBy: user || { id: "", email: authUser?.email || "", name: authUser?.name || "", role: "AGENT" },
+        editedBy: currentUser || {
+          id: "",
+          email: authUser?.email || "",
+          name: authUser?.name || "",
+          role: "AGENT",
+        },
         changedDetails: ticketEdits,
       };
     }
@@ -363,34 +356,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
-  const getStatusColor = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return "default";
-      case "IN_PROGRESS":
-        return "default";
-      case "ASSIGNED":
-        return "secondary";
-      case "AWAITING_RESPONSE":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getUrgencyColor = (urgency: Urgency) => {
-    switch (urgency) {
-      case "HIGH":
-        return "destructive";
-      case "MEDIUM":
-        return "default";
-      case "LOW":
-        return "secondary";
-      default:
-        return "secondary";
-    }
-  };
-
   const getStatusIcon = (status: TicketStatus) => {
     switch (status) {
       case "RESOLVED":
@@ -443,8 +408,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             #{ticket.id.substring(0, 8)}...
           </h1>
         </div>
-        {(permissions?.canReassignTicket || 
-          (role === "AGENT" && ticket.assigneeId === user?.id)) && (
+        {(permissions?.canReassignTicket ||
+          (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
           <div className="ml-auto">
             <Button
               variant="outline"
@@ -539,7 +504,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   onValueChange={(value: TicketStatus) =>
                     handleUpdateTicket("status", value)
                   }
-                  disabled={role === "AGENT" && ticket.assigneeId !== user?.id}
+                  disabled={
+                    role === "AGENT" && ticket.assigneeId !== currentUser?.id
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -553,7 +520,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {permissions?.canReassignTicket && (
                 <div className="space-y-2">
                   <Label>Urgency</Label>
@@ -576,7 +543,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   </Select>
                 </div>
               )}
-              
+
               {permissions?.canReassignTicket && (
                 <div className="space-y-2">
                   <Label>Assignee</Label>
