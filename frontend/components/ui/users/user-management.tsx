@@ -22,12 +22,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
+import CreateUser from "./create-user-form";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { Search, Users, User, UserPlus } from "lucide-react";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
 import { ROLE_ICONS } from "@/lib/utils";
 import { toast } from "sonner";
-import UserCreate from "./user-creation";
 
 interface UserWithStats extends PrismaUser {
   ticketsAssigned?: number;
@@ -314,9 +314,10 @@ export default function UserManagement() {
       </Card>
 
       {/* CREATE USER */}
-      <UserCreate
+      <CreateUser
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
+        refreshUserList={fetchActiveUsers}
       />
 
       {/* EDIT USER */}

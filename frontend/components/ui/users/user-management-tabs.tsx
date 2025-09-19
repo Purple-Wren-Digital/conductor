@@ -30,17 +30,17 @@ export default function UserManagementTabs() {
   return (
     <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="active" className="flex items-center gap-2">
+        <TabsTrigger value="users" className="flex items-center gap-2">
           <Users className="h-4 w-4" />
-          Active Users
+          Users
         </TabsTrigger>
         <TabsTrigger value="invitations" className="flex items-center gap-2">
           <Mailbox className="h-4 w-4" />
-          Invitations
+          User Invitations
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="active">
+      <TabsContent value="users">
         {permissions?.canManageAllUsers ? (
           <UserManagement />
         ) : (

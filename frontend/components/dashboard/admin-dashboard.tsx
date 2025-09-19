@@ -155,11 +155,11 @@ export function AdminDashboard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {marketCenters?.marketCenters?.map((mc: any) => (
+              {/* {marketCenters?.marketCenters?.map((mc: any) => (
                 <SelectItem key={mc.id} value={mc.id}>
                   {mc.name}
                 </SelectItem>
-              ))}
+              ))} */}
             </SelectContent>
           </Select>
           <Button asChild>
@@ -232,13 +232,13 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {marketCenters?.marketCenters?.slice(0, 5).map((mc: any) => {
+              {/* {marketCenters?.marketCenters?.slice(0, 5).map((mc: any) => {
                 const mcTickets = tickets.filter((t: any) => {
                   const creator = allUsers.find(
                     (u: any) => u.id === t.creatorId
                   );
                   return creator?.marketCenterId === mc.id;
-                });
+                }); 
                 const mcOpen = mcTickets.filter(
                   (t: any) => t.status !== "RESOLVED"
                 ).length;
@@ -261,7 +261,7 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 );
-              })}
+              })}*/}
             </div>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
@@ -345,7 +345,7 @@ export function AdminDashboard() {
               <p className="text-sm font-medium">Active Teams</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">
-                  {marketCenters?.marketCenters?.length || 0}
+                  {/* {marketCenters?.marketCenters?.length || 0} */}0
                 </span>
                 <Building className="h-4 w-4 text-muted-foreground" />
               </div>

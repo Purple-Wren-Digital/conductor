@@ -40,16 +40,36 @@ interface CreateAuth0UserForm {
   role: UserRole;
 }
 
+type Auth0User = {
+  user_id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  user_metadata: {
+    created: Date | null;
+    createdBy: string;
+    invited: boolean;
+    invitedOn: Date | null;
+    accepted: boolean;
+    acceptedOn: Date | null;
+    role: UserRole;
+  };
+};
+
 const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
 
 type UserInviteProps = {
   showCreateUserForm: boolean;
   setShowCreateUserForm: React.Dispatch<React.SetStateAction<boolean>>;
+  refreshUserList: () => Promise<void>;
+  handleInviteUser?: (user: Auth0User) => Promise<void>;
 };
 
-export default function UserCreate({
+export default function CreateUser({
   showCreateUserForm,
   setShowCreateUserForm,
+  refreshUserList,
+  handleInviteUser,
 }: UserInviteProps) {
   const { currentUser } = useStore();
 
@@ -190,8 +210,17 @@ export default function UserCreate({
           "Auth0 user created, but Failed to create new Prisma User"
         );
       }
+      toast.success("User created!");
+
+      if (handleInviteUser) {
+        toast.success("User created! Sending invitation now...");
+
+        await handleInviteUser(newAuth0User);
+      }
+
       setShowCreateUserForm(false);
-      toast.success("User created! Remember to send the invitation.");
+
+      await refreshUserList();
     } catch (error) {
       console.error("Failed to create new user: ", error);
       toast.error("Failed to Create User");
@@ -237,7 +266,6 @@ export default function UserCreate({
                 </p>
               )}
             </div>
-
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Last Name *
@@ -260,7 +288,6 @@ export default function UserCreate({
                 </p>
               )}
             </div>
-
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email Address *
@@ -282,14 +309,14 @@ export default function UserCreate({
                 <p className="text-sm text-destructive">{formErrors.email}</p>
               )}
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Role *</label>
               <Select
                 value={newUserFormData.role}
-                onValueChange={(value: UserRole) =>
-                  setNewUserFormData({ ...newUserFormData, role: value })
-                }
+                onValueChange={(value: UserRole) => {
+                  console.log("onValueChange", value);
+                  setNewUserFormData({ ...newUserFormData, role: value });
+                }}
                 disabled={!permissions?.canChangeUserRoles}
               >
                 <SelectTrigger>
@@ -307,7 +334,37 @@ export default function UserCreate({
                 </SelectContent>
               </Select>
             </div>
-
+            {/* 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Market Center *
+              </label>
+              <Select
+                value={newUserFormData.role}
+                onValueChange={(value: UserRole) =>
+                  setNewUserFormData({ ...newUserFormData, role: value })
+                }
+                disabled={true}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a market center" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={"example"}>
+                    <div className="flex items-center gap-2">
+                      {/* {getRoleIcon(role)} */}
+            {/* {role} */}
+            {/* Example */}
+            {/*     </div>
+                  </SelectItem>
+                  </SelectContent>
+                </Select>
+              {formErrors.marketCenter && (
+                <p className="text-sm text-destructive">
+                  {formErrors.marketCenter}
+                </p>
+              )}
+            </div> */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
               <Button
                 type="button"

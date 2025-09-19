@@ -5,13 +5,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useStore } from "@/app/store-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import CreateUser from "./create-user-form";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { UserRole } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
 import { Users, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import UserCreate from "./user-creation";
+import { ScrollArea } from "../scroll-area";
 
 type Auth0User = {
   user_id: string;
@@ -56,8 +57,8 @@ export default function UserInvitationManagement() {
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   // const [currentPage, setCurrentPage] = useState(1);
   // const [itemsPerPage] = useState(10);
@@ -70,7 +71,7 @@ export default function UserInvitationManagement() {
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     router.refresh();
   };
 
@@ -102,7 +103,11 @@ export default function UserInvitationManagement() {
     }
   }, []);
 
-  const fetchNewAuth0Users = async () => {
+  // const searchNewAuth0Users= async () => {
+
+  // }
+
+  const fetchNewAuth0Users = useCallback(async () => {
     if (!permissions?.canManageAllUsers) return;
     setLoadingUsers(true);
 
@@ -136,11 +141,11 @@ export default function UserInvitationManagement() {
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, [debouncedSearchQuery, fetchManagementToken]);
 
   useEffect(() => {
     fetchNewAuth0Users();
-  }, []);
+  }, [fetchNewAuth0Users]);
 
   const generatePasswordResetLink = async (auth0Id: string, token: string) => {
     try {
@@ -253,7 +258,7 @@ export default function UserInvitationManagement() {
     }
   };
 
-  const handleInviteUser = async (user: Auth0User) => {
+  const handleInviteUserToApp = async (user: Auth0User) => {
     setIsSendingInvitation(true);
     try {
       const token = await fetchManagementToken();
@@ -337,9 +342,9 @@ export default function UserInvitationManagement() {
       } else {
         toast.success("All selected users marked as accepted");
       }
-      await fetchNewAuth0Users();
-      handleRefresh();
       setSelectedNewUsers([]);
+
+      await fetchNewAuth0Users();
 
       return;
     } catch (error) {
@@ -347,6 +352,7 @@ export default function UserInvitationManagement() {
       toast.error("Failed to mark user(s) as accepted");
     } finally {
       setLoadingUsers(false);
+      // handleRefresh();
     }
   };
 
@@ -358,7 +364,7 @@ export default function UserInvitationManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                New Users ({newAuth0Users.length})
+                All Users ({newAuth0Users.length})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create and invite new users to join Conductor Ticketing
@@ -406,43 +412,44 @@ export default function UserInvitationManagement() {
                 loadingUsers ? "opacity-50 pointer-events-none" : "opacity-100"
               }`}
             >
-              {newAuth0Users.map((user, index) => (
-                <InvitationUserListItem
-                  key={index}
-                  disabled={
-                    isSendingInvitation ||
-                    !permissions?.canManageAllUsers ||
-                    user?.user_metadata?.accepted
-                  }
-                  onInvite={() => handleInviteUser(user)}
-                  selected={selectedNewUsers.includes(user)}
-                  onSelect={(checked: boolean) =>
-                    handleSelectUser(user, checked)
-                  }
-                  selectable={!user?.user_metadata?.accepted}
-                  user={{
-                    name: user.name,
-                    email: user.email,
-                    emailVerified: user.email_verified,
-                    user_metadata: {
-                      created: user.user_metadata?.created
-                        ? new Date(user.user_metadata.created)
-                        : null,
-                      createdBy: user.user_metadata?.createdBy || "unknown",
-                      invited: user.user_metadata?.invited || false,
-                      invitedOn: user?.user_metadata?.invitedOn
-                        ? new Date(user.user_metadata.invitedOn)
-                        : null,
-                      accepted: user?.user_metadata?.accepted || false,
-                      acceptedOn: user?.user_metadata?.acceptedOn
-                        ? new Date(user.user_metadata.acceptedOn)
-                        : null,
-                      role: user.user_metadata?.role || "AGENT",
-                    },
-                  }}
-                />
-              ))}
-
+              <ScrollArea className="h-300">
+                {newAuth0Users.map((user, index) => (
+                  <InvitationUserListItem
+                    key={index}
+                    disabled={
+                      isSendingInvitation ||
+                      !permissions?.canManageAllUsers ||
+                      user?.user_metadata?.accepted
+                    }
+                    onInvite={() => handleInviteUserToApp(user)}
+                    selected={selectedNewUsers.includes(user)}
+                    onSelect={(checked: boolean) =>
+                      handleSelectUser(user, checked)
+                    }
+                    selectable={!user?.user_metadata?.accepted}
+                    user={{
+                      name: user.name,
+                      email: user.email,
+                      emailVerified: user.email_verified,
+                      user_metadata: {
+                        created: user.user_metadata?.created
+                          ? new Date(user.user_metadata.created)
+                          : null,
+                        createdBy: user.user_metadata?.createdBy || "unknown",
+                        invited: user.user_metadata?.invited || false,
+                        invitedOn: user?.user_metadata?.invitedOn
+                          ? new Date(user.user_metadata.invitedOn)
+                          : null,
+                        accepted: user?.user_metadata?.accepted || false,
+                        acceptedOn: user?.user_metadata?.acceptedOn
+                          ? new Date(user.user_metadata.acceptedOn)
+                          : null,
+                        role: user.user_metadata?.role || "AGENT",
+                      },
+                    }}
+                  />
+                ))}
+              </ScrollArea>
               {newAuth0Users.length === 0 && !loadingUsers && (
                 <div className="text-center py-8 text-muted-foreground">
                   No users found matching your criteria.
@@ -486,9 +493,10 @@ export default function UserInvitationManagement() {
       </Card>
 
       {/* CREATE USER */}
-      <UserCreate
+      <CreateUser
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
+        refreshUserList={fetchNewAuth0Users}
       />
     </div>
   );

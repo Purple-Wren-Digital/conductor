@@ -93,6 +93,7 @@ export function InvitationUserListItem({
       selectable={selectable}
       selected={selected}
       onSelect={onSelect}
+      className="mb-3"
     />
   );
 }
