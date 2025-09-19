@@ -8,6 +8,7 @@ import {
   type TicketFormValues,
   type TicketFormErrors,
 } from "./base-ticket-form";
+import { API_BASE } from "@/lib/api/utils";
 
 type Props = {
   isOpen: boolean;
@@ -137,7 +138,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     setLoading(true);
     try {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/tickets", {
+      const res = await fetch(`${API_BASE}/tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

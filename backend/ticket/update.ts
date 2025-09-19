@@ -1,7 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
+import { canModifyTicket } from "../auth/permissions";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -25,11 +26,15 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+
+    const canModify = await canModifyTicket(userContext, req.ticketId);
+    if (!canModify) {
+      throw APIError.permissionDenied(
+        "You do not have permission to modify this ticket"
+      );
     }
-    const userId = "u1"; // TODO: authData.userID;
+
     const updateData: any = {};
 
     if (req.title !== undefined) updateData.title = req.title;

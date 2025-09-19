@@ -40,7 +40,9 @@ export const getMetrics = api<void, GetMetricsResponse>(
     };
 
     statusCounts.forEach((item) => {
-      ticketsByStatus[item.status] = item._count.status;
+      if (item.status !== null) {
+        ticketsByStatus[item.status as TicketStatus] = item._count.status;
+      }
     });
 
     const urgencyCountsOpen = await prisma.ticket.groupBy({

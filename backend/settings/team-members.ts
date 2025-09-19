@@ -1,37 +1,32 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
 import { TeamMember } from "./types";
+import { getUserContext } from "../auth/user-context";
+import { getUserScopeFilter } from "../auth/permissions";
 
 export const getTeamMembers = api(
-  { method: "GET", path: "/settings/team/members", auth: false },
+  { method: "GET", path: "/settings/team/members", auth: true },
   async (): Promise<{ members: TeamMember[]; invitations: any[] }> => {
-    const mockUserId = "user_1";
+    const userContext = await getUserContext();
     const prisma = getPrisma();
+    // TODO: member id
 
-    // Find the user and their market center
-    const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
-      include: { marketCenter: true }
-    });
-
-    if (!user) {
-      throw APIError.notFound("User not found");
+    // Only STAFF and ADMIN can view team members
+    if (userContext.role === "AGENT") {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to view team members"
+      );
     }
 
-    if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
-      throw APIError.permissionDenied("Insufficient permissions to view team members");
-    }
-
-    if (!user.marketCenter) {
-      throw APIError.notFound("Market center not found");
-    }
+    // Get the user scope filter
+    // const userScopeFilter = getUserScopeFilter(userContext);
 
     // Get active team members
     const members = await prisma.user.findMany({
       where: {
-        marketCenterId: user.marketCenterId!,
+        // ...userScopeFilter,
         deletedAt: null,
-        isActive: true
+        isActive: true,
       },
       select: {
         id: true,
@@ -39,36 +34,45 @@ export const getTeamMembers = api(
         name: true,
         role: true,
         isActive: true,
-        createdAt: true
+        createdAt: true,
       },
-      orderBy: [
-        { role: 'asc' },
-        { name: 'asc' }
-      ]
+      orderBy: [{ role: "asc" }, { name: "asc" }],
     });
 
     // Get pending invitations
     const invitations = await prisma.teamInvitation.findMany({
       where: {
-        marketCenterId: user.marketCenterId!,
-        status: 'PENDING',
+        marketCenterId: userContext.marketCenterId || undefined,
+        status: "PENDING",
         expiresAt: {
-          gt: new Date()
-        }
+          gt: new Date(),
+        },
       },
       select: {
         id: true,
         email: true,
         role: true,
         createdAt: true,
-        expiresAt: true
+        expiresAt: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
+    let safeMembers: TeamMember[] | [];
+
+    if (!members || !members.length) {
+      safeMembers = [] as TeamMember[];
+    } else {
+      safeMembers = members.map((member) => {
+        return {
+          ...member,
+          name: member?.name || "",
+        };
+      });
+    }
 
     return {
-      members,
-      invitations
+      members: safeMembers,
+      invitations,
     };
   }
 );

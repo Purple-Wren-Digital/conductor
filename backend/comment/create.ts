@@ -1,23 +1,15 @@
 import { api, APIError } from "encore.dev/api";
-// import { getAuthData } from "encore.dev/internal/auth/mod";
-import { getAuthData } from "~encore/auth";
-
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
 import { processCommentContent } from "./sanitize";
-
-interface AuthData {
-  userID: string;
-  imageUrl: string | null;
-  emailAddress: string;
-}
+import { getUserContext } from "../auth/user-context";
+import { canAccessTicket, canCreateInternalComments } from "../auth/permissions";
 
 export interface CreateCommentRequest {
   ticketId: string;
   content: string;
   internal?: boolean;
-  userId: string;
 }
 
 export interface CreateCommentResponse {
@@ -32,15 +24,24 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+
+    // Check if user can access the ticket
+    const hasAccess = await canAccessTicket(userContext, req.ticketId);
+    if (!hasAccess) {
+      throw APIError.permissionDenied("You do not have permission to comment on this ticket");
     }
 
-    const userId = authData.userID;
+    // Check if user can create internal comments
+    if (req.internal) {
+      const canCreateInternal = await canCreateInternalComments(userContext);
+      if (!canCreateInternal) {
+        throw APIError.permissionDenied("You do not have permission to create internal comments");
+      }
+    }
 
     // Apply rate limiting
-    commentRateLimiter.checkRateLimit(userId);
+    commentRateLimiter.checkRateLimit(userContext.userId);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -54,7 +55,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       data: {
         content: processCommentContent(req.content),
         ticketId: req.ticketId,
-        userId: req.userId,
+        userId: userContext.userId,
         internal: req.internal || false,
       },
       include: {

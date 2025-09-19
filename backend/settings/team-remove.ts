@@ -1,24 +1,28 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
+import { getUserContext } from "../auth/user-context";
+import { canManageTeam } from "../auth/permissions";
 
 export const removeTeamMember = api(
-  { method: "DELETE", path: "/settings/team/members/:id", auth: false },
+  { method: "DELETE", path: "/settings/team/members/:id", auth: true },
   async ({ id }: { id: string }): Promise<{ success: boolean }> => {
-    const mockUserId = "user_1";
+    const userContext = await getUserContext();
     const prisma = getPrisma();
+
+    // Check if user can manage team
+    const canManage = await canManageTeam(userContext);
+    if (!canManage) {
+      throw APIError.permissionDenied("You do not have permission to remove team members");
+    }
 
     // Find the user and their market center
     const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
+      where: { id: userContext.userId },
       include: { marketCenter: true }
     });
 
     if (!user) {
       throw APIError.notFound("User not found");
-    }
-
-    if (user.role !== 'ADMIN') {
-      throw APIError.permissionDenied("Only administrators can remove team members");
     }
 
     if (!user.marketCenter) {
@@ -41,6 +45,11 @@ export const removeTeamMember = api(
     // Prevent self-removal
     if (userToRemove.id === user.id) {
       throw APIError.aborted("Cannot remove yourself");
+    }
+    
+    // Staff can only remove non-admin users
+    if (userContext.role === 'STAFF' && userToRemove.role === 'ADMIN') {
+      throw APIError.permissionDenied("Staff cannot remove administrators");
     }
 
     // Check if this is the last admin

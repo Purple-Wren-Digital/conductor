@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryClientProvider } from "./query-client-provider";
 import StoreProvider from "./store-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -38,6 +39,7 @@ export default function RootLayout({
       >
         <Auth0Provider>
           <StoreProvider>
+            <Toaster />
             <QueryClientProvider>{children}</QueryClientProvider>
           </StoreProvider>
         </Auth0Provider>

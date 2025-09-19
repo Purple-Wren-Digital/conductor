@@ -1,25 +1,29 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
-import { UpdateMemberRoleRequest } from "./types";
+import { UpdateMemberRequest } from "./types";
+import { getUserContext } from "../auth/user-context";
+import { canChangeUserRoles } from "../auth/permissions";
 
 export const updateMemberRole = api(
-  { method: "PUT", path: "/settings/team/members/:id/role", auth: false },
-  async ({ id, role }: { id: string } & UpdateMemberRoleRequest): Promise<{ success: boolean }> => {
-    const mockUserId = "user_1";
+  { method: "PUT", path: "/settings/team/members/:id/role", auth: true },
+  async ({ id, role }: { id: string } & UpdateMemberRequest): Promise<{ success: boolean }> => {
+    const userContext = await getUserContext();
     const prisma = getPrisma();
+
+    // Check if user can change roles
+    const canChangeRoles = await canChangeUserRoles(userContext);
+    if (!canChangeRoles) {
+      throw APIError.permissionDenied("Only administrators can update member roles");
+    }
 
     // Find the user and their market center
     const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
+      where: { id: userContext.userId },
       include: { marketCenter: true }
     });
 
     if (!user) {
       throw APIError.notFound("User not found");
-    }
-
-    if (user.role !== 'ADMIN') {
-      throw APIError.permissionDenied("Only administrators can update member roles");
     }
 
     if (!user.marketCenter) {

@@ -12,7 +12,7 @@ import { PrismaUser } from "@/lib/types";
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { setPrismaUser } = useStore();
+  const { setCurrentUser } = useStore();
   const { user: auth0User } = useUser();
 
   const getAuth0AccessToken = useCallback(async () => {
@@ -35,13 +35,14 @@ export default function DashboardLayout({
     if (response.ok) {
       const data: { user: PrismaUser } = await response.json();
       if (data && data?.user) {
-        setPrismaUser(data.user);
+        setCurrentUser(data.user);
         return;
       }
     }
-    setPrismaUser(null);
+    setCurrentUser(null);
   };
 
+  // TODO: CURRENT USER PERSISTENCE
   useEffect(() => {
     if (!auth0User) {
       console.error(
@@ -77,7 +78,7 @@ export default function DashboardLayout({
               )}
               <Link
                 href="/auth/logout"
-                onClick={() => setPrismaUser(null)}
+                onClick={() => setCurrentUser(null)}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 Logout

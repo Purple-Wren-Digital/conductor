@@ -43,6 +43,7 @@ import type { Ticket, TicketStatus, Urgency, PrismaUser } from "@/lib/types";
 import { EditTicketForm } from "./ticket-form/edit-ticket-form";
 import { CreateTicketForm } from "./ticket-form/create-ticket-form";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   useQuery,
   useMutation,
@@ -51,7 +52,9 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
+import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
+import { TeamSwitcher } from "@/components/ui/team-switcher";
+import { useStore } from "@/app/store-provider";
 
 const statusOptions: TicketStatus[] = [
   "ASSIGNED",
@@ -78,6 +81,8 @@ const defaultActiveStatuses: TicketStatus[] = [
 export function TicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { permissions, role } = useUserRole();
+  const { currentUser } = useStore();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -93,8 +98,13 @@ export function TicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>(
+    role === "AGENT" ? `${currentUser?.id}` : "all"
+  );
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
+    string | null
+  >(null);
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
@@ -133,6 +143,8 @@ export function TicketList() {
     if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
+    if (selectedMarketCenterId && role === "ADMIN")
+      params.append("marketCenterId", selectedMarketCenterId);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -146,6 +158,8 @@ export function TicketList() {
     selectedUrgencies,
     selectedAssignee,
     selectedCreator,
+    selectedMarketCenterId,
+    role,
     dateFrom,
     dateTo,
     sortBy,
@@ -180,7 +194,8 @@ export function TicketList() {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch tickets");
-      return res.json();
+      const data = await res.json();
+      return data;
     },
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
@@ -341,11 +356,24 @@ export function TicketList() {
           <div className="flex items-center justify-between">
             <CardTitle>Tickets ({totalTickets})</CardTitle>
 
-            {/* Primary action */}
-            <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Create Ticket
-            </Button>
+            <div className="flex items-center gap-4">
+              {role === "ADMIN" && (
+                <TeamSwitcher
+                  selectedMarketCenterId={selectedMarketCenterId}
+                  onMarketCenterChange={(id) => {
+                    setSelectedMarketCenterId(id);
+                    setCurrentPage(1);
+                  }}
+                />
+              )}
+
+              {permissions?.canCreateTicket && (
+                <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Create Ticket
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4 mt-4">
@@ -585,21 +613,23 @@ export function TicketList() {
                   : "opacity-100"
               }`}
             >
-              <div className="flex items-center space-x-2 pb-2 border-b">
-                <Checkbox
-                  checked={
-                    selectedTickets.length === tickets.length &&
-                    tickets.length > 0
-                  }
-                  onCheckedChange={(v: boolean | "indeterminate") =>
-                    handleSelectAll(v === true)
-                  }
-                />
-                <span className="text-sm font-medium">Select All</span>
-              </div>
+              {permissions?.canBulkUpdate && (
+                <div className="flex items-center space-x-2 pb-2 border-b">
+                  <Checkbox
+                    checked={
+                      selectedTickets.length === tickets.length &&
+                      tickets.length > 0
+                    }
+                    onCheckedChange={(v: boolean | "indeterminate") =>
+                      handleSelectAll(v === true)
+                    }
+                  />
+                  <span className="text-sm font-medium">Select All</span>
+                </div>
+              )}
 
               {tickets.map((ticket: TicketWithUpdatedAt) => (
-                <TicketListItem
+                <TicketListItemWrapper
                   key={ticket.id}
                   ticket={ticket}
                   selected={selectedTickets.includes(ticket.id)}
@@ -610,7 +640,7 @@ export function TicketList() {
                   onClose={(e: React.MouseEvent) =>
                     handleQuickClose(e, ticket.id)
                   }
-                  onClick={() => handleTicketClick(ticket)} // ⬅️ navigate & seed cache
+                  onClick={() => handleTicketClick(ticket)}
                 />
               ))}
 

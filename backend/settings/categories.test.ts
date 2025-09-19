@@ -128,6 +128,7 @@ describe("Category Management", () => {
         id: "cat_1",
         name: "Technical Support",
         marketCenterId: "market_center_1",
+        createdAt: new Date(),
       };
 
       const updatedCategory = {
@@ -140,6 +141,8 @@ describe("Category Management", () => {
           name: "Test User",
           email: "test@example.com",
         },
+        createdAt: expect.any(Date),
+        updatedAt: new Date(),
       };
 
       hoisted.mockPrisma.ticketCategory.findFirst.mockResolvedValue(
@@ -152,6 +155,7 @@ describe("Category Management", () => {
       );
 
       const result = await updateCategory({
+        ...updatedCategory,
         id: "cat_1",
         name: "Tech Support",
         description: "Updated description",

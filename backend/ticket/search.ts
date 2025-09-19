@@ -3,6 +3,8 @@ import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { Prisma } from "@prisma/client";
+import { getUserContext } from "../auth/user-context";
+import { getTicketScopeFilter } from "../auth/permissions";
 
 export interface SearchTicketsRequest {
   query?: Query<string>;
@@ -12,6 +14,7 @@ export interface SearchTicketsRequest {
   assigneeId?: Query<string>;
   creatorId?: Query<string>;
   category?: Query<string>;
+  marketCenterId?: Query<string>;
 
   dateFrom?: Query<string>;
   dateTo?: Query<string>;
@@ -33,13 +36,33 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     expose: true,
     method: "GET",
     path: "/tickets/search",
-    auth: false, // true
+    auth: true,
   },
   async (req) => {
+    const userContext = await getUserContext();
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    const where: Prisma.TicketWhereInput = {};
+    let scopeFilter = getTicketScopeFilter(userContext);
+
+    // if (userContext.role === "ADMIN" && req.marketCenterId) {
+    //   scopeFilter = {
+    //     OR: [
+    //       {
+    //         creator: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //       {
+    //         assignee: {
+    //           marketCenterId: req.marketCenterId,
+    //         },
+    //       },
+    //     ],
+    //   };
+    // }
+
+    const where: Prisma.TicketWhereInput = { ...scopeFilter };
 
     if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
       where.status = { not: "RESOLVED" as TicketStatus };
@@ -56,10 +79,26 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.category) where.category = req.category;
 
     if (req.query) {
-      where.OR = [
-        { title: { contains: req.query, mode: "insensitive" } },
-        { description: { contains: req.query, mode: "insensitive" } },
-      ];
+      const searchCondition = {
+        OR: [
+          {
+            title: { contains: req.query, mode: Prisma.QueryMode.insensitive },
+          },
+          {
+            description: {
+              contains: req.query,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        ],
+      };
+
+      // if (scopeFilter?.OR) {
+      //   where.AND = [scopeFilter, searchCondition];
+      //   delete where.OR;
+      // } else {
+      where.OR = searchCondition.OR;
+      // }
     }
 
     if (req.dateFrom || req.dateTo) {
@@ -108,30 +147,19 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         break;
     }
 
-    type Row = Prisma.TicketGetPayload<{
+    const tickets = await prisma.ticket.findMany({
+      //   where,
       include: {
-        creator: true;
-        assignee: true;
-        _count: { select: { comments: true } };
-      };
-    }>;
-
-    const [rows, total] = await Promise.all([
-      prisma.ticket.findMany({
-        where,
-        include: {
-          creator: true,
-          assignee: true,
-          _count: { select: { comments: true } },
-        },
-        orderBy,
-        take: limit,
-        skip: offset,
-      }) as Promise<Row[]>,
-      prisma.ticket.count({ where }),
-    ]);
-
-    const tickets: Ticket[] = rows.map((r) => ({
+        creator: true,
+        assignee: true,
+        _count: { select: { comments: true } },
+      },
+      orderBy,
+      take: limit,
+      skip: offset,
+    });
+    const total = await prisma.ticket.count();
+    const ticketsMapped: Ticket[] = tickets.map((r) => ({
       ...r,
       title: r.title ?? "",
       description: r.description ?? "",
@@ -148,6 +176,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       commentCount: r._count.comments,
     }));
 
-    return { tickets, total };
+    return { tickets: ticketsMapped, total: total };
   }
 );
