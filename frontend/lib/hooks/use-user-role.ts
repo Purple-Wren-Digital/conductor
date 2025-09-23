@@ -17,6 +17,8 @@ export interface UserPermissions {
   canManageAllUsers: boolean;
   canCreateTeam: boolean;
   canManageTeam: boolean;
+  canManageAllMarketCenters: boolean;
+  canDeactivateMarketCenters: boolean;
   canChangeUserRoles: boolean;
   canDeactivateUsers: boolean;
   canAccessSettings: boolean;
@@ -39,6 +41,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canCreateTeam: true,
         canManageTeam: true,
         canChangeUserRoles: true,
+        canManageAllMarketCenters: true,
+        canDeactivateMarketCenters: true,
         canDeactivateUsers: true,
         canAccessSettings: true,
         canAccessReports: true,
@@ -57,6 +61,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canCreateTeam: false,
         canManageTeam: true,
         canChangeUserRoles: false,
+        canManageAllMarketCenters: false,
+        canDeactivateMarketCenters: false,
         canDeactivateUsers: false,
         canAccessSettings: true,
         canAccessReports: false,
@@ -75,6 +81,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canCreateTeam: false,
         canManageTeam: false,
         canChangeUserRoles: false,
+        canManageAllMarketCenters: false,
+        canDeactivateMarketCenters: false,
         canDeactivateUsers: false,
         canAccessSettings: false,
         canAccessReports: false,

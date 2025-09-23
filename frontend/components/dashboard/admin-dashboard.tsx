@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   Building,
   Ticket,
@@ -30,6 +29,8 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
+import { API_BASE } from "@/lib/api/utils";
+import { MarketCenter } from "../../lib/types";
 
 export function AdminDashboard() {
   const [selectedMarketCenter, setSelectedMarketCenter] =
@@ -76,13 +77,18 @@ export function AdminDashboard() {
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
-      // const response = await fetch(`/api/market-centers`, {
-      //   headers: {
-      //     Authorization: `Bearer ${accessToken}`,
-      //   },
-      // });
-      // if (!response.ok) return { marketCenters: [] };
-      // return response.json();
+      const response = await fetch(`${API_BASE}/marketCenters`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) return { marketCenters: [] };
+
+      const data = await response.json();
+
+      return { marketCenters: data?.marketCenters as MarketCenter[] };
     },
   });
 
@@ -155,11 +161,15 @@ export function AdminDashboard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {/* {marketCenters?.marketCenters?.map((mc: any) => (
-                <SelectItem key={mc.id} value={mc.id}>
-                  {mc.name}
-                </SelectItem>
-              ))} */}
+              {/* TODO: Filter by team */}
+              {marketCenters &&
+                marketCenters?.marketCenters &&
+                marketCenters?.marketCenters?.length &&
+                marketCenters?.marketCenters?.map((mc: any) => (
+                  <SelectItem key={mc.id} value={mc.id}>
+                    {mc.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <Button asChild>
@@ -194,7 +204,7 @@ export function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.highPriority}</div>
             <p className="text-xs text-muted-foreground">
-              Require immediate attention
+              Requires immediate attention
             </p>
           </CardContent>
         </Card>
@@ -232,40 +242,35 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* {marketCenters?.marketCenters?.slice(0, 5).map((mc: any) => {
-                const mcTickets = tickets.filter((t: any) => {
-                  const creator = allUsers.find(
-                    (u: any) => u.id === t.creatorId
+              {marketCenters &&
+                marketCenters?.marketCenters &&
+                marketCenters?.marketCenters.length &&
+                marketCenters.marketCenters.map((mc: any) => {
+                  return (
+                    <div
+                      key={mc?.id}
+                      className="flex flex-col p-2 rounded  hover:bg-muted"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{mc?.name && mc.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          #{mc?.id && mc.id.substring(0, 8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Users Assigned: {mc.users.length ?? "0"}
+                        </p>
+                      </div>
+                    </div>
                   );
-                  return creator?.marketCenterId === mc.id;
-                }); 
-                const mcOpen = mcTickets.filter(
-                  (t: any) => t.status !== "RESOLVED"
-                ).length;
-                const mcTotal = mcTickets.length;
-
-                return (
-                  <div
-                    key={mc.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{mc.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {mcOpen} open • {mcTotal} total
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge variant="secondary">{mcOpen}</Badge>
-                      <Badge variant="outline">{mcTotal}</Badge>
-                    </div>
-                  </div>
-                );
-              })}*/}
+                })}
             </div>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard/settings">Manage Teams</Link>
+                <Link href="/dashboard/marketCenters">
+                  Manage Market Centers
+                </Link>
               </Button>
             </div>
           </CardContent>
