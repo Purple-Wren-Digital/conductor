@@ -191,3 +191,21 @@ export async function canDeactivateUsers(
 ): Promise<boolean> {
   return userContext.role === "ADMIN";
 }
+
+export async function canCreateMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}
+
+export async function canManageMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}
+
+export async function canDeleteMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}

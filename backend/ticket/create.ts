@@ -31,7 +31,6 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
 
       const canCreate = await canCreateTicket(userContext);
 
-      console.log("CREATE TICKET PERMISSIONS?", canCreate);
       if (!canCreate) {
         throw APIError.permissionDenied(
           "You do not have permission to create tickets"
