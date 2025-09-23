@@ -7,6 +7,7 @@ import { getUserContext } from "../auth/user-context";
 
 export interface ListUsersRequest {
   role?: Query<UserRole>;
+  isActive?: Query<boolean>;
 }
 
 export interface ListUsersResponse {
@@ -31,10 +32,13 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     //   deletedAt: null,
     // };
 
-    const where: any = {};
+    let where: any = {};
 
     if (req.role) {
       where.role = req.role;
+    }
+    if (req.isActive) {
+      where.isActive = req.isActive;
     }
 
     const users = await prisma.user.findMany({

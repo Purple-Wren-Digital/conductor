@@ -159,3 +159,8 @@ export interface TicketCategory {
   defaultAssignee?: PrismaUser;
   marketCenter: MarketCenter;
 }
+
+export type MarketCenterForm = {
+  name: string;
+  selectedUsers: PrismaUser[];
+};
