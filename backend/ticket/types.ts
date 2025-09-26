@@ -1,3 +1,5 @@
+import { MarketCenter } from "../marketCenters/types";
+
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
   | "DRAFT"

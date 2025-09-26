@@ -82,9 +82,10 @@ export default function TicketList() {
   const { permissions, role } = useUserRole();
   const { currentUser } = useStore();
 
-  const marketCenterId = currentUser?.marketCenterId
-    ? currentUser?.marketCenterId
-    : "";
+  const marketCenterId =
+    role !== "AGENT" && currentUser?.marketCenterId
+      ? currentUser?.marketCenterId
+      : "";
 
   const staffUserUnassignedToMarketCenter = role === "STAFF" && !marketCenterId;
 
@@ -104,7 +105,9 @@ export default function TicketList() {
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    staffUserUnassignedToMarketCenter ? `${currentUser?.id}` : "all"
+    staffUserUnassignedToMarketCenter || role === "AGENT"
+      ? `${currentUser?.id}`
+      : "all"
   );
   const [selectedCreator, setSelectedCreator] = useState<string>(
     staffUserUnassignedToMarketCenter ? `${currentUser?.id}` : "all"
@@ -487,12 +490,17 @@ export default function TicketList() {
                         setSelectedAssignee(v);
                         setCurrentPage(1);
                       }}
+                      disabled={currentUser?.role === "AGENT"}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={"Select assignee"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All assignees</SelectItem>
+                        <SelectItem value="all">
+                          {currentUser?.role === "AGENT"
+                            ? `${currentUser?.name} (You)`
+                            : "All assignees"}
+                        </SelectItem>
                         {teamMembers.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
@@ -510,6 +518,7 @@ export default function TicketList() {
                         setSelectedCreator(v);
                         setCurrentPage(1);
                       }}
+                      disabled={currentUser?.role === "AGENT"}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select creator" />

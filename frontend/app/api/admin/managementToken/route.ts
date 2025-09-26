@@ -6,7 +6,8 @@ const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
 export async function POST(req: Request) {
   const body = await req.json();
-  if (!body || !body?.role || (body && body?.role && body?.role !== "ADMIN")) {
+
+  if (!body || !body?.role || (body && body?.role && body?.role === "AGENT")) {
     return NextResponse.json({ error: "Permission denied" }, { status: 403 });
   }
   try {
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
         grant_type: "client_credentials",
       }),
     });
+
+    console.log("MANAGEMENT TOKEN RESPONSE", tokenRes);
     if (!tokenRes.ok) {
       throw new Error("Failed to generate management access token");
     }

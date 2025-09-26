@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../select";
-import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
+import { MarketCenter, PrismaUser, SortDir, UserRole } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
@@ -61,8 +61,14 @@ type UpdateUserForm = {
   email: string;
 };
 
+type UserSortBy = "updatedAt" | "createdAt";
+
 export default function TeamManagement() {
   const queryClient = useQueryClient();
+  
+  const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [showEditUserForm, setShowEditUserForm] = useState(false);
@@ -232,23 +238,23 @@ export default function TeamManagement() {
     setFormErrors({});
   };
 
-  const validateEditUserForm = () => {
-    const errors: Record<string, string> = {};
-    if (noChangesToUser) {
-      errors.general = "No changes were made";
-    }
-    if (!formData.name.trim()) errors.name = "Required";
-    if (currentUser?.role === "ADMIN" && !formData.role)
-      errors.role = "Required";
-    if (!formData.email.trim()) {
-      errors.email = "Required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Invalid email format";
-    }
+  // const validateEditUserForm = () => {
+  //   const errors: Record<string, string> = {};
+  //   if (noChangesToUser) {
+  //     errors.general = "No changes were made";
+  //   }
+  //   if (!formData.name.trim()) errors.name = "Required";
+  //   if (currentUser?.role === "ADMIN" && !formData.role)
+  //     errors.role = "Required";
+  //   if (!formData.email.trim()) {
+  //     errors.email = "Required";
+  //   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+  //     errors.email = "Invalid email format";
+  //   }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  //   setFormErrors(errors);
+  //   return Object.keys(errors).length === 0;
+  // };
 
   return (
     <div className="space-y-6">
@@ -355,7 +361,10 @@ export default function TeamManagement() {
             <DialogTitle>Editing {editingTeamMember.name}</DialogTitle>
             <DialogDescription>Press save when complete</DialogDescription>
           </DialogHeader>
-          <form onSubmit={()=> console.log('Disabled')} className="space-y-4 py-4">
+          <form
+            onSubmit={() => console.log("Disabled")}
+            className="space-y-4 py-4"
+          >
             {/* NAME */}
             <div className="space-y-2">
               <Label htmlFor="name" className="font-bold">
