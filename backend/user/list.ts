@@ -1,9 +1,8 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
-// import { getUserScopeFilter } from "../auth/permissions";
 
 export interface ListUsersRequest {
   role?: Query<UserRole>;
@@ -22,23 +21,15 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     auth: true,
   },
   async (req) => {
-    await getUserContext();
+    const userContext = await getUserContext();
 
-    // const userScopeFilter = getUserScopeFilter(userContext);
-
-    // const baseWhere: any = {
-    //   ...userScopeFilter,
-    //   isActive: true,
-    //   deletedAt: null,
-    // };
-
+    if (userContext?.role === "AGENT") {
+      throw APIError.permissionDenied("Not authorized to view all  users");
+    }
     let where: any = {};
 
-    if (req.role) {
+    if (req?.role) {
       where.role = req.role;
-    }
-    if (req.isActive) {
-      where.isActive = req.isActive;
     }
 
     const users = await prisma.user.findMany({

@@ -1,5 +1,5 @@
 import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
-import { TicketList } from "@/components/ui/tickets/ticket-list";
+import TicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list";
 
 export default function DashboardTicketsPage() {
   return (

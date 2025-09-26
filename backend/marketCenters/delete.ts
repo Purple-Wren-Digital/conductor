@@ -1,14 +1,10 @@
-import { api, APIError, Query } from "encore.dev/api";
-// import { canCreateMarketCenters } from "../auth/permissions";
-// import { getUserContext } from "../auth/user-context";
+import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import { MarketCenter } from "./types";
-import { User } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { canDeleteMarketCenters } from "../auth/permissions";
 
 export interface DeleteMarketCenterRequest {
-  id: string; // Query<string>;
+  id: string;
 }
 
 export interface DeleteMarketCenterResponse {

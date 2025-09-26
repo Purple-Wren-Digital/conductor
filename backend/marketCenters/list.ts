@@ -9,7 +9,9 @@ export interface ListMarketCentersRequest {
   id?: Query<string>;
   name?: Query<string>;
   sort?: Query<string>;
-  // username?: Query<string>;
+  search?: Query<string>;
+  limit?: Query<number>;
+  offset?: Query<number>;
 }
 
 export interface ListMarketCentersResponse {

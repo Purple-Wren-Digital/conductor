@@ -1,4 +1,4 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
@@ -34,26 +34,28 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
-    let scopeFilter = getTicketScopeFilter(userContext);
+    let scopeFilter = await getTicketScopeFilter(userContext);
 
-    // if (userContext.role === "ADMIN" && req.marketCenterId) {
-    //   scopeFilter = {
-    //     OR: [
-    //       {
-    //         creator: {
-    //           marketCenterId: req.marketCenterId,
-    //         },
-    //       },
-    //       {
-    //         assignee: {
-    //           marketCenterId: req.marketCenterId,
-    //         },
-    //       },
-    //     ],
-    //   };
-    // }
+    let where: any = {};
 
-    const where: any = { ...scopeFilter };
+    if (req.search) {
+      const searchCondition = {
+        OR: [
+          { title: { contains: req.search, mode: "insensitive" } },
+          { description: { contains: req.search, mode: "insensitive" } },
+        ],
+      };
+
+      if (where.OR) {
+        where.AND = [scopeFilter, searchCondition];
+      } else {
+        where.OR = searchCondition.OR;
+      }
+    } else {
+      where = {
+        ...scopeFilter,
+      };
+    }
 
     if (req.status && req.status.length > 0) {
       where.status = { in: req.status };
@@ -75,20 +77,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       where.category = req.category;
     }
 
-    if (req.search) {
-      const searchCondition = {
-        OR: [
-          { title: { contains: req.search, mode: "insensitive" } },
-          { description: { contains: req.search, mode: "insensitive" } },
-        ],
-      };
-
-      // if (scopeFilter.OR) {
-      //   where.AND = [scopeFilter, searchCondition];
-      // } else {
-      where.OR = searchCondition.OR;
-      // }
-    }
+    console.log("????WHERE?????", where);
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
@@ -106,6 +95,9 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       }),
       prisma.ticket.count({ where }),
     ]);
+    if (!tickets) {
+      throw APIError.notFound("Could not find any tickets that meets criteria");
+    }
 
     const formattedTickets: Ticket[] = tickets.map((ticket) => ({
       ...ticket,

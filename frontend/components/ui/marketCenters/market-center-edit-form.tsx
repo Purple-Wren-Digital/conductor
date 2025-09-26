@@ -140,7 +140,7 @@ export default function EditMarketCenter({
           }),
         }
       );
-      if (!response.ok) throw new Error("Failed to fetch market centers");
+      if (!response.ok) throw new Error("Failed to update market center");
 
       toast.success(
         `${formData?.name ? formData.name : "Market Center"} was updated`
@@ -155,7 +155,6 @@ export default function EditMarketCenter({
       setIsSubmitting(false);
     }
   };
-
 
   return (
     <Dialog open={showEditMCForm} onOpenChange={setShowEditMCForm}>

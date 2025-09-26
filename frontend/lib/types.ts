@@ -164,3 +164,10 @@ export type MarketCenterForm = {
   name: string;
   selectedUsers: PrismaUser[];
 };
+
+// FILTERS
+export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
+export type SortDir = "asc" | "desc";
+
+export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
+export type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };

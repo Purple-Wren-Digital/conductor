@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { PrismaUser } from "../types";
-import { useStore } from "@/app/store-provider";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 

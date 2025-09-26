@@ -1,5 +1,8 @@
 "use client";
 
+import { useStore } from "@/app/store-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,66 +10,42 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useStore } from "@/app/store-provider";
+import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
+import {
+  useFetchMarketCenter,
+  useFetchMarketCenterTickets,
+} from "@/hooks/use-market-center";
 import { Ticket, Users, TrendingUp, AlertCircle, Plus } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { TicketTabs } from "../ui/tabs/ticket-tabs";
-import { API_BASE } from "@/lib/api/utils";
-// TODO: Market Center/Team Backend
+
 export function StaffDashboard() {
   const { currentUser } = useStore();
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
-    queryKey: ["all-tickets"], // ["team-tickets", currentUser?.marketCenterId],
-    queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
-      const response = await fetch(`${API_BASE}/tickets/search`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch tickets");
-      return await response.json();
-    },
-    // enabled: !!currentUser?.marketCenterId,
-  });
+  const marketCenterId = currentUser?.marketCenterId
+    ? currentUser?.marketCenterId
+    : "";
 
-  const { data: usersData } = useQuery({
-    queryKey: ["all-users"], //  ["team-members", currentUser?.marketCenterId],
-    queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
-      const response = await fetch(`${API_BASE}/users`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch users");
-      return await response.json();
-    },
-    // enabled: !!currentUser?.marketCenterId,
-  });
+  const { data: marketCenter, isLoading: marketCenterLoading } =
+    useFetchMarketCenter(marketCenterId);
+
+  const { data: ticketsData, isLoading: ticketsLoading } =
+    useFetchMarketCenterTickets(marketCenterId);
 
   const tickets = ticketsData?.tickets || [];
-  const teamMembers = usersData?.users || [];
 
   const stats = {
-    totalTickets: tickets.length,
+    totalTickets: ticketsData?.total || 0,
     openTickets: tickets.filter((t: any) => t.status !== "RESOLVED").length,
     highPriority: tickets.filter(
       (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length,
     unassigned: tickets.filter((t: any) => !t.assigneeId).length,
   };
+
+  const teamMembers =
+    marketCenter?.users && marketCenter?.users.length > 0
+      ? marketCenter?.users
+      : [];
 
   const teamStats = teamMembers.reduce((acc: any, member: any) => {
     const memberTickets = tickets.filter(
@@ -82,7 +61,7 @@ export function StaffDashboard() {
     return acc;
   }, {});
 
-  if (ticketsLoading) {
+  if (ticketsLoading || marketCenterLoading) {
     return (
       <div className="p-8">
         <div className="animate-pulse space-y-4">
@@ -103,7 +82,7 @@ export function StaffDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Team Dashboard</h1>
           <p className="text-muted-foreground">
-            Managing {currentUser?.marketCenter?.name || "your team"}
+            Managing {marketCenter?.name || "your"} market center
           </p>
         </div>
         <Button asChild>
@@ -231,22 +210,26 @@ export function StaffDashboard() {
             <div className="space-y-4">
               {Object.entries(teamStats)
                 .slice(0, 5)
-                .map(([memberId, stats]: [string, any]) => (
-                  <div
-                    key={memberId}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{stats.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {stats.assigned} active • {stats.resolved} resolved
-                      </p>
+                .map(([memberId, stats]: [string, any]) => {
+                  return (
+                    <div
+                      key={memberId}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {stats.name} {memberId === currentUser?.id && "(You)"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {stats.assigned} active • {stats.resolved} resolved
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary">{stats.assigned}</Badge>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge variant="secondary">{stats.assigned}</Badge>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               {Object.keys(teamStats).length === 0 && (
                 <p className="text-muted-foreground text-center py-4">
                   No team data available

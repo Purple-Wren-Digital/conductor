@@ -17,10 +17,7 @@ export interface User {
   isActive: boolean;
   auth0Id: string;
   marketCenterId: string | null;
-  marketCenter?: {
-    id: string;
-    name: string;
-  } | null;
+  marketCenter?: MarketCenter;
 }
 
 export interface Ticket {

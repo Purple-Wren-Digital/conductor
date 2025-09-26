@@ -53,7 +53,7 @@ export default function CreateMarketCenter({
     setShowCreateMCForm(false);
   };
 
-  const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
+  const handleSetSelectedUserOptions = (newSelected: PrismaUser[]) => {
     setFormData((prev) => ({
       ...prev,
       selectedUsers: newSelected,
@@ -168,7 +168,7 @@ export default function CreateMarketCenter({
               formFieldName="Users"
               options={[...unassignedUsers]}
               selectedOptions={formData.selectedUsers}
-              handleSetSelectedOptions={handleSetSelectedOptions}
+              handleSetSelectedOptions={handleSetSelectedUserOptions}
               error={formErrors?.users ? formErrors.users : null}
             />
             <p className="text-sm text-destructive">

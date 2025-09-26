@@ -298,8 +298,10 @@ export default function UserManagement() {
                 <UserListItem
                   key={user.id}
                   user={user}
+                  deleteLabel="Deactivate"
                   onEdit={() => handleEditUser(user)}
-                  onDelete={() => openDeleteModal(user)} // open modal
+                  onDelete={() => openDeleteModal(user)}
+                  disabled={!permissions?.canDeactivateUsers}
                 />
               ))}
 

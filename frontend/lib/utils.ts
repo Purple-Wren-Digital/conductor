@@ -1,5 +1,11 @@
-import { Shield, User, Crown, LucideProps } from "lucide-react";
-import { TicketStatus, Urgency, UserRole } from "./types";
+import { Shield, User, Crown } from "lucide-react";
+import {
+  SortDir,
+  TicketSortBy,
+  TicketStatus,
+  Urgency,
+  UserRole,
+} from "./types";
 
 // USERS
 export const ROLE_COLORS = {
@@ -75,6 +81,38 @@ export const getUrgencyColor = (urgency: Urgency) => {
     default:
       return "secondary";
   }
+};
+
+// TICKET FILTERS
+export const defaultActiveStatuses: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+];
+export const statusOptions: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+];
+export const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
+export const sortDirOptions: SortDir[] = ["asc", "desc"];
+export const sortByTicketOptions: TicketSortBy[] = [
+  "updatedAt",
+  "createdAt",
+  "urgency",
+  "status",
+];
+
+const ticketOptionLabels: Record<TicketSortBy, string> = {
+  updatedAt: "Updated At",
+  createdAt: "Created At",
+  urgency: "Urgency",
+  status: "Status",
+};
+
+export const formatTicketOptions = (option: TicketSortBy) => {
+  return ticketOptionLabels[option] ?? option;
 };
 
 // MISC

@@ -2,7 +2,13 @@
 
 import type React from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,50 +45,48 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { format, startOfDay, endOfDay } from "date-fns";
-import type { Ticket, TicketStatus, Urgency, PrismaUser } from "@/lib/types";
-import { EditTicketForm } from "./ticket-form/edit-ticket-form";
-import { CreateTicketForm } from "./ticket-form/create-ticket-form";
+import type {
+  Ticket,
+  TicketStatus,
+  Urgency,
+  PrismaUser,
+  TicketWithUpdatedAt,
+} from "@/lib/types";
+import { EditTicketForm } from "../ticket-form/edit-ticket-form";
+import { CreateTicketForm } from "../ticket-form/create-ticket-form";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
-  useQuery,
   useMutation,
   useQueryClient,
-  keepPreviousData,
   type UseQueryResult,
 } from "@tanstack/react-query";
-
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
-import { TeamSwitcher } from "@/components/ui/team-switcher";
 import { useStore } from "@/app/store-provider";
+import { useFetchMarketCenter } from "@/hooks/use-market-center";
+import { useSearchTickets } from "@/hooks/use-tickets";
+import {
+  defaultActiveStatuses,
+  formatTicketOptions,
+  sortByTicketOptions,
+  sortDirOptions,
+  statusOptions,
+  urgencyOptions,
+} from "@/lib/utils";
+import { SortDir, TicketSortBy, TicketsResponse } from "@/lib/types";
+import { TeamSwitcher } from "../../team-switcher";
 
-const statusOptions: TicketStatus[] = [
-  "ASSIGNED",
-  "AWAITING_RESPONSE",
-  "IN_PROGRESS",
-  "RESOLVED",
-];
-const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
-
-type SortBy = "updatedAt" | "createdAt" | "urgency" | "status";
-type SortDir = "asc" | "desc";
-
-type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
-
-type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };
-type UsersResponse = { users: PrismaUser[] };
-
-const defaultActiveStatuses: TicketStatus[] = [
-  "ASSIGNED",
-  "AWAITING_RESPONSE",
-  "IN_PROGRESS",
-];
-
-export function TicketList() {
+export default function TicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
   const { currentUser } = useStore();
+
+  const marketCenterId = currentUser?.marketCenterId
+    ? currentUser?.marketCenterId
+    : "";
+
+  const staffUserUnassignedToMarketCenter = role === "STAFF" && !marketCenterId;
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -98,20 +102,24 @@ export function TicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
+
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    role === "AGENT" ? `${currentUser?.id}` : "all"
+    staffUserUnassignedToMarketCenter ? `${currentUser?.id}` : "all"
   );
-  const [selectedCreator, setSelectedCreator] = useState<string>("all");
+  const [selectedCreator, setSelectedCreator] = useState<string>(
+    staffUserUnassignedToMarketCenter ? `${currentUser?.id}` : "all"
+  );
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
     string | null
   >(null);
+
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
 
-  const [sortBy, setSortBy] = useState<SortBy>("updatedAt");
+  const [sortBy, setSortBy] = useState<TicketSortBy>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,14 +145,21 @@ export function TicketList() {
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
+
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
+
+    // Market Center
+    if (selectedMarketCenterId && role === "ADMIN")
+      params.append("marketCenterId", selectedMarketCenterId);
+    if (role === "STAFF" && currentUser?.marketCenterId)
+      params.append("marketCenterId", currentUser.marketCenterId);
+
     if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
-    if (selectedMarketCenterId && role === "ADMIN")
-      params.append("marketCenterId", selectedMarketCenterId);
+
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -177,56 +192,27 @@ export function TicketList() {
     [queryKeyParams]
   );
 
+  // FETCH MARKET CENTER
+  const { data: marketCenter, isLoading: marketCenterLoading } =
+    useFetchMarketCenter(marketCenterId);
+
+  const teamMembers = marketCenter?.users ?? [];
+
+  // FETCH TICKETS
   const {
     data: ticketsData,
     isFetching: ticketsLoading,
-  }: UseQueryResult<TicketsResponse, Error> = useQuery<
-    TicketsResponse,
-    Error,
-    TicketsResponse,
-    typeof ticketsQueryKey
-  >({
-    queryKey: ticketsQueryKey,
-    queryFn: async (): Promise<TicketsResponse> => {
-      const accessToken = await getAuth0AccessToken();
-      const res = await fetch(`/api/tickets/search?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Failed to fetch tickets");
-      const data = await res.json();
-      return data;
-    },
-    placeholderData: keepPreviousData,
-    refetchInterval: 15000,
+  }: UseQueryResult<TicketsResponse, Error> = useSearchTickets({
+    ticketsQueryKey,
+    queryParams,
   });
+
+  const queryInvalidator = () =>
+    queryClient.invalidateQueries({ queryKey: ["tickets"] });
 
   const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = Math.ceil(totalTickets / itemsPerPage);
-
-  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
-    UsersResponse,
-    Error,
-    UsersResponse
-  >({
-    queryKey: ["users"],
-    queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/users", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const users: PrismaUser[] = usersData?.users ?? [];
-
-  const queryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: ["tickets"] });
 
   const bulkAssignMutation = useMutation({
     mutationFn: async (payload: {
@@ -354,7 +340,15 @@ export function TicketList() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Tickets ({totalTickets})</CardTitle>
+            <div className="space-y-2">
+              <CardTitle>Tickets ({totalTickets})</CardTitle>
+              {marketCenter && (
+                <CardDescription>
+                  {marketCenter?.name} (#
+                  {marketCenter.id.slice(0, 8)})
+                </CardDescription>
+              )}
+            </div>
 
             <div className="flex items-center gap-4">
               {role === "ADMIN" && (
@@ -416,10 +410,10 @@ export function TicketList() {
                 </Button>
               )}
             </div>
-
             {showFilters && (
               <Card className="p-4 bg-muted/50">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* STATUS */}
                   <div className="space-y-2">
                     <Label>Status</Label>
                     <div className="flex flex-wrap gap-2">
@@ -451,7 +445,7 @@ export function TicketList() {
                       ))}
                     </div>
                   </div>
-
+                  {/* URGENCY */}
                   <div className="space-y-2">
                     <Label>Urgency</Label>
                     <div className="flex flex-wrap gap-2">
@@ -484,6 +478,7 @@ export function TicketList() {
                     </div>
                   </div>
 
+                  {/* ASSIGNED TO */}
                   <div className="space-y-2">
                     <Label>Assignee</Label>
                     <Select
@@ -494,11 +489,11 @@ export function TicketList() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select assignee" />
+                        <SelectValue placeholder={"Select assignee"} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All assignees</SelectItem>
-                        {users.map((user: PrismaUser) => (
+                        {teamMembers.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
                           </SelectItem>
@@ -506,7 +501,7 @@ export function TicketList() {
                       </SelectContent>
                     </Select>
                   </div>
-
+                  {/* CREATED BY */}
                   <div className="space-y-2">
                     <Label>Creator</Label>
                     <Select
@@ -521,7 +516,7 @@ export function TicketList() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All creators</SelectItem>
-                        {users.map((user: PrismaUser) => (
+                        {teamMembers.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
                           </SelectItem>
@@ -589,6 +584,50 @@ export function TicketList() {
                       </PopoverContent>
                     </Popover>
                   </div>
+
+                  {/* SORT BY */}
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value: TicketSortBy) => setSortBy(value)}
+                      disabled={!tickets || !tickets.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Sort By"} />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {sortByTicketOptions.map((ticketOption) => (
+                          <SelectItem key={ticketOption} value={ticketOption}>
+                            {formatTicketOptions(ticketOption)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* ORDER BY */}
+                  <div className="space-y-2">
+                    <Label>Order By</Label>
+                    <Select
+                      value={sortDir}
+                      onValueChange={(value: SortDir) => setSortDir(value)}
+                      disabled={!tickets || !tickets.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Order by"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortDirOptions.map((direction) => (
+                          <SelectItem key={direction} value={direction}>
+                            {direction === "asc"
+                              ? "Newest to Oldest"
+                              : "Oldest to Newest"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </Card>
             )}
@@ -613,21 +652,22 @@ export function TicketList() {
                   : "opacity-100"
               }`}
             >
-              {permissions?.canBulkUpdate && (
-                <div className="flex items-center space-x-2 pb-2 border-b">
-                  <Checkbox
-                    checked={
-                      selectedTickets.length === tickets.length &&
-                      tickets.length > 0
-                    }
-                    onCheckedChange={(v: boolean | "indeterminate") =>
-                      handleSelectAll(v === true)
-                    }
-                  />
-                  <span className="text-sm font-medium">Select All</span>
-                </div>
-              )}
-
+              <div className="space-y-2 pb-2 border-b">
+                {permissions?.canBulkUpdate && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={
+                        selectedTickets.length === tickets.length &&
+                        tickets.length > 0
+                      }
+                      onCheckedChange={(v: boolean | "indeterminate") =>
+                        handleSelectAll(v === true)
+                      }
+                    />
+                    <span className="text-sm font-medium">Select All</span>
+                  </div>
+                )}
+              </div>
               {tickets.map((ticket: TicketWithUpdatedAt) => (
                 <TicketListItemWrapper
                   key={ticket.id}
@@ -700,7 +740,7 @@ export function TicketList() {
                 <SelectValue placeholder="Select a user..." />
               </SelectTrigger>
               <SelectContent>
-                {users.map((user: PrismaUser) => (
+                {teamMembers.map((user: PrismaUser) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.name}
                   </SelectItem>
