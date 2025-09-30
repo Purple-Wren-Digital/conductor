@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
@@ -39,20 +39,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../select";
-import { MarketCenter, PrismaUser, SortDir, UserRole } from "@/lib/types";
+import type {
+  MarketCenter,
+  PrismaUser,
+  OrderBy,
+  UserRole,
+  UserSortBy,
+} from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
+  formatUserOptions,
+  ROLE_ICONS,
   roleOptions,
+  sortByUserOptions,
+  orderByOptions,
+  formatOrderBy,
   ROLE_COLORS,
   ROLE_DESCRIPTIONS,
-  ROLE_ICONS,
+  calculateTotalPages,
 } from "@/lib/utils";
-import { Building, User } from "lucide-react";
+import {
+  ArrowDownNarrowWide,
+  ArrowDownUp,
+  ArrowDownWideNarrow,
+  Building,
+  Search,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AddTeamMemberModal from "./team-management-add-user";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
+import { useFetchUsersWithinMarketCenter } from "@/hooks/use-users";
+import PagesAndItemsCount from "../../pagination/page-and-items-count";
 
 type UpdateUserForm = {
   marketCenter: MarketCenter;
@@ -61,13 +81,20 @@ type UpdateUserForm = {
   email: string;
 };
 
-type UserSortBy = "updatedAt" | "createdAt";
-
 export default function TeamManagement() {
   const queryClient = useQueryClient();
-  
+
+  const { currentUser } = useStore();
+  const { role, permissions } = useUserRole();
+
   const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortDir, setSortDir] = useState<OrderBy>("asc");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,20 +111,66 @@ export default function TeamManagement() {
   const [userToRemove, setUserToRemove] = useState<PrismaUser>(
     {} as PrismaUser
   );
-  const { currentUser } = useStore();
-
-  const { permissions } = useUserRole();
 
   const marketCenterId = currentUser?.marketCenterId
     ? currentUser?.marketCenterId
     : "";
 
-  const { data: marketCenter, isLoading } =
-    useFetchMarketCenter(marketCenterId);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const teamMembers: PrismaUser[] =
-    marketCenter && marketCenter?.users ? marketCenter?.users : [];
-  const teamMemberCount = teamMembers ? teamMembers.length : "0";
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
+
+    params.append("sortDir", sortDir);
+    params.append("sortBy", sortBy);
+    params.append("limit", String(itemsPerPage));
+    params.append("offset", String((currentPage - 1) * itemsPerPage));
+    return params;
+  }, [sortBy, sortDir]);
+
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
+  const usersQueryKey = useMemo(
+    () => ["team-members", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: usersData, isLoading: usersLoading } =
+    useFetchUsersWithinMarketCenter({
+      usersQueryKey,
+      queryParams,
+      role,
+      marketCenterId,
+    });
+
+  const teamMembers: PrismaUser[] = usersData?.users ?? [];
+  const totalTeamMembers = teamMembers ? teamMembers.length : 0;
+  const totalPages = calculateTotalPages({
+    totalItems: totalTeamMembers,
+    itemsPerPage,
+  });
+
+  const invalidateUsers = queryClient.invalidateQueries({
+    queryKey: ["team-members", queryKeyParams],
+  });
+
+  const { data: marketCenter, isLoading } = useFetchMarketCenter(
+    role,
+    marketCenterId
+  );
+
+  const invalidateMarketCenter = queryClient.invalidateQueries({
+    queryKey: ["get-market-center", marketCenterId],
+  });
 
   const userNameDifferent =
     formData?.name &&
@@ -193,9 +266,8 @@ export default function TeamManagement() {
     },
     onSuccess: (_, user) => {
       toast.success(`${user.name || "User"} was removed`);
-      queryClient.invalidateQueries({
-        queryKey: ["get-market-center", marketCenterId],
-      });
+      invalidateUsers;
+      invalidateMarketCenter;
     },
     onError: (error) => {
       console.error("Failed to remove user", error);
@@ -289,40 +361,143 @@ export default function TeamManagement() {
 
       {/* ManagementTable  */}
       <Card>
-        <CardHeader>
-          <CardTitle>Current Team Members</CardTitle>
-          <CardDescription>{teamMemberCount} Active Members</CardDescription>
-        </CardHeader>
-        <CardContent className="min-h-10 space-y-4">
-          {!isLoading &&
-            teamMembers &&
-            teamMembers.length > 0 &&
-            teamMembers.map((member, index) => {
-              const self = member.id === currentUser?.id;
-              const cannotUpdateAdmin =
-                member.role === "ADMIN" && currentUser?.role !== "ADMIN";
+        <CardHeader className="flex justify-between align-center">
+          <div className="flex flex-row space-x-2 items-center justify-between">
+            <div>
+              <CardTitle>Current Team Members</CardTitle>
+              <CardDescription>
+                {totalTeamMembers} Active Members
+              </CardDescription>
+            </div>
+            <div className="flex space-x-2">
+              {/* SORT BY */}
+              <div className="space-y-2">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: UserSortBy) => {
+                    setSortBy(value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={!teamMembers || !teamMembers.length || usersLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={"Sort By"} />
+                  </SelectTrigger>
 
-              return (
-                <UserListItem
-                  key={member.id + index}
-                  user={member}
-                  onEdit={() => openEditUserModal(member, marketCenter)}
-                  deleteLabel="Remove"
-                  onDelete={() => openRemoveUserModal(member)}
-                  disabled={
-                    self || cannotUpdateAdmin || !permissions?.canManageTeam
-                  }
+                  <SelectContent>
+                    {sortByUserOptions.map((userOption: UserSortBy) => (
+                      <SelectItem key={userOption} value={userOption}>
+                        <div className="flex gap-1 items-center mr-1">
+                          <ArrowDownUp />
+                          <p className="text-sm font-medium">
+                            {formatUserOptions(userOption)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* ORDER BY */}
+              <div className="space-y-2">
+                <Select
+                  value={sortDir}
+                  onValueChange={(value: OrderBy) => {
+                    setSortDir(value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={!teamMembers || !teamMembers.length || usersLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={"Order by"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orderByOptions.map((direction) => (
+                      <SelectItem key={direction} value={direction}>
+                        <div className="flex gap-1 items-center mr-1">
+                          {direction === "asc" ? (
+                            <ArrowDownWideNarrow />
+                          ) : (
+                            <ArrowDownNarrowWide />
+                          )}
+                          <p className="text-sm font-medium">
+                            {formatOrderBy(direction)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 mt-4">
+            {/* SEARCH USERS + FILTER BUTTON */}
+            <div className="flex items-center gap-4">
+              {/* SEARCH USERS */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  disabled={usersLoading || !teamMembers || !teamMembers.length}
                 />
-              );
-            })}
-          {!isLoading && (!teamMembers || !teamMembers.length) && (
-            <p className="text-muted-foreground">
-              No team members found. Start by inviting your first team member.
-            </p>
-          )}
-          {isLoading && (
-            <p className="text-muted-foreground">Loading team members... </p>
-          )}
+              </div>
+              {/* FILTER BUTTON */}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={`space-y-4 transition-opacity duration-300 ${
+              usersLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+            }`}
+          >
+            {(isLoading || usersLoading) && (
+              <p className="text-muted-foreground">Loading team members... </p>
+            )}
+            {!isLoading &&
+              !usersLoading &&
+              teamMembers &&
+              teamMembers.length > 0 &&
+              teamMembers.map((member, index) => {
+                const self = member.id === currentUser?.id;
+                const cannotUpdateAdmin =
+                  member.role === "ADMIN" && currentUser?.role !== "ADMIN";
+
+                return (
+                  <UserListItem
+                    key={member.id + index}
+                    user={member}
+                    onEdit={() => openEditUserModal(member, marketCenter)}
+                    deleteLabel="Remove"
+                    onDelete={() => openRemoveUserModal(member)}
+                    disabled={
+                      self || cannotUpdateAdmin || !permissions?.canManageTeam
+                    }
+                  />
+                );
+              })}
+            {!isLoading &&
+              !usersLoading &&
+              (!teamMembers || !teamMembers.length) && (
+                <p className="text-muted-foreground">
+                  No team members found. Contact Admin if you haven't been
+                  assigned a team.
+                </p>
+              )}
+          </div>
+          <PagesAndItemsCount
+            type="users"
+            totalItems={totalTeamMembers}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+          />
         </CardContent>
       </Card>
 

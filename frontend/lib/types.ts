@@ -47,6 +47,12 @@ export interface PrismaUser {
   } | null;
 }
 
+export interface UserWithStats extends PrismaUser {
+  ticketsAssigned?: number;
+  ticketsCreated?: number;
+  lastActive?: Date;
+}
+
 export interface Comment {
   id: string;
   content: string;
@@ -166,8 +172,12 @@ export type MarketCenterForm = {
 };
 
 // FILTERS
-export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
-export type SortDir = "asc" | "desc";
+export type OrderBy = "asc" | "desc";
 
+export type UserSortBy = "updatedAt" | "createdAt" | "name"
+export type UsersResponse = { users: PrismaUser[] };
+
+
+export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
 export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 export type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };

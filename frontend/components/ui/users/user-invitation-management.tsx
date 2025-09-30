@@ -18,28 +18,26 @@ import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { OrderBy, UserRole, UserSortBy } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
 import {
-  Users,
-  UserPlus,
-  Filter,
-  X,
+  ArrowDownNarrowWide,
   ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-  Search,
   ArrowDownUp,
   ChevronRight,
   ChevronLeft,
+  Filter,
+  Users,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ScrollArea } from "../scroll-area";
 import { NewUserInvitationProps } from "@/packages/transactional/emails/UserInvitation";
 import {
   formatOrderBy,
+  formatPaginationText,
   formatUserOptions,
   orderByOptions,
   sortByUserOptions,
 } from "@/lib/utils";
-import { Input } from "../input";
 import { Badge } from "../badge";
 
 type Auth0User = {
@@ -95,7 +93,7 @@ export default function UserInvitationManagement() {
     useState<InvitationStatus>("All");
 
   const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
-  const [orderDir, setOrderDir] = useState<OrderBy>("asc");
+  const [sortDir, setSortDir] = useState<OrderBy>("desc");
 
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
@@ -132,12 +130,12 @@ export default function UserInvitationManagement() {
     const params = new URLSearchParams();
     params.append("invitationStatus", invitationStatus);
     params.append("sortBy", sortBy);
-    params.append("sortDir", orderDir);
+    params.append("sortDir", sortDir);
     params.append("itemsPerPage", itemsPerPage.toString());
     params.append("currentPage", (currentPage - 1).toString()); // Auth0 = 0 index for pagination
 
     return params;
-  }, [invitationStatus, sortBy, orderDir, itemsPerPage, currentPage]);
+  }, [invitationStatus, sortBy, sortDir, itemsPerPage, currentPage]);
 
   const fetchNewAuth0Users = useCallback(async () => {
     if (!permissions?.canManageAllUsers) return;
@@ -184,11 +182,11 @@ export default function UserInvitationManagement() {
   const clearFilters = () => {
     setInvitationStatus("All");
     setSortBy("updatedAt");
-    setOrderDir("asc");
+    setSortDir("desc");
   };
 
   const hasActiveFilters =
-    invitationStatus !== "All" || sortBy !== "updatedAt" || orderDir !== "asc";
+    invitationStatus !== "All" || sortBy !== "updatedAt" || sortDir !== "desc";
 
   const generatePasswordResetLink = async (auth0Id: string, token: string) => {
     try {
@@ -547,9 +545,9 @@ export default function UserInvitationManagement() {
                   <div className="space-y-2">
                     <Label>Order</Label>
                     <Select
-                      value={orderDir}
+                      value={sortDir}
                       onValueChange={(value: OrderBy) => {
-                        setOrderDir(value);
+                        setSortDir(value);
                         setCurrentPage(1);
                       }}
                     >
@@ -563,7 +561,7 @@ export default function UserInvitationManagement() {
                               {direction === "asc" ? (
                                 <ArrowDownWideNarrow />
                               ) : (
-                                <ArrowUpNarrowWide />
+                                <ArrowDownNarrowWide />
                               )}
                               <p className="text-sm font-medium">
                                 {formatOrderBy(direction)}
@@ -643,9 +641,13 @@ export default function UserInvitationManagement() {
           )}
           <div className="flex items-center justify-between pt-4">
             <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
-              {Math.min(currentPage * itemsPerPage, totalAuth0Users)} of{" "}
-              {totalAuth0Users} Total Users
+              Showing{" "}
+              {formatPaginationText({
+                totalItems: newAuth0Users?.length ?? 0,
+                itemsPerPage,
+                currentPage,
+              })}{" "}
+              of {totalAuth0Users} Total Users
             </div>
             <div className="flex items-center gap-2">
               <Button

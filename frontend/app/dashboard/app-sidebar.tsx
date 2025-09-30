@@ -19,7 +19,7 @@ import {
   Ticket,
   FileText,
   Folder,
-  Building,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
@@ -108,13 +108,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/marketCenters">
-                    <Building /> Market Centers
+                    <Building2 /> Market Centers
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
 
-            {!permissions?.canManageAllUsers && permissions?.canManageTeam && (
+            {permissions?.canManageTeam && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/settings?tab=team">

@@ -10,9 +10,10 @@ const getAuth0AccessToken = async () => {
 
 // GET ALL USERS
 type SearchUsersQuery = {
-  usersQueryKey: readonly ["users", Record<string, string>];
+  usersQueryKey: readonly [string, Record<string, string>];
   queryParams: URLSearchParams;
   role?: UserRole;
+  marketCenterId?: string;
 };
 
 export function useFetchAllUsers({
@@ -57,5 +58,49 @@ export function useFetchAllUsers({
       }
     },
     enabled: role === "ADMIN",
+  });
+}
+
+export function useFetchUsersWithinMarketCenter({
+  usersQueryKey,
+  queryParams,
+  role,
+  marketCenterId,
+}: SearchUsersQuery) {
+  return useQuery({
+    queryKey: usersQueryKey,
+    queryFn: async () => {
+      if (role === "AGENT" || !marketCenterId)
+        throw new Error("Must be an admin or staff to view team memebers");
+      try {
+        const accessToken = await getAuth0AccessToken();
+        const response = await fetch(
+          `/api/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch users");
+        const data = await response.json();
+        if (!data || !data?.users || !data?.total)
+          throw new Error("Failed to fetch users");
+        const usersWithStats: UserWithStats[] = data.users.map(
+          (user: PrismaUser) => ({
+            ...user,
+            createdAt: new Date(user.createdAt),
+            ticketsAssigned: 0,
+            ticketsCreated: 0,
+            lastActive: new Date(),
+          })
+        );
+        return { users: usersWithStats as UserWithStats[], total: data?.total };
+      } catch (error) {
+        console.error("Failed to fetch all users", error);
+        return { users: [] as UserWithStats[] };
+      }
+    },
+    enabled: !!marketCenterId && role !== "AGENT",
   });
 }

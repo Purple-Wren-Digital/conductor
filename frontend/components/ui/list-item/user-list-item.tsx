@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import { ListItem, getRoleBadgeStyle } from "./base-list-item";
-import type { PrismaUser } from "@/lib/types";
+import type { MarketCenter, PrismaUser } from "@/lib/types";
 import { Mail, Calendar as CalendarIcon, CircleMinus } from "lucide-react";
 import { format } from "date-fns";
 import { getRoleColor } from "@/lib/utils";
+import { useFetchMarketCenter } from "@/hooks/use-market-center";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function UserListItem({
   user,
@@ -20,10 +22,24 @@ export function UserListItem({
   deleteLabel: "Remove" | "Deactivate";
   disabled: boolean;
 }) {
+  const { role } = useUserRole();
+
+  const { data: marketCenterData } = useFetchMarketCenter(
+    role,
+    user?.marketCenterId ?? ""
+  );
+
+  const marketCenter: MarketCenter = marketCenterData ?? {};
+
   return (
     <ListItem
       id={user.id}
       title={user.name}
+      subtitle={
+        marketCenter?.name
+          ? `${marketCenter.name} Market Center${marketCenter?.id && ` (#${marketCenter?.id.slice(0, 8)})`}`
+          : "No Assigned Market Center"
+      }
       avatar={{
         fallback: user.name
           .split(" ")
@@ -40,6 +56,7 @@ export function UserListItem({
       ]}
       metadata={[
         { label: user.email, icon: <Mail className="h-3 w-3" /> },
+
         { label: `${user?.ticketsAssigned ?? 0} assigned` },
         { label: `${user?.ticketsCreated ?? 0} created` },
         {

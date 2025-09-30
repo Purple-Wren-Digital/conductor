@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TeamSwitcher } from "@/components/ui/team-switcher";
 import CreateUser from "./create-user-form";
 import { useFetchAllUsers } from "@/hooks/use-users";
 import { useUserRole } from "@/lib/hooks/use-user-role";
@@ -39,13 +41,11 @@ import {
   orderByOptions,
   USER_STATUS_ICONS,
   formatOrderBy,
+  calculateTotalPages,
 } from "@/lib/utils";
 import {
   ArrowDownUp,
   ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Search,
   User,
@@ -53,10 +53,10 @@ import {
   Users,
   UserPlus,
   X,
+  ArrowDownNarrowWide,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { TeamSwitcher } from "../team-switcher";
 
 interface UserEditFormData {
   name: string;
@@ -94,7 +94,7 @@ export default function UserManagement() {
   >("Active");
 
   const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
-  const [orderDir, setOrderDir] = useState<OrderBy>("asc");
+  const [orderDir, setOrderDir] = useState<OrderBy>("desc");
 
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [showEditUserForm, setShowEditUserForm] = useState(false);
@@ -186,7 +186,10 @@ export default function UserManagement() {
 
   const allUsers: UserWithStats[] = usersData?.users ?? [];
   const totalUsers: number = usersData?.total ?? 0;
-  const totalPages = Math.ceil(totalUsers / itemsPerPage);
+  const totalPages = calculateTotalPages({
+    totalItems: totalUsers,
+    itemsPerPage,
+  });
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -194,14 +197,14 @@ export default function UserManagement() {
     setSelectedMarketCenterId("all");
     setCurrentPage(1);
     setSortBy("updatedAt");
-    setOrderDir("asc");
+    setOrderDir("desc");
   };
 
   const hasActiveFilters =
     !!searchQuery ||
     selectedRole !== "all" ||
     selectedMarketCenterId !== "all" ||
-    orderDir !== "asc" ||
+    orderDir !== "desc" ||
     sortBy !== "updatedAt";
 
   // DELETE MODAL ACTIONS
@@ -587,7 +590,7 @@ export default function UserManagement() {
                           {direction === "asc" ? (
                             <ArrowDownWideNarrow />
                           ) : (
-                            <ArrowUpNarrowWide />
+                            <ArrowDownNarrowWide />
                           )}
                           <p className="text-sm font-medium">
                             {formatOrderBy(direction)}
@@ -612,16 +615,6 @@ export default function UserManagement() {
               allUsers &&
               allUsers.length > 0 &&
               allUsers.map((user) => {
-                // let marketCenter: MarketCenter | undefined = undefined;
-                // if (
-                //   user?.marketCenterId &&
-                //   marketCenters &&
-                //   marketCenters.length > 0
-                // ) {
-                //   marketCenter = marketCenters.find((center) => {
-                //     return center?.id === user?.marketCenterId;
-                //   });
-                // }
                 return (
                   <UserListItem
                     key={user.id}
@@ -640,36 +633,14 @@ export default function UserManagement() {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, totalUsers)} of{" "}
-                {totalUsers} users
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 1}
-                  type="button"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-                <span className="text-sm">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage === totalPages}
-                  type="button"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            <PagesAndItemsCount
+              type="users"
+              totalItems={totalUsers}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+            />
           </div>
         </CardContent>
       </Card>
@@ -679,7 +650,6 @@ export default function UserManagement() {
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
         queryInvalidation={userQueryInvalidator}
-        // refreshUserList={fetchActiveUsers} // TODO: INVALIDATE QUERY
       />
 
       {/* EDIT USER */}

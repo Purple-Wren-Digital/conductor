@@ -10,10 +10,11 @@ import {
   Text,
 } from "@react-email/components";
 
-type NewUserInvitationProps = {
+export type NewUserInvitationProps = {
   newUserName: string;
   newUserEmail: string;
   newUserRole: UserRole;
+  newUserMarketCenter: string | null;
   inviterName: string;
   inviterEmail: string;
   inviteLink: string;
@@ -23,6 +24,7 @@ const NewUserInvitation = ({
   newUserName,
   newUserEmail,
   newUserRole,
+  newUserMarketCenter,
   inviterName,
   inviterEmail,
   inviteLink,
@@ -55,6 +57,11 @@ const NewUserInvitation = ({
             <Text style={labelText}>Name: {newUserName}</Text>
             <Text style={labelText}>Email: {newUserEmail}</Text>
             <Text style={labelText}>Role: {newUserRole}</Text>
+            {newUserMarketCenter && (
+              <Text style={labelText}>
+                Market Center: {newUserMarketCenter}
+              </Text>
+            )}
 
             <Text style={text}>
               Click below to set your password and sign up with this email

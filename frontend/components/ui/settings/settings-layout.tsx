@@ -7,7 +7,14 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs/base-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Users, Tag, History, LogOut, Download } from "lucide-react";
+import {
+  Settings,
+  Tag,
+  History,
+  LogOut,
+  Download,
+  Building,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import GeneralSettings from "./general-settings";
@@ -47,7 +54,7 @@ export default function SettingsLayout() {
             General
           </TabsTrigger>
           <TabsTrigger value="team" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+            <Building className="h-4 w-4" />
             Team
           </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">

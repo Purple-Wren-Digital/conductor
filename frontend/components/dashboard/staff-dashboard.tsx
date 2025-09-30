@@ -15,37 +15,65 @@ import {
   useFetchMarketCenter,
   useFetchMarketCenterTickets,
 } from "@/hooks/use-market-center";
-import { Ticket, Users, TrendingUp, AlertCircle, Plus } from "lucide-react";
+import {
+  Ticket,
+  Users,
+  TrendingUp,
+  AlertCircle,
+  Plus,
+  User,
+} from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { ScrollArea } from "../ui/scroll-area";
 
 export function StaffDashboard() {
   const { currentUser } = useStore();
+
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
 
   const marketCenterId = currentUser?.marketCenterId
     ? currentUser?.marketCenterId
     : "";
 
   const { data: marketCenter, isLoading: marketCenterLoading } =
-    useFetchMarketCenter(marketCenterId);
-
-  const { data: ticketsData, isLoading: ticketsLoading } =
-    useFetchMarketCenterTickets(marketCenterId);
-
-  const tickets = ticketsData?.tickets || [];
-
-  const stats = {
-    totalTickets: ticketsData?.total || 0,
-    openTickets: tickets.filter((t: any) => t.status !== "RESOLVED").length,
-    highPriority: tickets.filter(
-      (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
-    ).length,
-    unassigned: tickets.filter((t: any) => !t.assigneeId).length,
-  };
+    useFetchMarketCenter(currentUser?.role, marketCenterId);
 
   const teamMembers =
     marketCenter?.users && marketCenter?.users.length > 0
       ? marketCenter?.users
       : [];
+
+  const { data: ticketsData, isLoading: ticketsLoading } =
+    useFetchMarketCenterTickets({
+      marketCenterId,
+      queryParams: null,
+      queryKeyParams: null,
+    });
+
+  const tickets = ticketsData?.tickets ?? [];
+
+  const filteredTickets =
+    selectedTeamMemberId == "All"
+      ? tickets
+      : tickets.filter((t: any) => t.assigneeID === selectedTeamMemberId);
+
+  const stats = {
+    totalTickets: filteredTickets?.length ?? 0,
+    openTickets: filteredTickets.filter((t: any) => t.status !== "RESOLVED")
+      .length,
+    highPriority: filteredTickets.filter(
+      (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
+    ).length,
+    unassigned: filteredTickets.filter((t: any) => !t.assigneeId).length,
+  };
 
   const teamStats = teamMembers.reduce((acc: any, member: any) => {
     const memberTickets = tickets.filter(
@@ -85,11 +113,38 @@ export function StaffDashboard() {
             Managing {marketCenter?.name || "your"} market center
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/tickets">
-            <Plus className="mr-2 h-4 w-4" /> Create Ticket
-          </Link>
-        </Button>
+        <div className="flex gap-5 justify-between">
+          <Select
+            value={selectedTeamMemberId}
+            onValueChange={(value) => setSelectedTeamMemberId(value)}
+          >
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Select Team" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">
+                <Users className="w-4 h-4" />
+                All Team Members
+              </SelectItem>
+              {teamMembers &&
+                teamMembers?.length &&
+                teamMembers?.map((mc: any) => {
+                  return (
+                    <SelectItem key={mc.id} value={mc.id}>
+                      <User className="w-4 h-4" />
+                      {mc.name}
+                    </SelectItem>
+                  );
+                })}
+            </SelectContent>
+          </Select>
+
+          <Button asChild>
+            <Link href="/dashboard/tickets">
+              <Plus className="mr-2 h-4 w-4" /> Create Ticket
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <TicketTabs />
@@ -151,7 +206,7 @@ export function StaffDashboard() {
             <CardDescription>Latest tickets from your team</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-2 h-100">
               {tickets.slice(0, 5).map((ticket: any) => (
                 <div
                   key={ticket.id}
@@ -207,35 +262,43 @@ export function StaffDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {Object.entries(teamStats)
-                .slice(0, 5)
-                .map(([memberId, stats]: [string, any]) => {
+            <ScrollArea className="space-y-4 h-100">
+              {Object.entries(teamStats).map(
+                ([memberId, stats]: [string, any]) => {
+                  const isViewingStats = selectedTeamMemberId === memberId;
                   return (
                     <div
                       key={memberId}
-                      className="flex items-center justify-between"
+                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
                     >
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {stats.name} {memberId === currentUser?.id && "(You)"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {stats.assigned} active • {stats.resolved} resolved
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="secondary">{stats.assigned}</Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium hover:underline">
+                            {stats.name}{" "}
+                            {memberId === currentUser?.id && "(You)"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {stats.assigned} active • {stats.resolved} resolved
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge
+                            variant={isViewingStats ? "outline" : "secondary"}
+                          >
+                            {stats.assigned}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   );
-                })}
+                }
+              )}
               {Object.keys(teamStats).length === 0 && (
                 <p className="text-muted-foreground text-center py-4">
                   No team data available
                 </p>
               )}
-            </div>
+            </ScrollArea>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard/settings?tab=team">Manage Team</Link>

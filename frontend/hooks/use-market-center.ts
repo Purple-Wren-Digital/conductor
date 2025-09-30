@@ -74,10 +74,18 @@ export function useFetchMarketCenter(
   });
 }
 
-// GET TICKETS WITHIN MARKET CENTER
-export function useFetchMarketCenterTickets(marketCenterId: string) {
+type MarketCenterSearchTickets = {
+  marketCenterId?: string;
+  queryParams: URLSearchParams | null;
+  queryKeyParams: Record<string,string > | null
+};
+// STAFF: GET TICKETS WITHIN MARKET CENTER
+export function useFetchMarketCenterTickets({
+  queryParams,
+  marketCenterId,
+}: MarketCenterSearchTickets) {
   return useQuery({
-    queryKey: ["list-market-center-tickets", marketCenterId],
+    queryKey: ["market-center-tickets", marketCenterId, queryParams],
     queryFn: async () => {
       if (!marketCenterId) {
         return [];
@@ -86,7 +94,7 @@ export function useFetchMarketCenterTickets(marketCenterId: string) {
       try {
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(
-          `${API_BASE}/tickets/search?marketCenterId=${marketCenterId}`,
+          `${API_BASE}/tickets/search?marketCenterId=${marketCenterId}&${queryParams}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
