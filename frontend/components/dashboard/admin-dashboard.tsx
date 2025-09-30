@@ -16,6 +16,7 @@ import {
   TrendingUp,
   AlertCircle,
   BarChart,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,14 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
-import { API_BASE } from "@/lib/api/utils";
-import { MarketCenter } from "../../lib/types";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function AdminDashboard() {
-  const [selectedMarketCenter, setSelectedMarketCenter] =
+  const { role } = useUserRole();
+  const [selectedMarketCenterName, setSelectedMarketCenterName] =
+    useState<string>("all");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
 
   const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
@@ -70,43 +74,26 @@ export function AdminDashboard() {
     },
   });
 
-  const { data: marketCenters } = useQuery({
-    queryKey: ["market-centers"],
-    queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
-      const response = await fetch(`${API_BASE}/marketCenters`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) return { marketCenters: [] };
-
-      const data = await response.json();
-
-      return { marketCenters: data?.marketCenters as MarketCenter[] };
-    },
-  });
+  const { data: marketCentersData } = useFetchAllMarketCenters(role);
+  const marketCenters = marketCentersData?.marketCenters ?? [];
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
 
   const filteredTickets =
-    selectedMarketCenter === "all"
+    selectedMarketCenterId === "all"
       ? tickets
       : tickets.filter((t: any) => {
           const creator = allUsers.find((u: any) => u.id === t.creatorId);
-          return creator?.marketCenterId === selectedMarketCenter;
+          return creator?.marketCenterId === selectedMarketCenterId;
         });
 
   const filteredUsers =
-    selectedMarketCenter === "all"
+    selectedMarketCenterId === "all"
       ? allUsers
-      : allUsers.filter((u: any) => u.marketCenterId === selectedMarketCenter);
+      : allUsers.filter(
+          (u: any) => u.marketCenterId === selectedMarketCenterId
+        );
 
   const stats = {
     totalTickets: filteredTickets.length,
@@ -151,25 +138,33 @@ export function AdminDashboard() {
             System-wide overview and management
           </p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-5 justify-between">
           <Select
-            value={selectedMarketCenter}
-            onValueChange={setSelectedMarketCenter}
+            value={`${selectedMarketCenterId}?${selectedMarketCenterName}`}
+            onValueChange={(value) => {
+              const splitValue = value.split("?");
+              setSelectedMarketCenterId(splitValue[0]);
+              setSelectedMarketCenterName(splitValue[1]);
+            }}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Select Team" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
-              {/* TODO: Filter by team */}
+              <SelectItem value="all?all">
+                <Building2 className="w-4 h-4" />
+                All Teams
+              </SelectItem>
               {marketCenters &&
-                marketCenters?.marketCenters &&
-                marketCenters?.marketCenters?.length &&
-                marketCenters?.marketCenters?.map((mc: any) => (
-                  <SelectItem key={mc.id} value={mc.id}>
-                    {mc.name}
-                  </SelectItem>
-                ))}
+                marketCenters?.length &&
+                marketCenters?.map((mc: any) => {
+                  return (
+                    <SelectItem key={mc.id} value={`${mc.id}?${mc.name}`}>
+                      <Building className="w-4 h-4" />
+                      {mc.name}
+                    </SelectItem>
+                  );
+                })}
             </SelectContent>
           </Select>
           <Button asChild>
@@ -237,22 +232,35 @@ export function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Market Centers Performance</CardTitle>
-            <CardDescription>Ticket distribution by team</CardDescription>
+            <CardTitle>
+              Market Centers ({marketCenters?.length ?? "0"})
+            </CardTitle>
+            <CardDescription>
+              Ticket distribution
+              {selectedMarketCenterName === "all"
+                ? " by team"
+                : ` within ${selectedMarketCenterName} Market Center`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {marketCenters &&
-                marketCenters?.marketCenters &&
-                marketCenters?.marketCenters.length &&
-                marketCenters.marketCenters.map((mc: any) => {
+                marketCenters?.length &&
+                marketCenters?.map((mc: any) => {
+                  const isViewingStats = selectedMarketCenterId === mc?.id;
                   return (
                     <div
                       key={mc?.id}
-                      className="flex flex-col p-2 rounded  hover:bg-muted"
+                      onClick={() => {
+                        setSelectedMarketCenterId(mc?.id);
+                        setSelectedMarketCenterName(mc?.name);
+                      }}
+                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
                     >
-                      <div className="flex-1">
-                        <p className="font-medium">{mc?.name && mc.name}</p>
+                      <div className="flex flex-1 justify-between">
+                        <p className="font-medium hover:underline">
+                          {mc?.name && mc.name}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xs text-muted-foreground">
@@ -279,7 +287,12 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest tickets across all teams</CardDescription>
+            <CardDescription>
+              {selectedMarketCenterName === "all"
+                ? `Across all teams: `
+                : `${selectedMarketCenterName} Market Center: `}
+              {filteredTickets.length ?? "0"} Total Tickets
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

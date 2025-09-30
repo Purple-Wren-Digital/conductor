@@ -12,12 +12,46 @@ export async function GET(req: Request) {
       { status: 401 }
     );
   }
+
+  const url = new URL(req.url);
+  const searchParams = url.searchParams;
+  console.log("SEARCH PARAMS", searchParams);
+
+  const perPage = searchParams.get("itemsPerPage") || "10";
+  const currentPage = searchParams.get("currentPage") || "0";
+
+  const sortByRequest = searchParams.get("sortDir");
+  const sortByParams =
+    sortByRequest == "updated_at" ? "updated_at" : "created_at";
+
+  const orderDirectionRequest = searchParams.get("sortDir");
+  const orderDirectionParams = orderDirectionRequest === "asc" ? 1 : -1;
+
+  const invitationStatusRequest = searchParams.get("invitationStatus");
+  let userMetaDataParams = "";
+  if (invitationStatusRequest === "Accepted") {
+    userMetaDataParams = "user_metadata.accepted:true";
+  }
+  if (invitationStatusRequest === "Unaccepted") {
+    userMetaDataParams =
+      "user_metadata.invited:true&user_metadata.accepted:false";
+  }
+  if (invitationStatusRequest === "Unsent") {
+    userMetaDataParams =
+      "user_metadata.invited:false&user_metadata.accepted:false";
+  }
+
   // https://auth0.com/docs/manage-users/user-search
   const params = new URLSearchParams({
     search_engine: "v3",
-    per_page: "100", // TODO: Pagination
-    sort: "created_at:-1",
+    page: currentPage,
+    per_page: perPage, // TODO: Pagination
+    include_totals: "true",
+    sort: `${sortByParams}:${orderDirectionParams}`,
+    q: userMetaDataParams,
   });
+
+  console.log("PARAMS", params);
 
   try {
     const response = await fetch(
@@ -32,6 +66,8 @@ export async function GET(req: Request) {
       }
     );
 
+    console.log("RESPONSE", response);
+
     if (!response.ok) {
       throw new Error(
         response?.statusText ? response.statusText : "Failed to fetch users"
@@ -40,7 +76,18 @@ export async function GET(req: Request) {
 
     const data = await response.json();
 
-    return NextResponse.json({ users: data }, { status: 200 });
+    console.log("DATA", data);
+
+    return NextResponse.json(
+      {
+        length: data.length,
+        limit: data.limit,
+        start: data.start,
+        total: data.total,
+        users: data.users,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Unable to process fetch users request:", error);
     return NextResponse.json({ statusText: error }, { status: 500 });
@@ -85,6 +132,7 @@ export async function POST(req: Request) {
           createdBy: body.createdBy,
           created: new Date(),
           invited: false,
+          marketCenterId: body?.marketCenterId || null,
         },
       }),
     });
@@ -108,6 +156,8 @@ export async function POST(req: Request) {
   }
 }
 
+// PATCH USERS BY ID
+// https://auth0.com/docs/api/management/v2/users/patch-users-by-id
 export async function PATCH(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1];
@@ -119,25 +169,39 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const body = await req.json();
-  if (!body || !body?.user_id) {
+  const requestBody = await req.json();
+  if (!requestBody || !requestBody?.user_id) {
     return NextResponse.json(
       { error: "Missing data in request body" },
       { status: 400 }
     );
   }
 
-  let updates = {};
+  console.log("REQ BODY", requestBody);
 
-  if (body?.invited && body?.invitedOn) {
+  let updates = {};
+  if (requestBody?.name) {
     updates = {
-      invited: body.invited,
-      invitedOn: body.invitedOn,
+      name: requestBody.name,
+      username: requestBody.name.split(" ").join(""),
+      // given_name: requestBody.name.split(" ")[0],
+      // family_name: requestBody.name.split(" ")[1],
     };
-  } else if (body?.accepted && body?.acceptedOn) {
+  } else if (requestBody?.email) {
+    updates = { email: requestBody?.email };
+  } else if (requestBody?.invited && requestBody?.invitedOn) {
     updates = {
-      accepted: body.accepted,
-      acceptedOn: body.acceptedOn,
+      user_metadata: {
+        invited: requestBody.invited,
+        invitedOn: requestBody.invitedOn,
+      },
+    };
+  } else if (requestBody?.accepted && requestBody?.acceptedOn) {
+    updates = {
+      user_metadata: {
+        accepted: requestBody.accepted,
+        acceptedOn: requestBody.acceptedOn,
+      },
     };
   } else {
     return NextResponse.json(
@@ -145,10 +209,15 @@ export async function PATCH(req: Request) {
       { status: 400 }
     );
   }
+  console.log("UPDATES", updates);
+
+  // If you are updating email, email_verified, phone_number, phone_verified, username or password of a secondary identity,
+  // you need to specify the connection property too
+  const body = {};
 
   try {
     const updateResponse = await fetch(
-      `https://${AUTH0_DOMAIN}/api/v2/users/${body.user_id}`,
+      `https://${AUTH0_DOMAIN}/api/v2/users/${requestBody.user_id}`,
       {
         method: "PATCH", // Auth0 Permission update:users
         headers: {
@@ -156,9 +225,14 @@ export async function PATCH(req: Request) {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ user_metadata: updates }),
+        body: JSON.stringify({
+          connection: "Username-Password-Authentication",
+          ...updates,
+        }),
       }
     );
+    console.log("UPDATE RESPONSE", updateResponse);
+
     if (!updateResponse.ok) {
       throw new Error(
         updateResponse?.statusText
@@ -166,6 +240,7 @@ export async function PATCH(req: Request) {
           : "Failed to update user metadata"
       );
     }
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Unable to process update user metadata request:", error);

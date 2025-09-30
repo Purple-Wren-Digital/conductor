@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       }),
     });
 
-    console.log("MANAGEMENT TOKEN RESPONSE", tokenRes);
+    // console.log("MANAGEMENT TOKEN RESPONSE", tokenRes);
     if (!tokenRes.ok) {
       throw new Error("Failed to generate management access token");
     }

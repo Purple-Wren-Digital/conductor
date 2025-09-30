@@ -41,65 +41,11 @@ export default function UserManagementTabs() {
       </TabsList>
 
       <TabsContent value="users">
-        {permissions?.canManageAllUsers ? (
-          <UserManagement />
-        ) : (
-          <Card className="space-y-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    User Management (0)
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Manage users, roles, and permissions
-                  </p>
-                </div>
-                <Button className="gap-2" disabled={true}>
-                  <UserPlus className="h-4 w-4" />
-                  Create New User
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 mt-4">
-                <p className="text-lg font-bold text-destructive">
-                  You do not have permission to access this page.
-                </p>
-              </div>
-            </CardHeader>
-          </Card>
-        )}
+        {permissions?.canManageAllUsers && <UserManagement />}
       </TabsContent>
 
       <TabsContent value="invitations">
-        {permissions?.canManageAllUsers ? (
-          <UserInvitationManagement />
-        ) : (
-          <Card className="space-y-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Invitation Management (0)
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create and invite new users to join Conductor Ticketing
-                  </p>
-                </div>
-                <Button className="gap-2" disabled={true}>
-                  <UserPlus className="h-4 w-4" />
-                  Create New User
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 mt-4">
-                <p className="text-lg font-bold text-destructive">
-                  You do not have permission to access this page.
-                </p>
-              </div>
-            </CardHeader>
-          </Card>
-        )}
+        {permissions?.canManageAllUsers && <UserInvitationManagement />}
       </TabsContent>
     </Tabs>
   );

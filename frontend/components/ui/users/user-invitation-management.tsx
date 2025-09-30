@@ -1,18 +1,46 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "@/app/store-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import CreateUser from "./create-user-form";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import type { UserRole } from "@/lib/types";
+import type { OrderBy, UserRole, UserSortBy } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
-import { Users, UserPlus } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  Filter,
+  X,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  Search,
+  ArrowDownUp,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ScrollArea } from "../scroll-area";
+import { NewUserInvitationProps } from "@/packages/transactional/emails/UserInvitation";
+import {
+  formatOrderBy,
+  formatUserOptions,
+  orderByOptions,
+  sortByUserOptions,
+} from "@/lib/utils";
+import { Input } from "../input";
+import { Badge } from "../badge";
 
 type Auth0User = {
   user_id: string;
@@ -27,15 +55,8 @@ type Auth0User = {
     accepted: boolean;
     acceptedOn: Date | null;
     role: UserRole;
+    marketCenterId: string | null;
   };
-};
-
-type InviteUserResendType = {
-  newUserEmail: string;
-  newUserRole: UserRole;
-  inviterName: string;
-  inviterEmail: string;
-  inviteLink: string;
 };
 
 type Auth0UserMetadataType = {
@@ -47,26 +68,38 @@ type Auth0UserMetadataType = {
   acceptedOn?: Date;
 };
 
+type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
+const invitationStatusOptions: InvitationStatus[] = [
+  "All",
+  "Accepted",
+  "Unaccepted",
+  "Unsent",
+];
+
 export default function UserInvitationManagement() {
   const router = useRouter();
 
+  const [showFilters, setShowFilters] = useState(true);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  // const [searchQuery, setSearchQuery] = useState("");
+  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
   const [newAuth0Users, setNewAuth0Users] = useState<any[]>([]);
+  const [totalAuth0Users, setTotalAuth0Users] = useState<number>(0);
+
   const [selectedNewUsers, setSelectedNewUsers] = useState<any[]>([]);
+  const [invitationStatus, setInvitationStatus] =
+    useState<InvitationStatus>("All");
+
+  const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
+  const [orderDir, setOrderDir] = useState<OrderBy>("asc");
 
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-
-  // const [currentPage, setCurrentPage] = useState(1);
-  // const [itemsPerPage] = useState(10);
-
-  // const newAuth0Users = data?.users ?? [];
-  // const totalUsers = data?.total ?? 0;
-  // const totalUsers = newAuth0Users.length ?? 0;
-  // const totalPages = Math.ceil(totalUsers / itemsPerPage);
 
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
@@ -74,14 +107,6 @@ export default function UserInvitationManagement() {
   const handleRefresh = async () => {
     router.refresh();
   };
-
-  // useEffect(() => {
-  //   const handler = setTimeout(() => {
-  //     setDebouncedSearchQuery(searchQuery);
-  //     setCurrentPage(1);
-  //   }, 500);
-  //   return () => clearTimeout(handler);
-  // }, [searchQuery]);
 
   const fetchManagementToken = useCallback(async () => {
     try {
@@ -103,9 +128,16 @@ export default function UserInvitationManagement() {
     }
   }, []);
 
-  // const searchNewAuth0Users= async () => {
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append("invitationStatus", invitationStatus);
+    params.append("sortBy", sortBy);
+    params.append("sortDir", orderDir);
+    params.append("itemsPerPage", itemsPerPage.toString());
+    params.append("currentPage", (currentPage - 1).toString()); // Auth0 = 0 index for pagination
 
-  // }
+    return params;
+  }, [invitationStatus, sortBy, orderDir, itemsPerPage, currentPage]);
 
   const fetchNewAuth0Users = useCallback(async () => {
     if (!permissions?.canManageAllUsers) return;
@@ -117,13 +149,17 @@ export default function UserInvitationManagement() {
         throw new Error("No management token available");
       }
 
-      const response = await fetch(`/api/admin/auth0Users`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `/api/admin/auth0Users${queryParams && `?${queryParams.toString()}`}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("FRINT END RESPONSE", response);
 
       if (!response.ok) {
         throw new Error(
@@ -131,21 +167,28 @@ export default function UserInvitationManagement() {
         );
       }
       const data = await response.json();
-      if (data && data?.users && data?.users.length) {
-        setNewAuth0Users(data.users);
-        return;
-      }
-      setNewAuth0Users([]);
+
+      setNewAuth0Users(data?.users ?? []);
+      setTotalAuth0Users(data?.total ?? 0);
     } catch (error) {
       console.error("Error fetching unverified users:", error);
     } finally {
       setLoadingUsers(false);
     }
-  }, [debouncedSearchQuery, fetchManagementToken]);
+  }, [queryParams, fetchManagementToken]);
 
   useEffect(() => {
     fetchNewAuth0Users();
   }, [fetchNewAuth0Users]);
+
+  const clearFilters = () => {
+    setInvitationStatus("All");
+    setSortBy("updatedAt");
+    setOrderDir("asc");
+  };
+
+  const hasActiveFilters =
+    invitationStatus !== "All" || sortBy !== "updatedAt" || orderDir !== "asc";
 
   const generatePasswordResetLink = async (auth0Id: string, token: string) => {
     try {
@@ -180,10 +223,11 @@ export default function UserInvitationManagement() {
   const sendSingUpInviteEmail = async ({
     newUserEmail,
     newUserRole,
+    newUserMarketCenter,
     inviterName,
     inviterEmail,
     inviteLink,
-  }: InviteUserResendType) => {
+  }: NewUserInvitationProps) => {
     try {
       const response = await fetch("/api/send/inviteUser", {
         method: "POST",
@@ -193,10 +237,11 @@ export default function UserInvitationManagement() {
         body: JSON.stringify({
           newUserEmail: newUserEmail,
           newUserRole: newUserRole,
+          newUserMarketCenter: newUserMarketCenter,
           inviterName: inviterName,
           inviterEmail: inviterEmail,
           inviteLink: inviteLink,
-        } as InviteUserResendType),
+        } as NewUserInvitationProps),
       });
       if (!response.ok) {
         throw new Error(
@@ -272,9 +317,11 @@ export default function UserInvitationManagement() {
       }
       // Send email with Resend
       const emailResult = await sendSingUpInviteEmail({
+        newUserName: user.name ?? "",
         newUserEmail: user.email,
         newUserRole: user?.user_metadata?.role || "AGENT",
-        inviterName: currentUser?.name || "Admin",
+        newUserMarketCenter: user?.user_metadata?.marketCenterId || null,
+        inviterName: currentUser?.name || "Admin User",
         inviterEmail: currentUser?.email || "onboarding@resend.dev", // TODO: tech support email ?
         inviteLink: inviteLink,
       });
@@ -352,7 +399,6 @@ export default function UserInvitationManagement() {
       toast.error("Failed to mark user(s) as accepted");
     } finally {
       setLoadingUsers(false);
-      // handleRefresh();
     }
   };
 
@@ -364,7 +410,7 @@ export default function UserInvitationManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                All Users ({newAuth0Users.length})
+                Created Users ({totalAuth0Users})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create and invite new users to join Conductor Ticketing
@@ -383,22 +429,158 @@ export default function UserInvitationManagement() {
               Create New User
             </Button>
           </div>
-          <div className="flex items-center gap-4 mt-4">
-            <Button
-              variant="outline"
-              onClick={handleMarkUsersAsAccepted}
-              disabled={
-                loadingUsers ||
-                !permissions?.canManageAllUsers ||
-                !selectedNewUsers.length
-              }
-            >
-              <p>Mark User(s) as Accepted</p>
-            </Button>
+
+          {/* SEARCH USERS + FILTER BUTTON */}
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center justify-between gap-4">
+              <Button
+                variant="outline"
+                onClick={handleMarkUsersAsAccepted}
+                disabled={
+                  loadingUsers ||
+                  !permissions?.canManageAllUsers ||
+                  !selectedNewUsers.length
+                }
+              >
+                <p>Mark User(s) as Accepted</p>
+              </Button>
+              <div className="flex items-center gap-4">
+                {/* FILTER BUTTON */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-transparent"
+                  onClick={() => setShowFilters(!showFilters)}
+                  type="button"
+                  disabled={loadingUsers}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {hasActiveFilters && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-2 w-2 rounded-full p-0"
+                    />
+                  )}
+                </Button>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="gap-2"
+                    type="button"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+            {showFilters && (
+              <Card className="p-4 bg-muted/50">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* INVITE STATUS */}
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={invitationStatus}
+                      onValueChange={(value: InvitationStatus) => {
+                        setInvitationStatus(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {invitationStatusOptions.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            <div className="flex items-center gap-2 mr-1">
+                              <p>{status} Invitations</p>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* SORT BY */}
+                  <div className="space-y-2">
+                    <div className="flex gap-1">
+                      <ArrowDownUp className="w-4 h-4" />
+                      <Label>Sort</Label>
+                    </div>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value: UserSortBy) => {
+                        setSortBy(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={!newAuth0Users || !newAuth0Users.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={"Sort By"}
+                          className="text-sm font-medium"
+                        />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {sortByUserOptions.map((userOption: UserSortBy) => {
+                          if (userOption === "name") return null;
+                          return (
+                            <SelectItem
+                              key={userOption}
+                              value={userOption}
+                              className="text-sm font-medium"
+                            >
+                              {formatUserOptions(userOption)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* ORDER BY */}
+                  <div className="space-y-2">
+                    <Label>Order</Label>
+                    <Select
+                      value={orderDir}
+                      onValueChange={(value: OrderBy) => {
+                        setOrderDir(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Order by"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {orderByOptions.map((direction) => (
+                          <SelectItem key={direction} value={direction}>
+                            <div className="flex gap-1 items-center mr-1">
+                              {direction === "asc" ? (
+                                <ArrowDownWideNarrow />
+                              ) : (
+                                <ArrowUpNarrowWide />
+                              )}
+                              <p className="text-sm font-medium">
+                                {formatOrderBy(direction)}
+                              </p>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         </CardHeader>
         <CardContent>
-          {loadingUsers && newAuth0Users.length === 0 ? (
+          {loadingUsers && newAuth0Users && newAuth0Users.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -412,8 +594,10 @@ export default function UserInvitationManagement() {
                 loadingUsers ? "opacity-50 pointer-events-none" : "opacity-100"
               }`}
             >
-              <ScrollArea className="h-300">
-                {newAuth0Users.map((user, index) => (
+              {!loadingUsers &&
+                newAuth0Users &&
+                newAuth0Users.length > 0 &&
+                newAuth0Users.map((user, index) => (
                   <InvitationUserListItem
                     key={index}
                     disabled={
@@ -428,9 +612,9 @@ export default function UserInvitationManagement() {
                     }
                     selectable={!user?.user_metadata?.accepted}
                     user={{
-                      name: user.name,
-                      email: user.email,
-                      emailVerified: user.email_verified,
+                      name: user?.name,
+                      email: user?.email,
+                      emailVerified: user?.email_verified,
                       user_metadata: {
                         created: user.user_metadata?.created
                           ? new Date(user.user_metadata.created)
@@ -449,46 +633,44 @@ export default function UserInvitationManagement() {
                     }}
                   />
                 ))}
-              </ScrollArea>
-              {newAuth0Users.length === 0 && !loadingUsers && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No users found matching your criteria.
-                </div>
-              )}
+              {(!newAuth0Users || newAuth0Users.length === 0) &&
+                !loadingUsers && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No users found matching your criteria.
+                  </div>
+                )}
             </div>
           )}
-          {/* {totalPages > 1 && ( // TODO: check logic
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
-                {Math.min(currentPage * itemsPerPage, totalUsers)} of{" "}
-                {totalUsers} Total Users
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 1}
-                  type="button"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-                <span className="text-sm">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage === totalPages}
-                  type="button"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
+              {Math.min(currentPage * itemsPerPage, totalAuth0Users)} of{" "}
+              {totalAuth0Users} Total Users
             </div>
-          )} */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => p - 1)}
+                disabled={currentPage === 1}
+                type="button"
+              >
+                <ChevronLeft className="h-4 w-4" /> Previous
+              </Button>
+              {/* <span className="text-sm">
+                {currentPage} / {totalPages}
+              </span> */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                // disabled={currentPage === totalPages}
+                type="button"
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -496,7 +678,7 @@ export default function UserInvitationManagement() {
       <CreateUser
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
-        refreshUserList={fetchNewAuth0Users}
+        queryInvalidation={fetchNewAuth0Users}
       />
     </div>
   );

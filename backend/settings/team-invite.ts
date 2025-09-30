@@ -1,27 +1,34 @@
 import { api, APIError } from "encore.dev/api";
 import { getPrisma } from "./db";
 import { TeamInviteRequest } from "./types";
-import auth0Management from "./auth0-client";
-import crypto from 'crypto';
+import crypto from "crypto";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 
 export const inviteTeamMember = api(
   { method: "POST", path: "/settings/team/invite", auth: true },
-  async ({ email, role }: TeamInviteRequest): Promise<{ success: boolean; invitationId: string }> => {
+  async ({
+    email,
+    role,
+  }: TeamInviteRequest): Promise<{
+    success: boolean;
+    invitationId: string;
+  }> => {
     const userContext = await getUserContext();
     const prisma = getPrisma();
 
     // Check if user can manage team
     const canManage = await canManageTeam(userContext);
     if (!canManage) {
-      throw APIError.permissionDenied("You do not have permission to invite team members");
+      throw APIError.permissionDenied(
+        "You do not have permission to invite team members"
+      );
     }
 
     // Find the user and their market center
     const user = await prisma.user.findUnique({
       where: { id: userContext.userId },
-      include: { marketCenter: true }
+      include: { marketCenter: true },
     });
 
     if (!user) {
@@ -34,7 +41,7 @@ export const inviteTeamMember = api(
 
     // Check if user already exists or has pending invitation
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (existingUser && existingUser.marketCenterId === user.marketCenterId) {
@@ -45,17 +52,17 @@ export const inviteTeamMember = api(
       where: {
         marketCenterId_email: {
           marketCenterId: user.marketCenterId!,
-          email
-        }
-      }
+          email,
+        },
+      },
     });
 
-    if (existingInvitation && existingInvitation.status === 'PENDING') {
+    if (existingInvitation && existingInvitation.status === "PENDING") {
       throw APIError.aborted("Invitation already exists for this email");
     }
 
     // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Create invitation record
@@ -66,29 +73,29 @@ export const inviteTeamMember = api(
         token,
         expiresAt,
         marketCenterId: user.marketCenterId!,
-        invitedBy: user.id
-      }
+        invitedBy: user.id,
+      },
     });
 
     // TODO: Implement email invitation system
     // This would typically use an email service like SendGrid or Resend
     // to send an invitation email with the token
-    console.log(`Invitation created for ${email} with token: ${token}`);
+    // console.log(`Invitation created for ${email} with token: ${token}`);
 
     // Log the invitation in audit trail
     await prisma.settingsAuditLog.create({
       data: {
         marketCenterId: user.marketCenterId!,
         userId: user.id,
-        action: 'invite',
-        section: 'team',
-        newValue: { email, role, invitationId: invitation.id }
-      }
+        action: "invite",
+        section: "team",
+        newValue: { email, role, invitationId: invitation.id },
+      },
     });
 
     return {
       success: true,
-      invitationId: invitation.id
+      invitationId: invitation.id,
     };
   }
 );

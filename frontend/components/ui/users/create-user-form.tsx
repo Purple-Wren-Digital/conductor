@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import type { PrismaUser, UserRole } from "@/lib/types";
+import type { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,25 +19,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import { User } from "lucide-react";
-import { ROLE_ICONS } from "@/lib/utils";
+import { Building, User } from "lucide-react";
+import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
 import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { API_BASE } from "@/lib/api/utils";
+import { useMutation } from "@tanstack/react-query";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { TeamSwitcher } from "../team-switcher";
 
 interface CreateAuth0UserRequest {
   createdBy: string; // current user's auth0id
   name: string;
   email: string;
   role: UserRole;
+  marketCenterId: string | null;
 }
 
 interface CreateAuth0UserForm {
   firstName: string;
   lastName: string;
   email: string;
-  role: UserRole;
+  role: UserRole | string;
 }
 
 type Auth0User = {
@@ -56,38 +60,41 @@ type Auth0User = {
   };
 };
 
-const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
-
-type UserInviteProps = {
+type CreateUserProps = {
   showCreateUserForm: boolean;
   setShowCreateUserForm: React.Dispatch<React.SetStateAction<boolean>>;
-  refreshUserList: () => Promise<void>;
   handleInviteUser?: (user: Auth0User) => Promise<void>;
+  queryInvalidation: () => Promise<void>;
 };
 
 export default function CreateUser({
   showCreateUserForm,
   setShowCreateUserForm,
-  refreshUserList,
   handleInviteUser,
-}: UserInviteProps) {
+  queryInvalidation,
+}: CreateUserProps) {
   const { currentUser } = useStore();
 
   const [newUserFormData, setNewUserFormData] = useState<CreateAuth0UserForm>({
     firstName: "",
     lastName: "",
     email: "",
-    role: "AGENT",
+    role: "",
   });
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { permissions } = useUserRole();
+  const { role, permissions } = useUserRole();
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
+
+  const { data, isLoading } = useFetchAllMarketCenters(role);
+
+  const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
 
   const fetchManagementToken = useCallback(async () => {
     try {
@@ -142,6 +149,8 @@ export default function CreateUser({
           ...newUserFormData,
           name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
           createdBy: currentUser?.auth0Id || "system",
+          marketCenterId:
+            selectedMarketCenterId !== "null" ? selectedMarketCenterId : null,
         } as CreateAuth0UserRequest),
       });
       if (!response.ok) {
@@ -159,6 +168,7 @@ export default function CreateUser({
     if (!auth0Id) {
       throw new Error("Missing auth0Id");
     }
+
     try {
       const accessToken = await getAuth0AccessToken();
       const response = await fetch(`${API_BASE}/users`, {
@@ -173,7 +183,8 @@ export default function CreateUser({
           name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
           role: newUserFormData.role || "AGENT",
           auth0Id: auth0Id,
-          viaAdmin: true,
+          marketCenterId:
+            selectedMarketCenterId !== "null" ? selectedMarketCenterId : "",
         }),
       });
       if (response.ok) {
@@ -185,6 +196,37 @@ export default function CreateUser({
       return null;
     }
   };
+
+  const createUserMutation = useMutation({
+    mutationFn: async () => {
+      const newAuth0User = await createNewAuth0User();
+      if (!newAuth0User || !newAuth0User?.user_id) {
+        throw new Error("Failed to create new Auth0 User");
+      }
+      const newPrismaUser = await createNewPrismaUser(newAuth0User.user_id);
+      if (!newPrismaUser) {
+        throw new Error(
+          "Auth0 user created, but Failed to create new Prisma User"
+        );
+      }
+    },
+    onSuccess: async (newAuth0User: any) => {
+      toast.success(`${newAuth0User?.name || "User"} was removed`);
+      toast.success("User created!");
+
+      if (handleInviteUser) {
+        toast.success("User created! Sending invitation now...");
+        await handleInviteUser(newAuth0User);
+      }
+      setShowCreateUserForm(false);
+      setFormErrors({});
+      queryInvalidation;
+    },
+    onError: (error) => {
+      console.error("Failed to create new user: ", error);
+      toast.error("Failed to create new user");
+    },
+  });
 
   const handleSubmitCreateUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,35 +240,9 @@ export default function CreateUser({
       return;
     }
     setIsSubmitting(true);
+    createUserMutation.mutate();
 
-    try {
-      const newAuth0User = await createNewAuth0User();
-      if (!newAuth0User || !newAuth0User?.user_id) {
-        throw new Error("Failed to create new Auth0 User");
-      }
-      const newPrismaUser = await createNewPrismaUser(newAuth0User.user_id);
-      if (!newPrismaUser) {
-        throw new Error(
-          "Auth0 user created, but Failed to create new Prisma User"
-        );
-      }
-      toast.success("User created!");
-
-      if (handleInviteUser) {
-        toast.success("User created! Sending invitation now...");
-
-        await handleInviteUser(newAuth0User);
-      }
-
-      setShowCreateUserForm(false);
-
-      await refreshUserList();
-    } catch (error) {
-      console.error("Failed to create new user: ", error);
-      toast.error("Failed to Create User");
-    } finally {
-      setIsSubmitting(false);
-    }
+    setIsSubmitting(false);
   };
 
   const getRoleIcon = (role: string) => {
@@ -244,9 +260,10 @@ export default function CreateUser({
           </DialogHeader>
 
           <form onSubmit={handleSubmitCreateUserForm} className="space-y-4">
+            {/* FIRST NAME */}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
-                Full Name *
+                First Name *
               </label>
               <Input
                 id="name"
@@ -257,7 +274,7 @@ export default function CreateUser({
                     firstName: e.target.value,
                   })
                 }
-                placeholder="Enter full name"
+                placeholder="Enter first name"
                 className={formErrors.firstName ? "border-destructive" : ""}
               />
               {formErrors.firstName && (
@@ -266,6 +283,7 @@ export default function CreateUser({
                 </p>
               )}
             </div>
+            {/* LAST NAME */}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Last Name *
@@ -288,6 +306,7 @@ export default function CreateUser({
                 </p>
               )}
             </div>
+            {/* EMAIL */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email Address *
@@ -309,62 +328,71 @@ export default function CreateUser({
                 <p className="text-sm text-destructive">{formErrors.email}</p>
               )}
             </div>
+
+            {/* ROLE */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
-              <Select
-                value={newUserFormData.role}
-                onValueChange={(value: UserRole) => {
-                  console.log("onValueChange", value);
-                  setNewUserFormData({ ...newUserFormData, role: value });
-                }}
-                disabled={!permissions?.canChangeUserRoles}
+              <label
+                className={`text-sm font-medium ${!permissions?.canChangeUserRoles && "text-muted-foreground"}`}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">
-                Market Center *
+                Role *
               </label>
               <Select
                 value={newUserFormData.role}
                 onValueChange={(value: UserRole) =>
                   setNewUserFormData({ ...newUserFormData, role: value })
                 }
-                disabled={true}
+                disabled={!permissions?.canChangeUserRoles}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a market center" />
+                  <SelectValue placeholder="Assign a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={"example"}>
-                    <div className="flex items-center gap-2">
-                      {/* {getRoleIcon(role)} */}
-            {/* {role} */}
-            {/* Example */}
-            {/*     </div>
-                  </SelectItem>
-                  </SelectContent>
-                </Select>
+                  {roleOptions.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {getRoleIcon(role)}
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {formErrors.marketCenter && (
                 <p className="text-sm text-destructive">
                   {formErrors.marketCenter}
                 </p>
               )}
-            </div> */}
+            </div>
+
+            {/* MARKET CENTER */}
+            <div className="space-y-2">
+              <label
+                className={`text-sm font-medium ${!permissions?.canManageAllUsers && "text-muted-foreground"}`}
+              >
+                Market Center
+              </label>
+              <Select
+                value={selectedMarketCenterId}
+                onValueChange={(value) => {
+                  setSelectedMarketCenterId(value);
+                }}
+                disabled={isLoading || role === "STAFF"}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {marketCenters &&
+                    marketCenters.length > 0 &&
+                    marketCenters.map((mc) => (
+                      <SelectItem key={mc.id} value={mc.id}>
+                        <Building className="h-4 w-4" />
+
+                        {mc.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
               <Button
                 type="button"

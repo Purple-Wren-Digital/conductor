@@ -1,16 +1,15 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { $Enums } from "@prisma/client";
-// import { signUpWithAuth0 } from "../auth/auth";
+import { getUserContext } from "../auth/user-context";
 
 export interface CreateUserRequest {
   email: string;
   name: string;
   role?: UserRole;
-  auth0Id?: string;
-  viaAdmin?: boolean;
+  auth0Id: string;
+  marketCenterId?: string;
 }
 
 export interface CreateUserResponse {
@@ -18,11 +17,16 @@ export interface CreateUserResponse {
 }
 
 export const create = api<CreateUserRequest, CreateUserResponse>(
-  { expose: true, method: "POST", path: "/users", auth: false },
+  { expose: true, method: "POST", path: "/users", auth: true },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData || !authData.userID) {
-      throw APIError.unauthenticated("User not authenticated");
+
+    const userContext = await getUserContext();
+    if (userContext?.role !== "ADMIN") {
+      throw APIError.permissionDenied("Only admin can create users");
+    }
+
+    if (!req?.auth0Id) {
+      throw APIError.invalidArgument("Missing data");
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -58,30 +62,20 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       marketCenterId: string | null;
     };
 
-    if (req?.viaAdmin) {
-      if (!req?.auth0Id) {
-        throw APIError.invalidArgument("Missing data");
-      }
-      newUser = await prisma.user.create({
-        data: {
-          email: req.email,
-          name: req.name,
-          role: req.role || "AGENT",
-          isActive: true,
-          auth0Id: req.auth0Id,
-        },
-      });
-    } else {
-      newUser = await prisma.user.create({
-        data: {
-          email: req.email,
-          name: req.name,
-          role: req.role || "AGENT",
-          isActive: true,
-          auth0Id: (req?.viaAdmin && req?.auth0Id) || authData.userID,
-        },
-      });
-    }
+    newUser = await prisma.user.create({
+      data: {
+        email: req.email,
+        name: req.name,
+        role: req.role || "AGENT",
+        isActive: true,
+        auth0Id: req.auth0Id,
+        marketCenter: req?.marketCenterId
+          ? {
+              connect: { id: req.marketCenterId }, // relation connect
+            }
+          : undefined,
+      },
+    });
 
     return {
       user: { ...newUser, name: newUser.name ?? "" },

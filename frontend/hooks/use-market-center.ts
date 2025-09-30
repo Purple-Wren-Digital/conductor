@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
+import { MarketCenter, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useQuery } from "@tanstack/react-query";
 
@@ -7,11 +8,46 @@ const getAuth0AccessToken = async () => {
   return await getAccessToken();
 };
 
+// GET ALL MARKET CENTERS
+export function useFetchAllMarketCenters(role: UserRole | undefined) {
+  //pass in role and do not fetch if not admin!
+  return useQuery({
+    queryKey: ["all-market-centers"],
+    queryFn: async () => {
+      if (!role || role === "AGENT") {
+        throw new Error(
+          "Only Admin and Staff users can view all market centers"
+        );
+      }
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(`${API_BASE}/marketCenters`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) return { marketCenters: [] };
+
+      const data = await response.json();
+
+      return { marketCenters: data?.marketCenters as MarketCenter[] };
+    },
+    enabled: role && role === "ADMIN",
+  });
+}
+
 // GET MARKET CENTER BY ID
-export function useFetchMarketCenter(marketCenterId: string) {
+export function useFetchMarketCenter(
+  role: UserRole | undefined,
+  marketCenterId?: string
+) {
   return useQuery({
     queryKey: ["get-market-center", marketCenterId],
     queryFn: async () => {
+      if (!role || role === "AGENT") {
+        throw new Error("Only Admin and Staff users can fetch a market center");
+      }
       if (!marketCenterId) {
         throw new Error("No Market Center ID");
       }
@@ -34,7 +70,7 @@ export function useFetchMarketCenter(marketCenterId: string) {
         return null;
       }
     },
-    enabled: !!marketCenterId,
+    enabled: !!marketCenterId && role && role !== "AGENT",
   });
 }
 

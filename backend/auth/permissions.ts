@@ -178,6 +178,7 @@ export async function getTicketScopeFilter(
   return { id: "impossible-id" };
 }
 
+// USERS
 export async function getUserScopeFilter(userContext: UserContext) {
   if (userContext.role === "ADMIN") {
     return {};
@@ -209,6 +210,7 @@ export async function canDeactivateUsers(
   return userContext.role === "ADMIN";
 }
 
+// MARKET CENTERS
 export async function canCreateMarketCenters(
   userContext: UserContext
 ): Promise<boolean> {
