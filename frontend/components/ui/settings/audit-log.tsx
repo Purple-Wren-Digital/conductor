@@ -1,16 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { History, Search, Filter, ChevronLeft, ChevronRight, Eye, Calendar, User, Settings } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  History,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Calendar,
+  User,
+  Settings,
+} from "lucide-react";
 import { useSettingsAuditLog, useListTeamMembers } from "@/hooks/use-settings";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog/base-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog/base-dialog";
 
 const ACTION_COLORS = {
   CREATE: "default",
@@ -22,12 +58,12 @@ const ACTION_COLORS = {
 } as const;
 
 const SECTION_COLORS = {
-  "general": "default",
-  "business_hours": "secondary",
-  "branding": "secondary",
-  "team": "destructive",
-  "categories": "secondary",
-  "holidays": "secondary",
+  general: "default",
+  business_hours: "secondary",
+  branding: "secondary",
+  team: "destructive",
+  categories: "secondary",
+  holidays: "secondary",
 } as const;
 
 export default function AuditLog() {
@@ -36,28 +72,35 @@ export default function AuditLog() {
   const [searchTerm, setSearchTerm] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("");
   const [sectionFilter, setSectionFilter] = useState<string>("");
-  
-  const { data: auditData, isLoading } = useSettingsAuditLog(currentPage, pageSize);
+
+  const { data: auditData, isLoading } = useSettingsAuditLog(
+    currentPage,
+    pageSize
+  );
   const { data: teamData } = useListTeamMembers();
-  
+
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
 
-  const filteredEntries = auditData?.entries?.filter(entry => {
-    const matchesSearch = !searchTerm || 
-      entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getUserName(entry.userId).toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesAction = !actionFilter || entry.action === actionFilter;
-    const matchesSection = !sectionFilter || entry.section === sectionFilter;
-    
-    return matchesSearch && matchesAction && matchesSection;
-  }) || [];
+  const filteredEntries =
+    auditData?.entries?.filter((entry) => {
+      const matchesSearch =
+        !searchTerm ||
+        entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getUserName(entry.userId)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+
+      const matchesAction = !actionFilter || entry.action === actionFilter;
+      const matchesSection = !sectionFilter || entry.section === sectionFilter;
+
+      return matchesSearch && matchesAction && matchesSection;
+    }) || [];
 
   const totalPages = auditData ? Math.ceil(auditData.total / pageSize) : 1;
 
   const getUserName = (userId: string) => {
-    const user = teamData?.members.find(m => m.id === userId);
+    const user = teamData?.members.find((m) => m.id === userId);
     return user ? user.name : "Unknown User";
   };
 
@@ -144,7 +187,7 @@ export default function AuditLog() {
                   className="pl-10"
                 />
               </div>
-              <Select value={actionFilter} onValueChange={setActionFilter}>
+              {/* <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger className="w-full md:w-32">
                   <SelectValue placeholder="Action" />
                 </SelectTrigger>
@@ -171,7 +214,7 @@ export default function AuditLog() {
                   <SelectItem value="categories">Categories</SelectItem>
                   <SelectItem value="holidays">Holidays</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
             <div className="text-sm text-muted-foreground">
               {auditData?.total || 0} total entries
@@ -183,7 +226,7 @@ export default function AuditLog() {
       {/* Audit Log Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Change History</CardTitle>
+          <CardTitle>History</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredEntries.length > 0 ? (
@@ -203,8 +246,16 @@ export default function AuditLog() {
                     <TableRow key={entry.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{getActionIcon(entry.action)}</span>
-                          <Badge variant={ACTION_COLORS[entry.action as keyof typeof ACTION_COLORS] || "default"}>
+                          <span className="text-lg">
+                            {getActionIcon(entry.action)}
+                          </span>
+                          <Badge
+                            variant={
+                              ACTION_COLORS[
+                                entry.action as keyof typeof ACTION_COLORS
+                              ] || "default"
+                            }
+                          >
                             {entry.action}
                           </Badge>
                         </div>
@@ -212,7 +263,13 @@ export default function AuditLog() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSectionIcon(entry.section)}
-                          <Badge variant={SECTION_COLORS[entry.section as keyof typeof SECTION_COLORS] || "outline"}>
+                          <Badge
+                            variant={
+                              SECTION_COLORS[
+                                entry.section as keyof typeof SECTION_COLORS
+                              ] || "outline"
+                            }
+                          >
                             {entry.section.replace("_", " ").toUpperCase()}
                           </Badge>
                         </div>
@@ -229,18 +286,25 @@ export default function AuditLog() {
                       <TableCell className="text-right">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => setSelectedEntry(entry)}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedEntry(entry)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
                               <DialogTitle className="flex items-center gap-2">
-                                <span className="text-lg">{getActionIcon(entry.action)}</span>
+                                <span className="text-lg">
+                                  {getActionIcon(entry.action)}
+                                </span>
                                 Audit Log Details
                               </DialogTitle>
                               <DialogDescription>
-                                Change details for {entry.action.toLowerCase()} on {entry.section}
+                                Change details for {entry.action.toLowerCase()}{" "}
+                                on {entry.section}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-6">
@@ -248,38 +312,62 @@ export default function AuditLog() {
                                 <div>
                                   <Label className="font-medium">Action:</Label>
                                   <p className="mt-1">
-                                    <Badge variant={ACTION_COLORS[entry.action as keyof typeof ACTION_COLORS] || "default"}>
+                                    <Badge
+                                      variant={
+                                        ACTION_COLORS[
+                                          entry.action as keyof typeof ACTION_COLORS
+                                        ] || "default"
+                                      }
+                                    >
                                       {entry.action}
                                     </Badge>
                                   </p>
                                 </div>
                                 <div>
-                                  <Label className="font-medium">Section:</Label>
+                                  <Label className="font-medium">
+                                    Section:
+                                  </Label>
                                   <p className="mt-1">
-                                    <Badge variant={SECTION_COLORS[entry.section as keyof typeof SECTION_COLORS] || "outline"}>
-                                      {entry.section.replace("_", " ").toUpperCase()}
+                                    <Badge
+                                      variant={
+                                        SECTION_COLORS[
+                                          entry.section as keyof typeof SECTION_COLORS
+                                        ] || "outline"
+                                      }
+                                    >
+                                      {entry.section
+                                        .replace("_", " ")
+                                        .toUpperCase()}
                                     </Badge>
                                   </p>
                                 </div>
                                 <div>
                                   <Label className="font-medium">User:</Label>
-                                  <p className="mt-1">{getUserName(entry.userId)}</p>
+                                  <p className="mt-1">
+                                    {getUserName(entry.userId)}
+                                  </p>
                                 </div>
                                 <div>
                                   <Label className="font-medium">Date:</Label>
-                                  <p className="mt-1">{new Date(entry.createdAt).toLocaleString()}</p>
+                                  <p className="mt-1">
+                                    {new Date(entry.createdAt).toLocaleString()}
+                                  </p>
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <Label className="font-medium text-destructive">Previous Value:</Label>
+                                  <Label className="font-medium text-destructive">
+                                    Previous Value:
+                                  </Label>
                                   <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto max-h-40">
                                     {formatValue(entry.previousValue)}
                                   </pre>
                                 </div>
                                 <div>
-                                  <Label className="font-medium text-green-600">New Value:</Label>
+                                  <Label className="font-medium text-green-600">
+                                    New Value:
+                                  </Label>
                                   <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto max-h-40">
                                     {formatValue(entry.newValue)}
                                   </pre>
@@ -297,13 +385,17 @@ export default function AuditLog() {
               {/* Pagination */}
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, auditData?.total || 0)} of {auditData?.total || 0} entries
+                  Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                  {Math.min(currentPage * pageSize, auditData?.total || 0)} of{" "}
+                  {auditData?.total || 0} entries
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -315,7 +407,9 @@ export default function AuditLog() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -326,7 +420,8 @@ export default function AuditLog() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No audit log entries found. Changes will appear here once you start modifying settings.
+              No audit log entries found. Changes will appear here once you
+              start modifying settings.
             </div>
           )}
         </CardContent>
@@ -344,7 +439,10 @@ export default function AuditLog() {
           <div className="p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium mb-2">What is tracked?</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• All changes to market center settings (general, business hours, branding)</li>
+              <li>
+                • All changes to market center settings (general, business
+                hours, branding)
+              </li>
               <li>• Team member invitations, role changes, and removals</li>
               <li>• Ticket category creation, updates, and deletions</li>
               <li>• Holiday calendar modifications</li>
@@ -353,8 +451,9 @@ export default function AuditLog() {
           <div className="p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium mb-2">Data Retention</h4>
             <p className="text-sm text-muted-foreground">
-              Audit logs are retained indefinitely to ensure complete traceability of all system changes. 
-              This helps maintain compliance and provides accountability for all administrative actions.
+              Audit logs are retained indefinitely to ensure complete
+              traceability of all system changes. This helps maintain compliance
+              and provides accountability for all administrative actions.
             </p>
           </div>
         </CardContent>

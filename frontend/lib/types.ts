@@ -29,6 +29,7 @@ export interface Ticket {
   commentCount: number | null;
   updatedAt?: Date | string;
   comments?: Comment[];
+  ticketHistory?: TicketHistory[];
 }
 
 export interface PrismaUser {
@@ -45,6 +46,19 @@ export interface PrismaUser {
     id: string;
     name: string;
   } | null;
+  ticketHistory?: TicketHistory[];
+}
+
+export interface TicketHistory {
+  id: string;
+  ticketId: string;
+  field: string;
+  previousValue: string;
+  newValue: string;
+  snapshot?: JSON; // Ticket as it was in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: PrismaUser;
 }
 
 export interface UserWithStats extends PrismaUser {
@@ -174,9 +188,8 @@ export type MarketCenterForm = {
 // FILTERS
 export type OrderBy = "asc" | "desc";
 
-export type UserSortBy = "updatedAt" | "createdAt" | "name"
+export type UserSortBy = "updatedAt" | "createdAt" | "name";
 export type UsersResponse = { users: PrismaUser[] };
-
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
 export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };

@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,13 +19,17 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Calendar,
-  User,
+  CheckCircle,
   Clock,
   Edit,
-  AlertTriangle,
-  CheckCircle,
+  Eye,
+  History,
+  User,
+  X,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
@@ -31,12 +41,29 @@ import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import {
+  capitalizeEveryWord,
   getStatusColor,
   getUrgencyColor,
   parseJsonSafe,
   statusOptions,
+  urgencyOptions,
 } from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog/base-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -64,13 +91,13 @@ type emailNotificationTypes = {
   };
 };
 
-const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
-
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
+
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const { user: authUser } = useUser();
   const { currentUser } = useStore();
@@ -395,7 +422,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-4">
         {onClose && (
           <Button variant="ghost" size="sm" onClick={onClose} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back to Tickets
@@ -407,21 +434,120 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             #{ticket.id.substring(0, 8)}...
           </h1>
         </div>
-        {(permissions?.canReassignTicket ||
-          (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
+        <div className="flex items-center gap-4">
           <div className="ml-auto">
             <Button
               variant="outline"
-              onClick={() => setShowEditForm(true)}
+              onClick={() => setShowHistoryModal(!showHistoryModal)}
               className="gap-2"
             >
-              <Edit className="h-4 w-4" /> Edit Ticket
+              <History className="h-4 w-4" /> View History
             </Button>
           </div>
-        )}
+          {(permissions?.canReassignTicket ||
+            (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditForm(true)}
+                className="gap-2"
+              >
+                <Edit className="h-4 w-4" /> Edit Ticket
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* TICKET HISTORY */}
+        {showHistoryModal && (
+          <div className="lg:col-span-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Ticket History</CardTitle>
+                <Button
+                  variant={"ghost"}
+                  onClick={() => setShowHistoryModal(false)}
+                >
+                  <X className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Update</TableHead>
+                      <TableHead>Previous</TableHead>
+                      <TableHead>Changed By</TableHead>
+                      <TableHead className="text-center">SnapShot</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ticket?.ticketHistory &&
+                      ticket?.ticketHistory.length > 0 &&
+                      ticket?.ticketHistory.map((entry) => {
+                        return (
+                          <TableRow key={entry.id}>
+                            {/* FIELD */}
+                            <TableCell>
+                              <p className="font-semibold">
+                                {capitalizeEveryWord(entry?.field)}
+                              </p>
+                            </TableCell>
+
+                            {/* CHANGED ON */}
+                            <TableCell>
+                              <p>
+                                {new Date(
+                                  entry?.changedAt
+                                ).toLocaleDateString()}
+                              </p>
+                            </TableCell>
+                            {/* NEW VALUE */}
+                            <TableCell>
+                              <p className="font-medium">
+                                {capitalizeEveryWord(
+                                  entry?.newValue.replace("_", " ")
+                                )}
+                              </p>
+                            </TableCell>
+                            {/* OLD VALUE */}
+                            <TableCell>
+                              <p>
+                                {capitalizeEveryWord(
+                                  entry?.previousValue.replace("_", " ")
+                                )}
+                              </p>
+                            </TableCell>
+
+                            {/* CHANGED BY */}
+                            <TableCell>
+                              <p>
+                                {entry?.changedBy?.name
+                                  ? entry?.changedBy?.name
+                                  : `#${entry?.changedById}`}
+                              </p>
+                            </TableCell>
+                            {/* SNAPSHOT */}
+                            <TableCell className="bg-yellow-50 items-center justify-center">
+                              <div className="flex gap-2 items-center justify-center">
+                                <Eye className="h-4 w-4" />
+                                <p>View</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
@@ -490,99 +616,166 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           <TicketCommentsSection ticketId={ticket.id} />
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={ticket.status}
-                  onValueChange={(value: TicketStatus) =>
-                    handleUpdateTicket("status", value)
-                  }
-                  disabled={
-                    role === "AGENT" && ticket.assigneeId !== currentUser?.id
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status.replace("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {permissions?.canReassignTicket && (
+        <div className="lg:col-span-1 space-y-6">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Urgency</Label>
+                  <Label>Status</Label>
                   <Select
-                    value={ticket.urgency}
-                    onValueChange={(value: Urgency) =>
-                      handleUpdateTicket("urgency", value)
+                    value={ticket.status}
+                    onValueChange={(value: TicketStatus) =>
+                      handleUpdateTicket("status", value)
+                    }
+                    disabled={
+                      role === "AGENT" && ticket.assigneeId !== currentUser?.id
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {urgencyOptions.map((urgency) => (
-                        <SelectItem key={urgency} value={urgency}>
-                          {urgency}
+                      {statusOptions.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status.replace("_", " ")}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              {permissions?.canReassignTicket && (
-                <div className="space-y-2">
-                  <Label>Assignee</Label>
-                  <Select
-                    value={ticket.assignee?.id || "unassigned"}
-                    onValueChange={handleAssigneeChange}
+                {permissions?.canReassignTicket && (
+                  <div className="space-y-2">
+                    <Label>Urgency</Label>
+                    <Select
+                      value={ticket.urgency}
+                      onValueChange={(value: Urgency) =>
+                        handleUpdateTicket("urgency", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {urgencyOptions.map((urgency) => (
+                          <SelectItem key={urgency} value={urgency}>
+                            {urgency}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {permissions?.canReassignTicket && (
+                  <div className="space-y-2">
+                    <Label>Assignee</Label>
+                    <Select
+                      value={ticket.assignee?.id || "unassigned"}
+                      onValueChange={handleAssigneeChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {users &&
+                          users.length > 0 &&
+                          users.map((u) => {
+                            const staffPermissions =
+                              (role === "STAFF" &&
+                                currentUser?.marketCenterId &&
+                                u?.marketCenterId ===
+                                  currentUser?.marketCenterId) ||
+                              (role === "STAFF" &&
+                                !currentUser?.marketCenterId &&
+                                u?.id !== currentUser?.id);
+
+                            return (
+                              <SelectItem
+                                key={u.id}
+                                value={u.id}
+                                disabled={!staffPermissions}
+                              >
+                                {u.name} ({u.role})
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Last Updated:{" "}
+                  {ticket?.updatedAt
+                    ? new Date(ticket?.updatedAt).toLocaleDateString()
+                    : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {ticket?.ticketHistory &&
+                  ticket?.ticketHistory.length > 0 &&
+                  ticket?.ticketHistory.slice(0, 3).map((entry) => {
+                    return (
+                      <div key={entry?.id} className="border-b pb-4">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <Label>
+                            {capitalizeEveryWord(entry?.field)} Change
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {new Date(entry?.changedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 flex-wrap items-center  text-muted-foreground">
+                          <p className="text-sm">
+                            {capitalizeEveryWord(
+                              entry?.previousValue.replace("_", " ")
+                            )}
+                          </p>
+                          <ArrowRight className="h-4 w-4" />
+                          <p className="text-sm font-semibold">
+                            {capitalizeEveryWord(
+                              entry?.newValue.replace("_", " ")
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm ">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground ">
+                            {entry?.changedBy?.name
+                              ? entry?.changedBy?.name
+                              : `#${entry?.changedById}`}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                <div className="mt-4">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowHistoryModal(true)}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {users &&
-                        users.length > 0 &&
-                        users.map((u) => {
-                          const staffPermissions =
-                            (role === "STAFF" &&
-                              currentUser?.marketCenterId &&
-                              u?.marketCenterId ===
-                                currentUser?.marketCenterId) ||
-                            (role === "STAFF" &&
-                              !currentUser?.marketCenterId &&
-                              u?.id !== currentUser?.id);
-
-                          return (
-                            <SelectItem
-                              key={u.id}
-                              value={u.id}
-                              disabled={!staffPermissions}
-                            >
-                              {u.name} ({u.role})
-                            </SelectItem>
-                          );
-                        })}
-                    </SelectContent>
-                  </Select>
+                    <p>View All Changes</p>
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 

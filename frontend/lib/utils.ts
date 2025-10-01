@@ -102,6 +102,10 @@ export const getUrgencyColor = (urgency: Urgency) => {
   }
 };
 
+export const capitalizeEachWord = (text: string) =>{
+
+}
+
 // FILTERS
 export const defaultActiveStatuses: TicketStatus[] = [
   "ASSIGNED",
@@ -206,4 +210,13 @@ export const formatPaginationText = ({
   currentPage: number;
 }) => {
   return `${totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - ${Math.min(currentPage * itemsPerPage, totalItems)} `;
+};
+
+// MISC
+
+export const capitalizeEveryWord = (words: string | undefined) => {
+  if (!words) return '';
+  const wordArray = words.split(' ');
+  const capitalizedArray = wordArray.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  return capitalizedArray.join(' ');
 };

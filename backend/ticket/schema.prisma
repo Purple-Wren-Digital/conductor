@@ -38,6 +38,7 @@ model User {
   assignedTickets      Ticket[]           @relation("TicketAssignee")
   createdTickets       Ticket[]           @relation("TicketCreator")
   marketCenter         MarketCenter?      @relation(fields: [marketCenterId], references: [id])
+  ticketHistory        TicketHistory[]
 
   @@index([marketCenterId])
   @@map("users")
@@ -60,6 +61,7 @@ model Ticket {
   comments    Comment[]
   assignee    User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
   creator     User          @relation("TicketCreator", fields: [creatorId], references: [id])
+  ticketHistory TicketHistory[]
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -137,6 +139,24 @@ model SettingsAuditLog {
   @@index([createdAt])
   @@map("settings_audit_logs")
 }
+
+model TicketHistory {
+  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ticketId         String     @map("ticket_id")
+  field            String
+  previousValue    String
+  newValue         String
+  snapshot         Json?         
+  changedAt        DateTime   @default(now())
+  changedById      String     @map("changed_by_id")
+
+  ticket           Ticket     @relation(fields: [ticketId], references: [id])
+  changedBy   User    @relation(fields: [changedById], references: [id])
+
+  @@index([ticketId])
+  @@index([changedById])
+}
+
 
 enum UserRole {
   AGENT

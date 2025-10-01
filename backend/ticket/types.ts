@@ -9,6 +9,16 @@ export type TicketStatus =
   | "RESOLVED";
 export type Urgency = "HIGH" | "MEDIUM" | "LOW";
 
+export type TicketField =
+  | "title"
+  | "description"
+  | "status"
+  | "urgency"
+  | "category"
+  | "assigneeId"
+  | "dueDate"
+  | "";
+
 export interface User {
   id: string;
   email: string;
@@ -20,6 +30,7 @@ export interface User {
   auth0Id: string;
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
+  ticketHistory: TicketHistory[];
 }
 
 export interface Ticket {
@@ -40,6 +51,7 @@ export interface Ticket {
   commentCount?: number | null;
   deletedAt?: Date | null;
   isActive?: boolean;
+  ticketHistory: TicketHistory[];
 }
 
 export interface Comment {
@@ -70,4 +82,16 @@ export interface DashboardMetrics {
   avgResponseTime: number;
   ticketsByStatus: Record<TicketStatus, number>;
   ticketsByUrgency: Record<Urgency, number>;
+}
+
+export interface TicketHistory {
+  id: string;
+  ticketId: string;
+  field: string;
+  previousValue: string;
+  newValue: string;
+  snapshot?: JSON; // Ticket as it was in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: User;
 }
