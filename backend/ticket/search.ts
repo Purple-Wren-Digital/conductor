@@ -40,29 +40,52 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    let scopeFilter = getTicketScopeFilter(userContext);
+    let scopeFilter = await getTicketScopeFilter(userContext);
 
-    // if (userContext.role === "ADMIN" && req.marketCenterId) {
-    //   scopeFilter = {
-    //     OR: [
-    //       {
-    //         creator: {
-    //           marketCenterId: req.marketCenterId,
-    //         },
-    //       },
-    //       {
-    //         assignee: {
-    //           marketCenterId: req.marketCenterId,
-    //         },
-    //       },
-    //     ],
-    //   };
-    // }
+    let where: any = {};
 
-    const where: Prisma.TicketWhereInput = { ...scopeFilter };
+    if (userContext.role === "ADMIN" && req.marketCenterId) {
+      where = {
+        OR: [
+          {
+            creator: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
+            assignee: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+        ],
+      };
+    }
+
+    if (
+      userContext.role === "STAFF" &&
+      userContext?.marketCenterId &&
+      req?.marketCenterId &&
+      req?.marketCenterId === userContext?.marketCenterId
+    ) {
+      where = {
+        OR: [
+          {
+            creator: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
+            assignee: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+        ],
+      };
+    }
 
     if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
       where.status = { not: "RESOLVED" as TicketStatus };
@@ -73,9 +96,16 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.urgency && req.urgency.length > 0) {
       where.urgency = { in: req.urgency as Urgency[] };
     }
-
-    if (req.assigneeId) where.assigneeId = req.assigneeId;
-    if (req.creatorId) where.creatorId = req.creatorId;
+    if (
+      userContext.role === "AGENT" ||
+      (userContext.role === "STAFF" && !userContext?.marketCenterId)
+    ) {
+      where.assigneeId = userContext.userId;
+      where.creatorId = userContext.userId;
+    } else {
+      if (req.assigneeId) where.assigneeId = req.assigneeId;
+      if (req.creatorId) where.creatorId = req.creatorId;
+    }
     if (req.category) where.category = req.category;
 
     if (req.query) {
@@ -93,12 +123,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         ],
       };
 
-      // if (scopeFilter?.OR) {
-      //   where.AND = [scopeFilter, searchCondition];
-      //   delete where.OR;
-      // } else {
-      where.OR = searchCondition.OR;
-      // }
+      if (where.OR) {
+        where.AND = [scopeFilter, searchCondition];
+      } else {
+        where.OR = searchCondition.OR;
+      }
     }
 
     if (req.dateFrom || req.dateTo) {
@@ -147,18 +176,21 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         break;
     }
 
-    const tickets = await prisma.ticket.findMany({
-      //   where,
-      include: {
-        creator: true,
-        assignee: true,
-        _count: { select: { comments: true } },
-      },
-      orderBy,
-      take: limit,
-      skip: offset,
-    });
-    const total = await prisma.ticket.count();
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        include: {
+          creator: true,
+          assignee: true,
+          _count: { select: { comments: true } },
+        },
+        orderBy,
+        take: limit,
+        skip: offset,
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
     const ticketsMapped: Ticket[] = tickets.map((r) => ({
       ...r,
       title: r.title ?? "",
@@ -176,6 +208,9 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       commentCount: r._count.comments,
     }));
 
-    return { tickets: ticketsMapped, total: total };
+    return {
+      tickets: ticketsMapped,
+      total,
+    };
   }
 );

@@ -2,8 +2,6 @@ import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { prisma } from "../ticket/db";
 
-// TODO: More granular STAFF permissions by market center/team
-
 export async function requireRole(
   userContext: UserContext,
   requiredRoles: string[]
@@ -120,8 +118,7 @@ export async function canCreateInternalComments(
 export async function canManageTeam(
   userContext: UserContext
 ): Promise<boolean> {
-  // TODO: member id for STAFF ( only can manage own team)
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return userContext.role === "ADMIN" || userContext.role === "STAFF";
 }
 
 export async function canChangeUserRoles(
@@ -130,38 +127,59 @@ export async function canChangeUserRoles(
   return userContext.role === "ADMIN";
 }
 
-export function getTicketScopeFilter(userContext: UserContext) {
-  if (userContext.role === "ADMIN") {
+export async function getTicketScopeFilter(
+  userContext: UserContext,
+  marketCenterId?: string
+) {
+  if (userContext.role === "ADMIN" && !marketCenterId) {
     return {};
   }
+  if (userContext.role === "ADMIN" && marketCenterId) {
+    return {
+      OR: [
+        {
+          creator: {
+            marketCenterId: marketCenterId,
+          },
+        },
+        {
+          assignee: {
+            marketCenterId: marketCenterId,
+          },
+        },
+      ],
+    };
+  }
 
-  if (userContext.role === "AGENT") {
+  if (userContext.role === "STAFF" && userContext?.marketCenterId) {
+    return {
+      OR: [
+        {
+          creator: {
+            marketCenterId: userContext.marketCenterId,
+          },
+        },
+        {
+          assignee: {
+            marketCenterId: userContext.marketCenterId,
+          },
+        },
+      ],
+    };
+  }
+
+  if (
+    userContext.role === "AGENT" ||
+    (userContext.role === "STAFF" && !userContext?.marketCenterId)
+  ) {
     return { assigneeId: userContext.userId };
-  }
-
-  if (userContext.role === "STAFF" && userContext.marketCenterId) {
-    return {};
-
-    // return {
-    //   OR: [
-    //     {
-    //       // creator: { TODO:
-    //       //   marketCenterId: userContext.marketCenterId,
-    //       // },
-    //     },
-    //     // {
-    //     //   assignee: {
-    //     //     marketCenterId: userContext.marketCenterId,
-    //     //   },
-    //     // },
-    //   ],
-    // };
   }
 
   return { id: "impossible-id" };
 }
 
-export function getUserScopeFilter(userContext: UserContext) {
+// USERS
+export async function getUserScopeFilter(userContext: UserContext) {
   if (userContext.role === "ADMIN") {
     return {};
   }
@@ -190,4 +208,38 @@ export async function canDeactivateUsers(
   userContext: UserContext
 ): Promise<boolean> {
   return userContext.role === "ADMIN";
+}
+
+// MARKET CENTERS
+export async function canCreateMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}
+
+export async function canManageMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}
+
+export async function canDeleteMarketCenters(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN";
+}
+
+export async function marketCenterScopeFilter(
+  userContext: UserContext,
+  marketCenterId: string
+) {
+  if (userContext.role === "ADMIN") {
+    return { id: marketCenterId };
+  }
+
+  if (userContext.role === "STAFF" && userContext?.marketCenterId) {
+    return { id: userContext.marketCenterId };
+  }
+
+  return null;
 }

@@ -67,7 +67,7 @@ export function Header() {
       body: JSON.stringify({
         email: auth0User.email,
         name: auth0User?.name || auth0User?.nickname || "",
-        role: "AGENT",
+        role: "AGENT", // TODO: get meta data?? auth0User?.user_metadata?.role 
       }),
     });
     if (response.ok) {

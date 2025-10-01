@@ -47,6 +47,12 @@ export interface PrismaUser {
   } | null;
 }
 
+export interface UserWithStats extends PrismaUser {
+  ticketsAssigned?: number;
+  ticketsCreated?: number;
+  lastActive?: Date;
+}
+
 export interface Comment {
   id: string;
   content: string;
@@ -105,3 +111,73 @@ export interface BulkUpdateRequest {
   status?: TicketStatus;
   urgency?: Urgency;
 }
+
+export interface MarketCenter {
+  id: string;
+  name: string;
+  settings?: {} | null;
+  createdAt: Date;
+  updatedAt: Date;
+  settingsAuditLogs?: SettingsAuditLog[];
+  teamInvitations?: TeamInvitation[];
+  ticketCategories?: TicketCategory[];
+  users?: PrismaUser[];
+}
+
+export interface SettingsAuditLog {
+  id: string;
+  marketCenterId: string;
+  userId: string;
+  action: string;
+  section: string;
+  previousValue?: {};
+  newValue?: {};
+  createdAt: Date;
+  marketCenter: MarketCenter;
+  user: PrismaUser;
+}
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+
+export interface TeamInvitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: InvitationStatus;
+  marketCenterId?: string;
+  invitedBy?: string;
+  token: string;
+  expiresAt: Date;
+  acceptedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  marketCenter?: MarketCenter;
+}
+
+export interface TicketCategory {
+  id: string;
+  name: string;
+  description?: string;
+  marketCenterId: string;
+  defaultAssigneeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  defaultAssignee?: PrismaUser;
+  marketCenter: MarketCenter;
+}
+
+export type MarketCenterForm = {
+  name: string;
+  selectedUsers: PrismaUser[];
+};
+
+// FILTERS
+export type OrderBy = "asc" | "desc";
+
+export type UserSortBy = "updatedAt" | "createdAt" | "name"
+export type UsersResponse = { users: PrismaUser[] };
+
+
+export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
+export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
+export type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };

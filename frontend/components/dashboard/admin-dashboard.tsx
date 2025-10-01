@@ -9,48 +9,54 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
-  Building,
-  Ticket,
-  Users,
-  TrendingUp,
   AlertCircle,
   BarChart,
+  Building2,
+  Ticket,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useFetchAdminTickets } from "@/hooks/use-tickets";
+import { TeamSwitcher } from "../ui/team-switcher";
+import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export function AdminDashboard() {
-  const [selectedMarketCenter, setSelectedMarketCenter] =
+  const { role } = useUserRole();
+  const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
-    queryKey: ["all-tickets"],
-    queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
-      const response = await fetch(`/api/tickets/search`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch tickets");
-      return response.json();
-    },
-  });
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (selectedMarketCenterId !== "all") {
+      params.append("marketCenterId", selectedMarketCenterId);
+    }
+    return params;
+  }, [selectedMarketCenterId, role]);
+
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
+  const adminTicketsQueryKey = useMemo(
+    () => ["admin-tickets-dashboard", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: ticketsData, isLoading: ticketsLoading } = useFetchAdminTickets(
+    {
+      role,
+      adminTicketsQueryKey,
+      queryParams,
+    }
+  );
 
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
@@ -69,38 +75,26 @@ export function AdminDashboard() {
     },
   });
 
-  const { data: marketCenters } = useQuery({
-    queryKey: ["market-centers"],
-    queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
-      const response = await fetch(`/api/market-centers`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) return { marketCenters: [] };
-      return response.json();
-    },
-  });
+  const { data: marketCentersData } = useFetchAllMarketCenters(role);
+  const marketCenters = marketCentersData?.marketCenters ?? [];
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
 
   const filteredTickets =
-    selectedMarketCenter === "all"
+    selectedMarketCenterId === "all"
       ? tickets
       : tickets.filter((t: any) => {
           const creator = allUsers.find((u: any) => u.id === t.creatorId);
-          return creator?.marketCenterId === selectedMarketCenter;
+          return creator?.marketCenterId === selectedMarketCenterId;
         });
 
   const filteredUsers =
-    selectedMarketCenter === "all"
+    selectedMarketCenterId === "all"
       ? allUsers
-      : allUsers.filter((u: any) => u.marketCenterId === selectedMarketCenter);
+      : allUsers.filter(
+          (u: any) => u.marketCenterId === selectedMarketCenterId
+        );
 
   const stats = {
     totalTickets: filteredTickets.length,
@@ -145,23 +139,13 @@ export function AdminDashboard() {
             System-wide overview and management
           </p>
         </div>
-        <div className="flex gap-2 items-center">
-          <Select
-            value={selectedMarketCenter}
-            onValueChange={setSelectedMarketCenter}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select Team" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
-              {marketCenters?.marketCenters?.map((mc: any) => (
-                <SelectItem key={mc.id} value={mc.id}>
-                  {mc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex gap-5 justify-between">
+          <div className="space-y-2 w-50">
+            <TeamSwitcher
+              selectedMarketCenterId={selectedMarketCenterId}
+              setSelectedMarketCenterId={setSelectedMarketCenterId}
+            />
+          </div>
           <Button asChild>
             <Link href="/dashboard/reports">
               <BarChart className="mr-2 h-4 w-4" /> View Reports
@@ -194,7 +178,7 @@ export function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.highPriority}</div>
             <p className="text-xs text-muted-foreground">
-              Require immediate attention
+              Requires immediate attention
             </p>
           </CardContent>
         </Card>
@@ -227,45 +211,45 @@ export function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Market Centers Performance</CardTitle>
+            <CardTitle>
+              Market Centers ({marketCenters?.length ?? "0"})
+            </CardTitle>
             <CardDescription>Ticket distribution by team</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {marketCenters?.marketCenters?.slice(0, 5).map((mc: any) => {
-                const mcTickets = tickets.filter((t: any) => {
-                  const creator = allUsers.find(
-                    (u: any) => u.id === t.creatorId
+            <ScrollArea className="space-y-4 h-100">
+              {marketCenters &&
+                marketCenters?.length &&
+                marketCenters?.map((mc: any) => {
+                  const isViewingStats = selectedMarketCenterId === mc?.id;
+                  return (
+                    <div
+                      key={mc?.id}
+                      onClick={() => setSelectedMarketCenterId(mc?.id)}
+                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
+                    >
+                      <div className="flex flex-1 justify-between">
+                        <p className="font-medium hover:underline">
+                          {mc?.name && mc.name}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          #{mc?.id && mc.id.substring(0, 8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Users Assigned: {mc.users.length ?? "0"}
+                        </p>
+                      </div>
+                    </div>
                   );
-                  return creator?.marketCenterId === mc.id;
-                });
-                const mcOpen = mcTickets.filter(
-                  (t: any) => t.status !== "RESOLVED"
-                ).length;
-                const mcTotal = mcTickets.length;
-
-                return (
-                  <div
-                    key={mc.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{mc.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {mcOpen} open • {mcTotal} total
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge variant="secondary">{mcOpen}</Badge>
-                      <Badge variant="outline">{mcTotal}</Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                })}
+            </ScrollArea>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard/settings">Manage Teams</Link>
+                <Link href="/dashboard/marketCenters">
+                  Manage Market Centers
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -274,7 +258,10 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest tickets across all teams</CardDescription>
+            <CardDescription>
+              {filteredTickets.length ?? "0"} Total tickets
+              {selectedMarketCenterId === "all" ? " across all teams" : ""}{" "}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -338,16 +325,32 @@ export function AdminDashboard() {
                 <span className="text-2xl font-bold">
                   {stats.resolutionRate}%
                 </span>
-                <Badge variant="secondary">Good</Badge>
+                <Badge
+                  variant={
+                    stats.resolutionRate <= 59.9
+                      ? "orange"
+                      : stats.resolutionRate === 60 ||
+                          stats.resolutionRate <= 79.9
+                        ? "warning"
+                        : "success"
+                  }
+                >
+                  {stats.resolutionRate <= 59.9
+                    ? "Poor"
+                    : stats.resolutionRate === 60 ||
+                        stats.resolutionRate <= 79.9
+                      ? "Fair"
+                      : "Excellent"}
+                </Badge>
               </div>
             </div>
             <div>
               <p className="text-sm font-medium">Active Teams</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">
-                  {marketCenters?.marketCenters?.length || 0}
+                  {marketCenters?.length || 0}
                 </span>
-                <Building className="h-4 w-4 text-muted-foreground" />
+                <Building2 className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
             <div>

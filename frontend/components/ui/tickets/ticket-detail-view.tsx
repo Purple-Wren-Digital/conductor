@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react"; // , useMemo
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import type { Ticket, PrismaUser, TicketStatus, Urgency } from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
@@ -30,7 +30,12 @@ import { hasDueDateChanged } from "./utils";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
-import { getStatusColor, getUrgencyColor, parseJsonSafe } from "@/lib/utils";
+import {
+  getStatusColor,
+  getUrgencyColor,
+  parseJsonSafe,
+  statusOptions,
+} from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
 
 interface TicketDetailViewProps {
@@ -59,12 +64,6 @@ type emailNotificationTypes = {
   };
 };
 
-const statusOptions: TicketStatus[] = [
-  "ASSIGNED",
-  "AWAITING_RESPONSE",
-  "IN_PROGRESS",
-  "RESOLVED",
-];
 const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
@@ -106,7 +105,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
 
       setTicket(ticketData.ticket);
-      setUsers(usersData.users || []);
+      setUsers(usersData?.users ?? []);
     } catch (err) {
       console.error("Error refreshing data:", err);
       setTicket(null);
@@ -556,11 +555,28 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name} ({u.role})
-                        </SelectItem>
-                      ))}
+                      {users &&
+                        users.length > 0 &&
+                        users.map((u) => {
+                          const staffPermissions =
+                            (role === "STAFF" &&
+                              currentUser?.marketCenterId &&
+                              u?.marketCenterId ===
+                                currentUser?.marketCenterId) ||
+                            (role === "STAFF" &&
+                              !currentUser?.marketCenterId &&
+                              u?.id !== currentUser?.id);
+
+                          return (
+                            <SelectItem
+                              key={u.id}
+                              value={u.id}
+                              disabled={!staffPermissions}
+                            >
+                              {u.name} ({u.role})
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>
