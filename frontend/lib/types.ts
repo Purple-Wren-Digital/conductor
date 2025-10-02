@@ -47,6 +47,8 @@ export interface PrismaUser {
     name: string;
   } | null;
   ticketHistory?: TicketHistory[];
+  userHistory?: UserHistory[];
+  otherUsersChanges?: UserHistory[];
 }
 
 export interface TicketHistory {
@@ -59,6 +61,28 @@ export interface TicketHistory {
   changedAt: Date;
   changedById: string;
   changedBy?: PrismaUser;
+}
+
+export interface UserHistory {
+  id: string;
+  userId: string;
+  marketCenterId: string;
+  field: string;
+  previousValue: string;
+  newValue: string;
+  snapshot?: JSON; // User as they were in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: PrismaUser;
+  user?: PrismaUser;
+}
+
+export interface UserEditFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  marketCenterId?: string;
 }
 
 export interface UserWithStats extends PrismaUser {

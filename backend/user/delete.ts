@@ -36,10 +36,35 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
       return { success: true, message: "User already deactivated" };
     }
 
-    await prisma.user.update({
-      where: { id: req.id },
-      data: { isActive: false, deletedAt: new Date() },
+    const result = await prisma.$transaction(async (u) => {
+      const deactivatedUser = await u.user.update({
+        where: { id: req.id },
+        data: {
+          isActive: false,
+          deletedAt: new Date(),
+        },
+        include: {
+          userHistory: true,
+        },
+      });
+
+      const history = await u.userHistory.create({
+        data: {
+          userId: user.id,
+          field: "isActive",
+          previousValue: "true",
+          newValue: "false",
+          changedById: userContext.userId,
+          snapshot: user,
+        },
+      });
+
+      return { deactivatedUser, history };
     });
+
+    if (!result || !result?.deactivatedUser) {
+      throw APIError.aborted("User was not deactivated");
+    }
 
     return { success: true, message: "User deactivated" };
   }

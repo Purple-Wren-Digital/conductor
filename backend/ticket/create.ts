@@ -4,6 +4,7 @@ import type { Ticket, Urgency } from "./types";
 import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
+import { mapTicketHistorySnapshot } from "../utils";
 
 export interface CreateTicketRequest {
   title: string;
@@ -47,31 +48,52 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
       });
 
-      const ticket = await prisma.ticket.create({
-        data: {
-          title: req.title,
-          description: req.description,
-          category: req.category,
-          urgency: req.urgency,
-          creatorId: userContext.userId,
-          assigneeId: assigneeId,
-          dueDate: req.dueDate,
-        },
-        include: {
-          creator: true,
-          assignee: true,
-          _count: {
-            select: {
-              comments: true,
-            },
+      const result = await prisma.$transaction(async (tx) => {
+        const ticket = await tx.ticket.create({
+          data: {
+            title: req.title,
+            description: req.description,
+            category: req.category,
+            urgency: req.urgency,
+            creatorId: userContext.userId,
+            assigneeId,
+            dueDate: req.dueDate,
           },
-        },
+          include: {
+            creator: true,
+            assignee: true,
+            _count: { select: { comments: true } },
+          },
+        });
+
+        const history = await tx.ticketHistory.create({
+          data: {
+            ticketId: ticket.id,
+            field: "created",
+            previousValue: "N/A",
+            newValue: "New Ticket",
+            changedById: userContext.userId,
+          },
+        });
+
+        return { ticket, history };
       });
 
       return {
         ticket: {
-          ...ticket,
-          commentCount: ticket._count.comments,
+          ...result.ticket,
+          commentCount: result.ticket._count.comments,
+          ticketHistory: mapTicketHistorySnapshot([result.history]),
+          creator: {
+            ...result.ticket.creator,
+            name: result.ticket.creator.name ?? "",
+          },
+          assignee: result.ticket.assignee
+            ? {
+                ...result.ticket.assignee,
+                name: result.ticket.assignee.name ?? "",
+              }
+            : null,
         },
       } as CreateTicketResponse;
     } catch (error) {

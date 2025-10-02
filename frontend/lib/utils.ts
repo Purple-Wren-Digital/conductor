@@ -41,7 +41,11 @@ export const ROLE_ICONS: {
 
 export const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
 
-export const ROLE_DESCRIPTIONS = {
+export const ROLE_DESCRIPTIONS: {
+    ADMIN: string;
+    STAFF: string;
+    AGENT: string;
+} = {
   ADMIN: "Full access to all settings and data",
   STAFF: "Can create, view and manage their team and tickets",
   AGENT: "Can view and manage assigned tickets",

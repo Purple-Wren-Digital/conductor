@@ -44,11 +44,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
 
     const updateData: any = {};
-    let historyData: any = []; // TicketHistory[]
+    let ticketHistoryData: any = [];
 
     if (req.title !== undefined && req.title !== oldTicket.title) {
       updateData.title = req.title;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "title",
         previousValue: oldTicket.title,
@@ -63,7 +63,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       req.description !== oldTicket.description
     ) {
       updateData.description = req.description;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "description",
         previousValue: oldTicket.description,
@@ -75,7 +75,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
     if (req.urgency !== undefined && req.urgency !== oldTicket.urgency) {
       updateData.urgency = req.urgency;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "urgency",
         previousValue: oldTicket.urgency,
@@ -87,7 +87,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
     if (req.category !== undefined && req.category !== oldTicket.category) {
       updateData.category = req.category;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "category",
         previousValue: oldTicket.category,
@@ -99,7 +99,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
     if (req.dueDate !== undefined && req.dueDate !== oldTicket.dueDate) {
       updateData.dueDate = req.dueDate;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "dueDate",
         previousValue: oldTicket.dueDate,
@@ -112,7 +112,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     if (req.status !== undefined && req.status !== oldTicket.status) {
       updateData.status = req.status;
-      historyData.push({
+      ticketHistoryData.push({
         ticketId: req.ticketId,
         field: "status",
         previousValue: oldTicket.status,
@@ -152,7 +152,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           },
         }),
         prisma.ticketHistory.createMany({
-          data: historyData,
+          data: ticketHistoryData,
         }),
       ]);
 

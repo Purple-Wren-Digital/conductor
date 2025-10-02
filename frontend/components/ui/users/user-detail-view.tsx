@@ -6,13 +6,7 @@ import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useStore } from "@/app/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -73,20 +67,19 @@ import { useFetchOneUser } from "@/hooks/use-users";
 
 //EACH TABLE TODO: PAGINATE + SORT + FILTER
 
-export default function UserProfileLayout() {
+type UserDetailViewProps = {
+  id: string;
+};
+
+export default function UserDetailView({ id }: UserDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { currentUser } = useStore();
-
-  const { data: userData, isLoading: userLoading } = useFetchOneUser(
-    currentUser?.id
-  );
+  const { data: userData, isLoading: userLoading } = useFetchOneUser(id);
   const user: PrismaUser = userData ?? ({} as PrismaUser);
   const marketCenter: MarketCenter = userData?.marketCenter ?? {};
 
-  const { role } = useUserRole();
-
+  // EDIT USER STATES
   const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [formData, setFormData] = useState<UserEditFormData>({
     firstName: user && user?.name ? user?.name.split(" ")?.[0] : "",
@@ -97,6 +90,7 @@ export default function UserProfileLayout() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
   const getAuth0AccessToken = useCallback(async () => {
@@ -129,9 +123,10 @@ export default function UserProfileLayout() {
     setShowEditUserForm(false);
   };
   const userNameForm = `${formData?.firstName.trim()} ${formData?.lastName.trim()}`;
-  const hasNameChanged: boolean = user && userNameForm === user?.name;
-  const hasEmailChanged: boolean = formData?.email === user?.email;
-  const hasRoleChanged: boolean = formData?.role === user?.role;
+  const hasNameChanged: boolean = user && userNameForm !== user?.name;
+  const hasEmailChanged: boolean = formData?.email !== user?.email;
+  const hasRoleChanged: boolean = formData?.role !== user?.role;
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!formData?.firstName.trim()) errors.name = "First name is required";
@@ -177,7 +172,7 @@ export default function UserProfileLayout() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["user-profile", currentUser?.id],
+        queryKey: ["user-profile", id],
       });
       resetFormAndClose();
       toast.success(`${user?.name || "User"} was updated`);
@@ -209,46 +204,34 @@ export default function UserProfileLayout() {
     updateUserMutation.mutate(user?.id);
     setIsSubmitting(false);
   };
-  // if (userLoading) {
-  //   return (
-  //     <Card className="flex items-center justify-center h-96">
-  //       <div className="text-center">
-  //         <p className="text-muted-foreground">Loading profile...</p>
-  //       </div>
-  //     </Card>
-  //   );
-  // }
 
-  if (!currentUser) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground"></p>
-      </div>
-    );
-  }
   return (
     <div className="space-y-6">
+      {/* TOP INFO */}
+      <div className="flex items-center gap-2 justify-between">
+        <Button
+          variant="ghost"
+          onClick={() => router.push("/dashboard/users?tab=users")}
+          className="gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Users
+        </Button>
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            onClick={() => setShowEditUserForm(true)}
+            className="gap-2"
+          >
+            <Edit2 className="h-4 w-4" /> Edit User
+          </Button>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* USER INFO */}
         <Card className="lg:col-span-2 ">
           <CardHeader>
-            <div className="flex items-center gap-2 justify-end">
-              <CardTitle className="text-xl">{user?.name}</CardTitle>
-              <CardDescription>
-                {!currentUser ||
-                  (!user &&
-                    "Unable to find your profile information. Please contact support.")}
-              </CardDescription>
-              <div className="ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEditUserForm(true)}
-                  className="gap-2"
-                >
-                  <Edit2 className="h-4 w-4" /> Edit Profile
-                </Button>
-              </div>
-            </div>
+            <CardTitle className="text-xl">{user?.name}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -302,38 +285,44 @@ export default function UserProfileLayout() {
             <CardTitle className="text-lg">Quick Edit</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="text-sm font-medium">Role *</label>
-            <Select
-              value={user?.role}
-              onValueChange={(value: UserRole) => {
-                setFormData({ ...formData, role: value });
-                handleRoleChange();
-              }}
-              disabled={
-                !permissions?.canChangeUserRoles || isSubmitting || userLoading
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    <div className="flex items-center gap-2">
-                      {getRoleIcon(role)}
-                      {role}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* <Label>Market Center</Label>
-            <TeamSwitcher
-              type="User Profile"
-              selectedMarketCenterId={selectedMarketCenterId}
-              setSelectedMarketCenterId={setSelectedMarketCenterId}
-              handleUpdateMarketCenter={handleUpdateMarketCenter}
-            /> */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role *</label>
+              <Select
+                value={user?.role}
+                onValueChange={(value: UserRole) => {
+                  setFormData({ ...formData, role: value });
+                  handleRoleChange();
+                }}
+                disabled={
+                  !permissions?.canChangeUserRoles ||
+                  isSubmitting ||
+                  userLoading
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      <div className="flex items-center gap-2">
+                        {getRoleIcon(role)}
+                        {role}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* <div className="space-y-2">
+                    <label className="text-sm font-medium">Market Center</label>
+                    <TeamSwitcher
+                      type="User Profile"
+                      selectedMarketCenterId={selectedMarketCenterId}
+                      setSelectedMarketCenterId={setSelectedMarketCenterId}
+                      handleUpdateMarketCenter={handleUpdateMarketCenter}
+                    />  
+             </div>*/}
           </CardContent>
         </Card>
 
@@ -452,6 +441,7 @@ export default function UserProfileLayout() {
                     user?.otherUsersChanges.length > 0 &&
                     user?.otherUsersChanges.map(
                       (entry: UserHistory, index: number) => {
+                        if (user?.id === entry?.id) return null;
                         return (
                           <TableRow key={entry.id + index}>
                             {/* USER */}
@@ -461,7 +451,13 @@ export default function UserProfileLayout() {
                               }
                             >
                               <p className="font-semibold hover:underline pointer-events-auto">
-                                # {entry?.id.slice(0, 8)}
+                                {/* # {entry?.id.slice(0, 8)} */}
+                                <p>
+                                  {entry?.changedBy?.name
+                                    ? entry?.changedBy?.name
+                                    : findChangedByName(entry?.changedById)}
+                                  {/* `#${entry?.changedById}` */}
+                                </p>
                               </p>
                             </TableCell>
                             {/* FIELD */}
@@ -556,7 +552,6 @@ export default function UserProfileLayout() {
                         return (
                           <TableRow key={entry.id + index}>
                             {/* User */}
-
                             <TableCell>
                               {index === 0 ? (
                                 <p className="font-semibold">{user?.name}</p>
@@ -736,7 +731,14 @@ export default function UserProfileLayout() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || !user}>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  !user ||
+                  (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
+                }
+              >
                 {isSubmitting ? "Saving..." : "Update User"}
               </Button>
             </div>

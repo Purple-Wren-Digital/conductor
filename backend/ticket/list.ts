@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { getTicketScopeFilter } from "../auth/permissions";
+import { mapTicketHistorySnapshot } from "../utils";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -85,6 +86,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         include: {
           creator: true,
           assignee: true,
+          ticketHistory: true,
           _count: {
             select: { comments: true },
           },
@@ -114,6 +116,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         ? { ...ticket.assignee, name: ticket.assignee.name ?? "" }
         : null,
       commentCount: ticket._count.comments,
+      ticketHistory: mapTicketHistorySnapshot(ticket.ticketHistory),
     }));
 
     return { tickets: formattedTickets, total } as ListTicketsResponse;

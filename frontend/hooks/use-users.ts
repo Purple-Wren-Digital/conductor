@@ -61,6 +61,7 @@ export function useFetchAllUsers({
   });
 }
 
+// MARKET CENTER USERS
 export function useFetchUsersWithinMarketCenter({
   usersQueryKey,
   queryParams,
@@ -104,3 +105,52 @@ export function useFetchUsersWithinMarketCenter({
     enabled: !!marketCenterId && role !== "AGENT",
   });
 }
+
+// FETCH USER
+export function useFetchOneUser(id?: string) {
+  return useQuery({
+    queryKey: ["user-profile", id],
+    queryFn: async () => {
+      if (!id) return {};
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(`/api/users/${id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch user");
+      const data = await response.json();
+      return data?.user;
+    },
+    enabled: !!id,
+  });
+}
+
+// FETCH A USER'S HISTORY
+// type UserHistoryQuery = {
+//   userHistoryQueryKey: readonly [string, Record<string, string>];
+//   queryParams: URLSearchParams;
+//   userId: string;
+// };
+
+// export function useFetchUserHistory({
+//   userHistoryQueryKey,
+//   queryParams,
+//   userId,
+// }: UserHistoryQuery) {
+//   return useQuery({
+//     queryKey: userHistoryQueryKey, //["user-history", id],
+//     queryFn: async () => {
+//       const accessToken = await getAuth0AccessToken();
+//       const response = await fetch(`/api/users/${userId}`, {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//         },
+//       });
+//       if (!response.ok) throw new Error("Failed to fetch user");
+//       const data = await response.json();
+//       return data;
+//     },
+//     enabled: !!userId,
+//   });
+// }

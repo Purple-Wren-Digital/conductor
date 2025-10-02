@@ -39,6 +39,8 @@ model User {
   createdTickets       Ticket[]           @relation("TicketCreator")
   marketCenter         MarketCenter?      @relation(fields: [marketCenterId], references: [id])
   ticketHistory        TicketHistory[]
+  userHistory          UserHistory[]      @relation("UpdatedUser") // one user can have many history records about *themselves*
+  otherUsersChanges    UserHistory[]      @relation("ChangedBy") // one user can also be the "changer" for many others
 
   @@index([marketCenterId])
   @@map("users")
@@ -155,6 +157,27 @@ model TicketHistory {
 
   @@index([ticketId])
   @@index([changedById])
+}
+
+model UserHistory {
+  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId           String
+  marketCenterId   String?    @map("market_center_id")
+  field            String
+  previousValue    String
+  newValue         String
+  snapshot         Json?         
+  changedAt        DateTime   @default(now())
+  changedById      String?    @map("changed_by_id")
+
+  user             User       @relation("UpdatedUser", fields: [userId], references: [id])
+  changedBy        User?      @relation("ChangedBy", fields: [changedById], references: [id])
+
+  // marketCenter     User?    @relation(fields: [marketCenterId], references: [id])
+
+  @@index([userId])
+  @@index([changedById])
+  // @@index([marketCenterId])
 }
 
 

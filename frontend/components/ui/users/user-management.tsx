@@ -3,7 +3,13 @@
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "@/app/store-provider";
-import type { OrderBy, UserRole, UserSortBy, UserWithStats } from "@/lib/types";
+import type {
+  OrderBy,
+  UserEditFormData,
+  UserRole,
+  UserSortBy,
+  UserWithStats,
+} from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,16 +61,12 @@ import {
   X,
   ArrowDownNarrowWide,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface UserEditFormData {
-  name: string;
-  email: string;
-  role: UserRole;
-}
-
 export default function UserManagement() {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { role, permissions } = useUserRole();
@@ -100,9 +102,11 @@ export default function UserManagement() {
   const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithStats | null>(null);
   const [editUserFormData, setEditUserFormData] = useState<UserEditFormData>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     role: "AGENT",
+    marketCenterId: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -211,7 +215,8 @@ export default function UserManagement() {
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
     setEditUserFormData({
-      name: user.name,
+      firstName: user?.name ? user?.name.split(" ")?.[0] : "",
+      lastName: user?.name ? user?.name.split(" ")?.[1] : "",
       email: user.email,
       role: user.role,
     });
@@ -219,14 +224,27 @@ export default function UserManagement() {
     setShowEditUserForm(true);
   };
 
+  const userNameForm = `${editUserFormData?.firstName.trim()} ${editUserFormData?.lastName.trim()}`;
+  const hasNameChanged: boolean = userNameForm !== editingUser?.name;
+  const hasEmailChanged: boolean =
+    editUserFormData?.email !== editUserFormData?.email;
+  const hasRoleChanged: boolean =
+    editUserFormData?.role !== editUserFormData?.role;
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!editUserFormData.name.trim()) errors.name = "Name is required";
+    if (!editUserFormData.firstName.trim())
+      errors.name = "First name is required";
+    if (!editUserFormData.lastName.trim())
+      errors.lastName = "Last name is required";
+
     if (!editUserFormData.email.trim()) {
       errors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editUserFormData.email)) {
       errors.email = "Invalid email format";
     }
+
+    if (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
+      errors.general = "No changes made";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -237,10 +255,11 @@ export default function UserManagement() {
     setEditingUser(null);
     setFormErrors({});
     setEditUserFormData({
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       role: "AGENT",
-      // marketCenterId: ""
+      marketCenterId: "",
     });
     setEditingUser(null);
   };
@@ -622,7 +641,11 @@ export default function UserManagement() {
                     deleteLabel="Deactivate"
                     onEdit={() => handleEditUser(user)}
                     onDelete={() => openDeleteModal(user)}
-                    disabled={!permissions?.canDeactivateUsers}
+                    onClick={() => {
+                      //handleGoToUserProfile()
+                      if (!user.id) return;
+                      router.push(`/dashboard/users/${user.id}`);
+                    }}
                   />
                 );
               })}
@@ -660,25 +683,48 @@ export default function UserManagement() {
           </DialogHeader>
 
           <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
+            {/* TODO: FIRST AND LAST NAME */}
             <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Full Name *
+              <label htmlFor="firstName" className="text-sm font-medium">
+                First Name *
               </label>
               <Input
-                id="name"
-                value={editUserFormData.name}
+                id="firstName"
+                value={editUserFormData.firstName}
                 onChange={(e) =>
                   setEditUserFormData({
                     ...editUserFormData,
-                    name: e.target.value,
+                    firstName: e.target.value,
                   })
                 }
-                placeholder="Enter full name"
-                className={formErrors.name ? "border-destructive" : ""}
+                placeholder="Enter first name"
+                className={formErrors.firstName ? "border-destructive" : ""}
               />
-              {formErrors.name && (
-                <p className="text-sm text-destructive">{formErrors.name}</p>
-              )}
+
+              <p className="text-sm text-destructive">
+                {formErrors?.firstName && formErrors.firstName}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="lastName" className="text-sm font-medium">
+                Last Name *
+              </label>
+              <Input
+                id="lastName"
+                value={editUserFormData.lastName}
+                onChange={(e) =>
+                  setEditUserFormData({
+                    ...editUserFormData,
+                    lastName: e.target.value,
+                  })
+                }
+                placeholder="Enter last name"
+                className={formErrors.lastName ? "border-destructive" : ""}
+              />
+              <p className="text-sm text-destructive">
+                {formErrors?.lastName && formErrors.lastName}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -697,6 +743,7 @@ export default function UserManagement() {
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
+                disabled
               />
               {formErrors.email && (
                 <p className="text-sm text-destructive">{formErrors.email}</p>
@@ -729,6 +776,9 @@ export default function UserManagement() {
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
+              <p className="text-sm text-destructive">
+                {formErrors?.general && formErrors.general}
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -738,7 +788,13 @@ export default function UserManagement() {
                 Cancel
               </Button>
               {editingUser && (
-                <Button type="submit" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={
+                    isSubmitting ||
+                    (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
+                  }
+                >
                   {isSubmitting ? "Saving..." : "Update User"}
                 </Button>
               )}

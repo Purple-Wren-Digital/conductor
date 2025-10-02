@@ -85,19 +85,36 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
         },
       });
 
-      // Build history records
-      const historyRecords = tickets.map((ticket) => ({
+      // Build ticket history records
+      const ticketHistoryRecords = tickets.map((ticket) => ({
         ticketId: ticket.id,
-        changedById: userContext?.userId,
         field: "assigneeId",
         previousValue: ticket.assigneeId ?? "",
         newValue: req.assigneeId,
-        createdAt: new Date(),
+        changedById: userContext?.userId,
+        changedAt: new Date(),
       }));
 
       await tx.ticketHistory.createMany({
-        data: historyRecords,
+        data: ticketHistoryRecords,
+        skipDuplicates: true,
       });
+
+      // // //  Build User history records
+      // const userHistoryRecords = tickets.map((ticket) => ({
+      //   userId: assignee.id,
+      //   field: "ticketAssignment",
+      //   previousValue: "N/A",
+      //   newValue: ticket?.id,
+      //   snapshot: assignee,
+      //   changedById: userContext.userId,
+      //   changedAt: new Date(),
+      // }));
+
+      // await tx.userHistory.createMany({
+      //   data: userHistoryRecords,
+      //   skipDuplicates: true,
+      // });
 
       return update;
     });

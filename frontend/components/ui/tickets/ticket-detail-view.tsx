@@ -22,7 +22,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  Calendar,
+  CalendarIcon,
   CheckCircle,
   Clock,
   Edit,
@@ -49,13 +49,6 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog/base-dialog";
 import {
   Table,
   TableBody,
@@ -582,7 +575,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     <span className="font-medium">{ticket.creator?.name}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Created:</span>
                     <span className="font-medium">
                       {format(new Date(ticket.createdAt), "PPP")}
@@ -686,6 +679,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                           users.length > 0 &&
                           users.map((u) => {
                             const staffPermissions =
+                              role === "ADMIN" ||
                               (role === "STAFF" &&
                                 currentUser?.marketCenterId &&
                                 u?.marketCenterId ===

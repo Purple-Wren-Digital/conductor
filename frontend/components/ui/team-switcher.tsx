@@ -14,7 +14,7 @@ import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 
 interface TeamSwitcherProps {
   selectedMarketCenterId: string;
-  setSelectedMarketCenterId: (value: React.SetStateAction<string>) => void;
+  setSelectedMarketCenterId: React.Dispatch<React.SetStateAction<string>>;
   setCurrentPage?: React.Dispatch<React.SetStateAction<number>>;
 }
 

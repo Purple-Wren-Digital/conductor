@@ -10,14 +10,23 @@ export type TicketStatus =
 export type Urgency = "HIGH" | "MEDIUM" | "LOW";
 
 export type TicketField =
+  | "isActive"
   | "title"
   | "description"
   | "status"
   | "urgency"
   | "category"
   | "assigneeId"
-  | "dueDate"
-  | "";
+  | "dueDate";
+
+export type UserFields =
+  | "name"
+  | "email"
+  | "role"
+  | "isActive"
+  | "marketCenterId"
+  | "ticketAssignment"
+  | "ticketCreation";
 
 export interface User {
   id: string;
@@ -30,7 +39,9 @@ export interface User {
   auth0Id: string;
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
-  ticketHistory: TicketHistory[];
+  ticketHistory?: TicketHistory[];
+  userHistory?: UserHistory[];
+  otherUsersChanges?: UserHistory[];
 }
 
 export interface Ticket {
@@ -90,8 +101,22 @@ export interface TicketHistory {
   field: string;
   previousValue: string;
   newValue: string;
-  snapshot?: JSON; // Ticket as it was in this moment
+  snapshot?: {}; // Ticket as it was in this moment
   changedAt: Date;
   changedById: string;
   changedBy?: User;
+}
+
+export interface UserHistory {
+  id: string;
+  userId: string;
+  marketCenterId: string;
+  field: string;
+  previousValue: string;
+  newValue: string;
+  snapshot?: {}; // User as they were in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: User;
+  user?: User;
 }

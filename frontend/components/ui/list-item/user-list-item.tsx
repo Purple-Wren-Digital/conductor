@@ -3,7 +3,12 @@
 import * as React from "react";
 import { ListItem, getRoleBadgeStyle } from "./base-list-item";
 import type { MarketCenter, PrismaUser } from "@/lib/types";
-import { Mail, Calendar as CalendarIcon, CircleMinus } from "lucide-react";
+import {
+  Mail,
+ CalendarIcon,
+  CircleMinus,
+  ArrowRightCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { getRoleColor } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
@@ -14,15 +19,15 @@ export function UserListItem({
   onEdit,
   deleteLabel,
   onDelete,
-  disabled,
+  onClick,
 }: {
   user: PrismaUser & { ticketsAssigned?: number; ticketsCreated?: number };
+  onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
   deleteLabel: "Remove" | "Deactivate";
-  disabled: boolean;
 }) {
-  const { role } = useUserRole();
+  const { role, permissions } = useUserRole();
 
   const { data: marketCenterData } = useFetchMarketCenter(
     role,
@@ -46,6 +51,7 @@ export function UserListItem({
           .map((n: string) => n[0])
           .join(""),
       }}
+      onClick={onClick}
       primaryBadges={[
         {
           label: user.role,
@@ -67,7 +73,7 @@ export function UserListItem({
       actions={[
         {
           label: "Edit",
-          disabled: disabled,
+          disabled: !permissions?.canManageAllUsers,
           icon: (
             <svg
               className="h-4 w-4"
@@ -89,7 +95,7 @@ export function UserListItem({
           label: deleteLabel,
           variant: "ghost",
 
-          disabled: disabled,
+          disabled: !permissions?.canDeactivateUsers,
           icon:
             deleteLabel === "Remove" ? (
               <CircleMinus className="h-4 w-4" />
@@ -109,6 +115,13 @@ export function UserListItem({
               </svg>
             ),
           onClick: onDelete,
+        },
+        {
+          label: "View",
+          variant: "outline",
+          disabled: !user?.id,
+          icon: <ArrowRightCircle className="h-4 w-4" />,
+          onClick: onClick,
         },
       ]}
     />
