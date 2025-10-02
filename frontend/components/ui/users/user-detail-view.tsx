@@ -113,9 +113,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   };
 
   const findChangedByName = (userId: string, name?: string) => {
-    if (name) return;
+    if (name) return name;
+    if (!userId) return "No id";
     if (userId === user?.id) return user?.name;
     if (userId === currentUser?.id) return currentUser?.name;
+    return userId.slice(0, 8);
   };
 
   const resetFormAndClose = () => {
@@ -322,7 +324,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       setSelectedMarketCenterId={setSelectedMarketCenterId}
                       handleUpdateMarketCenter={handleUpdateMarketCenter}
                     />  
-             </div>*/}
+              </div>*/}
           </CardContent>
         </Card>
 
@@ -357,8 +359,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                           <TableRow key={entry.id + index}>
                             {/* TICKET */}
                             <TableCell
+                              className="cursor-pointer"
                               onClick={() =>
-                                router.push(`/dashboard/tickets/${entry?.id}`)
+                                router.push(
+                                  `/dashboard/tickets/${entry?.ticketId}`
+                                )
                               }
                             >
                               <p className="font-semibold hover:underline pointer-events-auto">
@@ -441,22 +446,32 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     user?.otherUsersChanges.length > 0 &&
                     user?.otherUsersChanges.map(
                       (entry: UserHistory, index: number) => {
-                        if (user?.id === entry?.id) return null;
+                        const self = user?.id === entry?.userId;
+                        if (self) return null;
                         return (
                           <TableRow key={entry.id + index}>
-                            {/* USER */}
+                            {/* OTHER USER */}
                             <TableCell
-                              onClick={() =>
-                                router.push(`/dashboard/users/${entry?.id}`)
-                              }
+                              className="cursor-pointer"
+                              onClick={() => {
+                                if (self) {
+                                  toast.warning(
+                                    "Already viewing user's details"
+                                  );
+                                  return;
+                                }
+                                router.push(
+                                  `/dashboard/users/${entry?.userId}`
+                                );
+                              }}
                             >
                               <p className="font-semibold hover:underline pointer-events-auto">
                                 {/* # {entry?.id.slice(0, 8)} */}
                                 <p>
-                                  {entry?.changedBy?.name
-                                    ? entry?.changedBy?.name
-                                    : findChangedByName(entry?.changedById)}
-                                  {/* `#${entry?.changedById}` */}
+                                  {findChangedByName(
+                                    entry?.changedById,
+                                    entry?.changedBy?.name
+                                  )}
                                 </p>
                               </p>
                             </TableCell>
@@ -483,7 +498,20 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                               </p>
                             </TableCell>
                             {/* CHANGED BY */}
-                            <TableCell>
+                            <TableCell
+                              className="cursor-pointer"
+                              onClick={() => {
+                                if (self) {
+                                  toast.warning(
+                                    "Already viewing user's details"
+                                  );
+                                  return;
+                                }
+                                router.push(
+                                  `/dashboard/users/${entry?.userId}`
+                                );
+                              }}
+                            >
                               {index === 0 ? (
                                 <p className="font-medium">{user?.name}</p>
                               ) : (
@@ -549,6 +577,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     user?.userHistory.length > 0 &&
                     user?.userHistory.map(
                       (entry: UserHistory, index: number) => {
+                        const self = user?.id === entry?.userId;
                         return (
                           <TableRow key={entry.id + index}>
                             {/* User */}
@@ -584,11 +613,19 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                             </TableCell>
 
                             {/* CHANGED BY */}
-                            <TableCell>
+                            <TableCell
+                              className="cursor-pointer"
+                              onClick={() => {
+                                router.push(
+                                  `/dashboard/users/${entry?.changedById}`
+                                );
+                              }}
+                            >
                               <p>
-                                {entry?.changedBy?.name
-                                  ? entry?.changedBy?.name
-                                  : findChangedByName(entry?.changedById)}
+                                {findChangedByName(
+                                  entry?.changedById,
+                                  entry?.changedBy?.name
+                                )}
                                 {/* `#${entry?.changedById}` */}
                               </p>
                             </TableCell>

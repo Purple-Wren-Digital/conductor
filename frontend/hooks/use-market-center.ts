@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
-import { MarketCenter, UserRole } from "@/lib/types";
+import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useQuery } from "@tanstack/react-query";
 
@@ -77,7 +77,7 @@ export function useFetchMarketCenter(
 type MarketCenterSearchTickets = {
   marketCenterId?: string;
   queryParams: URLSearchParams | null;
-  queryKeyParams: Record<string,string > | null
+  queryKeyParams: Record<string, string> | null;
 };
 // STAFF: GET TICKETS WITHIN MARKET CENTER
 export function useFetchMarketCenterTickets({
@@ -112,5 +112,57 @@ export function useFetchMarketCenterTickets({
       }
     },
     enabled: !!marketCenterId,
+  });
+}
+
+type UpdateMarketCenterProps = {
+  role: UserRole | undefined;
+  marketCenterId?: string;
+  name?: string;
+  users?: PrismaUser[];
+};
+
+// UPDATE MARKET CENTER
+export function useUpdateMarketCenter({
+  role,
+  marketCenterId,
+  name,
+  users,
+}: UpdateMarketCenterProps) {
+  return useQuery({
+    queryKey: ["get-market-center", marketCenterId],
+    queryFn: async () => {
+      if (!role || role === "AGENT") {
+        throw new Error(
+          "Only Admin and Staff users can update a market center"
+        );
+      }
+      if (!marketCenterId || !users || !name) {
+        throw new Error("Missing data");
+      }
+      try {
+        const accessToken = await getAuth0AccessToken();
+        const response = await fetch(
+          `${API_BASE}/marketCenters/${marketCenterId}`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              name: name,
+              users: users,
+            }),
+          }
+        );
+        if (!response || !response.ok) throw new Error("Failed to update market center");
+        const data = await response.json();
+        return await data?.marketCenter;
+      } catch (error) {
+        console.error("Failed to update market center - ", error);
+        return null;
+      }
+    },
+    enabled: !!marketCenterId && role && role !== "AGENT",
   });
 }

@@ -69,9 +69,9 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         const history = await tx.ticketHistory.create({
           data: {
             ticketId: ticket.id,
-            field: "created",
-            previousValue: "N/A",
-            newValue: "New Ticket",
+            field: "isActive",
+            previousValue: "false",
+            newValue: "true",
             changedById: userContext.userId,
           },
         });

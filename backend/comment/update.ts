@@ -1,15 +1,8 @@
 import { api, APIError } from "encore.dev/api";
-// import { getAuthData } from "encore.dev/internal/auth/mod";
-import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { processCommentContent } from "./sanitize";
-
-interface AuthData {
-  userID: string;
-  imageUrl: string | null;
-  emailAddress: string;
-}
+import { getUserContext } from "../auth/user-context";
 
 export interface UpdateCommentRequest {
   userId: string;
@@ -31,12 +24,8 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
-    }
-
-    const userId = req.userId; // authData.userID;
+    const userContext = await getUserContext();
+    const userId = userContext?.userId;
 
     const existingComment = await prisma.comment.findFirst({
       where: {
@@ -53,24 +42,52 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       throw APIError.permissionDenied("You can only edit your own comments");
     }
 
-    const updatedComment = await prisma.comment.update({
-      where: { id: req.commentId },
-      data: {
-        content: processCommentContent(req.content),
-        internal:
-          req.internal !== undefined ? req.internal : existingComment.internal,
-        updatedAt: new Date(),
-      },
-      include: {
-        user: true,
-      },
+    // const updatedComment = await prisma.comment.update({
+    //   where: { id: req.commentId },
+    //   data: {
+    //     content: processCommentContent(req.content),
+    //     internal:
+    //       req.internal !== undefined ? req.internal : existingComment.internal,
+    //     updatedAt: new Date(),
+    //   },
+    //   include: {
+    //     user: true,
+    //   },
+    // });
+    const result = await prisma.$transaction(async (p) => {
+      const updatedComment = await p.comment.update({
+        where: { id: req.commentId },
+        data: {
+          content: processCommentContent(req.content),
+          internal:
+            req.internal !== undefined
+              ? req.internal
+              : existingComment.internal,
+          updatedAt: new Date(),
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      const history = await p.ticketHistory.create({
+        data: {
+          ticketId: existingComment?.ticketId,
+          field: "edited comment",
+          previousValue: "N/A",
+          newValue: processCommentContent(req.content),
+          changedById: userContext.userId,
+        },
+      });
+
+      return { updatedComment, history };
     });
 
     const safeUpdatedComment = {
-      ...updatedComment,
+      ...result.updatedComment,
       user: {
-        ...updatedComment.user,
-        name: updatedComment.user.name ?? "",
+        ...result.updatedComment.user,
+        name: result.updatedComment.user.name ?? "",
       },
     };
 
