@@ -55,6 +55,7 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Building,
   CircleMinus,
   CirclePlus,
@@ -100,16 +101,8 @@ export default function MarketCenterDetailView({
     marketCenterId
   );
 
-  const teamMembers: PrismaUser[] = marketCenter?.users ?? ([] as PrismaUser[]); //usersData?.users ?? [];
+  const teamMembers: PrismaUser[] = marketCenter?.users ?? ([] as PrismaUser[]);
   const teamCategories: any[] = marketCenter?.ticketCategories ?? [];
-  // const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
-  // const [sortDir, setSortDir] = useState<OrderBy>("asc");
-
-  // const [currentPage, setCurrentPage] = useState(1);
-  // const [itemsPerPage] = useState(10);
-
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,34 +110,26 @@ export default function MarketCenterDetailView({
 
   // EDIT MARKET CENTER
   const [showEditMCForm, setShowEditMCForm] = useState(false);
-  const [marketCenterFormData, setMarketCenterFormData] = useState<MarketCenterForm>({
-    name: marketCenter?.name ?? ("" as string),
-    selectedUsers: teamMembers as PrismaUser[],
-    ticketCategories: teamCategories,
-  });
-
-  // EDIT USER
-  // const [showEditUserForm, setShowEditUserForm] = useState(false);
-  // const [editingTeamMember, setEditingTeamMember] = useState<PrismaUser>(
-  //   {} as PrismaUser
-  // );
-  // const [formData, setFormData] = useState<UpdateUserForm>(
-  //   {} as UpdateUserForm
-  // );
-  // const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [marketCenterFormData, setMarketCenterFormData] =
+    useState<MarketCenterForm>({
+      name: marketCenter?.name ?? ("" as string),
+      selectedUsers: teamMembers as PrismaUser[],
+      ticketCategories: teamCategories,
+    });
   const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
-
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<PrismaUser>(
     {} as PrismaUser
   );
 
-  const invalidateMarketCenter = queryClient.invalidateQueries({
-    queryKey: ["get-market-center", marketCenterId],
-  });
+  const invalidateMarketCenter = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["get-market-center", marketCenterId],
+    });
+  }, [queryClient]);
 
   const totalTeamMembers = teamMembers ? teamMembers.length : 0;
-  // const totalPages = calculateTotalPages({
+  // const totalTeamPages = calculateTotalPages({
   //   totalItems: totalTeamMembers,
   //   itemsPerPage,
   // });
@@ -152,7 +137,6 @@ export default function MarketCenterDetailView({
   const findChangedByName = (userId: string, name?: string) => {
     if (name) return name;
     if (!userId) return "No id";
-    // if (userId === user?.id) return user?.name;
     if (userId === currentUser?.id) return currentUser?.name;
     return userId.slice(0, 8);
   };
@@ -161,7 +145,6 @@ export default function MarketCenterDetailView({
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
-
 
   const removeUserMutation = useMutation({
     mutationFn: async (user: PrismaUser) => {
@@ -199,37 +182,6 @@ export default function MarketCenterDetailView({
     },
   });
 
-  // const sendUserUpdateNotification = async (
-  //   data: PrismaUser,
-  //   userUpdate: "added" | "removed"
-  // ) => {
-  //   const body = {
-  //     userUpdate: userUpdate,
-  //     marketCenter: marketCenter,
-  //     userName: data?.name,
-  //     userEmail: data?.email,
-  //     editorName: currentUser?.name,
-  //     editorEmail: currentUser?.email,
-  //   };
-  //   try {
-  //     const response = await fetch("/api/send/marketCenters/addUser", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       cache: "no-store",
-  //       body: JSON.stringify({ body }),
-  //     });
-  //     console.log("response", response);
-  //     if (!response || !response.ok)
-  //       throw new Error(
-  //         response?.statusText
-  //           ? response?.statusText
-  //           : "Failed to send user update email"
-  //       );
-  //   } catch (error) {
-  //     console.error("Failed to send team member update", error);
-  //   }
-  // };
-
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
       case "CREATE":
@@ -244,8 +196,8 @@ export default function MarketCenterDetailView({
         return <CirclePlus className="h-3 w-3" />;
       case "REMOVE":
         return <CircleMinus className="h-3 w-3" />;
-      // case "ROLE CHANGE":
-      //   return <ArrowRightLeft className="h-4 w-4" />;
+      case "ROLE CHANGE":
+        return <ArrowRightLeft className="h-4 w-4" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -290,7 +242,6 @@ export default function MarketCenterDetailView({
   // REMOVAL
   const openRemoveUserModal = (user: PrismaUser) => {
     setUserToRemove(user);
-    // setEditingTeamMember({} as PrismaUser);
     setShowRemoveUserForm(true);
   };
 
@@ -302,61 +253,6 @@ export default function MarketCenterDetailView({
     setUserToRemove({} as PrismaUser);
     setShowRemoveUserForm(false);
   };
-
-  // TODO: USER UPDATE in AUth0 and Prisma
-  // EOD Thursday 9/25: Auth0 Error -   {status: 400, statusText: 'Bad Request',}
-  // const openEditUserModal = (user: PrismaUser, marketCenter: MarketCenter) => {
-  //   setEditingTeamMember(user);
-  //   setFormData({
-  //     name: user?.name,
-  //     email: user?.email,
-  //     marketCenter: marketCenter ?? {},
-  //     role: user?.role,
-  //   });
-  //   setFormErrors({});
-  //   setUserToRemove({} as PrismaUser);
-  //   setShowEditUserForm(true);
-  // };
-
-  // const resetAndCloseEditUserForm = () => {
-  //   setFormData({
-  //     name: "",
-  //     email: "",
-  //     marketCenter: marketCenter ?? {},
-  //     role: "AGENT",
-  //   } as UpdateUserForm);
-  //   setEditingTeamMember({} as PrismaUser);
-  //   setFormErrors({});
-  // };
-
-  // const handleUpdateMarketCenter = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!validateMarketCenterForm()) {
-  //     toast.error("Invalid input(s)");
-  //     return;
-  //   }
-  //   setIsSubmitting(true);
-  //   updateMarketCenterMutation.mutate();
-  //   setIsSubmitting(false);
-  // };
-
-  // const validateEditUserForm = () => {
-  //   const errors: Record<string, string> = {};
-  //   if (noChangesToUser) {
-  //     errors.general = "No changes were made";
-  //   }
-  //   if (!formData.name.trim()) errors.name = "Required";
-  //   if (currentUser?.role === "ADMIN" && !formData.role)
-  //     errors.role = "Required";
-  //   if (!formData.email.trim()) {
-  //     errors.email = "Required";
-  //   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-  //     errors.email = "Invalid email format";
-  //   }
-
-  //   setFormErrors(errors);
-  //   return Object.keys(errors).length === 0;
-  // };
 
   return (
     <div className="space-y-6">
@@ -385,8 +281,7 @@ export default function MarketCenterDetailView({
       </div>
       {/* TOP INFO */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* MARKET CENTER ACTIVITY */}
-
+        {/* MARKET CENTER HISTORY */}
         {showMarketCenterHistory && (
           <div className="lg:col-span-3">
             <Card>
@@ -659,105 +554,6 @@ export default function MarketCenterDetailView({
       </div>
 
       {/* EDIT MARKET CENTER */}
-      {/* <Dialog open={showEditMCForm} onOpenChange={setShowEditMCForm}>
-        {/* <DialogClose onClick={() => resetAndCloseForm()} /> */}
-      {/* <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              Editing Market Center #{marketCenter?.id.slice(0, 8)}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form className="space-y-3" onSubmit={handleUpdateMarketCenter}> */}
-      {/* NAME */}
-      {/* <div className="space-y-2">
-              <label htmlFor="name" className="text-md font-medium">
-                Market Center Name *
-              </label>
-              <Input
-                id="name"
-                value={marketCenterFormData.name}
-                onChange={(e) =>
-                  setMarketCenterFormData({
-                    ...marketCenterFormData,
-                    name: e.target.value,
-                  })
-                }
-                placeholder="Enter Name"
-                className={`mt-1 ${formErrors.name && "border-destructive"}`}
-              />
-              <p className="text-sm text-destructive">
-                {formErrors?.marketCenterName && formErrors.marketCenterName}
-              </p>
-            </div> */}
-
-      {/* USERS */}
-      {/* <div className="space-y-2 space-x-2 w-full">
-              <label className="text-md font-medium">Team Assignments *</label>
-              <div className="space-y-2 space-x-2 w-full">
-                {marketCenterFormData.selectedUsers &&
-                  marketCenterFormData.selectedUsers.length > 0 &&
-                  marketCenterFormData.selectedUsers.map(
-                    (selectedUser, index) => {
-                      return (
-                        <Badge key={index} variant="secondary">
-                          <p className="text-md">{selectedUser.name}</p>
-                        </Badge>
-                      );
-                    }
-                  )}
-              </div>
-
-              <UserMultiSelectDropdown
-                disabled={
-                  !teamMembers || !teamMembers.length
-                   &&(!unassignedUsers || !unassignedUsers.length)
-                }
-                marketCenterId={marketCenter?.id || null}
-                placeholder={
-                  marketCenterFormData.selectedUsers &&
-                  marketCenterFormData.selectedUsers.length
-                    ? `${marketCenterFormData.selectedUsers.length} users selected`
-                    : teamMembers && teamMembers.length > 0
-                      ? //  ||(unassignedUsers && unassignedUsers.length > 0)
-                        "Add or remove users"
-                      : "No available users found"
-                }
-                formFieldName="Users"
-                options={[...teamMembers]} ///, ...unassignedUsers]}
-                selectedOptions={marketCenterFormData.selectedUsers}
-                handleSetSelectedOptions={handleSetSelectedOptions}
-                error={formErrors?.users ? formErrors.users : null}
-              />
-              <p className="text-sm text-destructive">
-                {formErrors?.users && formErrors.users}
-              </p>
-            </div> */}
-
-      {/* <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  // resetAndCloseForm()
-                  setShowEditMCForm(false);
-                }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting} // || !hasNameChanged || !haveAssignmentsChanged}
-              >
-                {isSubmitting ? "Saving..." : "Submit"}
-              </Button>
-            </div> */}
-      {/* </form> */}
-      {/* </DialogContent>
-      </Dialog> */}
-
       <EditMarketCenter
         editingMarketCenter={marketCenter}
         showEditMCForm={showEditMCForm}

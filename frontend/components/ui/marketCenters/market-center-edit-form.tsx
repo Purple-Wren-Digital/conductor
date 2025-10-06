@@ -33,8 +33,8 @@ type EditMarketCenterProps = {
   unassignedUsers: PrismaUser[];
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
-  refreshMarketCenters: Promise<void>; // | (() => Promise<void>);
-  refreshUsers: () => Promise<void>; // Promise<void> | (() => Promise<void>);
+  refreshMarketCenters: () => void;
+  refreshUsers: () => Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -128,7 +128,7 @@ export default function EditMarketCenter({
       toast.success(
         `${formData?.name ? formData.name : "Market Center"} was updated`
       );
-      await refreshMarketCenters;
+      await refreshMarketCenters();
       await refreshUsers();
       resetAndCloseForm();
     },

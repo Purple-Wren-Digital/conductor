@@ -1,34 +1,76 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "../input";
+
 import { MarketCenterListItem } from "@/components/ui/list-item/market-center-list-item";
-import { API_BASE } from "@/lib/api/utils";
-import type { MarketCenter, MarketCenterForm, PrismaUser } from "@/lib/types";
-import { useUserRole } from "@/lib/hooks/use-user-role";
-import { Building, Plus } from "lucide-react";
 import CreateMarketCenter from "@/components/ui/marketCenters/market-center-create-form";
 import DeleteMarketCenter from "@/components/ui/marketCenters/market-center-delete-form";
 import EditMarketCenter from "@/components/ui/marketCenters/market-center-edit-form";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TeamSwitcher } from "@/components/ui/team-switcher";
+
+import { API_BASE } from "@/lib/api/utils";
+import type {
+  MarketCenter,
+  MarketCenterForm,
+  OrderBy,
+  PrismaUser,
+  UserSortBy,
+} from "@/lib/types";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import {
+  ArrowDownNarrowWide,
+  ArrowDownUp,
+  ArrowDownWideNarrow,
+  Building,
+  Filter,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
+
 import { useRouter } from "next/navigation";
-import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import {
+  // useFetchAllMarketCenters,
+  useSearchMarketCenters,
+} from "@/hooks/use-market-center";
 import { useQueryClient } from "@tanstack/react-query";
+// import { userStatusOptions } from "@/lib/utils";
+import { Label } from "../label";
+import {
+  calculateTotalPages,
+  formatOrderBy,
+  formatUserOptions,
+  orderByOptions,
+  sortByUserOptions,
+} from "@/lib/utils";
 
 export default function MarketCenterManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // const [activeMarketCenters, setActiveMarketCenters] = useState<
-  //   MarketCenter[]
-  // >([]);
-  // const [loading, setLoading] = useState(true);
+  const { role } = useUserRole();
+  // const { currentUser } = useStore();
 
-  // TODO: Search Queries
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  // const marketCenterId = currentUser?.marketCenterId
+  //   ? currentUser.marketCenterId
+  //   : "null";
+
+  // const defaultMarketCenterId = role === "STAFF" ? marketCenterId : "all";
 
   // ACTIONS
   const [showCreateMCForm, setShowCreateMCForm] = useState(false);
@@ -47,27 +89,100 @@ export default function MarketCenterManagement() {
   const [marketCenterToDelete, setMarketCenterToDelete] =
     useState<MarketCenter | null>(null);
 
-  const { role } = useUserRole();
+  // SEARCH
+  const [selectedMarketCenterId, setSelectedMarketCenterId] =
+    useState<string>("all");
 
-  // useEffect(() => {
-  //   const handler = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
-  //   return () => clearTimeout(handler);
-  // }, [searchQuery]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedUserId, setSelectedUserId] = useState<string>("all");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(4);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  const [sortBy, setSortBy] = useState<string>("updatedAt");
+  const [orderDir, setOrderDir] = useState<OrderBy>("desc");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
+    if (selectedCategory !== "all") params.append("category", selectedCategory);
+    if (selectedMarketCenterId !== "all")
+      params.append("id", selectedMarketCenterId);
+    params.append("sortBy", sortBy);
+    params.append("sortDir", orderDir);
+    params.append("limit", String(itemsPerPage));
+    params.append("offset", String((currentPage - 1) * itemsPerPage));
+    return params;
+  }, [
+    debouncedSearchQuery,
+    selectedCategory,
+    selectedUserId,
+    selectedMarketCenterId,
+    sortBy,
+    orderDir,
+    currentPage,
+    itemsPerPage,
+  ]);
+
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
+  const marketCentersQueryKey = useMemo(
+    () => ["market-center-search", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: marketCentersData, isLoading: marketCentersLoading } =
+    useSearchMarketCenters({
+      role: role,
+      queryParams: queryParams,
+      marketCentersQueryKey: marketCentersQueryKey,
+    });
+
+  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
+  const totalMarketCenters: number = marketCentersData?.total ?? 0;
+  const totalPages = calculateTotalPages({
+    totalItems: totalMarketCenters,
+    itemsPerPage,
+  });
+
+  const invalidateMarketCenters = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: marketCentersQueryKey });
+  }, [queryClient, marketCentersQueryKey]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedMarketCenterId("all");
+    setCurrentPage(1);
+    setSortBy("updatedAt");
+    setOrderDir("desc");
+  };
+
+  const hasActiveFilters =
+    !!searchQuery ||
+    selectedCategory !== "all" ||
+    selectedMarketCenterId !== "all" ||
+    orderDir !== "desc" ||
+    sortBy !== "updatedAt";
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
-
-  const { data: marketCentersData, isLoading: marketCentersLoading } =
-    useFetchAllMarketCenters(role);
-
-  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
-  const totalMarketCenters: number = marketCenters?.length ?? 0;
-
-  const invalidateMarketCenters = queryClient.invalidateQueries({
-    queryKey: ["all-market-centers"],
-  });
 
   const fetchActiveUsers = useCallback(async () => {
     // setLoading(true);
@@ -160,8 +275,175 @@ export default function MarketCenterManagement() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-4 mt-4">
-            {/* TODO: SEARCH BAR - By Name, By Id, By User */}
+          {/* <div className="flex items-center gap-4 mt-4"> */}
+          {/* TODO: SEARCH BAR - By Name, By Id, By User */}
+          <div className="space-y-4 mt-4">
+            {/* SEARCH USERS + FILTER BUTTON */}
+            <div className="flex items-center gap-4">
+              {/* SEARCH USERS */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search market centers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  disabled={
+                    marketCentersLoading ||
+                    !marketCenters ||
+                    !marketCenters.length
+                  }
+                />
+              </div>
+              {/* FILTER BUTTON */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-transparent"
+                // onClick={() => setShowFilters(!showFilters)}
+                type="button"
+                disabled={marketCentersLoading}
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {hasActiveFilters && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-2 w-2 rounded-full p-0"
+                  />
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="gap-2"
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            {/* {showFilters && ( */}
+            <Card className="p-4 bg-muted/50">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* MARKET CENTER */}
+                <div className="space-y-2">
+                  <Label>Market Center</Label>
+                  <TeamSwitcher
+                    selectedMarketCenterId={selectedMarketCenterId}
+                    setSelectedMarketCenterId={setSelectedMarketCenterId}
+                    setCurrentPage={setCurrentPage}
+                  />
+                </div>
+
+                {/* CATEGORIES */}
+                <div className="space-y-2">
+                  <Label>Categories</Label>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={(value) => {
+                      setSelectedCategory(value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={true} //{!marketCenters || !marketCenters.length}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* ASSIGNED USERS */}
+                <div className="space-y-2">
+                  <Label>Users</Label>
+                  <Select
+                    value={selectedUserId}
+                    onValueChange={(value) => {
+                      setSelectedUserId(value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={true} //{!marketCenters || !marketCenters.length}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={"all"}>All Users</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* SORT BY */}
+                <div className="space-y-2">
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value: UserSortBy) => {
+                      setSortBy(value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={!marketCenters || !marketCenters.length}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={"Sort By"} />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {sortByUserOptions.map((userOption: UserSortBy) => {
+                        if (userOption === "name") return null;
+                        return (
+                          <SelectItem key={userOption} value={userOption}>
+                            <div className="flex gap-1 items-center mr-1">
+                              <ArrowDownUp />
+                              <p className="text-sm font-medium">
+                                {formatUserOptions(userOption)}
+                              </p>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* ORDER BY */}
+                <div className="space-y-2">
+                  <Select
+                    value={orderDir}
+                    onValueChange={(value: OrderBy) => {
+                      setOrderDir(value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={!marketCenters || !marketCenters.length}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={"Order by"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orderByOptions.map((direction) => (
+                        <SelectItem key={direction} value={direction}>
+                          <div className="flex gap-1 items-center mr-1">
+                            {direction === "asc" ? (
+                              <ArrowDownWideNarrow />
+                            ) : (
+                              <ArrowDownNarrowWide />
+                            )}
+                            <p className="text-sm font-medium">
+                              {formatOrderBy(direction)}
+                            </p>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
+            {/* )} */}
           </div>
         </CardHeader>
 
@@ -201,6 +483,15 @@ export default function MarketCenterManagement() {
                   No market centers found matching criteria
                 </div>
               )}
+
+            <PagesAndItemsCount
+              type={"market centers"}
+              totalItems={totalMarketCenters}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+            />
           </div>
         </CardContent>
       </Card>

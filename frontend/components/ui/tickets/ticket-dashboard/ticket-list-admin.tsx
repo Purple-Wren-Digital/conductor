@@ -113,7 +113,7 @@ export default function AdminTicketList() {
   const [sortDir, setSortDir] = useState<OrderBy>("desc");
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(2);
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false);

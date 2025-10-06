@@ -37,6 +37,54 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
   });
 }
 
+type SearchMarketCentersType = {
+  role?: UserRole;
+  queryParams: URLSearchParams;
+  marketCentersQueryKey: readonly [
+    "market-center-search",
+    Record<string, string>,
+  ];
+};
+
+// GET ALL MARKET CENTERS
+export function useSearchMarketCenters({
+  role,
+  queryParams,
+  marketCentersQueryKey,
+}: SearchMarketCentersType) {
+  //pass in role and do not fetch if not admin!
+  return useQuery({
+    queryKey: marketCentersQueryKey,
+    queryFn: async () => {
+      if (!role || role === "AGENT") {
+        throw new Error(
+          "Only Admin and Staff users can view all market centers"
+        );
+      }
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(
+        `${API_BASE}/marketCenters?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      if (!response.ok) return { marketCenters: [] };
+
+      const data = await response.json();
+
+      return {
+        marketCenters: data?.marketCenters as MarketCenter[],
+        total: data?.total,
+      };
+    },
+    enabled: role && role === "ADMIN",
+  });
+}
+
 // GET MARKET CENTER BY ID
 export function useFetchMarketCenter(
   role: UserRole | undefined,
@@ -155,7 +203,8 @@ export function useUpdateMarketCenter({
             }),
           }
         );
-        if (!response || !response.ok) throw new Error("Failed to update market center");
+        if (!response || !response.ok)
+          throw new Error("Failed to update market center");
         const data = await response.json();
         return await data?.marketCenter;
       } catch (error) {

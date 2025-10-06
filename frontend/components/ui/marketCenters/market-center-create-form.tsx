@@ -23,7 +23,7 @@ type CreateMarketCenterProps = {
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   unassignedUsers: PrismaUser[];
-  refreshMarketCenters: Promise<void>;
+  refreshMarketCenters: () => void;
   refreshUsers: () => Promise<void>;
 };
 

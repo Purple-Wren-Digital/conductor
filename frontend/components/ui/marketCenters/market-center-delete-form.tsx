@@ -24,7 +24,7 @@ type DeleteMarketCenterProps = {
   >;
   showDeleteModal: boolean;
   setShowDeleteModal: React.Dispatch<React.SetStateAction<boolean>>;
-  refreshMarketCenters: Promise<void>;
+  refreshMarketCenters: () => void;
   refreshUsers: () => Promise<void>;
 };
 
@@ -82,7 +82,8 @@ export default function DeleteMarketCenter({
       toast.success(
         `${marketCenterToDelete?.name ? marketCenterToDelete.name : "Market Center"} was deactivated`
       );
-      await refreshMarketCenters;
+      // await refreshMarketCenters
+      await refreshMarketCenters();
       await refreshUsers();
       resetAndCloseModal();
     } catch (error) {

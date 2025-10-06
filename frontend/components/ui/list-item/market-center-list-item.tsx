@@ -23,15 +23,11 @@ export function MarketCenterListItem({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
-  const firstUser =
-    marketCenter?.users && marketCenter?.users.length > 0
-      ? marketCenter?.users[0].name
-      : "";
   return (
     <ListItem
       id={marketCenter.id}
       title={marketCenter.name}
-      subtitle={`#${marketCenter.id.slice(0, 8)}${firstUser ? ` | Manager - ${firstUser}` : ""}`}
+      subtitle={`#${marketCenter.id.slice(0, 8)}`}
       selectable={selectable}
       selected={selected}
       onSelect={(v) => onSelect?.(!!v)}

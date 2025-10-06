@@ -27,7 +27,7 @@ export interface SearchTicketsRequest {
 }
 
 export interface SearchTicketsResponse {
-  tickets: Ticket[];
+  tickets: Partial<Ticket>[];
   total: number;
 }
 
@@ -171,6 +171,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         );
         break;
       case "updatedAt":
+        orderBy.push({ updatedAt: sortDir }, { id: "desc" });
+        break;
       default:
         orderBy.push({ updatedAt: sortDir }, { id: "desc" });
         break;
@@ -191,7 +193,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       prisma.ticket.count({ where }),
     ]);
 
-    const ticketsMapped: Ticket[] = tickets.map((r) => ({
+    const ticketsMapped: Partial<Ticket>[] = tickets.map((r) => ({
       ...r,
       title: r.title ?? "",
       description: r.description ?? "",
@@ -205,6 +207,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       assignee: r.assignee
         ? { ...r.assignee, name: r.assignee.name ?? "" }
         : null,
+
       commentCount: r._count.comments,
     }));
 
