@@ -5,6 +5,7 @@ import {
   LucideProps,
   UserCheck,
   UserX,
+  Cog,
 } from "lucide-react";
 import {
   OrderBy,
@@ -42,9 +43,9 @@ export const ROLE_ICONS: {
 export const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
 
 export const ROLE_DESCRIPTIONS: {
-    ADMIN: string;
-    STAFF: string;
-    AGENT: string;
+  ADMIN: string;
+  STAFF: string;
+  AGENT: string;
 } = {
   ADMIN: "Full access to all settings and data",
   STAFF: "Can create, view and manage their team and tickets",
@@ -106,9 +107,7 @@ export const getUrgencyColor = (urgency: Urgency) => {
   }
 };
 
-export const capitalizeEachWord = (text: string) =>{
-
-}
+export const capitalizeEachWord = (text: string) => {};
 
 // FILTERS
 export const defaultActiveStatuses: TicketStatus[] = [
@@ -219,8 +218,81 @@ export const formatPaginationText = ({
 // MISC
 
 export const capitalizeEveryWord = (words: string | undefined) => {
-  if (!words) return '';
-  const wordArray = words.split(' ');
-  const capitalizedArray = wordArray.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-  return capitalizedArray.join(' ');
+  if (!words) return "";
+  const wordArray = words.split(" ");
+  const capitalizedArray = wordArray.map(
+    (word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  );
+  return capitalizedArray.join(" ");
 };
+
+// MARKET CENTERS
+export   function arraysEqualById(a: { id: string }[], b: { id: string }[]) {
+    if (a.length !== b.length) return false;
+
+    const aIds = a.map((u) => u.id).sort();
+    const bIds = b.map((u) => u.id).sort();
+
+    return aIds.every((id, i) => id === bIds[i]);
+  }
+
+
+// SETTINGS
+export type SettingsActions =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "INVITE"
+  | "REMOVE"
+  | "ROLE CHANGE";
+export const settingsActionOptions: SettingsActions[] = [
+  "CREATE",
+  "UPDATE",
+  "INVITE",
+  "ROLE CHANGE",
+  "REMOVE",
+  "DELETE",
+];
+
+export type SettingsCategories =
+  | "Business Hours"
+  | "Branding"
+  | "Categories"
+  | "General"
+  | "Holidays"
+  | "Team";
+export const settingsSectionOptions: SettingsCategories[] = [
+  "General",
+  "Team",
+  "Categories",
+  "Branding",
+  "Business Hours",
+  "Holidays",
+];
+
+export const DAYS = [
+  { key: "monday", label: "Monday" },
+  { key: "tuesday", label: "Tuesday" },
+  { key: "wednesday", label: "Wednesday" },
+  { key: "thursday", label: "Thursday" },
+  { key: "friday", label: "Friday" },
+  { key: "saturday", label: "Saturday" },
+  { key: "sunday", label: "Sunday" },
+] as const;
+
+export const TIMEZONES = [
+  // { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "Eastern Time" },
+  // { value: "America/Chicago", label: "Central Time" },
+  // { value: "America/Denver", label: "Mountain Time" },
+  // { value: "America/Los_Angeles", label: "Pacific Time" },
+];
+
+export const LANGUAGES = [
+  { value: "en", label: "English" },
+  // { value: "es", label: "Spanish" },
+  // { value: "fr", label: "French" },
+];
+
+
+

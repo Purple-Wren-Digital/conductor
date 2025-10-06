@@ -24,10 +24,20 @@ import AuditLog from "./audit-log";
 import ImportExport from "./import-export";
 import { useStore } from "../../../app/store-provider";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+
+    // <div className="container mx-auto py-6">
+    //   <div className="mb-6">
+    //     <h1 className="text-3xl font-semibold">Market Center Settings</h1>
+    //     <p className="text-muted-foreground">
+    //       Manage your market center settings and team configuration
+    //     </p>
+    //   </div>
 
 export default function SettingsLayout() {
   const router = useRouter();
   const { setCurrentUser } = useStore();
+  const { role } = useUserRole();
 
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "general";
@@ -41,7 +51,7 @@ export default function SettingsLayout() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Settings</h1>
+        <h1 className="text-3xl font-semibold">Market Center Settings</h1>
         <p className="text-muted-foreground">
           Manage your market center settings and team configuration
         </p>
@@ -53,10 +63,12 @@ export default function SettingsLayout() {
             <Settings className="h-4 w-4" />
             General
           </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Team
-          </TabsTrigger>
+          {role === "STAFF" && (
+            <TabsTrigger value="team" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              Team
+            </TabsTrigger>
+          )}
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Categories

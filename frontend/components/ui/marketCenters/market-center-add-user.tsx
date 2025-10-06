@@ -154,7 +154,7 @@ export default function AddTeamMember({
         asChild
         disabled={disabled || isLoading} // TODO: Email notification and logic
       >
-        <Button disabled={!permissions?.canManageTeam}>
+        <Button disabled={!permissions?.canManageTeam} variant="outline">
           <Plus className="h-4 w-4 mr-2" />
           Add Team Members
         </Button>

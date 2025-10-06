@@ -116,52 +116,45 @@ export default function TeamManagement() {
     ? currentUser?.marketCenterId
     : "";
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  // useEffect(() => {
+  //   const t = setTimeout(() => {
+  //     setDebouncedSearchQuery(searchQuery);
+  //     setCurrentPage(1);
+  //   }, 500);
+  //   return () => clearTimeout(t);
+  // }, [searchQuery]);
 
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
+  // const queryParams = useMemo(() => {
+  //   const params = new URLSearchParams();
+  //   if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
 
-    params.append("sortDir", sortDir);
-    params.append("sortBy", sortBy);
-    params.append("limit", String(itemsPerPage));
-    params.append("offset", String((currentPage - 1) * itemsPerPage));
-    return params;
-  }, [sortBy, sortDir]);
+  //   params.append("sortDir", sortDir);
+  //   params.append("sortBy", sortBy);
+  //   params.append("limit", String(itemsPerPage));
+  //   params.append("offset", String((currentPage - 1) * itemsPerPage));
+  //   return params;
+  // }, [sortBy, sortDir]);
 
-  const queryKeyParams = useMemo(
-    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
-    [queryParams]
-  );
-  const usersQueryKey = useMemo(
-    () => ["team-members", queryKeyParams] as const,
-    [queryKeyParams]
-  );
+  // const queryKeyParams = useMemo(
+  //   () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+  //   [queryParams]
+  // );
+  // const usersQueryKey = useMemo(
+  //   () => ["team-members", queryKeyParams] as const,
+  //   [queryKeyParams]
+  // );
 
-  const { data: usersData, isLoading: usersLoading } =
-    useFetchUsersWithinMarketCenter({
-      usersQueryKey,
-      queryParams,
-      role,
-      marketCenterId,
-    });
+  // const { data: usersData, isLoading: usersLoading } =
+  //   useFetchUsersWithinMarketCenter({
+  //     usersQueryKey,
+  //     queryParams,
+  //     role,
+  //     marketCenterId,
+  //   });
 
-  const teamMembers: PrismaUser[] = usersData?.users ?? [];
-  const totalTeamMembers = teamMembers ? teamMembers.length : 0;
-  const totalPages = calculateTotalPages({
-    totalItems: totalTeamMembers,
-    itemsPerPage,
-  });
-
-  const invalidateUsers = queryClient.invalidateQueries({
-    queryKey: ["team-members", queryKeyParams],
-  });
+  // const invalidateUsers = queryClient.invalidateQueries({
+  //   queryKey: ["team-members", queryKeyParams],
+  // });
 
   const { data: marketCenter, isLoading } = useFetchMarketCenter(
     role,
@@ -170,6 +163,13 @@ export default function TeamManagement() {
 
   const invalidateMarketCenter = queryClient.invalidateQueries({
     queryKey: ["get-market-center", marketCenterId],
+  });
+
+  const teamMembers: PrismaUser[] = marketCenter?.users ?? ([] as PrismaUser[]); //usersData?.users ?? [];
+  const totalTeamMembers = teamMembers ? teamMembers.length : 0;
+  const totalPages = calculateTotalPages({
+    totalItems: totalTeamMembers,
+    itemsPerPage,
   });
 
   const userNameDifferent =
@@ -266,7 +266,7 @@ export default function TeamManagement() {
     },
     onSuccess: (_, user) => {
       toast.success(`${user.name || "User"} was removed`);
-      invalidateUsers;
+      // invalidateUsers;
       invalidateMarketCenter;
     },
     onError: (error) => {
@@ -378,7 +378,7 @@ export default function TeamManagement() {
                     setSortBy(value);
                     setCurrentPage(1);
                   }}
-                  disabled={!teamMembers || !teamMembers.length || usersLoading}
+                  disabled={!teamMembers || !teamMembers.length} // || usersLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={"Sort By"} />
@@ -406,7 +406,7 @@ export default function TeamManagement() {
                     setSortDir(value);
                     setCurrentPage(1);
                   }}
-                  disabled={!teamMembers || !teamMembers.length || usersLoading}
+                  disabled={!teamMembers || !teamMembers.length} // || usersLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={"Order by"} />
@@ -443,7 +443,7 @@ export default function TeamManagement() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
-                  disabled={usersLoading || !teamMembers || !teamMembers.length}
+                  disabled={!teamMembers || !teamMembers.length} // || usersLoading
                 />
               </div>
               {/* FILTER BUTTON */}
@@ -452,15 +452,15 @@ export default function TeamManagement() {
         </CardHeader>
         <CardContent>
           <div
-            className={`space-y-4 transition-opacity duration-300 ${
-              usersLoading ? "opacity-50 pointer-events-none" : "opacity-100"
-            }`}
+            className={`space-y-4 transition-opacity duration-300 
+              ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+            //usersLoading
           >
-            {(isLoading || usersLoading) && (
+            {isLoading && ( // || usersLoading
               <p className="text-muted-foreground">Loading team members... </p>
             )}
             {!isLoading &&
-              !usersLoading &&
+              // !usersLoading &&
               teamMembers &&
               teamMembers.length > 0 &&
               teamMembers.map((member, index) => {
@@ -474,15 +474,19 @@ export default function TeamManagement() {
                     user={member}
                     onEdit={() => openEditUserModal(member, marketCenter)}
                     deleteLabel="Remove"
+                    onClick={() => {
+                      console.log("CLICKED USER");
+                      // TODO: router.push to user profile
+                    }}
                     onDelete={() => openRemoveUserModal(member)}
-                    disabled={
-                      self || cannotUpdateAdmin || !permissions?.canManageTeam
-                    }
+                    // disabled={
+                    //   self || cannotUpdateAdmin || !permissions?.canManageTeam
+                    // }
                   />
                 );
               })}
             {!isLoading &&
-              !usersLoading &&
+              // !usersLoading &&
               (!teamMembers || !teamMembers.length) && (
                 <p className="text-muted-foreground">
                   No team members found. Contact Admin if you haven't been

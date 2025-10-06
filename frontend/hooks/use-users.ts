@@ -72,7 +72,7 @@ export function useFetchUsersWithinMarketCenter({
     queryKey: usersQueryKey,
     queryFn: async () => {
       if (role === "AGENT" || !marketCenterId)
-        throw new Error("Must be an admin or staff to view team memebers");
+        throw new Error("Must be an admin or staff to view team members");
       try {
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(

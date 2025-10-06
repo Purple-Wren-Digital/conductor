@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,25 +20,29 @@ import {
   FileText,
   Folder,
   Building2,
+  Building,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useRouter } from "next/navigation";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const router = useRouter();
+
   const { className, ...rest } = props;
-  const { permissions, isLoading } = useUserRole();
+  const { role, permissions, isLoading } = useUserRole();
   const { currentUser } = useStore();
 
-  if (isLoading) {
-    return (
-      <Sidebar {...rest} className={cn(className, "border-r")}>
-        <SidebarContent>
-          <div className="p-4">Loading...</div>
-        </SidebarContent>
-      </Sidebar>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <Sidebar {...rest} className={cn(className, "border-r")}>
+  //       <SidebarContent>
+  //         <div className="p-4">Loading...</div>
+  //       </SidebarContent>
+  //     </Sidebar>
+  //   );
+  // }
 
   if (!currentUser) {
     return (
@@ -80,7 +83,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
                   <LayoutDashboard /> Dashboard
                 </Link>
@@ -88,7 +91,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuItem>
 
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard/tickets">
                   <Ticket /> Tickets
                 </Link>
@@ -97,7 +100,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/users?tab=users">
                     <UsersIcon /> User Management
                   </Link>
@@ -107,7 +110,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/marketCenters">
                     <Building2 /> Market Centers
                   </Link>
@@ -115,15 +118,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             )}
 
-            {permissions?.canManageTeam && (
+            {/* {permissions?.canManageTeam && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/dashboard/settings?tab=team">
+                  <Link href="/dashboard/settings?tab=team" disabled={isLoading}>
                     <Folder /> Team Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            )}
+            )} */}
 
             {permissions?.canAccessReports && (
               <SidebarMenuItem>
@@ -135,18 +138,30 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             )}
 
-            {permissions?.canAccessSettings && (
+            {/* Manage your team members, roles, and invitations */}
+
+            {role === "STAFF" && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/settings">
-                    <Cog /> Settings
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                  // onClick={() => {
+                  //   router.push(
+                  //     `dashboard/marketCenters/${currentUser.marketCenterId}`
+                  //   );
+                  // }}
+                >
+                  <Link
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}`}
+                  >
+                    <Building /> Market Center Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
 
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href={`/dashboard/profile`}>
                   <CircleUserRound /> Profile
                 </Link>

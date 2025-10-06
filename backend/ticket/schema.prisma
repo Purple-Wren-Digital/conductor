@@ -13,10 +13,11 @@ model MarketCenter {
   settings          Json               @default("{}")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
-  settingsAuditLogs SettingsAuditLog[]
+  // settingsAuditLogs SettingsAuditLog[]
   teamInvitations   TeamInvitation[]
   ticketCategories  TicketCategory[]
   users             User[]
+  marketCenterHistory  MarketCenterHistory[]
 
   @@map("market_centers")
 }
@@ -33,7 +34,7 @@ model User {
   marketCenterId       String?            @map("market_center_id")
   auth0Id              String             @unique
   comments             Comment[]
-  auditLogs            SettingsAuditLog[]
+  // auditLogs            SettingsAuditLog[]
   defaultForCategories TicketCategory[]
   assignedTickets      Ticket[]           @relation("TicketAssignee")
   createdTickets       Ticket[]           @relation("TicketCreator")
@@ -41,6 +42,7 @@ model User {
   ticketHistory        TicketHistory[]
   userHistory          UserHistory[]      @relation("UpdatedUser") // one user can have many history records about *themselves*
   otherUsersChanges    UserHistory[]      @relation("ChangedBy") // one user can also be the "changer" for many others
+  marketCenterHistory  MarketCenterHistory[] @relation("MarketCenterChangedBy")
 
   @@index([marketCenterId])
   @@map("users")
@@ -125,22 +127,22 @@ model TeamInvitation {
   @@map("team_invitations")
 }
 
-model SettingsAuditLog {
-  id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
-  marketCenterId String       @map("market_center_id")
-  userId         String       @map("user_id")
-  action         String
-  section        String
-  previousValue  Json?        @map("previous_value")
-  newValue       Json?        @map("new_value")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  marketCenter   MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id])
+// model SettingsAuditLog {
+//   id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+//   marketCenterId String       @map("market_center_id")
+//   userId         String       @map("user_id")
+//   action         String
+//   section        String
+//   previousValue  Json?        @map("previous_value")
+//   newValue       Json?        @map("new_value")
+//   createdAt      DateTime     @default(now()) @map("created_at")
+//   marketCenter   MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+//   // user           User         @relation(fields: [userId], references: [id])
 
-  @@index([marketCenterId])
-  @@index([createdAt])
-  @@map("settings_audit_logs")
-}
+//   @@index([marketCenterId])
+//   @@index([createdAt])
+//   @@map("settings_audit_logs")
+// }
 
 model TicketHistory {
   id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
@@ -178,6 +180,25 @@ model UserHistory {
   @@index([userId])
   @@index([changedById])
   // @@index([marketCenterId])
+}
+
+model MarketCenterHistory {
+  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
+  marketCenterId   String     @map("market_center_id")
+  action           String
+  field            String?
+  previousValue    String?
+  newValue         String?
+  snapshot         Json?         
+  changedAt        DateTime   @default(now())
+  changedById      String?    @map("changed_by_id")
+
+  marketCenter     MarketCenter @relation(fields: [marketCenterId], references: [id])
+  changedBy        User?      @relation("MarketCenterChangedBy", fields: [changedById], references: [id])
+
+  @@index([changedById])
+  @@index([marketCenterId])
+
 }
 
 

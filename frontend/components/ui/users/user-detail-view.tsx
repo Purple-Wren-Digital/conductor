@@ -112,7 +112,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     return description;
   };
 
-  const findChangedByName = (userId: string, name?: string) => {
+ const findChangedByName = (userId: string, name?: string) => {
     if (name) return name;
     if (!userId) return "No id";
     if (userId === user?.id) return user?.name;

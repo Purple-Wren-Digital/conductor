@@ -38,8 +38,6 @@ export const get = api<GetUserRequest, GetUserResponse>(
       throw APIError.notFound("user not found");
     }
 
-    console.log(JSON.stringify(user));
-
     const safeUser = {
       ...user,
       ticketHistory: mapTicketHistorySnapshot(user.ticketHistory),

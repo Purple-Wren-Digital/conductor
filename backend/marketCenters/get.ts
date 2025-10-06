@@ -35,11 +35,15 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
 
     const marketCenter = await prisma.marketCenter.findUnique({
       where,
-      include: { users: true },
+      include: {
+        users: true,
+        marketCenterHistory: true,
+      },
     });
     if (!marketCenter) {
       throw APIError.notFound("Market Center not found");
     }
+
     return { marketCenter: marketCenter } as GetMarketCenterResponse;
   }
 );

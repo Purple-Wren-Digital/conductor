@@ -10,15 +10,21 @@ import { API_BASE } from "@/lib/api/utils";
 import type { MarketCenter, MarketCenterForm, PrismaUser } from "@/lib/types";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import { Building, Plus } from "lucide-react";
-import CreateMarketCenter from "./market-center-create-form";
-import DeleteMarketCenter from "./market-center-delete-form";
-import EditMarketCenter from "./market-center-edit-form";
+import CreateMarketCenter from "@/components/ui/marketCenters/market-center-create-form";
+import DeleteMarketCenter from "@/components/ui/marketCenters/market-center-delete-form";
+import EditMarketCenter from "@/components/ui/marketCenters/market-center-edit-form";
+import { useRouter } from "next/navigation";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MarketCenterManagement() {
-  const [activeMarketCenters, setActiveMarketCenters] = useState<
-    MarketCenter[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // const [activeMarketCenters, setActiveMarketCenters] = useState<
+  //   MarketCenter[]
+  // >([]);
+  // const [loading, setLoading] = useState(true);
 
   // TODO: Search Queries
   // const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +47,7 @@ export default function MarketCenterManagement() {
   const [marketCenterToDelete, setMarketCenterToDelete] =
     useState<MarketCenter | null>(null);
 
-  const { permissions } = useUserRole();
+  const { role } = useUserRole();
 
   // useEffect(() => {
   //   const handler = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
@@ -53,35 +59,18 @@ export default function MarketCenterManagement() {
     return await getAccessToken();
   }, []);
 
-  const fetchActiveMarketCenters = useCallback(async () => {
-    if (!permissions?.canManageAllMarketCenters) return;
-    setLoading(true);
-    // const params = new URLSearchParams();
-    // if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
+  const { data: marketCentersData, isLoading: marketCentersLoading } =
+    useFetchAllMarketCenters(role);
 
-    try {
-      const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`${API_BASE}/marketCenters`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const data = await response.json();
-      setActiveMarketCenters(data?.marketCenters ?? []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Unable to fetch Market Centers", error);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [getAuth0AccessToken]); // debouncedSearchQuery, selectedRole,
+  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
+  const totalMarketCenters: number = marketCenters?.length ?? 0;
+
+  const invalidateMarketCenters = queryClient.invalidateQueries({
+    queryKey: ["all-market-centers"],
+  });
 
   const fetchActiveUsers = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const accessToken = await getAuth0AccessToken();
       if (!accessToken) {
@@ -108,13 +97,9 @@ export default function MarketCenterManagement() {
     } catch (error) {
       console.error("Error fetching users", error);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }, [getAuth0AccessToken]);
-
-  useEffect(() => {
-    fetchActiveMarketCenters();
-  }, [fetchActiveMarketCenters]);
 
   useEffect(() => {
     fetchActiveUsers();
@@ -163,11 +148,7 @@ export default function MarketCenterManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Market Center Management (
-                {activeMarketCenters && activeMarketCenters.length > 0
-                  ? activeMarketCenters.length
-                  : "0"}
-                )
+                Market Center Management ({totalMarketCenters})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create and manage all market centers
@@ -186,10 +167,10 @@ export default function MarketCenterManagement() {
 
         <CardContent>
           <div
-            className={`space-y-4 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+            className={`space-y-4 transition-opacity duration-300 ${marketCentersLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
           >
-            {loading &&
-              (!activeMarketCenters || !activeMarketCenters.length) && (
+            {marketCentersLoading &&
+              (!marketCenters || !marketCenters.length) && (
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="animate-pulse">
@@ -198,21 +179,24 @@ export default function MarketCenterManagement() {
                   ))}
                 </div>
               )}
-            {!loading &&
-              activeMarketCenters &&
-              activeMarketCenters.length > 0 &&
-              activeMarketCenters.map((mc) => (
+            {!marketCentersLoading &&
+              marketCenters &&
+              marketCenters.length > 0 &&
+              marketCenters.map((mc) => (
                 <MarketCenterListItem
                   key={mc.id}
                   marketCenter={mc}
                   onEdit={() => openEditModal(mc)}
                   onClose={() => openDeleteModal(mc)}
+                  onClick={() => {
+                    router.push(`/dashboard/marketCenters/${mc.id}`);
+                  }}
                   selectable={false}
                 />
               ))}
 
-            {!loading &&
-              (!activeMarketCenters || !activeMarketCenters.length) && (
+            {!marketCentersLoading &&
+              (!marketCenters || !marketCenters.length) && (
                 <div className="text-center py-8 text-muted-foreground">
                   No market centers found matching criteria
                 </div>
@@ -227,7 +211,7 @@ export default function MarketCenterManagement() {
         setShowCreateMCForm={setShowCreateMCForm}
         formData={formData}
         setFormData={setFormData}
-        refreshMarketCenters={fetchActiveMarketCenters}
+        refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={fetchActiveUsers}
         unassignedUsers={unassignedUsers}
       />
@@ -242,7 +226,7 @@ export default function MarketCenterManagement() {
         setFormData={setFormData}
         assignedUsers={assignedUsers}
         unassignedUsers={unassignedUsers}
-        refreshMarketCenters={fetchActiveMarketCenters}
+        refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={fetchActiveUsers}
       />
 
@@ -252,7 +236,7 @@ export default function MarketCenterManagement() {
         setMarketCenterToDelete={setMarketCenterToDelete}
         showDeleteModal={showDeleteModal}
         setShowDeleteModal={setShowDeleteModal}
-        refreshMarketCenters={fetchActiveMarketCenters}
+        refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={fetchActiveUsers}
       />
     </div>

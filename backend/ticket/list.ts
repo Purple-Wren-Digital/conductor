@@ -78,8 +78,6 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       where.category = req.category;
     }
 
-    console.log("????WHERE?????", where);
-
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
