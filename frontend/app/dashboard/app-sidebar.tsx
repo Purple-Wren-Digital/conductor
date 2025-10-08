@@ -152,7 +152,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   // }}
                 >
                   <Link
-                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}`}
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
                   >
                     <Building /> Market Center Management
                   </Link>

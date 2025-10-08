@@ -23,12 +23,12 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    const hasAccess = await canAccessTicket(userContext, req.ticketId);
-    if (!hasAccess) {
-      throw APIError.permissionDenied(
-        "You do not have permission to view this ticket"
-      );
-    }
+    // const hasAccess = await canAccessTicket(userContext, req.ticketId);
+    // if (!hasAccess) {
+    //   throw APIError.permissionDenied(
+    //     "You do not have permission to view this ticket"
+    //   );
+    // }
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
