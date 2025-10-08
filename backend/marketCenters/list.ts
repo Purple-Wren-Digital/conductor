@@ -94,7 +94,7 @@ export const list = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     const [marketCenters, total] = await Promise.all([
       prisma.marketCenter.findMany({
         where,
-        include: { users: true },
+        include: { users: true, ticketCategories: true },
         orderBy,
         take: limit,
         skip: offset,

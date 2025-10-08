@@ -46,13 +46,19 @@ export interface TeamInvitation {
 export interface TicketCategory {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   marketCenterId: string;
-  defaultAssigneeId?: string;
+  defaultAssigneeId: string | null;
   createdAt: Date;
   updatedAt: Date;
   defaultAssignee?: User;
-  marketCenter?: MarketCenter;
+  marketCenter?: {
+    id: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+    settings: {};
+  };
 }
 
 // export interface SettingsAuditLog {

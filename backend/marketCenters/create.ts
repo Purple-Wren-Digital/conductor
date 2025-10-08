@@ -91,7 +91,7 @@ export const create = api<
 
       return {
         marketCenter,
-        // , marketCenterHistory
+        marketCenterHistory,
       };
     });
 

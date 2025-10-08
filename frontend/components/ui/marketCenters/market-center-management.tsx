@@ -2,13 +2,12 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useStore } from "@/app/store-provider";
+// import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "../input";
-
 import { MarketCenterListItem } from "@/components/ui/list-item/market-center-list-item";
 import CreateMarketCenter from "@/components/ui/marketCenters/market-center-create-form";
 import DeleteMarketCenter from "@/components/ui/marketCenters/market-center-delete-form";
@@ -22,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
-
 import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
@@ -471,7 +469,7 @@ export default function MarketCenterManagement() {
                   onEdit={() => openEditModal(mc)}
                   onClose={() => openDeleteModal(mc)}
                   onClick={() => {
-                    router.push(`/dashboard/marketCenters/${mc.id}`);
+                    router.push(`/dashboard/marketCenters/${mc.id}?tab=team`);
                   }}
                   selectable={false}
                 />

@@ -229,16 +229,22 @@ export function AdminDashboard() {
                       className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
                     >
                       <div className="flex flex-1 justify-between">
-                        <p className="font-medium hover:underline">
+                        <Link
+                          href={`/dashboard/marketCenters/${mc.id}?tab=team`}
+                          className="font-medium hover:underline cursor-pointer"
+                        >
                           {mc?.name && mc.name}
-                        </p>
+                        </Link>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xs text-muted-foreground">
                           #{mc?.id && mc.id.substring(0, 8)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Users Assigned: {mc.users.length ?? "0"}
+                          Users: {mc?.users ? mc?.users.length : 0}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Categories: {mc?.ticketCategories ? mc?.length : 0}
                         </p>
                       </div>
                     </div>

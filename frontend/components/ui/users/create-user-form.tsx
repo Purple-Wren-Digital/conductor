@@ -355,9 +355,9 @@ export default function CreateUser({
                   ))}
                 </SelectContent>
               </Select>
-              {formErrors.marketCenter && (
+              {formErrors.role && (
                 <p className="text-sm text-destructive">
-                  {formErrors.marketCenter}
+                  {formErrors.role}
                 </p>
               )}
             </div>

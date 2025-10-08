@@ -157,6 +157,7 @@ export interface MarketCenter {
   createdAt: Date;
   updatedAt: Date;
   // settingsAuditLogs?: SettingsAuditLog[];
+  marketCenterHistory: MarketCenterHistory[];
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
@@ -221,7 +222,7 @@ export interface TicketCategory {
 export type MarketCenterForm = {
   name: string;
   selectedUsers: PrismaUser[];
-  ticketCategories?: any[]
+  ticketCategories?: any[];
 };
 
 export interface BusinessHours {

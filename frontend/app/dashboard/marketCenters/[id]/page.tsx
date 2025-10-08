@@ -1,4 +1,4 @@
-import MarketCenterDetailView from "@/components/ui/marketCenters/market-center-detail-view";
+import MarketCenterDetailView from "@/components/ui/marketCenters/market-center-details/market-center-detail-view";
 
 export default async function MarketCenterDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function MarketCenterDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <MarketCenterDetailView marketCenterId={id}/>;
+  return <MarketCenterDetailView marketCenterId={id} />;
 }
