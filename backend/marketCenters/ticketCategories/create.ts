@@ -45,7 +45,6 @@ export const createCategory = api<
       throw APIError.notFound("Market center not found");
     }
 
-
     const result = await prisma.$transaction(async (pr) => {
       const ticketCategory = await prisma.ticketCategory.create({
         data: {
@@ -62,9 +61,9 @@ export const createCategory = api<
         data: {
           marketCenterId: marketCenter.id,
           action: "CREATE",
-          field: "ticketCategories",
+          field: "ticket-category",
           newValue: req.name,
-          snapshot: marketCenter,
+          snapshot: ticketCategory,
           changedAt: new Date(),
           changedById: userContext.userId,
         },

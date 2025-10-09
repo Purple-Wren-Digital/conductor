@@ -21,18 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
-
-// import { useFetchMarketCenterTicketCategories } from "@/hooks/use-market-center";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { MarketCenter, PrismaUser, TicketCategory } from "@/lib/types";
-// import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  useMutation,
-  // , useQueryClient
-} from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -49,7 +48,7 @@ export default function MarketCenterTicketCategories({
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: () => void;
+  invalidateMarketCenter: Promise<void>;
 }) {
   // const router = useRouter();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
@@ -77,11 +76,6 @@ export default function MarketCenterTicketCategories({
       : ([] as PrismaUser[]);
   const ticketCategories: TicketCategory[] =
     marketCenter?.ticketCategories ?? ([] as TicketCategory[]);
-
-  // const { data: ticketCategoriesData, isLoading: ticketCategoriesLoading } =
-  //   useFetchMarketCenterTicketCategories({ marketCenterId: marketCenterId });
-  // const ticketCategories: TicketCategory[] =
-  //   ticketCategoriesData?.ticketCategories ?? [];
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -139,14 +133,27 @@ export default function MarketCenterTicketCategories({
     }
 
     const defaultAssigneeFormValue =
-      editingTicketCategory && categoryFormData?.defaultAssigneeId === "none"
+      categoryFormData?.defaultAssigneeId === "none"
         ? ""
         : categoryFormData?.defaultAssigneeId;
+    console.log(
+      "categoryFormData - AssigneeFormValue",
+      defaultAssigneeFormValue
+    );
+
+    console.log(
+      "editingTicketCategory - AssigneeFormValue",
+      editingTicketCategory?.defaultAssigneeId
+    );
+    console.log(
+      "defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId",
+      defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId
+    );
     if (
       editingTicketCategory &&
       categoryFormData?.name === editingTicketCategory?.name &&
       categoryFormData?.description === editingTicketCategory?.description &&
-      defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId
+      defaultAssigneeFormValue === editingTicketCategory?.defaultAssigneeId
     ) {
       errors.general = "No changes were made";
     }
@@ -154,14 +161,78 @@ export default function MarketCenterTicketCategories({
     return Object.keys(errors).length === 0;
   };
 
-  const createOrUpdateTicketCategoryMutation = useMutation({
+  const formatUpdateBody = () => {
+    const formattedBody: any = {};
+    if (editingTicketCategory?.name !== categoryFormData?.name.trim()) {
+      formattedBody.name = categoryFormData?.name.trim();
+    }
+    if (
+      editingTicketCategory?.description !==
+      categoryFormData?.description.trim()
+    ) {
+      formattedBody.description = categoryFormData?.description.trim();
+    }
+
+    const defaultAssigneeFormValue =
+      categoryFormData?.defaultAssigneeId === "none"
+        ? ""
+        : categoryFormData?.defaultAssigneeId;
+    if (editingTicketCategory?.defaultAssigneeId !== defaultAssigneeFormValue) {
+      formattedBody.defaultAssigneeId = categoryFormData?.defaultAssigneeId;
+    }
+    return formattedBody;
+  };
+
+  const updateTicketCategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingTicketCategory || !editingTicketCategory?.id) {
+        throw new Error("No editing");
+      }
+
+      const body = formatUpdateBody();
+      if (!body) {
+        setFormErrors({ general: "To submit, please make edits" });
+        return;
+      }
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(
+        `${API_BASE}/marketCenters/ticketCategories/${editingTicketCategory?.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed Update Response - ", response);
+        throw new Error("Failed to update ticket category");
+      }
+      const data = await response.json();
+      console.log("UPDATE - Ticket Category Mutation", data);
+    },
+    onSuccess: async (_) => {
+      await invalidateMarketCenter;
+      resetAndCloseForm();
+      toast.success(`${categoryFormData?.name} updated`);
+    },
+    onError: (error) => {
+      console.error("Failed to update category", error);
+      toast.error("Failed to update category");
+    },
+  });
+
+  const createTicketCategoryMutation = useMutation({
     mutationFn: async () => {
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
       const accessToken = await getAuth0AccessToken();
       const response = await fetch(
-        `${API_BASE}/marketCenters/ticketCategories${editingTicketCategory && editingTicketCategory?.id ? `/${editingTicketCategory?.id}` : ""}`,
+        `${API_BASE}/marketCenters/ticketCategories`,
         {
           method: "POST",
           headers: {
@@ -179,44 +250,37 @@ export default function MarketCenterTicketCategories({
 
       if (!response.ok) throw new Error("Failed to create ticket category");
       const data = await response.json();
-      console.log(
-        `${editingTicketCategory && editingTicketCategory?.id ? "UPDATE" : "CREATE"}`,
-        "Ticket Category Mutation",
-        data
-      );
+      console.log("CREATE Ticket Category Mutation", data);
     },
     onSuccess: async (_) => {
-      toast.success(
-        `${categoryFormData?.name} ${editingTicketCategory && editingTicketCategory?.id ? "updated" : "created"}`
-      );
-      invalidateMarketCenter;
+      toast.success(`${categoryFormData?.name} was created`);
+      await invalidateMarketCenter;
       resetAndCloseForm();
     },
     onError: (error) => {
-      console.error(
-        `Failed to ${editingTicketCategory && editingTicketCategory?.id ? "update" : "create"} category`,
-        error
-      );
-      toast.error(
-        `Failed to ${editingTicketCategory && editingTicketCategory?.id ? "update" : "create"} category`
-      );
+      console.error(`Failed to create category`, error);
+      toast.error(`Failed to create category`);
     },
   });
 
   const handleTicketCategoryForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // if (!permissions?.canCreateUsers) {
-    //   toast.error("You do not have permission to create users.");
-    //   return;
-    // }
+    if (!permissions?.canManageTeam) {
+      toast.error("You do not have permission to manage ticket categories");
+      return;
+    }
     setFormErrors({});
     if (!validateForm()) {
       toast.error("Invalid input(s)");
       return;
     }
     setIsLoading(true);
-    createOrUpdateTicketCategoryMutation.mutate();
+    if (editingTicketCategory && editingTicketCategory?.id) {
+      updateTicketCategoryMutation.mutate();
+    } else {
+      createTicketCategoryMutation.mutate();
+    }
     setIsLoading(false);
   };
 
@@ -248,7 +312,7 @@ export default function MarketCenterTicketCategories({
     },
     onSuccess: async (_) => {
       toast.success(`Category was deleted`);
-      invalidateMarketCenter();
+      await invalidateMarketCenter;
       resetAndCloseForm();
     },
     onError: (error) => {
@@ -259,8 +323,8 @@ export default function MarketCenterTicketCategories({
   const handleRemoveTicketCategory = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (role === "AGENT") {
-      toast.error("You do not have permission to delete categories");
+    if (!permissions?.canManageTeam) {
+      toast.error("You do not have permission to manage ticket categories");
       return;
     }
     setFormErrors({});
@@ -268,8 +332,6 @@ export default function MarketCenterTicketCategories({
     deleteTicketCategoryMutation.mutate();
     setIsLoading(false);
   };
-
-  console.log("editingTicketCategory", editingTicketCategory);
 
   return (
     <>
@@ -294,13 +356,6 @@ export default function MarketCenterTicketCategories({
           {ticketCategories &&
             ticketCategories.length > 0 &&
             ticketCategories.map((category: TicketCategory) => {
-              console.log(
-                "MARKET CENTER ID:",
-                category?.marketCenterId,
-                "CATEGORY:",
-                category?.name,
-                category?.id
-              );
               return (
                 <div
                   key={category?.id}
@@ -308,9 +363,17 @@ export default function MarketCenterTicketCategories({
                 >
                   <div className="space-y-2">
                     <p className="font-semibold text-md">{category?.name}</p>
-                    <p className="font-medium text-muted-foreground text-sm">
-                      {category?.description ?? "No Description"}
-                    </p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="font-medium text-muted-foreground text-sm max-w-2/3 overflow-hidden whitespace-nowrap text-ellipsis">
+                          {category?.description ?? "No Description"}
+                        </p>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {category?.description ?? "No Description"}
+                      </TooltipContent>
+                    </Tooltip>
+
                     <div className="flex gap-4">
                       <p className="font-medium text-muted-foreground text-sm">
                         {category?.defaultAssignee?.name
@@ -329,7 +392,7 @@ export default function MarketCenterTicketCategories({
                     </div>
                   </div>
                   <div>
-                    {/* <Button
+                    <Button
                       variant={"ghost"}
                       onClick={() => {
                         setEditingTicketCategory(category);
@@ -345,7 +408,7 @@ export default function MarketCenterTicketCategories({
                       }}
                     >
                       Edit
-                    </Button> */}
+                    </Button>
                     <Button
                       variant={"ghost"}
                       onClick={() => {

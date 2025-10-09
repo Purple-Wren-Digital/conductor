@@ -46,7 +46,7 @@ export default function MarketCenterUsers({
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: () => void;
+  invalidateMarketCenter: Promise<void>;
 }) {
   const router = useRouter();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
@@ -125,9 +125,9 @@ export default function MarketCenterUsers({
 
       return user;
     },
-    onSuccess: (_, user) => {
+    onSuccess: async (_, user) => {
       toast.success(`${user?.name} was removed`);
-      invalidateMarketCenter;
+      await invalidateMarketCenter;
     },
     onError: (error) => {
       console.error("Failed to remove user", error);

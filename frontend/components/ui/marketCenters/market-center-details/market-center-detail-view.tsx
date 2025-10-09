@@ -50,20 +50,11 @@ export default function MarketCenterDetailView({
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "general";
 
-  const handleTabChange = (newTab: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("tab", newTab);
-    router.replace(`?${params.toString()}`);
-  };
-
   const queryClient = useQueryClient();
 
   const { role, permissions } = useUserRole();
 
-  const { data: marketCenter, isLoading } = useFetchMarketCenter(
-    role,
-    marketCenterId
-  );
+  const { data: marketCenter } = useFetchMarketCenter(role, marketCenterId);
 
   const totalTeamMembers = marketCenter?.users ? marketCenter?.users.length : 0;
   const totalCategories = marketCenter?.ticketCategories
@@ -78,13 +69,17 @@ export default function MarketCenterDetailView({
       ticketCategories: marketCenter?.ticketCategories as TicketCategory[],
     });
   const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); //(isLoading);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const invalidateMarketCenter = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["get-market-center", marketCenterId],
-    });
-  }, [queryClient]);
+  const invalidateMarketCenter = queryClient.invalidateQueries({
+    queryKey: ["get-market-center", marketCenterId],
+  });
+
+  const handleTabChange = (newTab: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", newTab);
+    router.replace(`?${params.toString()}`);
+  };
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";

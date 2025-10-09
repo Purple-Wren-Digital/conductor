@@ -116,6 +116,10 @@ export const update = api<
       }
     }
 
+    if (Object.keys(updateMarketCenterData).length === 0) {
+      throw APIError.invalidArgument("No fields to update");
+    }
+
     const result = await prisma.$transaction(async (pr) => {
       const updatedMarketCenter = await pr.marketCenter.update({
         where: { id: req.id },
@@ -127,28 +131,6 @@ export const update = api<
         data: marketCenterHistory,
       });
 
-      // const settingsAuditLog = await pr.settingsAuditLog.createMany({
-      //   data: [
-      //     {
-      //       marketCenterId: marketCenter.id,
-      //       action: "UPDATE",
-      //       section: "branding",
-      //       previousValue: { companyName: marketCenter.name },
-      //       newValue: { companyName: updatedMarketCenter.name },
-      //       userId: userContext.userId,
-      //     },
-      //     {
-      //       marketCenterId: marketCenter.id,
-      //       action: "UPDATE",
-      //       section: "teamMembåers",
-      //       previousValue: { teamMembers: marketCenter.users.length ?? 0 },
-      //       newValue: {
-      //         teamMembers: updatedMarketCenter.users.length ?? 0,
-      //       },
-      //       userId: userContext.userId,
-      //     },
-      //   ],
-      // });
 
       return {
         updatedMarketCenter,
