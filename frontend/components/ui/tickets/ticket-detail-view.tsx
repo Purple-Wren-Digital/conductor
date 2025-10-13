@@ -42,6 +42,7 @@ import { useUserRole } from "@/lib/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import {
   capitalizeEveryWord,
+  getCategoryStyle,
   getStatusColor,
   getUrgencyColor,
   parseJsonSafe,
@@ -181,8 +182,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         ...changedValues,
         {
           label: "Category",
-          originalValue: oldTicket.category,
-          newValue: updatedTicket.category,
+          originalValue: oldTicket?.categoryId ?? null,
+          newValue: updatedTicket?.categoryId ?? "",
         },
       ];
     }
@@ -192,7 +193,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         {
           label: "Description",
           originalValue: oldTicket.description,
-          newValue: updatedTicket.description,
+          newValue: updatedTicket.description ?? "",
         },
       ];
     }
@@ -203,7 +204,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         {
           label: "Title",
           originalValue: oldTicket.title,
-          newValue: updatedTicket.title,
+          newValue: updatedTicket.title ?? "",
         },
       ];
     }
@@ -413,6 +414,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     );
   }
 
+  console.log("ticket", ticket);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -487,7 +490,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                             {/* FIELD */}
                             <TableCell>
                               <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
+                                {entry?.field &&
+                                  capitalizeEveryWord(entry?.field)}
                               </p>
                             </TableCell>
 
@@ -502,17 +506,19 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                             {/* NEW VALUE */}
                             <TableCell>
                               <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
+                                {entry?.newValue &&
+                                  capitalizeEveryWord(
+                                    entry?.newValue.replace("_", " ")
+                                  )}
                               </p>
                             </TableCell>
                             {/* OLD VALUE */}
                             <TableCell>
                               <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
+                                {entry?.previousValue &&
+                                  capitalizeEveryWord(
+                                    entry?.previousValue.replace("_", " ")
+                                  )}
                               </p>
                             </TableCell>
 
@@ -521,7 +527,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                               <p>
                                 {entry?.changedBy?.name
                                   ? entry?.changedBy?.name
-                                  : `#${entry?.changedById}`}
+                                  : `#${entry?.changedById.slice(0, 8)}`}
                               </p>
                             </TableCell>
                             {/* SNAPSHOT */}
@@ -554,7 +560,16 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     <Badge variant={getUrgencyColor(ticket.urgency)}>
                       {ticket.urgency}
                     </Badge>
-                    <Badge variant="outline">{ticket.category}</Badge>
+                    <Badge
+                      variant="category"
+                      style={getCategoryStyle(
+                        ticket?.category?.name ?? "Missing Category"
+                      )}
+                      title={ticket?.category?.name ?? "Missing Category"}
+                      className="text-xs px-2 py-0.5"
+                    >
+                      {ticket?.category?.name ?? "Missing Category"}
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -727,7 +742,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       <div key={entry?.id} className="border-b pb-4">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <Label>
-                            {capitalizeEveryWord(entry?.field)} Change
+                            {entry?.action &&
+                              capitalizeEveryWord(entry?.action)}{" "}
+                            {entry?.field && capitalizeEveryWord(entry?.field)}
                           </Label>
                           <p className="text-sm font-medium">
                             {new Date(entry?.changedAt).toLocaleDateString()}
@@ -735,15 +752,17 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                         </div>
                         <div className="flex gap-1 flex-wrap items-center  text-muted-foreground">
                           <p className="text-sm">
-                            {capitalizeEveryWord(
-                              entry?.previousValue.replace("_", " ")
-                            )}
+                            {entry?.previousValue &&
+                              capitalizeEveryWord(
+                                entry?.previousValue.replace("_", " ")
+                              )}
                           </p>
                           <ArrowRight className="h-4 w-4" />
                           <p className="text-sm font-semibold">
-                            {capitalizeEveryWord(
-                              entry?.newValue.replace("_", " ")
-                            )}
+                            {entry?.newValue &&
+                              capitalizeEveryWord(
+                                entry?.newValue.replace("_", " ")
+                              )}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 text-sm ">

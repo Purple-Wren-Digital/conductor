@@ -13,7 +13,7 @@ export interface SearchTicketsRequest {
   urgency?: Query<Urgency[]>;
   assigneeId?: Query<string>;
   creatorId?: Query<string>;
-  category?: Query<string>;
+  categoryId?: Query<string[]>;
   marketCenterId?: Query<string>;
 
   dateFrom?: Query<string>;
@@ -74,6 +74,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       where = {
         OR: [
           {
+            category: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
             creator: {
               marketCenterId: req.marketCenterId,
             },
@@ -96,6 +101,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.urgency && req.urgency.length > 0) {
       where.urgency = { in: req.urgency as Urgency[] };
     }
+    if (req.categoryId) where.categoryId = { in: req.categoryId };
+
     if (
       userContext.role === "AGENT" ||
       (userContext.role === "STAFF" && !userContext?.marketCenterId)
@@ -106,7 +113,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       if (req.assigneeId) where.assigneeId = req.assigneeId;
       if (req.creatorId) where.creatorId = req.creatorId;
     }
-    if (req.category) where.category = req.category;
 
     if (req.query) {
       const searchCondition = {
@@ -178,12 +184,15 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         break;
     }
 
+    console.log("TICKET SEARCH", where);
+
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
           creator: true,
           assignee: true,
+          category: true,
           _count: { select: { comments: true } },
         },
         orderBy,
@@ -199,7 +208,14 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       description: r.description ?? "",
       status: r.status ?? ("ASSIGNED" as TicketStatus),
       urgency: r.urgency ?? ("MEDIUM" as Urgency),
-      category: r.category ?? "",
+      categoryId: r.categoryId ?? "",
+      category: r?.category
+        ? {
+            ...r.category,
+            description: r.category.description ?? "",
+            defaultAssigneeId: r.category.defaultAssigneeId ?? null,
+          }
+        : null,
       creator: {
         ...r.creator,
         name: r.creator.name ?? "",

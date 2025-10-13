@@ -73,8 +73,9 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
       const history = await p.ticketHistory.create({
         data: {
           ticketId: existingComment?.ticketId,
-          field: "edited comment",
-          previousValue: "N/A",
+          action: "UPDATE",
+          field: "comment",
+          previousValue: processCommentContent(existingComment?.content),
           newValue: processCommentContent(req.content),
           changedById: userContext.userId,
         },

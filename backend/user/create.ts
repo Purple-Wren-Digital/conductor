@@ -84,7 +84,9 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       const history = await u.userHistory.create({
         data: {
           userId: newUser.id,
-          field: "Created (isActive)",
+          marketCenterId: newUser?.marketCenterId,
+          action: "CREATE",
+          field: "isActive",
           previousValue: "false",
           newValue: "true",
           changedById: userContext.userId,

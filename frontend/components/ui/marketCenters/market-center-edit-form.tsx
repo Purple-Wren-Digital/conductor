@@ -19,7 +19,7 @@ import type { MarketCenter, MarketCenterForm, PrismaUser } from "@/lib/types";
 import { toast } from "sonner";
 
 import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
-import { arraysEqualById } from "@/lib/utils";
+// import { arraysEqualById } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 
 type EditMarketCenterProps = {
@@ -34,7 +34,7 @@ type EditMarketCenterProps = {
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   refreshMarketCenters: Promise<void>;
-  refreshUsers: () => Promise<void>;
+  refreshUsers: Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -129,7 +129,7 @@ export default function EditMarketCenter({
         `${formData?.name ? formData.name : "Market Center"} was updated`
       );
       await refreshMarketCenters;
-      await refreshUsers();
+      await refreshUsers;
       resetAndCloseForm();
     },
     onError: (error) => {
@@ -207,6 +207,8 @@ export default function EditMarketCenter({
             </div>
 
             <UserMultiSelectDropdown
+              type="editing"
+              filter={true}
               disabled={
                 (!assignedUsers || !assignedUsers.length) &&
                 (!unassignedUsers || !unassignedUsers.length)

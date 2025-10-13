@@ -15,13 +15,13 @@ import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 interface TeamSwitcherProps {
   selectedMarketCenterId: string;
   setSelectedMarketCenterId: React.Dispatch<React.SetStateAction<string>>;
-  setCurrentPage?: React.Dispatch<React.SetStateAction<number>>;
+  handleMarketCenterSelected?: (marketCenter?: MarketCenter) => void;
 }
 
 export function TeamSwitcher({
   selectedMarketCenterId,
   setSelectedMarketCenterId,
-  setCurrentPage,
+  handleMarketCenterSelected,
 }: TeamSwitcherProps) {
   const { role } = useUserRole();
 
@@ -33,13 +33,13 @@ export function TeamSwitcher({
 
   const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
 
-
   return (
     <Select
       value={selectedMarketCenterId}
       onValueChange={(value) => {
         setSelectedMarketCenterId(value);
-        if (setCurrentPage) setCurrentPage(1);
+        const selectedMarketCenter = marketCenters.find((mc)=> mc.id == value)
+        handleMarketCenterSelected && handleMarketCenterSelected(selectedMarketCenter);
       }}
       disabled={isLoading || role === "STAFF"}
     >

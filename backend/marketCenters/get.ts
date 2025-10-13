@@ -42,11 +42,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
             changedBy: true,
           },
         },
-        ticketCategories: {
-          include: {
-            defaultAssignee: true,
-          },
-        },
+        ticketCategories: true,
       },
     });
     if (!marketCenter) {

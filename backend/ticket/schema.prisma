@@ -49,26 +49,28 @@ model User {
 }
 
 model Ticket {
-  id          String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id          String           @id @default(dbgenerated("(gen_random_uuid())::text"))
   title       String?
   description String?
-  status      TicketStatus? @default(ASSIGNED)
-  urgency     Urgency?      @default(MEDIUM)
-  category    String?
-  creatorId   String        @map("creator_id")
-  assigneeId  String?       @map("assignee_id")
-  dueDate     DateTime?     @map("due_date")
-  resolvedAt  DateTime?     @map("resolved_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at")
+  status      TicketStatus?    @default(ASSIGNED)
+  urgency     Urgency?         @default(MEDIUM)
+  categoryId  String?          @map("category_id")
+  category    TicketCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  creatorId   String           @map("creator_id")
+  assigneeId  String?          @map("assignee_id")
+  dueDate     DateTime?        @map("due_date")
+  resolvedAt  DateTime?        @map("resolved_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at")
   publishedAt DateTime?
   comments    Comment[]
-  assignee    User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  creator     User          @relation("TicketCreator", fields: [creatorId], references: [id])
+  assignee    User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  creator     User            @relation("TicketCreator", fields: [creatorId], references: [id])
   ticketHistory TicketHistory[]
 
   @@index([creatorId])
   @@index([assigneeId])
+  @@index([categoryId])
   @@index([status])
   @@index([urgency])
   @@index([createdAt])
@@ -92,15 +94,16 @@ model Comment {
 }
 
 model TicketCategory {
-  id                String       @id @default(dbgenerated("(gen_random_uuid())::text"))
-  name              String
-  description       String?
-  marketCenterId    String       @map("market_center_id")
-  defaultAssigneeId String?      @map("default_assignee_id")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at")
-  defaultAssignee   User?        @relation(fields: [defaultAssigneeId], references: [id])
-  marketCenter      MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  id                 String         @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name               String
+  description        String?
+  marketCenterId     String         @map("market_center_id")
+  defaultAssigneeId  String?        @map("default_assignee_id")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at")
+  defaultAssignee    User?          @relation(fields: [defaultAssigneeId], references: [id])
+  marketCenter       MarketCenter   @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  tickets            Ticket[]      
 
   @@unique([marketCenterId, name])
   @@index([marketCenterId])
@@ -147,9 +150,10 @@ model TeamInvitation {
 model TicketHistory {
   id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
   ticketId         String     @map("ticket_id")
-  field            String
-  previousValue    String
-  newValue         String
+  action           String     @default("UPDATE")
+  field            String?
+  previousValue    String?
+  newValue         String?
   snapshot         Json?         
   changedAt        DateTime   @default(now())
   changedById      String     @map("changed_by_id")
@@ -165,9 +169,10 @@ model UserHistory {
   id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId           String
   marketCenterId   String?    @map("market_center_id")
-  field            String
-  previousValue    String
-  newValue         String
+  action           String     @default("UPDATE")
+  field            String?
+  previousValue    String?
+  newValue         String?
   snapshot         Json?         
   changedAt        DateTime   @default(now())
   changedById      String?    @map("changed_by_id")
@@ -185,7 +190,7 @@ model UserHistory {
 model MarketCenterHistory {
   id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
   marketCenterId   String     @map("market_center_id")
-  action           String
+  action           String     @default("UPDATE")
   field            String?
   previousValue    String?
   newValue         String?

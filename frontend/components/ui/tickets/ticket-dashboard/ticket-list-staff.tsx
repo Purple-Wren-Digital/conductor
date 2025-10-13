@@ -38,6 +38,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog/base-dialog";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
+import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useFetchStaffTickets } from "@/hooks/use-tickets";
@@ -71,11 +75,9 @@ import type {
   TicketSortBy,
   TicketsResponse,
   TicketWithUpdatedAt,
+  TicketCategory,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { EditTicketForm } from "../ticket-form/edit-ticket-form";
-import { CreateTicketForm } from "../ticket-form/create-ticket-form";
-import PagesAndItemsCount from "../../pagination/page-and-items-count";
 
 export default function TicketListStaff() {
   const router = useRouter();
@@ -97,6 +99,7 @@ export default function TicketListStaff() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
   const [currentUserId] = useState(currentUser?.id ?? "");
@@ -151,6 +154,10 @@ export default function TicketListStaff() {
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
+
+    if (selectedCategory !== "all")
+      params.append("categoryId", selectedCategory);
+
     if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
     if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
@@ -165,6 +172,7 @@ export default function TicketListStaff() {
     debouncedSearchQuery,
     selectedStatuses,
     selectedUrgencies,
+    selectedCategory,
     selectedAssignee,
     selectedCreator,
     role,
@@ -295,6 +303,7 @@ export default function TicketListStaff() {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
+    setSelectedCategory("all");
     setSelectedAssignee("all");
     setSelectedCreator("all");
     setDateFrom(undefined);
@@ -308,6 +317,7 @@ export default function TicketListStaff() {
     !!searchQuery ||
     selectedStatuses.length !== defaultActiveStatuses.length ||
     selectedUrgencies.length > 0 ||
+    selectedCategory !== "all" ||
     selectedAssignee !== "all" ||
     selectedCreator !== "all" ||
     !!dateFrom ||
@@ -583,6 +593,47 @@ export default function TicketListStaff() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2 col-span-3">
+                    <Label>Category</Label>
+                    <RadioGroup
+                      value={selectedCategory}
+                      onValueChange={(value) => setSelectedCategory(value)}
+                      defaultValue="all"
+                      aria-label="Filter by ticket categories"
+                      className="flex flex-wrap gap-4"
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        <RadioGroupItem value={"all"} id={`category-all`} />
+                        <Label
+                          htmlFor={`category-all`}
+                          className="text-sm font-normal"
+                        >
+                          All
+                        </Label>
+                      </div>
+                      {marketCenter &&
+                        marketCenter?.ticketCategories &&
+                        marketCenter?.ticketCategories.length > 0 &&
+                        marketCenter?.ticketCategories.map(
+                          (category: TicketCategory) => (
+                            <div className="flex flex-wrap gap-2">
+                              <RadioGroupItem
+                                key={category?.id}
+                                value={category?.id}
+                                id={`category-${category?.id}`}
+                              />
+
+                              <Label
+                                htmlFor={`category-${category?.id}`}
+                                className="text-sm font-normal"
+                              >
+                                {category?.name}
+                              </Label>
+                            </div>
+                          )
+                        )}
+                    </RadioGroup>
                   </div>
                 </div>
               </Card>

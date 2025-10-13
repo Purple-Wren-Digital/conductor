@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,25 +19,36 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, Save, X, FileText } from "lucide-react";
+import { Building, CalendarIcon, FileText, Info, Save, X } from "lucide-react";
 import { format } from "date-fns";
-import type { TicketTemplate, Urgency } from "@/lib/types";
+import type {
+  FormErrors,
+  MarketCenter,
+  PrismaUser,
+  TicketCategory,
+  TicketTemplate,
+  Urgency,
+} from "@/lib/types";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
+import { findMarketCenter, urgencyOptions } from "@/lib/utils";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 
 export type TicketFormValues = {
   title: string;
   description: string;
   urgency: Urgency;
-  category: string;
+  categoryId: string;
   dueDate?: Date;
+  assigneeId?: string;
 };
-
-export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
 
 export type BaseTicketFormProps = {
   // Dialog controls
@@ -46,7 +57,7 @@ export type BaseTicketFormProps = {
 
   // Form state
   values: TicketFormValues;
-  errors: TicketFormErrors;
+  errors: FormErrors;
   loading?: boolean;
 
   // Handlers
@@ -61,26 +72,8 @@ export type BaseTicketFormProps = {
   templates?: TicketTemplate[];
   selectedTemplateId?: string;
   onChangeTemplateId?: (id: string) => void;
+  marketCenterId: string | null;
 };
-
-const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
-const categoryOptions = [
-  "Appraisals",
-  "Client Comments",
-  "Compliance",
-  "Contracts",
-  "Documents",
-  "Feature Request",
-  "Financial",
-  "Inspections",
-  "Listings",
-  "Maintenance",
-  "Marketing",
-  "Onboarding",
-  "Showing Request",
-  "Technical",
-  "Other",
-];
 
 export function BaseTicketForm({
   isOpen,
@@ -95,7 +88,33 @@ export function BaseTicketForm({
   templates = [],
   selectedTemplateId,
   onChangeTemplateId,
+  marketCenterId,
 }: BaseTicketFormProps) {
+  const [selectedMarketCenter, setSelectedMarketCenter] =
+    useState<MarketCenter>({} as MarketCenter);
+
+  const { role } = useUserRole();
+  const { data: marketCentersData } = useFetchAllMarketCenters(role);
+
+  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
+  const marketCenterTicketCategories: TicketCategory[] =
+    selectedMarketCenter && selectedMarketCenter?.ticketCategories
+      ? selectedMarketCenter?.ticketCategories
+      : [];
+  const marketCenterAssignees: PrismaUser[] =
+    selectedMarketCenter && selectedMarketCenter?.users
+      ? selectedMarketCenter?.users
+      : [];
+
+  useEffect(() => {
+    if (!marketCenterId) return;
+    const prefillData = () => {
+      const marketCenter = findMarketCenter(marketCenters, marketCenterId);
+      setSelectedMarketCenter(marketCenter);
+    };
+    prefillData();
+  }, [marketCenterId]);
+
   const templateSection = useMemo(() => {
     if (!showTemplateSelect) return null;
     return (
@@ -130,7 +149,7 @@ export function BaseTicketForm({
 
         <form onSubmit={onSubmit} className="space-y-6">
           {templateSection}
-
+          {/* TITLE */}
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
             <Input
@@ -144,7 +163,7 @@ export function BaseTicketForm({
               <p className="text-sm text-destructive">{errors.title}</p>
             )}
           </div>
-
+          {/* DESCRIPTION */}
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
             <Textarea
@@ -160,13 +179,15 @@ export function BaseTicketForm({
               <p className="text-sm text-destructive">{errors.description}</p>
             )}
           </div>
-
+          {/*  URGENCY + DUE DATE */}
           <div className="grid gap-4 md:grid-cols-2">
+            {/* URGENCY */}
             <div className="space-y-2">
               <Label>Urgency *</Label>
               <Select
                 value={values.urgency}
                 onValueChange={(value: Urgency) => onChange({ urgency: value })}
+                disabled={!selectedMarketCenter}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -191,56 +212,144 @@ export function BaseTicketForm({
                 </SelectContent>
               </Select>
             </div>
+            {/* DUE DATE */}
+            <div className="space-y-2">
+              <Label>Due Date (Optional)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal bg-transparent"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {values.dueDate
+                      ? format(values.dueDate, "PPP")
+                      : "Select due date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={values.dueDate}
+                    onSelect={(date) =>
+                      onChange({ dueDate: date || undefined })
+                    }
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          {/* MARKET CENTER */}
+          <div className="space-y-2">
+            <div className="flex flex-row align-center justify-between">
+              <Label>Market Center *</Label>
+              <ToolTip
+                trigger={<Info className="w-3 h-3" />}
+                content="Select a Market Center to view all team members and categories"
+              />
+            </div>
+            <Select
+              value={selectedMarketCenter?.id}
+              onValueChange={(value) =>
+                setSelectedMarketCenter(findMarketCenter(marketCenters, value))
+              }
+              disabled={role !== "ADMIN"}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={"Select Market Center"} />
+              </SelectTrigger>
+              <SelectContent>
+                {marketCenters &&
+                  marketCenters.length > 0 &&
+                  marketCenters.map((marketCenter) => (
+                    <SelectItem key={marketCenter?.id} value={marketCenter?.id}>
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 " />
+                        {marketCenter?.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {errors.marketCenter && (
+              <p className="text-sm text-destructive">{errors.marketCenter}</p>
+            )}
+          </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* CATEGORY */}
             <div className="space-y-2">
               <Label>Category *</Label>
               <Select
-                value={values.category}
-                onValueChange={(value) => onChange({ category: value })}
+                value={values.categoryId}
+                onValueChange={(value) => {
+                  const selectedCategory = marketCenterTicketCategories?.find(
+                    (c) => c?.id === value
+                  );
+                  const assignee = marketCenterAssignees?.find(
+                    (user) => user?.id == selectedCategory?.defaultAssigneeId
+                  );
+                  onChange({
+                    categoryId: value,
+                    assigneeId: assignee && assignee?.id,
+                  });
+                }}
               >
                 <SelectTrigger
                   className={errors.category ? "border-destructive" : ""}
                 >
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryOptions.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
+                  {marketCenterTicketCategories &&
+                    marketCenterTicketCategories.length > 0 &&
+                    marketCenterTicketCategories.map((category) => (
+                      <SelectItem key={category?.id} value={category?.id}>
+                        {category?.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {errors.category && (
                 <p className="text-sm text-destructive">{errors.category}</p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Due Date (Optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal bg-transparent"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {values.dueDate
-                    ? format(values.dueDate, "PPP")
-                    : "Select due date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={values.dueDate}
-                  onSelect={(date) => onChange({ dueDate: date || undefined })}
-                  // initialFocus
-                  disabled={(date) => date < new Date()}
+            {/* ASSIGNEE */}
+            <div className="space-y-2">
+              <div className="flex flex-row align-center justify-between">
+                <Label>Assign To</Label>
+                <ToolTip
+                  trigger={<Info className="w-3 h-3" />}
+                  content="If no user is selected, the ticket will automatically be
+                assigned to you."
                 />
-              </PopoverContent>
-            </Popover>
+              </div>
+              <Select
+                value={values.assigneeId}
+                onValueChange={(value) => onChange({ assigneeId: value })}
+              >
+                <SelectTrigger
+                  className={errors.assigneeId ? "border-destructive" : ""}
+                >
+                  <SelectValue placeholder="Select an assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {marketCenterAssignees &&
+                    marketCenterAssignees.length > 0 &&
+                    marketCenterAssignees.map((user) => {
+                      return (
+                        <SelectItem key={user?.id} value={user?.id}>
+                          {user?.name ?? user?.id}
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+              {errors.assigneeId && (
+                <p className="text-sm text-destructive">{errors.assigneeId}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">

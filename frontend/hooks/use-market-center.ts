@@ -31,9 +31,9 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
 
       const data = await response.json();
 
-      return { marketCenters: data?.marketCenters as MarketCenter[] };
+      return { marketCenters: data?.marketCenters };
     },
-    enabled: role && role === "ADMIN",
+    enabled: !!role && role !== "AGENT",
   });
 }
 
@@ -63,7 +63,7 @@ export function useSearchMarketCenters({
       }
       const accessToken = await getAuth0AccessToken();
       const response = await fetch(
-        `${API_BASE}/marketCenters?${queryParams.toString()}`,
+        `${API_BASE}/marketCenters/search?${queryParams.toString()}`,
         {
           method: "GET",
           headers: {
@@ -110,7 +110,8 @@ export function useFetchMarketCenter(
             },
           }
         );
-        if (!response || !response.ok) throw new Error("Failed to fetch users");
+        if (!response || !response.ok)
+          throw new Error("Failed to market center");
         const data = await response.json();
         return data?.marketCenter;
       } catch (error) {
@@ -119,6 +120,43 @@ export function useFetchMarketCenter(
       }
     },
     enabled: !!marketCenterId && role && role !== "AGENT",
+  });
+}
+
+export function useFetchMarketCenterCategories(marketCenterId?: string) {
+  return useQuery({
+    queryKey: ["get-market-center-categories", marketCenterId],
+    queryFn: async () => {
+      try {
+        // if (!marketCenterId || marketCenterId === "all")
+        //   throw new Error("Missing market center id");
+        // console.log(
+        //   "useFetchMarketCenterCategories - marketCenterId",
+        //   marketCenterId
+        // );
+        const accessToken = await getAuth0AccessToken();
+        const response = await fetch(
+          `${API_BASE}/marketCenters/ticketCategories${marketCenterId ? `?marketCenterId=${marketCenterId}` : ""}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (!response || !response.ok)
+          throw new Error(
+            "Failed to fetch ticket categories for market center"
+          );
+        const data = await response.json();
+        console.log("MARKET CENTER CATEGORIES", data);
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch market center - ", error);
+        return null;
+      }
+    },
+    enabled: !!marketCenterId,
   });
 }
 

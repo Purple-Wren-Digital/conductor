@@ -9,16 +9,16 @@ import { mapTicketHistorySnapshot } from "../utils";
 export interface CreateTicketRequest {
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
   urgency: Urgency;
   dueDate?: Date;
+  assigneeId?: string;
 }
 
 export interface CreateTicketResponse {
   ticket: Ticket;
 }
 
-// Creates a new ticket.
 export const create = api<CreateTicketRequest, CreateTicketResponse>(
   {
     expose: true,
@@ -40,23 +40,24 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
 
       // Apply auto-assignment (checks category defaults first, then rules)
 
-      const assigneeId = await applyAutoAssignment({
-        category: req.category,
-        urgency: req.urgency,
-        title: req.title,
-        description: req.description,
-        creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
-      });
+      // const assigneeId = await applyAutoAssignment({
+      //   category: req.categoryId,
+      //   urgency: req.urgency,
+      //   title: req.title,
+      //   description: req.description,
+      //   creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
+      //   // assigneeId: req?.assigneeId,
+      // });
 
       const result = await prisma.$transaction(async (tx) => {
         const ticket = await tx.ticket.create({
           data: {
             title: req.title,
             description: req.description,
-            category: req.category,
+            categoryId: req.categoryId ?? null,
             urgency: req.urgency,
             creatorId: userContext.userId,
-            assigneeId,
+            assigneeId: req?.assigneeId ?? userContext.userId,
             dueDate: req.dueDate,
           },
           include: {
@@ -69,6 +70,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         const history = await tx.ticketHistory.create({
           data: {
             ticketId: ticket.id,
+            action: "CREATE",
             field: "isActive",
             previousValue: "false",
             newValue: "true",
@@ -84,6 +86,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
           ...result.ticket,
           commentCount: result.ticket._count.comments,
           ticketHistory: mapTicketHistorySnapshot([result.history]),
+          categoryId: result?.ticket?.categoryId ?? null,
           creator: {
             ...result.ticket.creator,
             name: result.ticket.creator.name ?? "",

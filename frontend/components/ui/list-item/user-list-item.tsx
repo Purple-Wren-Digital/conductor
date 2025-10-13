@@ -1,16 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { ListItem, getRoleBadgeStyle } from "./base-list-item";
+import { ListItem } from "./base-list-item";
 import type { MarketCenter, PrismaUser } from "@/lib/types";
 import {
   Mail,
- CalendarIcon,
+  CalendarIcon,
   CircleMinus,
   ArrowRightCircle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { getRoleColor } from "@/lib/utils";
+import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 
@@ -39,17 +39,19 @@ export function UserListItem({
   return (
     <ListItem
       id={user.id}
-      title={user.name}
+      title={`${user.name}`}
       subtitle={
         marketCenter?.name
           ? `${marketCenter.name} Market Center${marketCenter?.id && ` (#${marketCenter?.id.slice(0, 8)})`}`
           : "No Assigned Market Center"
       }
       avatar={{
-        fallback: user.name
-          .split(" ")
-          .map((n: string) => n[0])
-          .join(""),
+        fallback: user?.name
+          ? user?.name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+          : "",
       }}
       onClick={onClick}
       primaryBadges={[

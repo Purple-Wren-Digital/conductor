@@ -71,28 +71,12 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         },
       });
 
-      const commentHistory = [
-        {
-          ticketId: ticket.id,
-          field: "new comment",
-          previousValue: "N/A",
-          newValue: processCommentContent(req.content),
-          changedById: userContext.userId,
-        },
-        {
-          ticketId: ticket.id,
-          field: "new comment",
-          previousValue: "N/A",
-          newValue: processCommentContent(req.content),
-          changedById: userContext.userId,
-        }
-      ]
-
       const history = await p.ticketHistory.create({
         data: {
           ticketId: ticket.id,
-          field: "new comment",
-          previousValue: "N/A",
+          action: "CREATE",
+          field: "comment",
+          snapshot: ticket,
           newValue: processCommentContent(req.content),
           changedById: userContext.userId,
         },

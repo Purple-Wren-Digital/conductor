@@ -33,6 +33,7 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
       include: {
+        category: true,
         creator: {
           include: {
             ticketHistory: true,
@@ -63,12 +64,20 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
       description: ticket.description ?? "",
       status: ticket.status ?? ("ASSIGNED" as TicketStatus),
       urgency: ticket.urgency ?? ("MEDIUM" as Urgency),
-      category: ticket.category ?? "",
+      categoryId: ticket.categoryId ?? "",
+      category: ticket?.category
+        ? {
+            ...ticket.category,
+            description: ticket.category.description ?? "",
+            defaultAssigneeId: ticket.category.defaultAssigneeId ?? null,
+          }
+        : null,
       creator: {
         ...ticket.creator,
         name: ticket.creator.name ?? "",
         ticketHistory: mapTicketHistorySnapshot(ticket.creator?.ticketHistory),
       },
+
       assignee: ticket.assignee
         ? {
             ...ticket.assignee,

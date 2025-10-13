@@ -1,15 +1,15 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import { Prisma, TicketCategory } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
 import { MarketCenter } from "./types";
 import { canManageMarketCenters } from "../auth/permissions";
 
 export interface ListMarketCentersRequest {
   id?: Query<string>;
-  // name?: Query<string>;
-  category?: Query<string[]>; // TicketCategory.name[]
+  categoryId?: Query<string[]>;
+  userIds?: Query<string[]>;
 
   query?: Query<string>;
 
@@ -25,11 +25,11 @@ export interface ListMarketCentersResponse {
   total: number;
 }
 
-export const list = api<ListMarketCentersRequest, ListMarketCentersResponse>(
+export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
   {
     expose: true,
     method: "GET",
-    path: "/marketCenters",
+    path: "/marketCenters/search",
     auth: true,
   },
   async (req) => {
@@ -45,31 +45,33 @@ export const list = api<ListMarketCentersRequest, ListMarketCentersResponse>(
 
     let where: any = {};
 
-    // if (req.name) {
-    //   where.name = req.name;
-    // }
+    if (req?.query) {
+      where.OR = [
+        { name: { contains: req.query, mode: Prisma.QueryMode.insensitive } },
+        { id: { contains: req.query, mode: Prisma.QueryMode.insensitive } },
+      ];
+    }
 
-    if (req.id) {
+    if (req?.id) {
       where.id = req.id;
     }
 
-    // if (req.category && req.category?.length > 0) {
-    //   where.ticketCategories = {
-    //     some: {
-    //       name: { in: req.category },
-    //     },
-    //   };
-    // }
+    if (req?.categoryId && req.categoryId?.length > 0) {
+      where.ticketCategories = {
+        some: {
+          id: { in: req.categoryId },
+        },
+      };
+    }
 
-    if (req.query) {
-      console.log("SEARCH INPUT QUERY", req.query);
-      // const searchCondition = {
-      //   OR: [
-      //     { name: { contains: req.query, mode: Prisma.QueryMode.insensitive } },
-      //   ],
-      // };
-
-      // where.OR = searchCondition.OR;
+    if (req?.userIds && req?.userIds.length > 0) {
+      where.users = {
+        some: {
+          id: {
+            in: req.userIds as string[],
+          },
+        },
+      };
     }
 
     const sortBy: "updatedAt" | "createdAt" =

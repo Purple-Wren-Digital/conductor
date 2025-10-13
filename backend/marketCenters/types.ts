@@ -48,17 +48,11 @@ export interface TicketCategory {
   name: string;
   description: string | null;
   marketCenterId: string;
-  defaultAssigneeId: string | null;
+  defaultAssigneeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  defaultAssignee?: User;
-  marketCenter?: {
-    id: string;
-    name: string;
-    createdAt: Date;
-    updatedAt: Date;
-    settings: {};
-  };
+  defaultAssignee?: User | null;
+  marketCenter?: MarketCenter;
 }
 
 // export interface SettingsAuditLog {

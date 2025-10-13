@@ -21,7 +21,12 @@ import {
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
-import type { PrismaUser, MarketCenterForm, TicketCategory } from "@/lib/types";
+import type {
+  PrismaUser,
+  MarketCenterForm,
+  TicketCategory,
+  UsersResponse,
+} from "@/lib/types";
 import {
   ArrowLeft,
   Building,
@@ -32,8 +37,11 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-// import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import MarketCenterHistory from "./market-center-history";
 import MarketCenterTicketCategories from "./market-center-ticket-categories";
 import MarketCenterUsers from "./market-center-users";
@@ -68,7 +76,7 @@ export default function MarketCenterDetailView({
       selectedUsers: marketCenter?.users as PrismaUser[],
       ticketCategories: marketCenter?.ticketCategories as TicketCategory[],
     });
-  const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
+  // const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const invalidateMarketCenter = queryClient.invalidateQueries({
@@ -86,42 +94,67 @@ export default function MarketCenterDetailView({
     return await getAccessToken();
   }, []);
 
-  const fetchActiveUsers = useCallback(async () => {
-    // setIsLoading(true);
-    const params = !permissions?.canCreateUsers ? `?role=AGENT` : "";
+  // const fetchActiveUsers = useCallback(async () => {
+  //   // setIsLoading(true);
+  //   const params = !permissions?.canCreateUsers ? `?role=AGENT` : "";
 
-    try {
+  //   try {
+  //     const accessToken = await getAuth0AccessToken();
+  //     if (!accessToken) {
+  //       throw new Error("No token fetched");
+  //     }
+  //     const response = await fetch(`${API_BASE}/users${params}`, {
+  //       method: "GET",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //     });
+
+  //     if (!response.ok) throw new Error("Failed to fetch users");
+  //     const data: { users: PrismaUser[] } = await response.json();
+
+  //     const needsAssignment: PrismaUser[] = data.users.filter((user) => {
+  //       if (!user?.marketCenterId) return user;
+  //     });
+  //     setUnassignedUsers(needsAssignment || []);
+  //   } catch (error) {
+  //     console.error("Error fetching users", error);
+  //   } finally {
+  //     // setIsLoading(false);
+  //   }
+  // }, [getAuth0AccessToken]);
+
+  // useEffect(() => {
+  //   if (!showEditMCForm) return;
+  //   // fetchActiveUsers();
+  // }, [showEditMCForm]);
+  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
+    UsersResponse,
+    Error,
+    UsersResponse
+  >({
+    queryKey: ["market-center-detail-users"],
+    queryFn: async (): Promise<UsersResponse> => {
       const accessToken = await getAuth0AccessToken();
-      if (!accessToken) {
-        throw new Error("No token fetched");
-      }
-      const response = await fetch(`${API_BASE}/users${params}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const res = await fetch("/api/users", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
       });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const data: { users: PrismaUser[] } = await response.json();
+  const users: PrismaUser[] = usersData?.users ?? [];
+  const unassignedUsers: PrismaUser[] = users.filter((user) => {
+    if (!user?.marketCenterId) return user;
+  });
 
-      const needsAssignment: PrismaUser[] = data.users.filter((user) => {
-        if (!user?.marketCenterId) return user;
-      });
-      setUnassignedUsers(needsAssignment || []);
-    } catch (error) {
-      console.error("Error fetching users", error);
-    } finally {
-      // setIsLoading(false);
-    }
-  }, [getAuth0AccessToken]);
-
-  useEffect(() => {
-    if (!showEditMCForm) return;
-    fetchActiveUsers();
-  }, [showEditMCForm]);
-
+  const invalidateUsers = queryClient.invalidateQueries({
+    queryKey: ["market-center-detail-users"],
+  });
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 justify-between">
@@ -248,7 +281,7 @@ export default function MarketCenterDetailView({
         formData={marketCenterFormData}
         setFormData={setMarketCenterFormData}
         refreshMarketCenters={invalidateMarketCenter}
-        refreshUsers={fetchActiveUsers}
+        refreshUsers={invalidateUsers}
       />
     </div>
   );

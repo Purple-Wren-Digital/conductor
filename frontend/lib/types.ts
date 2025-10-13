@@ -15,37 +15,37 @@ export type Urgency = "HIGH" | "MEDIUM" | "LOW";
 
 export interface Ticket {
   id: string;
-  title: string;
-  description: string;
+  title: string | null; // Prisma: title String?  => allow null (or keep string if you always normalize)
+  description: string | null; // Prisma: description String? => allow null
   status: TicketStatus;
   urgency: Urgency;
-  category: string;
+  categoryId?: string | null;
   creatorId?: string;
   assigneeId?: string | null;
-  creator: PrismaUser | null;
-  assignee: PrismaUser | null;
   dueDate: Date | null;
+  resolvedAt?: Date | null;
   createdAt: Date;
-  commentCount: number | null;
-  updatedAt?: Date | string;
-  comments?: Comment[];
-  ticketHistory?: TicketHistory[];
+  updatedAt: Date;
+  creator?: PrismaUser;
+  assignee?: PrismaUser | null;
+  category?: TicketCategory | null;
+  commentCount?: number | null;
+  deletedAt?: Date | null;
+  isActive?: boolean;
+  ticketHistory: TicketHistory[];
 }
 
 export interface PrismaUser {
   id: string;
   email: string;
-  name: string;
+  name: string | null; // Prisma: name String?  => TypeScript: string | null
   role: UserRole;
   createdAt: Date;
-  updatedAt?: Date;
+  updatedAt: Date;
   isActive: boolean;
   auth0Id: string;
   marketCenterId: string | null;
-  marketCenter?: {
-    id: string;
-    name: string;
-  } | null;
+  marketCenter?: MarketCenter;
   ticketHistory?: TicketHistory[];
   userHistory?: UserHistory[];
   otherUsersChanges?: UserHistory[];
@@ -54,10 +54,11 @@ export interface PrismaUser {
 export interface TicketHistory {
   id: string;
   ticketId: string;
-  field: string;
-  previousValue: string;
-  newValue: string;
-  snapshot?: JSON; // Ticket as it was in this moment
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  snapshot?: {}; // Ticket as it was in this moment
   changedAt: Date;
   changedById: string;
   changedBy?: PrismaUser;
@@ -67,10 +68,11 @@ export interface UserHistory {
   id: string;
   userId: string;
   marketCenterId: string;
-  field: string;
-  previousValue: string;
-  newValue: string;
-  snapshot?: JSON; // User as they were in this moment
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  snapshot?: {}; // User as they were in this moment
   changedAt: Date;
   changedById: string;
   changedBy?: PrismaUser;
@@ -156,20 +158,20 @@ export interface MarketCenter {
   settings?: {} | null;
   createdAt: Date;
   updatedAt: Date;
-  // settingsAuditLogs?: SettingsAuditLog[];
   marketCenterHistory: MarketCenterHistory[];
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
+  // settingsAuditLogs?: SettingsAuditLog[];
 }
 
 export interface MarketCenterHistory {
   id: string;
   marketCenterId: string;
-  action: string; // create, add, remove, update, delete
-  field: string; // users, name, ticketCategories
-  previousValue: string;
-  newValue: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
   changedAt: Date;
   changedById: string;
   marketCenter?: MarketCenter;
@@ -209,13 +211,13 @@ export interface TeamInvitation {
 export interface TicketCategory {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   marketCenterId: string;
-  defaultAssigneeId?: string;
+  defaultAssigneeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  defaultAssignee?: PrismaUser;
-  marketCenter: MarketCenter;
+  defaultAssignee?: PrismaUser | null;
+  marketCenter?: MarketCenter;
 }
 
 // MARKET CENTERS
@@ -297,8 +299,10 @@ export interface UpdateMemberRequest {
 export type OrderBy = "asc" | "desc";
 
 export type UserSortBy = "updatedAt" | "createdAt" | "name";
-export type UsersResponse = { users: PrismaUser[] };
+export type UsersResponse = { users: PrismaUser[]; total: number };
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
 export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 export type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };
+
+export type FormErrors = Record<string, string>;

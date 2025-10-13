@@ -489,7 +489,7 @@ export default function UserManagement() {
                     <TeamSwitcher
                       selectedMarketCenterId={selectedMarketCenterId}
                       setSelectedMarketCenterId={setSelectedMarketCenterId}
-                      setCurrentPage={setCurrentPage}
+                      handleMarketCenterSelected={() => setCurrentPage(1)}
                     />
                   </div>
 

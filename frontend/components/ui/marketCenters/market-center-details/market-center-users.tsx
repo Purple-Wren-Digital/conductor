@@ -46,7 +46,7 @@ export default function MarketCenterUsers({
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: Promise<void>;
+  invalidateMarketCenter: Promise<void> // () => void;
 }) {
   const router = useRouter();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);

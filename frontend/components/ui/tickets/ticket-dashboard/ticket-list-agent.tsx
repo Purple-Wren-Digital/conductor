@@ -54,9 +54,12 @@ import type {
   TicketSortBy,
   TicketsResponse,
   TicketWithUpdatedAt,
+  TicketCategory,
 } from "@/lib/types";
 import { useQueryClient, UseQueryResult } from "@tanstack/react-query";
 import PagesAndItemsCount from "../../pagination/page-and-items-count";
+import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
+import { RadioGroup, RadioGroupItem } from "../../radio-group";
 
 export default function AgentTicketList() {
   const router = useRouter();
@@ -72,6 +75,7 @@ export default function AgentTicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
@@ -100,6 +104,9 @@ export default function AgentTicketList() {
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
 
+    if (selectedCategory !== "all")
+      params.append("categoryId", selectedCategory);
+
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
 
@@ -112,6 +119,7 @@ export default function AgentTicketList() {
     debouncedSearchQuery,
     selectedStatuses,
     selectedUrgencies,
+    selectedCategory,
     role,
     dateFrom,
     dateTo,
@@ -146,10 +154,15 @@ export default function AgentTicketList() {
     itemsPerPage,
   });
 
+  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
+    currentUser?.marketCenterId ?? "");
+  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
+
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
+    setSelectedCategory("all");
     setDateFrom(undefined);
     setDateTo(undefined);
     setOpenFrom(false);
@@ -163,6 +176,7 @@ export default function AgentTicketList() {
     !!searchQuery ||
     selectedStatuses.length !== defaultActiveStatuses.length ||
     selectedUrgencies.length > 0 ||
+    selectedCategory !== "all" ||
     !!dateFrom ||
     !!dateTo ||
     sortDir !== "desc" ||
@@ -355,6 +369,46 @@ export default function AgentTicketList() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <RadioGroup
+                    value={selectedCategory}
+                    onValueChange={(value) => setSelectedCategory(value)}
+                    defaultValue="all"
+                    aria-label="Filter by ticket categories"
+                    className="flex flex-wrap gap-4"
+                  >
+                    <div className="flex flex-wrap gap-2">
+                      <RadioGroupItem value={"all"} id={`category-all`} />
+                      <Label
+                        htmlFor={`category-all`}
+                        className="text-sm font-normal"
+                      >
+                        All
+                      </Label>
+                    </div>
+                    {categories &&
+                      categories &&
+                      categories.length > 0 &&
+                      categories.map((category: TicketCategory) => (
+                        <div className="flex flex-wrap gap-2">
+                          <RadioGroupItem
+                            key={category?.id}
+                            value={category?.id}
+                            id={`category-${category?.id}`}
+                          />
+
+                          <Label
+                            htmlFor={`category-${category?.id}`}
+                            className="text-sm font-normal"
+                          >
+                            {category?.name}
+                          </Label>
+                        </div>
+                      ))}
+                  </RadioGroup>
                 </div>
               </div>
             </Card>

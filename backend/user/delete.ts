@@ -51,6 +51,7 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
       const history = await u.userHistory.create({
         data: {
           userId: user.id,
+          action: "DELETE",
           field: "isActive",
           previousValue: "true",
           newValue: "false",

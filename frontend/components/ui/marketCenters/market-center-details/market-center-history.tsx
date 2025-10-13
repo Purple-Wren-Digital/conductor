@@ -85,12 +85,16 @@ export default function MarketCenterHistory({
                   const teamNewValue =
                     entry?.field === "team" && entry?.newValue;
                   const teamChangeNewValue =
-                    teamNewValue && JSON.parse(entry.newValue);
+                    entry?.newValue &&
+                    teamNewValue &&
+                    JSON.parse(entry.newValue);
 
                   const teamPrevValue =
                     entry?.field === "team" && entry?.previousValue;
                   const teamChangePrevValue =
-                    teamPrevValue && JSON.parse(entry.previousValue);
+                    entry?.previousValue &&
+                    teamPrevValue &&
+                    JSON.parse(entry.previousValue);
                   return (
                     <TableRow key={entry.id + index}>
                       {/* ACTION */}
@@ -108,7 +112,7 @@ export default function MarketCenterHistory({
                       {/* FIELD */}
                       <TableCell>
                         <p className="font-semibold">
-                          {capitalizeEveryWord(entry?.field)}
+                          {entry?.field && capitalizeEveryWord(entry?.field)}
                         </p>
                       </TableCell>
                       {/* NEW VALUE */}

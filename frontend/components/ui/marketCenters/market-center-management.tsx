@@ -2,12 +2,12 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-// import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "../input";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { MarketCenterListItem } from "@/components/ui/list-item/market-center-list-item";
 import CreateMarketCenter from "@/components/ui/marketCenters/market-center-create-form";
 import DeleteMarketCenter from "@/components/ui/marketCenters/market-center-delete-form";
@@ -21,13 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
-import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
   OrderBy,
   PrismaUser,
+  TicketCategory,
   UserSortBy,
+  UsersResponse,
 } from "@/lib/types";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
@@ -43,12 +44,14 @@ import {
 
 import { useRouter } from "next/navigation";
 import {
-  // useFetchAllMarketCenters,
+  useFetchMarketCenterCategories,
   useSearchMarketCenters,
 } from "@/hooks/use-market-center";
-import { useQueryClient } from "@tanstack/react-query";
-// import { userStatusOptions } from "@/lib/utils";
-import { Label } from "../label";
+import {
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import {
   calculateTotalPages,
   formatOrderBy,
@@ -56,28 +59,22 @@ import {
   orderByOptions,
   sortByUserOptions,
 } from "@/lib/utils";
+import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
 
 export default function MarketCenterManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const { role } = useUserRole();
-  // const { currentUser } = useStore();
 
-  // const marketCenterId = currentUser?.marketCenterId
-  //   ? currentUser.marketCenterId
-  //   : "null";
-
-  // const defaultMarketCenterId = role === "STAFF" ? marketCenterId : "all";
-
-  // ACTIONS
+  // FORM ACTIONS
   const [showCreateMCForm, setShowCreateMCForm] = useState(false);
 
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [editingMarketCenter, setEditingMarketCenter] =
     useState<MarketCenter | null>(null);
   const [assignedUsers, setAssignedUsers] = useState<PrismaUser[]>([]);
-  const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
+
   const [formData, setFormData] = useState<MarketCenterForm>({
     name: "",
     selectedUsers: [],
@@ -87,12 +84,14 @@ export default function MarketCenterManagement() {
   const [marketCenterToDelete, setMarketCenterToDelete] =
     useState<MarketCenter | null>(null);
 
-  // SEARCH
+  // MANAGEMENT SEARCH
+  const [showFilters, setShowFilters] = useState(false);
+
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedUserId, setSelectedUserId] = useState<string>("all");
+  const [selectedUsers, setSelectedUsers] = useState<PrismaUser[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
@@ -115,7 +114,12 @@ export default function MarketCenterManagement() {
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
-    if (selectedCategory !== "all") params.append("category", selectedCategory);
+    if (selectedCategory !== "all") {
+      params.append("categoryId", selectedCategory);
+    }
+    if (selectedUsers && selectedUsers.length > 0) {
+      selectedUsers.forEach((user) => params.append("userIds", user.id));
+    }
     if (selectedMarketCenterId !== "all")
       params.append("id", selectedMarketCenterId);
     params.append("sortBy", sortBy);
@@ -126,7 +130,7 @@ export default function MarketCenterManagement() {
   }, [
     debouncedSearchQuery,
     selectedCategory,
-    selectedUserId,
+    selectedUsers,
     selectedMarketCenterId,
     sortBy,
     orderDir,
@@ -157,12 +161,46 @@ export default function MarketCenterManagement() {
     itemsPerPage,
   });
 
-  const invalidateMarketCenters = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: marketCentersQueryKey });
-  }, [queryClient, marketCentersQueryKey]);
+  const invalidateMarketCenters = queryClient.invalidateQueries({
+    queryKey: marketCentersQueryKey,
+  });
+
+  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
+    UsersResponse,
+    Error,
+    UsersResponse
+  >({
+    queryKey: ["market-center-filter-users"],
+    queryFn: async (): Promise<UsersResponse> => {
+      const accessToken = await getAuth0AccessToken();
+      const res = await fetch("/api/users", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const users: PrismaUser[] = usersData?.users ?? [];
+  const unassignedUsers: PrismaUser[] = users.filter((user) => {
+    if (!user?.marketCenterId) return user;
+  });
+
+  const invalidateUsers = queryClient.invalidateQueries({
+    queryKey: ["market-center-filter-users"],
+  });
+
+  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
+    selectedMarketCenterId
+  );
+  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
 
   const clearFilters = () => {
     setSearchQuery("");
+    setSelectedUsers([]);
     setSelectedCategory("all");
     setSelectedMarketCenterId("all");
     setCurrentPage(1);
@@ -174,6 +212,7 @@ export default function MarketCenterManagement() {
     !!searchQuery ||
     selectedCategory !== "all" ||
     selectedMarketCenterId !== "all" ||
+    (selectedUsers && selectedUsers?.length > 0) ||
     orderDir !== "desc" ||
     sortBy !== "updatedAt";
 
@@ -181,42 +220,6 @@ export default function MarketCenterManagement() {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
   }, []);
-
-  const fetchActiveUsers = useCallback(async () => {
-    // setLoading(true);
-    try {
-      const accessToken = await getAuth0AccessToken();
-      if (!accessToken) {
-        throw new Error("No token fetched");
-      }
-      // TODO: Fetch unassigned users only...
-      // const params = new URLSearchParams();
-      const response = await fetch(`${API_BASE}/users`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const data: { users: PrismaUser[] } = await response.json();
-
-      const needsAssignment: PrismaUser[] = data.users.filter((user) => {
-        if (!user?.marketCenterId) return user;
-      });
-      console.log("NEEDS ASSIGNMENT", needsAssignment);
-      setUnassignedUsers(needsAssignment || []);
-    } catch (error) {
-      console.error("Error fetching users", error);
-    } finally {
-      // setLoading(false);
-    }
-  }, [getAuth0AccessToken]);
-
-  useEffect(() => {
-    fetchActiveUsers();
-  }, [fetchActiveUsers]);
 
   const openCreateModal = () => {
     setEditingMarketCenter(null);
@@ -273,7 +276,6 @@ export default function MarketCenterManagement() {
             </Button>
           </div>
 
-          {/* <div className="flex items-center gap-4 mt-4"> */}
           {/* TODO: SEARCH BAR - By Name, By Id, By User */}
           <div className="space-y-4 mt-4">
             {/* SEARCH USERS + FILTER BUTTON */}
@@ -298,7 +300,7 @@ export default function MarketCenterManagement() {
                 variant="outline"
                 size="sm"
                 className="gap-2 bg-transparent"
-                // onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowFilters(!showFilters)}
                 type="button"
                 disabled={marketCentersLoading}
               >
@@ -324,124 +326,162 @@ export default function MarketCenterManagement() {
                 </Button>
               )}
             </div>
-            {/* {showFilters && ( */}
-            <Card className="p-4 bg-muted/50">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* MARKET CENTER */}
-                <div className="space-y-2">
-                  <Label>Market Center</Label>
-                  <TeamSwitcher
-                    selectedMarketCenterId={selectedMarketCenterId}
-                    setSelectedMarketCenterId={setSelectedMarketCenterId}
-                    setCurrentPage={setCurrentPage}
-                  />
-                </div>
+            {showFilters && (
+              <Card className="p-4 bg-muted/50">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* MARKET CENTER */}
+                  <div className="space-y-2">
+                    <Label>Market Centers</Label>
+                    <TeamSwitcher
+                      selectedMarketCenterId={selectedMarketCenterId}
+                      setSelectedMarketCenterId={setSelectedMarketCenterId}
+                      handleMarketCenterSelected={(
+                        marketCenter?: MarketCenter
+                      ) => {
+                        setSelectedCategory("all");
+                        setSelectedUsers(marketCenter?.users ?? []);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </div>
 
-                {/* CATEGORIES */}
-                <div className="space-y-2">
-                  <Label>Categories</Label>
-                  <Select
-                    value={selectedCategory}
-                    onValueChange={(value) => {
-                      setSelectedCategory(value);
-                      setCurrentPage(1);
-                    }}
-                    disabled={true} //{!marketCenters || !marketCenters.length}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* CATEGORIES */}
+                  <div className="space-y-2">
+                    <Label>Categories</Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={(value) => {
+                        setSelectedCategory(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={!selectedMarketCenterId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          All Categories ({categories.length ?? 0})
+                        </SelectItem>
+                        {categories &&
+                          categories.length > 0 &&
+                          categories.map((category: TicketCategory) => {
+                            return (
+                              <SelectItem
+                                key={category?.id}
+                                value={category?.id}
+                              >
+                                {category?.name}
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* ASSIGNED USERS */}
-                <div className="space-y-2">
-                  <Label>Users</Label>
-                  <Select
-                    value={selectedUserId}
-                    onValueChange={(value) => {
-                      setSelectedUserId(value);
-                      setCurrentPage(1);
-                    }}
-                    disabled={true} //{!marketCenters || !marketCenters.length}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={"all"}>All Users</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* ASSIGNED USERS */}
+                  <div className="space-y-2 row-span-2">
+                    <Label>Users</Label>
+                    <UserMultiSelectDropdown
+                      type="search"
+                      filter={selectedMarketCenterId !== "all"}
+                      disabled={false}
+                      marketCenterId={selectedMarketCenterId}
+                      placeholder={
+                        selectedUsers && selectedUsers.length > 0
+                          ? `${selectedUsers.length ?? 0} users selected`
+                          : `All Users (${users?.length ?? 0})`
+                      }
+                      formFieldName={"Users"}
+                      options={users}
+                      selectedOptions={selectedUsers}
+                      handleSetSelectedOptions={(newSelected: PrismaUser[]) => {
+                        setSelectedUsers(newSelected);
+                      }}
+                      error={null}
+                    />
+                    <div className="space-y-2 space-x-2 w-full">
+                      {selectedUsers &&
+                        selectedUsers.length > 0 &&
+                        selectedUsers.map((selectedUser, index) => {
+                          return (
+                            <Badge key={index} variant="default">
+                              <p className="text-md">{selectedUser.name}</p>
+                            </Badge>
+                          );
+                        })}
+                    </div>
+                  </div>
 
-                {/* SORT BY */}
-                <div className="space-y-2">
-                  <Select
-                    value={sortBy}
-                    onValueChange={(value: UserSortBy) => {
-                      setSortBy(value);
-                      setCurrentPage(1);
-                    }}
-                    disabled={!marketCenters || !marketCenters.length}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={"Sort By"} />
-                    </SelectTrigger>
+                  {/* SORT BY */}
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
 
-                    <SelectContent>
-                      {sortByUserOptions.map((userOption: UserSortBy) => {
-                        if (userOption === "name") return null;
-                        return (
-                          <SelectItem key={userOption} value={userOption}>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value: UserSortBy) => {
+                        setSortBy(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={!marketCenters || !marketCenters.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Sort By"} />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {sortByUserOptions.map((userOption: UserSortBy) => {
+                          if (userOption === "name") return null;
+                          return (
+                            <SelectItem key={userOption} value={userOption}>
+                              <div className="flex gap-1 items-center mr-1">
+                                <ArrowDownUp />
+                                <p className="text-sm font-medium">
+                                  {formatUserOptions(userOption)}
+                                </p>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* ORDER BY */}
+                  <div className="space-y-2">
+                    <Label>Order By</Label>
+
+                    <Select
+                      value={orderDir}
+                      onValueChange={(value: OrderBy) => {
+                        setOrderDir(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={!marketCenters || !marketCenters.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={"Order by"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {orderByOptions.map((direction) => (
+                          <SelectItem key={direction} value={direction}>
                             <div className="flex gap-1 items-center mr-1">
-                              <ArrowDownUp />
+                              {direction === "asc" ? (
+                                <ArrowDownWideNarrow />
+                              ) : (
+                                <ArrowDownNarrowWide />
+                              )}
                               <p className="text-sm font-medium">
-                                {formatUserOptions(userOption)}
+                                {formatOrderBy(direction)}
                               </p>
                             </div>
                           </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {/* ORDER BY */}
-                <div className="space-y-2">
-                  <Select
-                    value={orderDir}
-                    onValueChange={(value: OrderBy) => {
-                      setOrderDir(value);
-                      setCurrentPage(1);
-                    }}
-                    disabled={!marketCenters || !marketCenters.length}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={"Order by"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {orderByOptions.map((direction) => (
-                        <SelectItem key={direction} value={direction}>
-                          <div className="flex gap-1 items-center mr-1">
-                            {direction === "asc" ? (
-                              <ArrowDownWideNarrow />
-                            ) : (
-                              <ArrowDownNarrowWide />
-                            )}
-                            <p className="text-sm font-medium">
-                              {formatOrderBy(direction)}
-                            </p>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </Card>
-            {/* )} */}
+              </Card>
+            )}
           </div>
         </CardHeader>
 
@@ -501,7 +541,7 @@ export default function MarketCenterManagement() {
         formData={formData}
         setFormData={setFormData}
         refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={fetchActiveUsers}
+        refreshUsers={invalidateUsers}
         unassignedUsers={unassignedUsers}
       />
 
@@ -516,7 +556,7 @@ export default function MarketCenterManagement() {
         assignedUsers={assignedUsers}
         unassignedUsers={unassignedUsers}
         refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={fetchActiveUsers}
+        refreshUsers={invalidateUsers}
       />
 
       {/* DELETE MARKET CENTER */}
@@ -526,7 +566,7 @@ export default function MarketCenterManagement() {
         showDeleteModal={showDeleteModal}
         setShowDeleteModal={setShowDeleteModal}
         refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={fetchActiveUsers}
+        refreshUsers={invalidateUsers}
       />
     </div>
   );

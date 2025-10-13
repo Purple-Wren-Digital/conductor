@@ -42,6 +42,7 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     // const history = await prisma.ticketHistory.create({
     //   data: {
     //     ticketId: ticket.id,
+    //     action: "DELETE",
     //     field: "isActive",
     //     snapshot: ticket,
     //     previousValue: "true",

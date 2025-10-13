@@ -61,10 +61,12 @@ export function InvitationUserListItem({
       title={`${user.name}`}
       subtitle={subtitle}
       avatar={{
-        fallback: user.name
-          .split(" ")
-          .map((n: string) => n[0])
-          .join(""),
+        fallback: user?.name
+          ? user?.name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+          : "",
       }}
       metadata={[
         {

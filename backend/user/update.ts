@@ -46,13 +46,46 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     }
 
     // Build update data object + user history
+    let marketCenterId: string | null = existingUser?.marketCenterId ?? null;
+
     const updateUserData: any = {};
     let userHistoryData: any = [];
+
+    if (
+      req?.marketCenterId &&
+      req?.marketCenterId !== existingUser?.marketCenterId &&
+      userContext?.role === "ADMIN"
+    ) {
+      const marketCenter = await prisma.marketCenter.findFirst({
+        where: { id: req.marketCenterId },
+      });
+
+      marketCenterId = marketCenter?.id ?? null;
+      if (marketCenter) {
+        updateUserData.marketCenterId = {
+          ...updateUserData,
+          set: marketCenter?.id,
+          marketCenterId: marketCenter?.id,
+        };
+        userHistoryData.push({
+          userId: req.id,
+          action: "UPDATE",
+          field: "marketCenterId",
+          previousValue: existingUser?.marketCenterId ?? "Unassigned",
+          newValue: req.marketCenterId,
+          snapshot: existingUser,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        });
+      }
+    }
 
     if (req.name !== existingUser?.name) {
       updateUserData.name = req.name;
       userHistoryData.push({
         userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
         field: "name",
         previousValue: existingUser.name,
         newValue: req.name,
@@ -65,6 +98,8 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       updateUserData.role = req.role;
       userHistoryData.push({
         userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
         field: "role",
         previousValue: existingUser.role,
         newValue: req.role,
@@ -73,30 +108,13 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         changedById: userContext.userId,
       });
     }
-    if (
-      req?.marketCenterId &&
-      req?.marketCenterId !== existingUser?.marketCenterId &&
-      userContext?.role === "ADMIN"
-    ) {
-      updateUserData.marketCenterId = {
-        ...updateUserData,
-        set: req.marketCenterId,
-        marketCenterId: req.marketCenterId,
-      };
-      userHistoryData.push({
-        userId: req.id,
-        field: "marketCenterId",
-        previousValue: existingUser?.marketCenterId ?? "Unassigned",
-        newValue: req.marketCenterId,
-        snapshot: existingUser,
-        changedAt: new Date(),
-        changedById: userContext.userId,
-      });
-    }
+
     if (req.isActive !== undefined && userContext?.role === "ADMIN") {
       updateUserData.isActive = req.isActive;
       userHistoryData.push({
         userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
         field: "isActive",
         previousValue: existingUser.isActive,
         newValue: req.isActive,
@@ -110,6 +128,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     //   updateUserData.email = req.email;
     //   userHistoryData.push({
     //     userId: req.id,
+    //     marketCenterId: marketCenterId,
     //     field: "email",
     //     previousValue: existingUser.email,
     //     newValue: req.email,

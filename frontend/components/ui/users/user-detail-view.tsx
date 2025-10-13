@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
-import { getRoleBadgeStyle } from "@/components/ui/list-item/base-list-item";
 import {
   Select,
   SelectContent,
@@ -30,11 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { ToolTip } from "@/components/ui//tooltip/tooltip";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   MarketCenter,
@@ -46,6 +41,7 @@ import {
 } from "@/lib/types";
 import {
   capitalizeEveryWord,
+  getRoleBadgeStyle,
   getRoleColor,
   ROLE_DESCRIPTIONS,
   ROLE_ICONS,
@@ -111,8 +107,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
     return description;
   };
-
- const findChangedByName = (userId: string, name?: string) => {
+  // TODO:
+  const findChangedByName = (userId: string, name?: string) => {
     if (name) return name;
     if (!userId) return "No id";
     if (userId === user?.id) return user?.name;
@@ -260,9 +256,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <div className="flex items-center gap-2 text-sm">
                   {getRoleIcon(user?.role)}
                   <p className="text-muted-foreground">Role:</p>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {/* <p className="font-medium">{user?.role}</p> */}
+                  <ToolTip
+                    trigger={
                       <Badge
                         variant={getRoleColor(user?.role || "AGENT")}
                         style={getRoleBadgeStyle(user?.role || "AGENT")}
@@ -271,11 +266,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       >
                         {user?.role}
                       </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {getRoleDescription(user?.role)}
-                    </TooltipContent>
-                  </Tooltip>
+                    }
+                    content={getRoleDescription(user?.role)}
+                  />
                 </div>
               </div>
             </div>
@@ -468,9 +461,10 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                               <p className="font-semibold hover:underline pointer-events-auto">
                                 {/* # {entry?.id.slice(0, 8)} */}
                                 <p>
+                                  {/* TODO: */}
                                   {findChangedByName(
                                     entry?.changedById,
-                                    entry?.changedBy?.name
+                                    entry?.changedBy?.name ?? ""
                                   )}
                                 </p>
                               </p>
@@ -622,9 +616,10 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                               }}
                             >
                               <p>
+                                {/* TODO: */}
                                 {findChangedByName(
                                   entry?.changedById,
-                                  entry?.changedBy?.name
+                                  entry?.changedBy?.name ?? ""
                                 )}
                                 {/* `#${entry?.changedById}` */}
                               </p>

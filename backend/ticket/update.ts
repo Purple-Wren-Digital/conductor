@@ -11,8 +11,9 @@ export interface UpdateTicketRequest {
   description?: string;
   status?: TicketStatus;
   urgency?: Urgency;
-  category?: string;
+  categoryId?: string;
   dueDate?: Date;
+  assigneeId?: string;
 }
 
 export interface UpdateTicketResponse {
@@ -38,6 +39,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
+      include: { assignee: true, category: true },
     });
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
@@ -46,10 +48,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     const updateData: any = {};
     let ticketHistoryData: any = [];
 
-    if (req.title !== undefined && req.title !== oldTicket.title) {
+    if (req.title && req.title !== oldTicket.title) {
       updateData.title = req.title;
       ticketHistoryData.push({
         ticketId: req.ticketId,
+        action: "UPDATE",
         field: "title",
         previousValue: oldTicket.title,
         newValue: req.title,
@@ -58,13 +61,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (
-      req.description !== undefined &&
-      req.description !== oldTicket.description
-    ) {
+    if (req.description && req.description !== oldTicket.description) {
       updateData.description = req.description;
       ticketHistoryData.push({
         ticketId: req.ticketId,
+        action: "UPDATE",
         field: "description",
         previousValue: oldTicket.description,
         newValue: req.description,
@@ -73,10 +74,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.urgency !== undefined && req.urgency !== oldTicket.urgency) {
+    if (req.urgency && req.urgency !== oldTicket.urgency) {
       updateData.urgency = req.urgency;
       ticketHistoryData.push({
         ticketId: req.ticketId,
+        action: "UPDATE",
         field: "urgency",
         previousValue: oldTicket.urgency,
         newValue: req.urgency,
@@ -85,35 +87,48 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.category !== undefined && req.category !== oldTicket.category) {
-      updateData.category = req.category;
+    if (req.categoryId && req.categoryId !== oldTicket.categoryId) {
+      const newCategory = await prisma.ticketCategory.findUnique({
+        where: { id: req.categoryId },
+      });
+      updateData.categoryId = req.categoryId;
       ticketHistoryData.push({
         ticketId: req.ticketId,
+        action: "UPDATE",
         field: "category",
-        previousValue: oldTicket.category,
-        newValue: req.category,
+        previousValue: oldTicket?.category?.name ?? "None",
+        newValue: newCategory?.name ?? "None",
         snapshot: oldTicket,
         changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
-    if (req.dueDate !== undefined && req.dueDate !== oldTicket.dueDate) {
-      updateData.dueDate = req.dueDate;
-      ticketHistoryData.push({
-        ticketId: req.ticketId,
-        field: "dueDate",
-        previousValue: oldTicket.dueDate,
-        newValue: req.dueDate,
-        snapshot: oldTicket,
-        changedAt: new Date(),
-        changedById: userContext.userId,
-      });
+    if (req.dueDate) {
+      const oldTime = oldTicket.dueDate ? oldTicket.dueDate.getTime() : null;
+      const newTime = req.dueDate ? req.dueDate.getTime() : null;
+      if (oldTime !== newTime) {
+        updateData.dueDate = req.dueDate;
+        ticketHistoryData.push({
+          ticketId: req.ticketId,
+          action: "UPDATE",
+          field: "dueDate",
+          previousValue: oldTicket.dueDate
+            ? oldTicket.dueDate.toISOString()
+            : null,
+          newValue: req.dueDate ? req.dueDate.toISOString() : null,
+
+          snapshot: oldTicket,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        });
+      }
     }
 
-    if (req.status !== undefined && req.status !== oldTicket.status) {
+    if (req.status && req.status !== oldTicket.status) {
       updateData.status = req.status;
       ticketHistoryData.push({
         ticketId: req.ticketId,
+        action: "UPDATE",
         field: "status",
         previousValue: oldTicket.status,
         newValue: req.status,
@@ -126,11 +141,28 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       }
     }
 
+    if (req.assigneeId && req.assigneeId !== oldTicket.assigneeId) {
+      const newAssignee = await prisma.user.findUnique({
+        where: { id: req.assigneeId },
+      });
+
+      updateData.assigneeId = req.assigneeId;
+
+      ticketHistoryData.push({
+        ticketId: req.ticketId,
+        action: "ADD",
+        field: "assignment",
+        previousValue: oldTicket?.assignee?.name ?? "None",
+        newValue: newAssignee?.name ?? "None",
+        snapshot: oldTicket,
+        changedAt: new Date(),
+        changedById: userContext.userId,
+      });
+    }
+
     if (Object.keys(updateData).length === 0) {
       throw APIError.invalidArgument("no fields to update");
     }
-
-
 
     try {
       const [ticket] = await prisma.$transaction([
@@ -155,6 +187,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           data: ticketHistoryData,
         }),
       ]);
+
+      console.log("UPDATED TICKET? ", ticket);
 
       const safeTicket = {
         ...ticket,

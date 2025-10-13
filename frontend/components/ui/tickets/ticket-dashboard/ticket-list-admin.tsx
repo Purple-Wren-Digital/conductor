@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
+import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
 import {
@@ -33,7 +36,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog/base-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format, startOfDay, endOfDay } from "date-fns";
+import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
 import { useFetchAdminTickets } from "@/hooks/use-tickets";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
@@ -66,6 +71,7 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   UsersResponse,
+  TicketCategory,
 } from "@/lib/types";
 import {
   useQuery,
@@ -73,9 +79,6 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { EditTicketForm } from "../ticket-form/edit-ticket-form";
-import { CreateTicketForm } from "../ticket-form/create-ticket-form";
-import PagesAndItemsCount from "../../pagination/page-and-items-count";
 
 export default function AdminTicketList() {
   const router = useRouter();
@@ -97,6 +100,8 @@ export default function AdminTicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
     role === "AGENT" ? `${currentUser?.id}` : "all"
   );
@@ -144,6 +149,9 @@ export default function AdminTicketList() {
     if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
     }
+    if (selectedCategory !== "all") {
+      params.append("categoryId", selectedCategory);
+    }
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -155,6 +163,7 @@ export default function AdminTicketList() {
     debouncedSearchQuery,
     selectedStatuses,
     selectedUrgencies,
+    selectedCategory,
     selectedAssignee,
     selectedCreator,
     selectedMarketCenterId,
@@ -209,6 +218,11 @@ export default function AdminTicketList() {
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
+
+  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
+    selectedMarketCenterId
+  );
+  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
 
   const queryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: ["tickets"] });
@@ -300,6 +314,7 @@ export default function AdminTicketList() {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
+    setSelectedCategory("all");
     setSelectedAssignee("all");
     setSelectedCreator("all");
     setSelectedMarketCenterId("all");
@@ -314,6 +329,7 @@ export default function AdminTicketList() {
     !!searchQuery ||
     selectedStatuses.length !== defaultActiveStatuses.length ||
     selectedUrgencies.length > 0 ||
+    selectedCategory !== "all" ||
     selectedAssignee !== "all" ||
     selectedCreator !== "all" ||
     selectedMarketCenterId !== "all" ||
@@ -350,7 +366,10 @@ export default function AdminTicketList() {
                 <TeamSwitcher
                   selectedMarketCenterId={selectedMarketCenterId}
                   setSelectedMarketCenterId={setSelectedMarketCenterId}
-                  setCurrentPage={setCurrentPage}
+                  handleMarketCenterSelected={() => {
+                    setSelectedCategory("all");
+                    setCurrentPage(1);
+                  }}
                 />
               </div>
               <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
@@ -569,6 +588,51 @@ export default function AdminTicketList() {
                       ))}
                     </div>
                   </div>
+                  {selectedMarketCenterId &&
+                    selectedMarketCenterId !== "all" && (
+                      <div className="space-y-2 col-span-3">
+                        <Label>Category</Label>
+                        <RadioGroup
+                          value={selectedCategory}
+                          onValueChange={(value) => setSelectedCategory(value)}
+                          defaultValue="all"
+                          aria-label="Filter by ticket categories"
+                          className="flex flex-wrap gap-4 items-center"
+                        >
+                          <div className="flex flex-wrap gap-2">
+                            <RadioGroupItem value={"all"} id={`category-all`} />
+                            <Label
+                              htmlFor={`category-all`}
+                              className="text-sm font-normal"
+                            >
+                              All
+                            </Label>
+                          </div>
+                          {categories &&
+                            categories.length > 0 &&
+                            categories.map((category: TicketCategory) => {
+                              return (
+                                <div
+                                  key={category?.id}
+                                  className="flex flex-wrap gap-2"
+                                >
+                                  <RadioGroupItem
+                                    value={category?.id}
+                                    id={`category-${category?.id}`}
+                                  />
+
+                                  <Label
+                                    htmlFor={`category-${category?.id}`}
+                                    className="text-sm font-normal"
+                                  >
+                                    {category?.name}
+                                  </Label>
+                                </div>
+                              );
+                            })}
+                        </RadioGroup>
+                      </div>
+                    )}
                 </div>
               </Card>
             )}

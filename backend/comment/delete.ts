@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
+import { processCommentContent } from "./sanitize";
 
 interface AuthData {
   userID: string;
@@ -43,7 +44,15 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     if (comment.userId !== userId) {
       throw APIError.permissionDenied("You can only delete your own comments");
     }
-    // isActive
+    const history = await prisma.ticketHistory.create({
+      data: {
+        ticketId: comment?.ticketId,
+        action: "DELETE",
+        field: "comment",
+        previousValue: processCommentContent(comment?.content),
+        changedById: userContext.userId,
+      },
+    });
     await prisma.comment.delete({
       where: { id: req.commentId },
     });

@@ -50,7 +50,6 @@ export default function MarketCenterTicketCategories({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
 }) {
-  // const router = useRouter();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
   const [categoryToRemove, setCategoryToRemove] =
     useState<TicketCategory | null>(null);
@@ -61,13 +60,11 @@ export default function MarketCenterTicketCategories({
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [categoryFormData, setCategoryFormData] = useState({
-    // id: "",
     name: "",
     description: "",
     defaultAssigneeId: "none",
   });
 
-  // const { currentUser } = useStore();
   const { role, permissions } = useUserRole();
 
   const teamMembers: PrismaUser[] =

@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ListItem, getRoleBadgeStyle } from "./base-list-item";
+import { ListItem } from "./base-list-item";
 import type { PrismaUser } from "@/lib/types";
 import { Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { getRoleColor } from "@/lib/utils";
+import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 
 export function TeamMemberListItem({
@@ -21,12 +21,14 @@ export function TeamMemberListItem({
   return (
     <ListItem
       id={user.id}
-      title={user.name}
+      title={`${user.name}`}
       avatar={{
-        fallback: user.name
-          .split(" ")
-          .map((n: string) => n[0])
-          .join(""),
+        fallback: user?.name
+          ? user?.name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+          : "",
       }}
       primaryBadges={[
         {

@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
-import { getRoleBadgeStyle } from "@/components/ui/list-item/base-list-item";
 import {
   Select,
   SelectContent,
@@ -36,11 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   MarketCenter,
@@ -52,13 +47,13 @@ import {
 } from "@/lib/types";
 import {
   capitalizeEveryWord,
+  getRoleBadgeStyle,
   getRoleColor,
   ROLE_DESCRIPTIONS,
   ROLE_ICONS,
   roleOptions,
 } from "@/lib/utils";
 import {
-  ArrowLeft,
   Building,
   Edit2,
   Hash,
@@ -275,22 +270,19 @@ export default function UserProfileLayout() {
                 <div className="flex items-center gap-2 text-sm">
                   {getRoleIcon(user?.role)}
                   <p className="text-muted-foreground">Role:</p>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {/* <p className="font-medium">{user?.role}</p> */}
+                  <ToolTip
+                    trigger={
                       <Badge
                         variant={getRoleColor(user?.role || "AGENT")}
                         style={getRoleBadgeStyle(user?.role || "AGENT")}
                         title={user?.role}
                         className="text-xs px-2 py-0.5"
                       >
-                        {user?.role}
+                        <p className="font-medium">{user?.role}</p>
                       </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {getRoleDescription(user?.role)}
-                    </TooltipContent>
-                  </Tooltip>
+                    }
+                    content={getRoleDescription(user?.role)}
+                  />
                 </div>
               </div>
             </div>

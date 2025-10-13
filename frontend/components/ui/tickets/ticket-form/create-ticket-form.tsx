@@ -1,14 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Ticket, TicketTemplate, Urgency } from "@/lib/types";
+import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import {
-  BaseTicketForm,
-  type TicketFormValues,
-  type TicketFormErrors,
-} from "./base-ticket-form";
+import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { API_BASE } from "@/lib/api/utils";
+import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 type Props = {
   isOpen: boolean;
@@ -20,17 +18,23 @@ const initialValues: TicketFormValues = {
   title: "",
   description: "",
   urgency: "MEDIUM" as Urgency,
-  category: "",
+  categoryId: "",
   dueDate: undefined,
+  assigneeId: "",
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
   const [values, setValues] = useState<TicketFormValues>(initialValues);
-  const [errors, setErrors] = useState<TicketFormErrors>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+
+  const [marketCenterId, setMarketCenterId] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  const { role } = useUserRole();
+  const { currentUser } = useStore();
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -64,6 +68,13 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
       setSelectedTemplateId("");
       fetchTemplates();
     }
+
+    const userMarketCenterId =
+      role === "STAFF" && currentUser?.marketCenterId
+        ? currentUser.marketCenterId
+        : null;
+
+    setMarketCenterId(userMarketCenterId);
   }, [isOpen, getAuth0AccessToken]);
 
   const handleTemplateChange = (templateId: string) => {
@@ -80,7 +91,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         title: t.title,
         description: t.ticketDescription,
         urgency: t.urgency,
-        category: t.category,
+        categoryId: t.category,
         dueDate: undefined,
       });
     }
@@ -90,13 +101,16 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     setValues((prev) => ({ ...prev, ...patch }));
 
   const validate = (): boolean => {
-    const next: TicketFormErrors = {};
-    if (!values.title.trim()) next.title = "Title is required";
+    const errors: any = {};
+    if (!values.title.trim()) errors.title = "Title is required";
     if (!values.description.trim())
-      next.description = "Description is required";
-    if (!values.category.trim()) next.category = "Category is required";
-    setErrors(next);
-    return Object.keys(next).length === 0;
+      errors.description = "Description is required";
+    if (!values.categoryId.trim()) {
+      errors.category = "Category is required";
+      errors.marketCenter = "Please select a market center";
+    }
+    setErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const sendEmailNotification = async (ticket: Ticket | null) => {
@@ -175,6 +189,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
       templates={templates}
       selectedTemplateId={selectedTemplateId}
       onChangeTemplateId={handleTemplateChange}
+      marketCenterId={marketCenterId}
     />
   );
 }

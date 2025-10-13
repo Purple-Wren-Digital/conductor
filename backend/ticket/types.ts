@@ -1,4 +1,5 @@
 import { MarketCenter } from "../marketCenters/types";
+import { TicketCategory } from "../marketCenters/types";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
@@ -31,7 +32,7 @@ export type UserFields =
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name: string | null; // Prisma: name String?  => TypeScript: string | null
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
@@ -46,11 +47,11 @@ export interface User {
 
 export interface Ticket {
   id: string;
-  title: string;
-  description: string;
+  title: string | null; // Prisma: title String?  => allow null (or keep string if you always normalize)
+  description: string | null; // Prisma: description String? => allow null
   status: TicketStatus;
   urgency: Urgency;
-  category: string;
+  categoryId?: string | null;
   creatorId?: string;
   assigneeId?: string | null;
   dueDate: Date | null;
@@ -59,6 +60,7 @@ export interface Ticket {
   updatedAt: Date;
   creator?: User;
   assignee?: User | null;
+  category?: TicketCategory | null;
   commentCount?: number | null;
   deletedAt?: Date | null;
   isActive?: boolean;
@@ -98,9 +100,10 @@ export interface DashboardMetrics {
 export interface TicketHistory {
   id: string;
   ticketId: string;
-  field: string;
-  previousValue: string;
-  newValue: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
   snapshot?: {}; // Ticket as it was in this moment
   changedAt: Date;
   changedById: string;
@@ -111,9 +114,10 @@ export interface UserHistory {
   id: string;
   userId: string;
   marketCenterId: string;
-  field: string;
-  previousValue: string;
-  newValue: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
   snapshot?: {}; // User as they were in this moment
   changedAt: Date;
   changedById: string;
