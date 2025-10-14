@@ -72,7 +72,7 @@ export function ListItem({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-4 border rounded-lg transition-colors",
+        "flex flex-col sm:flex-row items-start gap-3 p-4 border rounded-lg transition-colors",
         isClickable && "hover:bg-muted/50 cursor-pointer",
         className
       )}
@@ -114,7 +114,7 @@ export function ListItem({
           <div className="flex-1 min-w-0">
             <h3
               className={cn(
-                "font-medium text-sm leading-5 truncate",
+                "font-medium text-sm leading-5 text-ellipsis",
                 isClickable && "hover:underline text-primary"
               )}
               title={title}
@@ -123,34 +123,18 @@ export function ListItem({
             </h3>
             {subtitle && (
               <p
-                className="text-xs text-muted-foreground mt-0.5 truncate"
+                className="text-xs text-muted-foreground mt-0.5 text-ellipsis"
                 title={subtitle}
               >
                 {subtitle}
               </p>
             )}
           </div>
-
-          {primaryBadges.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {primaryBadges.map((badge, i) => (
-                <Badge
-                  key={i}
-                  variant={badge.variant as any}
-                  style={badge.style}
-                  title={badge.title}
-                  className="text-xs px-2 py-0.5"
-                >
-                  {badge.label}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
 
-        {secondaryBadges.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {secondaryBadges.map((badge, i) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {primaryBadges.length > 0 &&
+            primaryBadges.map((badge, i) => (
               <Badge
                 key={i}
                 variant={badge.variant as any}
@@ -161,8 +145,19 @@ export function ListItem({
                 {badge.label}
               </Badge>
             ))}
-          </div>
-        )}
+          {secondaryBadges.length > 0 &&
+            secondaryBadges.map((badge, i) => (
+              <Badge
+                key={i}
+                variant={badge.variant as any}
+                style={badge.style}
+                title={badge.title}
+                className="text-xs px-2 py-0.5"
+              >
+                {badge.label}
+              </Badge>
+            ))}
+        </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
           {metadata.map((m, i) => (
@@ -175,7 +170,7 @@ export function ListItem({
       </div>
 
       {currentUser?.role !== "AGENT" && (
-        <div className="flex flex-col sm:flex-row items-end gap-1 flex-shrink-0">
+        <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full items-center sm:w-auto sm:justify-end">
           {actions &&
             actions.map((a, i) => (
               <Button
@@ -192,7 +187,7 @@ export function ListItem({
                 type="button"
               >
                 {a.icon}
-                <span className="ml-1 hidden sm:inline">{a.label}</span>
+                <span className="ml-1">{a.label}</span>
               </Button>
             ))}
         </div>

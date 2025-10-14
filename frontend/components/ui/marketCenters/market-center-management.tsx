@@ -260,7 +260,7 @@ export default function MarketCenterManagement() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
@@ -270,18 +270,20 @@ export default function MarketCenterManagement() {
                 Create and manage all market centers
               </p>
             </div>
-            <Button onClick={() => openCreateModal()} className="gap-2">
+            <Button
+              onClick={() => openCreateModal()}
+              className="gap-2 w-full sm:w-fit"
+            >
               <Plus className="h-4 w-4" />
               Add Market Center
             </Button>
           </div>
 
-          {/* TODO: SEARCH BAR - By Name, By Id, By User */}
           <div className="space-y-4 mt-4">
             {/* SEARCH USERS + FILTER BUTTON */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
               {/* SEARCH USERS */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 w-full sm:w-fit">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search market centers..."
@@ -299,7 +301,7 @@ export default function MarketCenterManagement() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 bg-transparent"
+                className="gap-2 bg-transparent w-full sm:w-fit"
                 onClick={() => setShowFilters(!showFilters)}
                 type="button"
                 disabled={marketCentersLoading}
@@ -318,7 +320,7 @@ export default function MarketCenterManagement() {
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-fit"
                   type="button"
                 >
                   <X className="h-4 w-4" />

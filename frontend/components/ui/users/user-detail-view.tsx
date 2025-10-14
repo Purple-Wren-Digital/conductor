@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
+import UserHistoryTable from "@/components/history-tables/user/history-table-user";
+import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -21,47 +23,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ToolTip } from "@/components/ui//tooltip/tooltip";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   MarketCenter,
   PrismaUser,
-  TicketHistory,
   UserEditFormData,
-  UserHistory,
   UserRole,
 } from "@/lib/types";
 import {
-  capitalizeEveryWord,
   getRoleBadgeStyle,
   getRoleColor,
-  ROLE_DESCRIPTIONS,
+  getRoleDescription,
   ROLE_ICONS,
   roleOptions,
 } from "@/lib/utils";
-import {
-  ArrowLeft,
-  Building,
-  Edit2,
-  Hash,
-  History,
-  Mail,
-  User,
-} from "lucide-react";
+import { ArrowLeft, Building, Edit2, Hash, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchOneUser } from "@/hooks/use-users";
-
-//EACH TABLE TODO: PAGINATE + SORT + FILTER
 
 type UserDetailViewProps = {
   id: string;
@@ -101,19 +82,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     ) : (
       <User className="h-4 w-4 text-muted-foreground" />
     );
-  };
-
-  const getRoleDescription = (userRole: UserRole) => {
-    const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
-    return description;
-  };
-  // TODO:
-  const findChangedByName = (userId: string, name?: string) => {
-    if (name) return name;
-    if (!userId) return "No id";
-    if (userId === user?.id) return user?.name;
-    if (userId === currentUser?.id) return currentUser?.name;
-    return userId.slice(0, 8);
   };
 
   const resetFormAndClose = () => {
@@ -207,25 +175,19 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     <div className="space-y-6">
       {/* TOP INFO */}
       <div className="flex items-center gap-2 justify-between">
+        <Button variant="ghost" onClick={() => router.back()} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
         <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/users?tab=users")}
+          variant="outline"
+          onClick={() => setShowEditUserForm(true)}
           className="gap-2"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Users
+          <Edit2 className="h-4 w-4" /> Edit User
         </Button>
-        <div className="ml-auto">
-          <Button
-            variant="outline"
-            onClick={() => setShowEditUserForm(true)}
-            className="gap-2"
-          >
-            <Edit2 className="h-4 w-4" /> Edit User
-          </Button>
-        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* USER INFO */}
         <Card className="lg:col-span-2 ">
           <CardHeader>
@@ -233,7 +195,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <p className="text-muted-foreground">Email:</p>
@@ -289,6 +251,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   handleRoleChange();
                 }}
                 disabled={
+                  currentUser?.id === user?.id ||
                   !permissions?.canChangeUserRoles ||
                   isSubmitting ||
                   userLoading
@@ -322,334 +285,17 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
         </Card>
 
         {/* USER ACTIVITY */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-10">
-              {/* TICKETS */}
-              <h5 className="text-md font-bold mb-4">Tickets</h5>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-                    {/* <TableHead className="text-center">Snapshot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.ticketHistory &&
-                    user?.ticketHistory.length > 0 &&
-                    user?.ticketHistory.map(
-                      (entry: TicketHistory, index: number) => {
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* TICKET */}
-                            <TableCell
-                              className="cursor-pointer"
-                              onClick={() =>
-                                router.push(
-                                  `/dashboard/tickets/${entry?.ticketId}`
-                                )
-                              }
-                            >
-                              <p className="font-semibold hover:underline pointer-events-auto">
-                                # {entry?.id.slice(0, 8)}
-                              </p>
-                            </TableCell>
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED BY */}
-                            <TableCell>
-                              {index === 0 ? (
-                                <p className="font-medium">{user?.name}</p>
-                              ) : (
-                                <p className="font-medium"></p>
-                              )}
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT OR GO TO TICKET */}
-                            {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${entry?.id}`}>
-                                <div className="flex gap-2 items-center justify-center">
-                                  <Eye className="h-4 w-4" />
-                                  <p>View</p>
-                                </div>
-                              </Link>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-
-              {/* OTHER USERS */}
-              <h5 className="text-md font-bold mt-4 mb-4">Other Users</h5>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-                    {/* <TableHead className="text-center">Snapshot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.otherUsersChanges &&
-                    user?.otherUsersChanges.length > 0 &&
-                    user?.otherUsersChanges.map(
-                      (entry: UserHistory, index: number) => {
-                        const self = user?.id === entry?.userId;
-                        if (self) return null;
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* OTHER USER */}
-                            <TableCell
-                              className="cursor-pointer"
-                              onClick={() => {
-                                if (self) {
-                                  toast.warning(
-                                    "Already viewing user's details"
-                                  );
-                                  return;
-                                }
-                                router.push(
-                                  `/dashboard/users/${entry?.userId}`
-                                );
-                              }}
-                            >
-                              <p className="font-semibold hover:underline pointer-events-auto">
-                                {/* # {entry?.id.slice(0, 8)} */}
-                                <p>
-                                  {/* TODO: */}
-                                  {findChangedByName(
-                                    entry?.changedById,
-                                    entry?.changedBy?.name ?? ""
-                                  )}
-                                </p>
-                              </p>
-                            </TableCell>
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED BY */}
-                            <TableCell
-                              className="cursor-pointer"
-                              onClick={() => {
-                                if (self) {
-                                  toast.warning(
-                                    "Already viewing user's details"
-                                  );
-                                  return;
-                                }
-                                router.push(
-                                  `/dashboard/users/${entry?.userId}`
-                                );
-                              }}
-                            >
-                              {index === 0 ? (
-                                <p className="font-medium">{user?.name}</p>
-                              ) : (
-                                <p className="font-medium"></p>
-                              )}
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT OR GO TO TICKET */}
-                            {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${entry?.id}`}>
-                                <div className="flex gap-2 items-center justify-center">
-                                  <Eye className="h-4 w-4" />
-                                  <p>View</p>
-                                </div>
-                              </Link>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* USER HISTORY */}
-        <div className="lg:col-span-3">
-          <Card className="bg-muted">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">User Updates</CardTitle>
-              <Button variant="ghost">
-                <History className="w-4 h-4" />
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-
-                    {/* <TableHead className="text-center">SnapShot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.userHistory &&
-                    user?.userHistory.length > 0 &&
-                    user?.userHistory.map(
-                      (entry: UserHistory, index: number) => {
-                        const self = user?.id === entry?.userId;
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* User */}
-                            <TableCell>
-                              {index === 0 ? (
-                                <p className="font-semibold">{user?.name}</p>
-                              ) : (
-                                <p className="font-semibold"></p>
-                              )}
-                            </TableCell>
-
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-
-                            {/* CHANGED BY */}
-                            <TableCell
-                              className="cursor-pointer"
-                              onClick={() => {
-                                router.push(
-                                  `/dashboard/users/${entry?.changedById}`
-                                );
-                              }}
-                            >
-                              <p>
-                                {/* TODO: */}
-                                {findChangedByName(
-                                  entry?.changedById,
-                                  entry?.changedBy?.name ?? ""
-                                )}
-                                {/* `#${entry?.changedById}` */}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT */}
-                            {/* <TableCell className="items-center justify-center">
-                              <div className="flex gap-2 items-center justify-center">
-                                <Eye className="h-4 w-4" />
-                                <p>View</p>
-                              </div>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
+        <section className="lg:col-span-3">
+          <div className="flex flex-row items-center justify-between">
+            <p className="text-lg font-bold">Recent Activity</p>
+          </div>
+          <div className="space-y-10">
+            <p className="text-md font-bold m-4 ml-2">Users</p>
+            <UserHistoryTable userId={id} />
+            <p className="text-md font-bold m-4 ml-2">Tickets</p>
+            <UserTicketHistoryTable userId={id} username={user?.name ?? ""} />
+          </div>
+        </section>
       </div>
 
       {/* EDIT USER */}

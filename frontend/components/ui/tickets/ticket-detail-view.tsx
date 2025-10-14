@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import TicketHistoryTable from "@/components/history-tables/tickets/history-table-ticket";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -26,7 +27,6 @@ import {
   CheckCircle,
   Clock,
   Edit,
-  Eye,
   History,
   User,
   X,
@@ -50,14 +50,6 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -414,11 +406,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     );
   }
 
-  console.log("ticket", ticket);
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center flex-col justify-center gap-4  sm:flex-row sm:justify-between ">
         {onClose && (
           <Button variant="ghost" size="sm" onClick={onClose} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back to Tickets
@@ -455,10 +445,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* TICKET HISTORY */}
         {showHistoryModal && (
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Ticket History</CardTitle>
@@ -470,90 +460,19 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 </Button>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Field</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Update</TableHead>
-                      <TableHead>Previous</TableHead>
-                      <TableHead>Changed By</TableHead>
-                      <TableHead className="text-center">SnapShot</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ticket?.ticketHistory &&
-                      ticket?.ticketHistory.length > 0 &&
-                      ticket?.ticketHistory.map((entry) => {
-                        return (
-                          <TableRow key={entry.id}>
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {entry?.field &&
-                                  capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {new Date(
-                                  entry?.changedAt
-                                ).toLocaleDateString()}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {entry?.newValue &&
-                                  capitalizeEveryWord(
-                                    entry?.newValue.replace("_", " ")
-                                  )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {entry?.previousValue &&
-                                  capitalizeEveryWord(
-                                    entry?.previousValue.replace("_", " ")
-                                  )}
-                              </p>
-                            </TableCell>
-
-                            {/* CHANGED BY */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedBy?.name
-                                  ? entry?.changedBy?.name
-                                  : `#${entry?.changedById.slice(0, 8)}`}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT */}
-                            <TableCell className="bg-yellow-50 items-center justify-center">
-                              <div className="flex gap-2 items-center justify-center">
-                                <Eye className="h-4 w-4" />
-                                <p>View</p>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
+                <TicketHistoryTable ticketId={ticket.id} />
               </CardContent>
             </Card>
           </div>
         )}
-
+        {/* TICKET DETAILS */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={getStatusColor(ticket.status)}>
                       {ticket.status.replace("_", " ")}
                     </Badge>
@@ -623,7 +542,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
           <TicketCommentsSection ticketId={ticket.id} />
         </div>
-
         <div className="lg:col-span-1 space-y-6">
           <div className="space-y-6">
             <Card>

@@ -1,8 +1,13 @@
 "use client";
 
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
-// import { useStore } from "@/app/store-provider";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -32,12 +37,6 @@ import { useUserRole } from "@/lib/hooks/use-user-role";
 import type { MarketCenter, PrismaUser, TicketCategory } from "@/lib/types";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "../../alert-dialog";
 
 export default function MarketCenterTicketCategories({
   marketCenter,
@@ -65,7 +64,7 @@ export default function MarketCenterTicketCategories({
     defaultAssigneeId: "none",
   });
 
-  const { role, permissions } = useUserRole();
+  const { permissions } = useUserRole();
 
   const teamMembers: PrismaUser[] =
     marketCenter && marketCenter?.users
@@ -333,8 +332,10 @@ export default function MarketCenterTicketCategories({
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row space-x-2 items-center justify-between mb-3">
-          <CardTitle>Ticket Categories</CardTitle>
+        <CardHeader className="flex flex-wrap flex-row gap-4 mb-3 items-center justify-center sm:justify-between ">
+          <CardTitle>
+            Ticket Categories ({ticketCategories?.length ?? 0})
+          </CardTitle>
           <Button
             variant={"secondary"}
             onClick={() => setOpenCategoryForm(true)}
@@ -356,13 +357,15 @@ export default function MarketCenterTicketCategories({
               return (
                 <div
                   key={category?.id}
-                  className="border-b rounded p-2 pb-6 flex flex-row item-center justify-between"
+                  className="flex flex-col sm:flex-row items-start items-center justify-between border-b p-2 pb-6 last:border-0 last:pb-0 w-full gap-4"
                 >
-                  <div className="space-y-2">
-                    <p className="font-semibold text-md">{category?.name}</p>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <p className="font-medium text-sm leading-5 text-ellipsis">
+                      {category?.name}
+                    </p>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <p className="font-medium text-muted-foreground text-sm max-w-2/3 overflow-hidden whitespace-nowrap text-ellipsis">
+                        <p className="text-xs text-muted-foreground mt-0.5 text-ellipsis">
                           {category?.description ?? "No Description"}
                         </p>
                       </TooltipTrigger>
@@ -371,26 +374,24 @@ export default function MarketCenterTicketCategories({
                       </TooltipContent>
                     </Tooltip>
 
-                    <div className="flex gap-4">
-                      <p className="font-medium text-muted-foreground text-sm">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      <span>
                         {category?.defaultAssignee?.name
                           ? `Default: ${category?.defaultAssignee?.name}`
                           : "No default user"}
-                      </p>
-                      <p className="font-medium text-muted-foreground text-sm">
-                        Tickets: 0
-                      </p>
-                      <p className="font-medium text-muted-foreground text-sm">
+                      </span>
+                      <span>Tickets: 0</span>
+                      <span>
                         Created on{" "}
                         {category?.createdAt
                           ? new Date(category?.createdAt).toLocaleDateString()
                           : "-"}
-                      </p>
+                      </span>
                     </div>
                   </div>
-                  <div>
+                  <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full items-center sm:w-auto sm:justify-end">
                     <Button
-                      variant={"ghost"}
+                      variant={"outline"}
                       onClick={() => {
                         setEditingTicketCategory(category);
                         setCategoryToRemove(null);
@@ -407,7 +408,7 @@ export default function MarketCenterTicketCategories({
                       Edit
                     </Button>
                     <Button
-                      variant={"ghost"}
+                      variant={"outline"}
                       onClick={() => {
                         setEditingTicketCategory(null);
                         setCategoryToRemove(category);

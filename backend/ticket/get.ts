@@ -2,8 +2,6 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canAccessTicket } from "../auth/permissions";
-import { mapTicketHistorySnapshot } from "../utils";
 
 export interface GetTicketRequest {
   ticketId: string;
@@ -21,32 +19,14 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
     auth: true,
   },
   async (req) => {
-    const userContext = await getUserContext();
-
-    // const hasAccess = await canAccessTicket(userContext, req.ticketId);
-    // if (!hasAccess) {
-    //   throw APIError.permissionDenied(
-    //     "You do not have permission to view this ticket"
-    //   );
-    // }
+    await getUserContext();
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
       include: {
         category: true,
-        creator: {
-          include: {
-            ticketHistory: true,
-          },
-        },
-        assignee: {
-          include: {
-            ticketHistory: true,
-          },
-        },
-        ticketHistory: {
-          include: { changedBy: true },
-        },
+        creator: true,
+        assignee: true,
         _count: {
           select: {
             comments: true,
@@ -75,19 +55,14 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
       creator: {
         ...ticket.creator,
         name: ticket.creator.name ?? "",
-        ticketHistory: mapTicketHistorySnapshot(ticket.creator?.ticketHistory),
       },
 
       assignee: ticket.assignee
         ? {
             ...ticket.assignee,
             name: ticket.assignee.name ?? "",
-            ticketHistory: mapTicketHistorySnapshot(
-              ticket.assignee.ticketHistory
-            ),
           }
         : null,
-      ticketHistory: mapTicketHistorySnapshot(ticket.ticketHistory),
       commentCount: ticket._count.comments,
     };
 

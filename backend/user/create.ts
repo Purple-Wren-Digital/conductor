@@ -3,7 +3,7 @@ import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { $Enums } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
-import { mapTicketHistorySnapshot } from "../utils";
+import { mapHistorySnapshot } from "../utils";
 
 export interface CreateUserRequest {
   email: string;
@@ -101,7 +101,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       user: {
         ...result.newUser,
         name: result.newUser.name ?? "",
-        userHistory: mapTicketHistorySnapshot([result.history]),
+        userHistory: mapHistorySnapshot([result.history]),
       },
     };
   }

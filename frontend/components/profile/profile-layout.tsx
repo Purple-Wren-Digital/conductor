@@ -19,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
+import UserHistoryTable from "@/components/history-tables/user/history-table-user";
+import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,49 +29,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import {
   MarketCenter,
   PrismaUser,
-  TicketHistory,
   UserEditFormData,
-  UserHistory,
   UserRole,
 } from "@/lib/types";
 import {
-  capitalizeEveryWord,
   getRoleBadgeStyle,
   getRoleColor,
-  ROLE_DESCRIPTIONS,
+  getRoleDescription,
   ROLE_ICONS,
   roleOptions,
 } from "@/lib/utils";
-import {
-  Building,
-  Edit2,
-  Hash,
-  History,
-  Mail,
-  User,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Building, Edit2, Hash, Mail, User } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchOneUser } from "@/hooks/use-users";
 
-//EACH TABLE TODO: PAGINATE + SORT + FILTER
-
 export default function UserProfileLayout() {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { currentUser } = useStore();
@@ -79,8 +59,6 @@ export default function UserProfileLayout() {
   );
   const user: PrismaUser = userData ?? ({} as PrismaUser);
   const marketCenter: MarketCenter = userData?.marketCenter ?? {};
-
-  const { role } = useUserRole();
 
   const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [formData, setFormData] = useState<UserEditFormData>({
@@ -106,17 +84,6 @@ export default function UserProfileLayout() {
     ) : (
       <User className="h-4 w-4 text-muted-foreground" />
     );
-  };
-
-  const getRoleDescription = (userRole: UserRole) => {
-    const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
-    return description;
-  };
-
-  const findChangedByName = (userId: string, name?: string) => {
-    if (name) return;
-    if (userId === user?.id) return user?.name;
-    if (userId === currentUser?.id) return currentUser?.name;
   };
 
   const resetFormAndClose = () => {
@@ -195,25 +162,6 @@ export default function UserProfileLayout() {
     setIsSubmitting(false);
   };
 
-  const handleRoleChange = async () => {
-    if (!permissions?.canManageAllUsers) {
-      toast.error("You do not have permission to update users");
-      return;
-    }
-    setIsSubmitting(true);
-    updateUserMutation.mutate(user?.id);
-    setIsSubmitting(false);
-  };
-  // if (userLoading) {
-  //   return (
-  //     <Card className="flex items-center justify-center h-96">
-  //       <div className="text-center">
-  //         <p className="text-muted-foreground">Loading profile...</p>
-  //       </div>
-  //     </Card>
-  //   );
-  // }
-
   if (!currentUser) {
     return (
       <div className="text-center py-8">
@@ -223,26 +171,27 @@ export default function UserProfileLayout() {
   }
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* USER INFO */}
-        <Card className="lg:col-span-2 ">
+        <Card className="lg:col-span-3 ">
           <CardHeader>
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2">
               <CardTitle className="text-xl">{user?.name}</CardTitle>
               <CardDescription>
                 {!currentUser ||
                   (!user &&
                     "Unable to find your profile information. Please contact support.")}
               </CardDescription>
-              <div className="ml-auto">
+              {/* <div className="ml-auto">
                 <Button
                   variant="outline"
                   onClick={() => setShowEditUserForm(true)}
                   className="gap-2"
+                  disabled
                 >
                   <Edit2 className="h-4 w-4" /> Edit Profile
                 </Button>
-              </div>
+              </div> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -288,335 +237,23 @@ export default function UserProfileLayout() {
             </div>
           </CardContent>
         </Card>
-        {/* QUICK EDITS */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Edit</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="text-sm font-medium">Role *</label>
-            <Select
-              value={user?.role}
-              onValueChange={(value: UserRole) => {
-                setFormData({ ...formData, role: value });
-                handleRoleChange();
-              }}
-              disabled={
-                !permissions?.canChangeUserRoles || isSubmitting || userLoading
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    <div className="flex items-center gap-2">
-                      {getRoleIcon(role)}
-                      {role}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* <Label>Market Center</Label>
-            <TeamSwitcher
-              type="User Profile"
-              selectedMarketCenterId={selectedMarketCenterId}
-              setSelectedMarketCenterId={setSelectedMarketCenterId}
-              handleUpdateMarketCenter={handleUpdateMarketCenter}
-            /> */}
-          </CardContent>
-        </Card>
 
         {/* USER ACTIVITY */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-10">
-              {/* TICKETS */}
-              <h5 className="text-md font-bold mb-4">Tickets</h5>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-                    {/* <TableHead className="text-center">Snapshot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.ticketHistory &&
-                    user?.ticketHistory.length > 0 &&
-                    user?.ticketHistory.map(
-                      (entry: TicketHistory, index: number) => {
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* TICKET */}
-                            <TableCell
-                              onClick={() =>
-                                router.push(`/dashboard/tickets/${entry?.id}`)
-                              }
-                            >
-                              <p className="font-semibold hover:underline pointer-events-auto">
-                                # {entry?.id.slice(0, 8)}
-                              </p>
-                            </TableCell>
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED BY */}
-                            <TableCell>
-                              {index === 0 ? (
-                                <p className="font-medium">{user?.name}</p>
-                              ) : (
-                                <p className="font-medium"></p>
-                              )}
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT OR GO TO TICKET */}
-                            {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${entry?.id}`}>
-                                <div className="flex gap-2 items-center justify-center">
-                                  <Eye className="h-4 w-4" />
-                                  <p>View</p>
-                                </div>
-                              </Link>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-
-              {/* OTHER USERS */}
-              <h5 className="text-md font-bold mt-4 mb-4">Other Users</h5>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-                    {/* <TableHead className="text-center">Snapshot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.otherUsersChanges &&
-                    user?.otherUsersChanges.length > 0 &&
-                    user?.otherUsersChanges.map(
-                      (entry: UserHistory, index: number) => {
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* USER */}
-                            <TableCell
-                              onClick={() =>
-                                router.push(`/dashboard/users/${entry?.id}`)
-                              }
-                            >
-                              <p className="font-semibold hover:underline pointer-events-auto">
-                                # {entry?.id.slice(0, 8)}
-                              </p>
-                            </TableCell>
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED BY */}
-                            <TableCell>
-                              {index === 0 ? (
-                                <p className="font-medium">{user?.name}</p>
-                              ) : (
-                                <p className="font-medium"></p>
-                              )}
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT OR GO TO TICKET */}
-                            {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${entry?.id}`}>
-                                <div className="flex gap-2 items-center justify-center">
-                                  <Eye className="h-4 w-4" />
-                                  <p>View</p>
-                                </div>
-                              </Link>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* USER HISTORY */}
-        <div className="lg:col-span-3">
-          <Card className="bg-muted">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">User Updates</CardTitle>
-              <Button variant="ghost">
-                <History className="w-4 h-4" />
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table className="border rounded">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Updated Data</TableHead>
-                    <TableHead>Previous Data</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changed On</TableHead>
-
-                    {/* <TableHead className="text-center">SnapShot</TableHead> */}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {user &&
-                    user?.userHistory &&
-                    user?.userHistory.length > 0 &&
-                    user?.userHistory.map(
-                      (entry: UserHistory, index: number) => {
-                        return (
-                          <TableRow key={entry.id + index}>
-                            {/* User */}
-
-                            <TableCell>
-                              {index === 0 ? (
-                                <p className="font-semibold">{user?.name}</p>
-                              ) : (
-                                <p className="font-semibold"></p>
-                              )}
-                            </TableCell>
-
-                            {/* FIELD */}
-                            <TableCell>
-                              <p className="font-semibold">
-                                {capitalizeEveryWord(entry?.field)}
-                              </p>
-                            </TableCell>
-                            {/* NEW VALUE */}
-                            <TableCell>
-                              <p className="font-medium">
-                                {capitalizeEveryWord(
-                                  entry?.newValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-                            {/* OLD VALUE */}
-                            <TableCell>
-                              <p>
-                                {capitalizeEveryWord(
-                                  entry?.previousValue.replace("_", " ")
-                                )}
-                              </p>
-                            </TableCell>
-
-                            {/* CHANGED BY */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedBy?.name
-                                  ? entry?.changedBy?.name
-                                  : findChangedByName(entry?.changedById)}
-                                {/* `#${entry?.changedById}` */}
-                              </p>
-                            </TableCell>
-                            {/* CHANGED ON */}
-                            <TableCell>
-                              <p>
-                                {entry?.changedAt
-                                  ? new Date(
-                                      entry?.changedAt
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </p>
-                            </TableCell>
-                            {/* SNAPSHOT */}
-                            {/* <TableCell className="items-center justify-center">
-                              <div className="flex gap-2 items-center justify-center">
-                                <Eye className="h-4 w-4" />
-                                <p>View</p>
-                              </div>
-                            </TableCell> */}
-                          </TableRow>
-                        );
-                      }
-                    )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
+        <section className="lg:col-span-3 ">
+          <div className="flex flex-row items-center justify-between">
+            <p className="text-lg font-bold">Recent Activity</p>
+          </div>
+          <div className="space-y-10">
+            <p className="text-md font-bold m-4 ml-2">Users</p>
+            <UserHistoryTable userId={user?.id} />
+            <p className="text-md font-bold m-4 ml-2">Tickets</p>
+            <UserTicketHistoryTable
+              userId={user?.id}
+              username={user?.name ?? ""}
+            />
+          </div>
+        </section>
       </div>
-
       {/* EDIT USER */}
       <Dialog open={showEditUserForm} onOpenChange={setShowEditUserForm}>
         <DialogContent className="max-w-md">

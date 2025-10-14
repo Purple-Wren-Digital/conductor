@@ -4,7 +4,7 @@ import type { Ticket, Urgency } from "./types";
 import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
-import { mapTicketHistorySnapshot } from "../utils";
+import { mapHistorySnapshot } from "../utils";
 
 export interface CreateTicketRequest {
   title: string;
@@ -85,7 +85,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         ticket: {
           ...result.ticket,
           commentCount: result.ticket._count.comments,
-          ticketHistory: mapTicketHistorySnapshot([result.history]),
+          ticketHistory: mapHistorySnapshot([result.history]),
           categoryId: result?.ticket?.categoryId ?? null,
           creator: {
             ...result.ticket.creator,

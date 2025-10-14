@@ -2,7 +2,6 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User } from "../ticket/types";
 import { getAuthData } from "~encore/auth";
-import { mapTicketHistorySnapshot } from "../utils";
 
 export interface GetUserRequest {
   id: string;
@@ -28,9 +27,6 @@ export const get = api<GetUserRequest, GetUserResponse>(
       where: { id: req.id },
       include: {
         marketCenter: true,
-        ticketHistory: true, //{ changedBy: true},
-        userHistory: true, //{ changedBy: true},
-        otherUsersChanges: true,
       },
     });
 
@@ -40,9 +36,6 @@ export const get = api<GetUserRequest, GetUserResponse>(
 
     const safeUser = {
       ...user,
-      ticketHistory: mapTicketHistorySnapshot(user.ticketHistory),
-      userHistory: mapTicketHistorySnapshot(user.userHistory),
-      otherUsersChanges: mapTicketHistorySnapshot(user.otherUsersChanges),
       marketCenter: user.marketCenter ?? undefined,
     };
 

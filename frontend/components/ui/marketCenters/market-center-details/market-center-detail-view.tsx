@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useStore } from "@/app/store-provider";
+import { useCallback, useState } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +18,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs/base-tabs";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
-import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/lib/hooks/use-user-role";
 import type {
   PrismaUser,
@@ -60,7 +58,7 @@ export default function MarketCenterDetailView({
 
   const queryClient = useQueryClient();
 
-  const { role, permissions } = useUserRole();
+  const { role } = useUserRole();
 
   const { data: marketCenter } = useFetchMarketCenter(role, marketCenterId);
 
@@ -76,7 +74,6 @@ export default function MarketCenterDetailView({
       selectedUsers: marketCenter?.users as PrismaUser[],
       ticketCategories: marketCenter?.ticketCategories as TicketCategory[],
     });
-  // const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const invalidateMarketCenter = queryClient.invalidateQueries({
@@ -94,41 +91,6 @@ export default function MarketCenterDetailView({
     return await getAccessToken();
   }, []);
 
-  // const fetchActiveUsers = useCallback(async () => {
-  //   // setIsLoading(true);
-  //   const params = !permissions?.canCreateUsers ? `?role=AGENT` : "";
-
-  //   try {
-  //     const accessToken = await getAuth0AccessToken();
-  //     if (!accessToken) {
-  //       throw new Error("No token fetched");
-  //     }
-  //     const response = await fetch(`${API_BASE}/users${params}`, {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${accessToken}`,
-  //       },
-  //     });
-
-  //     if (!response.ok) throw new Error("Failed to fetch users");
-  //     const data: { users: PrismaUser[] } = await response.json();
-
-  //     const needsAssignment: PrismaUser[] = data.users.filter((user) => {
-  //       if (!user?.marketCenterId) return user;
-  //     });
-  //     setUnassignedUsers(needsAssignment || []);
-  //   } catch (error) {
-  //     console.error("Error fetching users", error);
-  //   } finally {
-  //     // setIsLoading(false);
-  //   }
-  // }, [getAuth0AccessToken]);
-
-  // useEffect(() => {
-  //   if (!showEditMCForm) return;
-  //   // fetchActiveUsers();
-  // }, [showEditMCForm]);
   const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
     UsersResponse,
     Error,
@@ -178,7 +140,7 @@ export default function MarketCenterDetailView({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-xl">
+              <CardTitle className="flex items-center gap-2 md:text-xl">
                 <Building className="h-5 w-5" />
                 {marketCenter && marketCenter?.name && `${marketCenter.name} `}
                 Market Center
@@ -220,15 +182,15 @@ export default function MarketCenterDetailView({
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="team" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Team
+            <p className="hidden sm:inline">Team</p>
           </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Tags className="h-4 w-4" />
-            Ticket Categories
+            <p className="hidden sm:inline">Ticket Categories</p>
           </TabsTrigger>
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <History className="h-4 w-4" />
-            Activity
+            <p className="hidden sm:inline">Activity</p>
           </TabsTrigger>
 
           {/* <TabsTrigger
@@ -263,7 +225,7 @@ export default function MarketCenterDetailView({
         </TabsContent>
 
         <TabsContent value="activity">
-          {marketCenter && <MarketCenterHistory marketCenter={marketCenter} />}
+          <MarketCenterHistory marketCenterId={marketCenterId} />
         </TabsContent>
 
         {/* <TabsContent value="import-export">

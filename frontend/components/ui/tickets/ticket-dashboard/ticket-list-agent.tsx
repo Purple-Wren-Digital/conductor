@@ -155,7 +155,8 @@ export default function AgentTicketList() {
   });
 
   const { data: ticketCategoryData } = useFetchMarketCenterCategories(
-    currentUser?.marketCenterId ?? "");
+    currentUser?.marketCenterId ?? ""
+  );
   const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
 
   const clearFilters = () => {
@@ -190,15 +191,15 @@ export default function AgentTicketList() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <CardTitle>Assigned Tickets ({totalTickets})</CardTitle>
-          </div>
+        <div className="flex flex-col gap-4 items-center justify-between sm:flex-row">
+          <CardTitle className="space-y-2 text-left w-full sm:w-fit">
+            Assigned Tickets ({totalTickets})
+          </CardTitle>
         </div>
 
         <div className="space-y-4 mt-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+            <div className="relative flex-1 w-full sm:w-fit">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tickets..."
@@ -210,7 +211,7 @@ export default function AgentTicketList() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 bg-transparent"
+              className="gap-2 bg-transparent w-full sm:w-fit"
               onClick={() => setShowFilters(!showFilters)}
               type="button"
             >
@@ -228,7 +229,7 @@ export default function AgentTicketList() {
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="gap-2"
+                className="gap-2 w-full sm:w-fit"
                 type="button"
               >
                 <X className="h-4 w-4" />
@@ -422,8 +423,8 @@ export default function AgentTicketList() {
             ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="flex  items-center pb-2 border-b space-x-2">
-            <div className="space-y-2">
+          <div className="flex flex-wrap items-center pb-2 border-b space-x-2 gap-4 w-full">
+            <div className="space-y-2 w-full sm:w-fit">
               <Select
                 value={sortBy}
                 onValueChange={(value: TicketSortBy) => setSortBy(value)}
@@ -447,7 +448,7 @@ export default function AgentTicketList() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full sm:w-fit">
               <Select
                 value={sortDir}
                 onValueChange={(value: OrderBy) => setSortDir(value)}

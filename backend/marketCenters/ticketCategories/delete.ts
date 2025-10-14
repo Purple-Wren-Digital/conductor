@@ -47,7 +47,7 @@ export const deleteCategory = api<
         data: {
           marketCenterId: ticketCategoryToDelete.marketCenterId,
           action: "DELETE",
-          field: "ticketCategories",
+          field: "category",
           previousValue: ticketCategoryToDelete?.name,
           newValue: "-",
           snapshot: ticketCategoryToDelete,

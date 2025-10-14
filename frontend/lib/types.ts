@@ -62,6 +62,7 @@ export interface TicketHistory {
   changedAt: Date;
   changedById: string;
   changedBy?: PrismaUser;
+  ticket?: Ticket;
 }
 
 export interface UserHistory {

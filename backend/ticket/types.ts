@@ -64,7 +64,7 @@ export interface Ticket {
   commentCount?: number | null;
   deletedAt?: Date | null;
   isActive?: boolean;
-  ticketHistory: TicketHistory[];
+  ticketHistory?: TicketHistory[];
 }
 
 export interface Comment {

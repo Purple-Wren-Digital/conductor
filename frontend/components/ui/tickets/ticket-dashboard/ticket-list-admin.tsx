@@ -358,21 +358,24 @@ export default function AdminTicketList() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Tickets ({totalTickets})</CardTitle>
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <CardTitle className="space-y-2 text-left w-full sm:w-fit">
+              Tickets ({totalTickets})
+            </CardTitle>
 
-            <div className="flex items-center gap-4">
-              <div className="space-y-2 w-50">
-                <TeamSwitcher
-                  selectedMarketCenterId={selectedMarketCenterId}
-                  setSelectedMarketCenterId={setSelectedMarketCenterId}
-                  handleMarketCenterSelected={() => {
-                    setSelectedCategory("all");
-                    setCurrentPage(1);
-                  }}
-                />
-              </div>
-              <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
+            <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
+              <TeamSwitcher
+                selectedMarketCenterId={selectedMarketCenterId}
+                setSelectedMarketCenterId={setSelectedMarketCenterId}
+                handleMarketCenterSelected={() => {
+                  setSelectedCategory("all");
+                  setCurrentPage(1);
+                }}
+              />
+              <Button
+                className="gap-2 w-full sm:w-fit"
+                onClick={() => setIsCreateOpen(true)}
+              >
                 <Plus className="h-4 w-4" />
                 Create Ticket
               </Button>
@@ -380,8 +383,8 @@ export default function AdminTicketList() {
           </div>
 
           <div className="space-y-4 mt-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
+            <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+              <div className="relative flex-1 w-full sm:w-fit">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search tickets..."
@@ -393,7 +396,7 @@ export default function AdminTicketList() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 bg-transparent"
+                className="gap-2 bg-transparent w-full sm:w-fit"
                 onClick={() => setShowFilters(!showFilters)}
                 type="button"
               >
@@ -411,7 +414,7 @@ export default function AdminTicketList() {
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-fit"
                   type="button"
                 >
                   <X className="h-4 w-4" />
@@ -422,7 +425,7 @@ export default function AdminTicketList() {
 
             {showFilters && (
               <Card className="p-4 bg-muted/50">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Assignee</Label>
                     <Select
@@ -590,7 +593,7 @@ export default function AdminTicketList() {
                   </div>
                   {selectedMarketCenterId &&
                     selectedMarketCenterId !== "all" && (
-                      <div className="space-y-2 col-span-3">
+                      <div className="space-y-2 lg:col-span-3">
                         <Label>Category</Label>
                         <RadioGroup
                           value={selectedCategory}
@@ -599,7 +602,7 @@ export default function AdminTicketList() {
                           aria-label="Filter by ticket categories"
                           className="flex flex-wrap gap-4 items-center"
                         >
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
                             <RadioGroupItem value={"all"} id={`category-all`} />
                             <Label
                               htmlFor={`category-all`}
@@ -614,7 +617,7 @@ export default function AdminTicketList() {
                               return (
                                 <div
                                   key={category?.id}
-                                  className="flex flex-wrap gap-2"
+                                  className="flex items-center gap-2"
                                 >
                                   <RadioGroupItem
                                     value={category?.id}
@@ -645,9 +648,9 @@ export default function AdminTicketList() {
               ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
             }`}
           >
-            <div className="flex justify-between items-center pb-2 border-b ">
+            <div className="flex flex-wrap justify-between items-center pb-2 border-b gap-4 w-full">
               {permissions?.canBulkUpdate && (
-                <div className="h-9 px-4 py-2 has-[>svg]:px-3 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground">
+                <div className="w-full sm:w-fit h-9 px-4 py-2 has-[>svg]:px-3 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground">
                   <Checkbox
                     checked={
                       selectedTickets.length === tickets.length &&
@@ -660,9 +663,9 @@ export default function AdminTicketList() {
                   <span className="text-sm font-medium">Select All</span>
                 </div>
               )}
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap items-center space-x-2 gap-4 items-center w-full sm:w-fit">
                 {/* SORT BY */}
-                <div className="space-y-2">
+                <div className="space-y-2 w-full sm:w-fit">
                   <Select
                     value={sortBy}
                     onValueChange={(value: TicketSortBy) => {
@@ -690,7 +693,7 @@ export default function AdminTicketList() {
                   </Select>
                 </div>
                 {/* ORDER BY */}
-                <div className="space-y-2">
+                <div className="space-y-2 w-full sm:w-fit">
                   <Select
                     value={sortDir}
                     onValueChange={(value: OrderBy) => {

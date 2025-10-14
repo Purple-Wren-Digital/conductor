@@ -37,11 +37,6 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
       where,
       include: {
         users: true,
-        marketCenterHistory: {
-          include: {
-            changedBy: true,
-          },
-        },
         ticketCategories: true,
       },
     });

@@ -61,7 +61,7 @@ export const createCategory = api<
         data: {
           marketCenterId: marketCenter.id,
           action: "CREATE",
-          field: "ticket-category",
+          field: "category",
           newValue: req.name,
           snapshot: ticketCategory,
           changedAt: new Date(),

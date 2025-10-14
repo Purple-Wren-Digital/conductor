@@ -23,7 +23,7 @@ export default function PagesAndItemsCount({
   totalPages,
 }: PagesAndItemsCountProps) {
   return (
-    <div className="flex items-center justify-between pt-4">
+    <div className="flex items-center flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-4">
       <div className="text-sm text-muted-foreground">
         Showing{" "}
         {formatPaginationText({

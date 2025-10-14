@@ -3,7 +3,6 @@ import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
-import { mapTicketHistorySnapshot } from "../utils";
 
 export interface UpdateUserRequest {
   id: string;
@@ -148,9 +147,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         data: updateUserData,
         include: {
           marketCenter: true,
-          ticketHistory: true,
-          userHistory: true,
-          otherUsersChanges: true,
         },
       }),
       prisma.userHistory.createMany({
@@ -161,11 +157,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const safeUser = {
       ...updatedUser,
       name: updatedUser?.name ?? "",
-      ticketHistory: mapTicketHistorySnapshot(updatedUser?.ticketHistory),
-      userHistory: mapTicketHistorySnapshot(updatedUser?.userHistory),
-      otherUsersChanges: mapTicketHistorySnapshot(
-        updatedUser?.otherUsersChanges
-      ),
       marketCenter: updatedUser.marketCenter ?? undefined,
     };
 

@@ -1,8 +1,8 @@
 import {
-  Shield,
-  User,
   Crown,
   LucideProps,
+  Shield,
+  User,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -70,17 +70,22 @@ export const ROLE_DESCRIPTIONS: {
   AGENT: "Can view and manage assigned tickets",
 };
 
-export const getRoleDescription = (role?: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "Full access to all settings and data";
-    case "STAFF":
-      return "Create, view and manage their team and associated tickets";
-    case "AGENT":
-      return "View and update assigned tickets";
-    default:
-      return "";
-  }
+// export const getRoleDescription = (role?: string) => {
+//   switch (role) {
+//     case "ADMIN":
+//       return "Full access to all settings and data";
+//     case "STAFF":
+//       return "Create, view and manage their team and associated tickets";
+//     case "AGENT":
+//       return "View and update assigned tickets";
+//     default:
+//       return "";
+//   }
+// };
+
+export const getRoleDescription = (userRole: UserRole) => {
+  const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
+  return description;
 };
 
 export const getRoleColor = (role: string) => {

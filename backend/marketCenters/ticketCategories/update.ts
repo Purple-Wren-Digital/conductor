@@ -40,6 +40,7 @@ export const updateCategory = api<
 
     const oldTicketCategory = await prisma.ticketCategory.findUnique({
       where: { id: req.id },
+      include: { defaultAssignee: true },
     });
 
     if (!oldTicketCategory || !oldTicketCategory?.id) {
@@ -56,9 +57,10 @@ export const updateCategory = api<
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
-        field: "category-name",
+        field: "category name",
         previousValue: oldTicketCategory?.name ?? "",
         newValue: req.name,
+        snapshot: JSON.stringify(oldTicketCategory),
       });
     }
     // DESCRIPTION
@@ -71,9 +73,10 @@ export const updateCategory = api<
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
-        field: "category-description",
+        field: "category description",
         previousValue: oldTicketCategory?.description ?? "",
         newValue: req.description,
+        snapshot: JSON.stringify(oldTicketCategory),
       });
     }
     // DEFAULT ASSIGNMENT
@@ -81,15 +84,42 @@ export const updateCategory = api<
       req?.defaultAssigneeId &&
       req?.defaultAssigneeId !== oldTicketCategory.defaultAssigneeId
     ) {
+      let newAssignee: any = {};
+      if (req.defaultAssigneeId !== "none") {
+        const user = await prisma.user.findUnique({
+          where: { id: req.defaultAssigneeId },
+        });
+        if (user) {
+          newAssignee.name = user?.name ?? "N/a";
+          newAssignee.id = user.id;
+        } else {
+          throw APIError.notFound("Default assignee user not found");
+        }
+      }
+
       updateCategoryData.defaultAssigneeId =
         req.defaultAssigneeId === "none" ? undefined : req.defaultAssigneeId;
+
       marketCenterHistory.push({
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
-        field: "category-default-assignee",
-        previousValue: oldTicketCategory?.defaultAssigneeId ?? "none",
-        newValue: req.defaultAssigneeId,
+        field: "category default assignee",
+        previousValue:
+          oldTicketCategory &&
+          oldTicketCategory?.defaultAssignee &&
+          oldTicketCategory?.defaultAssignee?.name &&
+          oldTicketCategory?.defaultAssigneeId
+            ? JSON.stringify({
+                name: oldTicketCategory.defaultAssignee.name,
+                id: oldTicketCategory.defaultAssigneeId,
+              })
+            : null,
+        newValue:
+          newAssignee && newAssignee?.name && newAssignee?.id
+            ? JSON.stringify(newAssignee)
+            : null,
+        snapshot: JSON.stringify(oldTicketCategory),
       });
     }
     // MARKET CENTER ID

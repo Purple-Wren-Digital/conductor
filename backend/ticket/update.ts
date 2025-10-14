@@ -1,9 +1,9 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import type { Ticket, TicketHistory, TicketStatus, Urgency } from "./types";
+import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket } from "../auth/permissions";
-import { mapTicketHistorySnapshot, mapUser } from "../utils";
+import { mapHistorySnapshot, mapUser } from "../utils";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -194,7 +194,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         ...ticket,
         creator: mapUser(ticket.creator),
         assignee: mapUser(ticket.assignee),
-        ticketHistory: mapTicketHistorySnapshot(ticket.ticketHistory),
+        ticketHistory: mapHistorySnapshot(ticket.ticketHistory),
       };
 
       return { ticket: safeTicket } as UpdateTicketResponse;

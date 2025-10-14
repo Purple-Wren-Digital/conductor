@@ -126,31 +126,3 @@ export function useFetchOneUser(id?: string) {
   });
 }
 
-// FETCH A USER'S HISTORY
-// type UserHistoryQuery = {
-//   userHistoryQueryKey: readonly [string, Record<string, string>];
-//   queryParams: URLSearchParams;
-//   userId: string;
-// };
-
-// export function useFetchUserHistory({
-//   userHistoryQueryKey,
-//   queryParams,
-//   userId,
-// }: UserHistoryQuery) {
-//   return useQuery({
-//     queryKey: userHistoryQueryKey, //["user-history", id],
-//     queryFn: async () => {
-//       const accessToken = await getAuth0AccessToken();
-//       const response = await fetch(`/api/users/${userId}`, {
-//         headers: {
-//           Authorization: `Bearer ${accessToken}`,
-//         },
-//       });
-//       if (!response.ok) throw new Error("Failed to fetch user");
-//       const data = await response.json();
-//       return data;
-//     },
-//     enabled: !!userId,
-//   });
-// }

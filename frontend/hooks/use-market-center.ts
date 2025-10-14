@@ -149,7 +149,6 @@ export function useFetchMarketCenterCategories(marketCenterId?: string) {
             "Failed to fetch ticket categories for market center"
           );
         const data = await response.json();
-        console.log("MARKET CENTER CATEGORIES", data);
         return data;
       } catch (error) {
         console.error("Failed to fetch market center - ", error);

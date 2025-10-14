@@ -1,7 +1,7 @@
 "use client";
 
-import { useStore } from "@/app/store-provider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import {
   Table,
   TableBody,
@@ -10,8 +10,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { MarketCenter, MarketCenterHistory } from "@/lib/types";
-import { capitalizeEveryWord } from "@/lib/utils";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useFetchMarketCenterHistory } from "@/hooks/use-history";
+import type { MarketCenterHistory, OrderBy } from "@/lib/types";
+import { calculateTotalPages, capitalizeEveryWord } from "@/lib/utils";
 import {
   ArrowRightLeft,
   CircleMinus,
@@ -22,14 +24,50 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function MarketCenterHistory({
-  marketCenter,
+  marketCenterId,
 }: {
-  marketCenter?: MarketCenter;
+  marketCenterId?: string;
 }) {
   const router = useRouter();
-  const { currentUser } = useStore();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [orderBy, setOrderBy] = useState<OrderBy>("desc");
+
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+
+    params.append("orderBy", orderBy);
+    params.append("limit", String(itemsPerPage));
+    params.append("offset", String((currentPage - 1) * itemsPerPage));
+    return params;
+  }, [orderBy, currentPage, itemsPerPage]);
+
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
+  const marketCenterHistoryQueryKey = useMemo(
+    () => ["market-center-history", marketCenterId, queryKeyParams] as const,
+    [queryKeyParams]
+  );
+  const { data: marketCenterHistoryData, isLoading } =
+    useFetchMarketCenterHistory({
+      id: marketCenterId,
+      queryKey: marketCenterHistoryQueryKey,
+      queryParams: queryParams,
+    });
+
+  const marketCenterHistoryLogs =
+    marketCenterHistoryData?.marketCenterHistory as MarketCenterHistory[];
+  const totalMarketCenterHistoryLogs: number =
+    marketCenterHistoryData?.total ?? 0;
+  const totalPages = calculateTotalPages({
+    totalItems: totalMarketCenterHistoryLogs,
+    itemsPerPage,
+  });
 
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
@@ -52,19 +90,13 @@ export default function MarketCenterHistory({
     }
   };
 
-  const findChangedByName = (userId: string, name?: string) => {
-    if (name) return name;
-    if (!userId) return "No id";
-    if (userId === currentUser?.id) return currentUser?.name;
-    return userId.slice(0, 8);
-  };
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Recent Activity</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table className="border rounded">
+    <div className="w-full flex flex-col">
+      <div className="flex flex-row items-center justify-between">
+        <p className="text-lg font-bold m-4 ml-2">Recent Activity</p>
+      </div>
+      <div className="max-w-[300px] xs:max-w-full rounded-lg border">
+        <Table className="overflow-scroll">
           <TableHeader>
             <TableRow>
               <TableHead>Action</TableHead>
@@ -77,100 +109,148 @@ export default function MarketCenterHistory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {marketCenter &&
-              marketCenter?.marketCenterHistory &&
-              marketCenter?.marketCenterHistory.length > 0 &&
-              marketCenter?.marketCenterHistory.map(
-                (entry: MarketCenterHistory, index: number) => {
-                  const teamNewValue =
-                    entry?.field === "team" && entry?.newValue;
-                  const teamChangeNewValue =
-                    entry?.newValue &&
-                    teamNewValue &&
-                    JSON.parse(entry.newValue);
+            {isLoading && (
+              <TableRow>
+                <TableCell className="text-muted-foreground col-span-full">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading &&
+              (!marketCenterHistoryLogs || !marketCenterHistoryLogs.length) && (
+                <TableRow>
+                  <TableCell className="text-muted-foreground col-span-full">
+                    No market center logs
+                  </TableCell>
+                </TableRow>
+              )}
 
-                  const teamPrevValue =
-                    entry?.field === "team" && entry?.previousValue;
-                  const teamChangePrevValue =
-                    entry?.previousValue &&
-                    teamPrevValue &&
-                    JSON.parse(entry.previousValue);
+            {!isLoading &&
+              marketCenterHistoryLogs &&
+              marketCenterHistoryLogs.length > 0 &&
+              marketCenterHistoryLogs.map(
+                (log: MarketCenterHistory, index: number) => {
+                  let newValue = "";
+                  let newValueLink = "";
+                  let previousValue = "";
+                  let previousValueLink = "";
+                  if (
+                    log.field === "category default assignee" &&
+                    log.newValue
+                  ) {
+                    const parsedNewValue = JSON.parse(log.newValue);
+                    newValue = parsedNewValue?.name;
+                    newValueLink = `/dashboard/users/${parsedNewValue?.id}`;
+                  } else if (log?.field === "team" && log?.newValue) {
+                    const parsedNewValue = JSON.parse(log.newValue);
+                    newValue = parsedNewValue?.name;
+                    newValueLink = `/dashboard/users/${parsedNewValue?.id}`;
+                  } else if (
+                    log.field === "category default assignee" &&
+                    log.previousValue
+                  ) {
+                    const parsedPreviousValue = JSON.parse(log.previousValue);
+                    previousValue = parsedPreviousValue?.name;
+                    previousValueLink = `/dashboard/users/${parsedPreviousValue?.id}`;
+                  } else if (log?.field === "team" && log?.previousValue) {
+                    const parsedPreviousValue = JSON.parse(log.previousValue);
+                    previousValue = parsedPreviousValue?.name;
+                    previousValueLink = `/dashboard/users/${parsedPreviousValue?.id}`;
+                  } else {
+                    newValue = log?.newValue ?? "N/a";
+                    previousValue = log?.previousValue ?? "N/a";
+                  }
+
+                  // const categoryNewAssignee =
+                  //   log?.field === "category default assignee" && log?.newValue;
+                  // const categoryChangeNewAssignee =
+                  //   log?.newValue &&
+                  //   categoryNewAssignee &&
+                  //   JSON.parse(log.newValue);
+
+                  // const categoryPrevAssignee =
+                  // const teamNewValue = log?.field === "team" && log?.newValue;
+                  // const teamChangeNewValue =
+                  //   log?.newValue && teamNewValue && JSON.parse(log.newValue);
+
+                  // const teamPrevValue =
+                  //   log?.field === "team" && log?.previousValue;
+                  // const teamChangePrevValue =
+                  //   log?.previousValue &&
+                  //   teamPrevValue &&
+                  //   JSON.parse(log.previousValue);
                   return (
-                    <TableRow key={entry.id + index}>
+                    <TableRow key={log?.id + index}>
                       {/* ACTION */}
-                      <TableCell
-                        className="cursor-pointer flex  gap-2 items-center"
-                        onClick={() => {
-                          router.push(`/dashboard/users/${entry?.changedById}`);
-                        }}
-                      >
-                        {getActionIcon(entry?.action)}
-                        <p className="font-semibold hover:underline pointer-events-auto">
-                          {capitalizeEveryWord(entry?.action)}
-                        </p>
+                      <TableCell className="flex gap-2 items-center font-semibold cursor-pointer">
+                        {getActionIcon(log.action)}
+                        {capitalizeEveryWord(log.action)}
                       </TableCell>
                       {/* FIELD */}
-                      <TableCell>
-                        <p className="font-semibold">
-                          {entry?.field && capitalizeEveryWord(entry?.field)}
-                        </p>
+                      <TableCell className="font-semibold">
+                        {log?.field ? capitalizeEveryWord(log?.field) : "N/a"}
                       </TableCell>
                       {/* NEW VALUE */}
-                      <TableCell>
-                        <p className="font-medium">
-                          {entry?.field === "team" &&
-                            entry?.newValue &&
-                            teamChangeNewValue?.name}
-
-                          {entry?.field !== "team" &&
-                            entry?.newValue &&
-                            capitalizeEveryWord(
-                              entry?.newValue.replace("_", " ")
-                            )}
-                        </p>
+                      <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
+                        <ToolTip
+                          content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${newValue}`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                              {newValue}
+                            </p>
+                          }
+                        />
                       </TableCell>
-                      {/* OLD VALUE */}
-                      <TableCell>
-                        <p>
-                          {entry?.field === "team" &&
-                            entry?.previousValue &&
-                            teamChangePrevValue?.name}
-
-                          {entry?.field !== "team" &&
-                            entry?.previousValue &&
-                            capitalizeEveryWord(
-                              entry?.previousValue.replace("_", " ")
-                            )}
-                          {/* {entry?.previousValue &&
-                                  capitalizeEveryWord(
-                                    entry?.previousValue.replace("_", " ")
-                                  )} */}
-                        </p>
+                      {/* PREVIOUS VALUE */}
+                      <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
+                        <ToolTip
+                          content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${previousValue}`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                              {previousValue}
+                            </p>
+                          }
+                        />
                       </TableCell>
                       {/* CHANGED BY */}
                       <TableCell
-                        className="cursor-pointer"
+                        className="font-medium"
                         onClick={() => {
-                          router.push(`/dashboard/users/${entry?.changedById}`);
+                          if (log?.changedById) {
+                            router.push(`/dashboard/users/${log.changedById}`);
+                          } else {
+                            toast.error("User not found");
+                          }
                         }}
                       >
-                        <p className="font-medium">
-                          {entry?.changedBy?.name ??
-                            findChangedByName(entry?.changedById)}
-                        </p>
-                        <p className="font-medium"></p>
+                        <ToolTip
+                          content={`Changed By: ${
+                            log?.changedBy && log?.changedBy?.name
+                              ? log?.changedBy?.name
+                              : log?.changedById
+                                ? log?.changedById.slice(0, 8)
+                                : "N/a"
+                          }`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                              {log?.changedBy && log?.changedBy?.name
+                                ? log?.changedBy?.name
+                                : log?.changedById
+                                  ? log?.changedById.slice(0, 8)
+                                  : "N/a"}
+                            </p>
+                          }
+                        />
                       </TableCell>
-                      {/* CHANGED ON */}
-                      <TableCell>
-                        <p>
-                          {entry?.changedAt
-                            ? new Date(entry?.changedAt).toLocaleDateString()
-                            : "-"}
-                        </p>
+                      {/* DATE CHANGED ON */}
+                      <TableCell className="font-medium">
+                        {log?.changedAt
+                          ? new Date(log.changedAt).toLocaleDateString()
+                          : "N/a"}
                       </TableCell>
                       {/* SNAPSHOT OR GO TO TICKET */}
                       {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${entry?.id}`}>
+                              <Link href={`/dashboard/tickets/${log?.id}`}>
                                 <div className="flex gap-2 items-center justify-center">
                                   <Eye className="h-4 w-4" />
                                   <p>View</p>
@@ -183,7 +263,17 @@ export default function MarketCenterHistory({
               )}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+        <div className="p-2">
+          <PagesAndItemsCount
+            type="logs"
+            totalItems={totalMarketCenterHistoryLogs}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
