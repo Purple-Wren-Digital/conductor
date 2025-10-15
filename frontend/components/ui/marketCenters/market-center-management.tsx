@@ -30,7 +30,7 @@ import type {
   UserSortBy,
   UsersResponse,
 } from "@/lib/types";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   ArrowDownNarrowWide,
   ArrowDownUp,

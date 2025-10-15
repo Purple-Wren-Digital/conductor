@@ -26,7 +26,6 @@ export const updateCategory = api<
     auth: true,
   },
   async (req) => {
-    console.log("req", req);
     const userContext = await getUserContext();
     if (userContext?.role === "AGENT") {
       throw APIError.permissionDenied(

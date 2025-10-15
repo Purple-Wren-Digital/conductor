@@ -67,7 +67,7 @@ export function Header() {
       body: JSON.stringify({
         email: auth0User.email,
         name: auth0User?.name || auth0User?.nickname || "",
-        role: "AGENT", // TODO: get meta data?? auth0User?.user_metadata?.role 
+        role: "AGENT", // TODO: get meta data?? auth0User?.user_metadata?.role
       }),
     });
     if (response.ok) {
@@ -92,7 +92,7 @@ export function Header() {
 
   return (
     <header className="border-b">
-      <div className="container flex items-center justify-between py-2">
+      <div className="container flex flex-wrap items-center justify-center gap-4 md:justify-between py-2">
         <Link href="/" className="text-xl font-bold flex items-center">
           <House className="size-5 mr-1" strokeWidth={2.5} /> Conductor
           Ticketing
@@ -152,7 +152,7 @@ export function Header() {
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {auth0User && currentUser && (
             <>
               <Button

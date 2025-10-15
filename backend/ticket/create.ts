@@ -100,7 +100,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         },
       } as CreateTicketResponse;
     } catch (error) {
-      console.log("Failed to create ticket", error);
+      console.error("Failed to create ticket", error);
       throw new Error("Failed to create ticket");
     }
   }

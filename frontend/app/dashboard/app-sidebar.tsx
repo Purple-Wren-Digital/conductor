@@ -12,37 +12,22 @@ import {
 } from "@/components/ui/sidebar";
 import { useStore } from "../store-provider";
 import {
-  Cog,
   LayoutDashboard,
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
   FileText,
-  Folder,
   Building2,
   Building,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { useUserRole } from "@/lib/hooks/use-user-role";
-import { useRouter } from "next/navigation";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const router = useRouter();
-
   const { className, ...rest } = props;
   const { role, permissions, isLoading } = useUserRole();
   const { currentUser } = useStore();
-
-  // if (isLoading) {
-  //   return (
-  //     <Sidebar {...rest} className={cn(className, "border-r")}>
-  //       <SidebarContent>
-  //         <div className="p-4">Loading...</div>
-  //       </SidebarContent>
-  //     </Sidebar>
-  //   );
-  // }
 
   if (!currentUser) {
     return (
@@ -61,20 +46,35 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
-            <div className="flex flex-col gap-1">
-              <p className="font-medium text-sm">
-                {currentUser?.name
-                  ? `${currentUser.name}`
-                  : "User name not set"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {currentUser?.email}
-              </p>
-              <p className="text-xs text-muted-foreground capitalize">
-                {currentUser?.role && currentUser?.role?.toLowerCase()} •{" "}
-                {currentUser?.marketCenter?.name || "Global"}
-              </p>
-            </div>
+            {isLoading && currentUser && (
+              <div className="flex flex-col gap-1 items-center w-full">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse w-full opacity-25">
+                    <div
+                      className={`${i === 0 ? "h-5" : "h-2.5"} bg-muted-foreground rounded`}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {!isLoading && currentUser && (
+              <div className="flex flex-col gap-1">
+                <Link href={"/dashboard/profile"} className="hover:underline">
+                  <p className="font-medium text-sm">
+                    {currentUser?.name
+                      ? `${currentUser.name}`
+                      : "User not found"}
+                  </p>
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {currentUser?.email}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {currentUser?.role && currentUser?.role?.toLowerCase()} •{" "}
+                  {currentUser?.marketCenter?.name || "Global"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </SidebarHeader>
@@ -112,49 +112,32 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/marketCenters">
-                    <Building2 /> Market Centers
+                    <Building2 /> Market Center Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
-            {/* {permissions?.canManageTeam && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/settings?tab=team" disabled={isLoading}>
-                    <Folder /> Team Management
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )} */}
-
-            {permissions?.canAccessReports && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/reports">
-                    <FileText /> Reports
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
-            {/* Manage your team members, roles, and invitations */}
 
             {role === "STAFF" && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   disabled={isLoading || !currentUser?.marketCenterId}
-                  // onClick={() => {
-                  //   router.push(
-                  //     `dashboard/marketCenters/${currentUser.marketCenterId}`
-                  //   );
-                  // }}
                 >
                   <Link
                     href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
                   >
                     <Building /> Market Center Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canAccessReports && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/reports">
+                    <FileText /> Reports
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

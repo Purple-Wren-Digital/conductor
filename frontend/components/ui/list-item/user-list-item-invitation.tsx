@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ListItem } from "./base-list-item";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { UserRole } from "@/lib/types";
 import { ROLE_ICONS } from "@/lib/utils";
 import {

@@ -45,7 +45,7 @@ import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-tic
 import { format, startOfDay, endOfDay } from "date-fns";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useFetchStaffTickets } from "@/hooks/use-tickets";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   calculateTotalPages,
   defaultActiveStatuses,

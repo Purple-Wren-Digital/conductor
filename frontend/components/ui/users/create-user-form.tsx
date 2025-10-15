@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { Building, User } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
@@ -356,9 +356,7 @@ export default function CreateUser({
                 </SelectContent>
               </Select>
               {formErrors.role && (
-                <p className="text-sm text-destructive">
-                  {formErrors.role}
-                </p>
+                <p className="text-sm text-destructive">{formErrors.role}</p>
               )}
             </div>
 

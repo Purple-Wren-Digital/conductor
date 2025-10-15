@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import CreateUser from "./create-user-form";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { OrderBy, UserRole, UserSortBy } from "@/lib/types";
 import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
 import {

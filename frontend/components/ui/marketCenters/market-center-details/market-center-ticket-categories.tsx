@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
 import { API_BASE } from "@/lib/api/utils";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { MarketCenter, PrismaUser, TicketCategory } from "@/lib/types";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";

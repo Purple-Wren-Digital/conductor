@@ -188,8 +188,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         }),
       ]);
 
-      console.log("UPDATED TICKET? ", ticket);
-
       const safeTicket = {
         ...ticket,
         creator: mapUser(ticket.creator),

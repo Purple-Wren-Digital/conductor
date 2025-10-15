@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
 // import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { API_BASE } from "@/lib/api/utils";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ export default function MarketCenterUsers({
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: Promise<void> // () => void;
+  invalidateMarketCenter: Promise<void>; // () => void;
 }) {
   const router = useRouter();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
@@ -87,7 +87,6 @@ export default function MarketCenterUsers({
         cache: "no-store",
         body: JSON.stringify({ body }),
       });
-      console.log("response", response);
       if (!response || !response.ok)
         throw new Error(
           response?.statusText

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useFetchAgentTickets } from "@/hooks/use-tickets";
 import {
   calculateTotalPages,
@@ -480,10 +480,7 @@ export default function AgentTicketList() {
           {ticketsLoading && (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-16 bg-muted rounded animate-pulse"
-                ></div>
+                <div key={i} className="h-16 bg-muted rounded animate-pulse" />
               ))}
             </div>
           )}

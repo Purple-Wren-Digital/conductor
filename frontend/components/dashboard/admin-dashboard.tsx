@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMemo, useState } from "react";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useFetchAdminTickets } from "@/hooks/use-tickets";
 import { TeamSwitcher } from "../ui/team-switcher";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
@@ -75,7 +75,8 @@ export function AdminDashboard() {
     },
   });
 
-  const { data: marketCentersData } = useFetchAllMarketCenters(role);
+  const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
+    useFetchAllMarketCenters(role);
   const marketCenters = marketCentersData?.marketCenters ?? [];
 
   const tickets = ticketsData?.tickets || [];
@@ -132,21 +133,21 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="text-muted-foreground">
             System-wide overview and management
           </p>
         </div>
-        <div className="flex gap-5 justify-between">
-          <div className="space-y-2 w-50">
+        <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
+          <div className="space-y-2 w-50 w-full sm:w-fit">
             <TeamSwitcher
               selectedMarketCenterId={selectedMarketCenterId}
               setSelectedMarketCenterId={setSelectedMarketCenterId}
             />
           </div>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-fit">
             <Link href="/dashboard/reports">
               <BarChart className="mr-2 h-4 w-4" /> View Reports
             </Link>
@@ -217,9 +218,17 @@ export function AdminDashboard() {
             <CardDescription>Ticket distribution by team</CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="space-y-4 h-100">
-              {marketCenters &&
-                marketCenters?.length &&
+            <ScrollArea className="space-y-4 md:h-100">
+              {!isLoadingMarketCenters &&
+                (!marketCenters || !marketCenters?.length) && (
+                  <p className="space-y-4 text-sm text-muted-foreground font-medium">
+                    No market centers found
+                  </p>
+                )}
+
+              {!isLoadingMarketCenters &&
+                marketCenters &&
+                marketCenters?.length > 0 &&
                 marketCenters?.map((mc: any) => {
                   const isViewingStats = selectedMarketCenterId === mc?.id;
                   return (
@@ -251,6 +260,7 @@ export function AdminDashboard() {
                   );
                 })}
             </ScrollArea>
+
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard/marketCenters">
@@ -270,7 +280,7 @@ export function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-2 md:h-100">
               {filteredTickets.slice(0, 5).map((ticket: any) => (
                 <div
                   key={ticket.id}

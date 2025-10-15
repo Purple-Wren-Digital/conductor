@@ -6,7 +6,7 @@ import type { PrismaUser } from "@/lib/types";
 import { Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export function TeamMemberListItem({
   user,

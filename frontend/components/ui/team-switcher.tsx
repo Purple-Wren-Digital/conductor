@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building, Building2 } from "lucide-react";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { MarketCenter } from "@/lib/types";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 
@@ -38,8 +38,9 @@ export function TeamSwitcher({
       value={selectedMarketCenterId}
       onValueChange={(value) => {
         setSelectedMarketCenterId(value);
-        const selectedMarketCenter = marketCenters.find((mc)=> mc.id == value)
-        handleMarketCenterSelected && handleMarketCenterSelected(selectedMarketCenter);
+        const selectedMarketCenter = marketCenters.find((mc) => mc.id == value);
+        handleMarketCenterSelected &&
+          handleMarketCenterSelected(selectedMarketCenter);
       }}
       disabled={isLoading || role === "STAFF"}
     >

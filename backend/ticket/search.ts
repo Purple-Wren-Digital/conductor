@@ -184,8 +184,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         break;
     }
 
-    console.log("TICKET SEARCH", where);
-
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,

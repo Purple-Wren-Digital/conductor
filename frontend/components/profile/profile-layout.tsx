@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   MarketCenter,
   PrismaUser,

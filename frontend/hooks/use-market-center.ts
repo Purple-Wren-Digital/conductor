@@ -10,7 +10,6 @@ const getAuth0AccessToken = async () => {
 
 // GET ALL MARKET CENTERS
 export function useFetchAllMarketCenters(role: UserRole | undefined) {
-  //pass in role and do not fetch if not admin!
   return useQuery({
     queryKey: ["all-market-centers"],
     queryFn: async () => {
@@ -20,7 +19,7 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
         );
       }
       const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`${API_BASE}/marketCenters`, {
+      const response = await fetch(`${API_BASE}/marketCenters/search`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -30,7 +29,6 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
       if (!response.ok) return { marketCenters: [] };
 
       const data = await response.json();
-
       return { marketCenters: data?.marketCenters };
     },
     enabled: !!role && role !== "AGENT",
@@ -128,12 +126,6 @@ export function useFetchMarketCenterCategories(marketCenterId?: string) {
     queryKey: ["get-market-center-categories", marketCenterId],
     queryFn: async () => {
       try {
-        // if (!marketCenterId || marketCenterId === "all")
-        //   throw new Error("Missing market center id");
-        // console.log(
-        //   "useFetchMarketCenterCategories - marketCenterId",
-        //   marketCenterId
-        // );
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(
           `${API_BASE}/marketCenters/ticketCategories${marketCenterId ? `?marketCenterId=${marketCenterId}` : ""}`,
@@ -189,10 +181,9 @@ export function useFetchMarketCenterTickets({
         if (!response || !response.ok)
           throw new Error("Failed to fetch tickets");
         const data = await response.json();
-        console.log(data);
         return data;
       } catch (error) {
-        console.error("StaffDashboard - Failed to fetch team tickets", error);
+        console.error("Staff Dashboard - Failed to fetch team tickets", error);
         return [];
       }
     },

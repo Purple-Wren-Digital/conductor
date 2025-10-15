@@ -11,7 +11,7 @@ import UserManagement from "./user-management";
 import { useRouter, useSearchParams } from "next/navigation";
 import UserInvitationManagement from "./user-invitation-management";
 import { Card, CardHeader, CardTitle } from "../card";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "../button";
 
 export default function UserManagementTabs() {

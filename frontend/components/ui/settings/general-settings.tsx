@@ -42,7 +42,7 @@ import { toast } from "sonner";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@/app/store-provider";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 
 
 export default function GeneralSettings() {

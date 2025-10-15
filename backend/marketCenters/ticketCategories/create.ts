@@ -25,7 +25,6 @@ export const createCategory = api<
     auth: true,
   },
   async (req) => {
-    console.log("POST  - /marketCenters/ticketCategories");
     const userContext = await getUserContext();
 
     const marketCenterId =

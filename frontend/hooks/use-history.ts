@@ -143,7 +143,6 @@ export function useFetchMarketCenterHistory({
           throw new Error("Failed to fetch market center history");
         }
         const data = await response.json();
-        console.log("MARKET CENTER HISTORY DATA", data);
         return data;
       } catch (error) {
         console.error("Error fetching market center history:", error);

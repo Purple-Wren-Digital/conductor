@@ -12,7 +12,7 @@ import {
 import { format } from "date-fns";
 import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export function UserListItem({
   user,
