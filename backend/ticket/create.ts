@@ -57,7 +57,14 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
             categoryId: req.categoryId ?? null,
             urgency: req.urgency,
             creatorId: userContext.userId,
-            assigneeId: req?.assigneeId ?? userContext.userId,
+            assigneeId:
+              req?.assigneeId && req?.assigneeId !== "Unassigned"
+                ? req.assigneeId
+                : null,
+            status:
+              req?.assigneeId && req?.assigneeId !== "Unassigned"
+                ? "ASSIGNED"
+                : "CREATED",
             dueDate: req.dueDate,
           },
           include: {
@@ -71,9 +78,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
           data: {
             ticketId: ticket.id,
             action: "CREATE",
-            field: "isActive",
-            previousValue: "false",
-            newValue: "true",
+            field: "ticket",
             changedById: userContext.userId,
           },
         });

@@ -414,11 +414,7 @@
 //                     {orderByOptions.map((direction) => (
 //                       <SelectItem key={direction} value={direction}>
 //                         <div className="flex gap-1 items-center mr-1">
-//                           {direction === "asc" ? (
-//                             <ArrowDownWideNarrow />
-//                           ) : (
-//                             <ArrowDownNarrowWide />
-//                           )}
+//                                                   {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
 //                           <p className="text-sm font-medium">
 //                             {formatOrderBy(direction)}
 //                           </p>

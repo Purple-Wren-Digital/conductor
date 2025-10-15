@@ -43,10 +43,8 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     //   data: {
     //     ticketId: ticket.id,
     //     action: "DELETE",
-    //     field: "isActive",
+    //     field: "ticket",
     //     snapshot: ticket,
-    //     previousValue: "true",
-    //     newValue: "false",
     //     changedById: userContext.userId,
     //   },
     //   // include: {

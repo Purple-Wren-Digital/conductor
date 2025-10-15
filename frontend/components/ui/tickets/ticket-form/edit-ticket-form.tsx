@@ -69,7 +69,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         urgency: ticket.urgency as Urgency,
         categoryId: ticket.categoryId ?? "",
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
-        assigneeId: ticket.assigneeId ?? undefined,
+        assigneeId: ticket.assigneeId ?? "Unassigned",
       });
       setErrors({});
 

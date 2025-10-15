@@ -222,14 +222,18 @@ export const capitalizeEachWord = (text: string) => {};
 
 // FILTERS
 export const defaultActiveStatuses: TicketStatus[] = [
+  "CREATED",
   "ASSIGNED",
+  "UNASSIGNED",
   "AWAITING_RESPONSE",
   "IN_PROGRESS",
 ];
 export const statusOptions: TicketStatus[] = [
+  "CREATED",
   "ASSIGNED",
-  "AWAITING_RESPONSE",
+  "UNASSIGNED",
   "IN_PROGRESS",
+  "AWAITING_RESPONSE",
   "RESOLVED",
 ];
 export const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];

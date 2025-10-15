@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import { getUserContext } from "../auth/user-context";
 import { canReassignTicket, getTicketScopeFilter } from "../auth/permissions";
+import { Ticket } from "./types";
 
 export interface BulkAssignRequest {
   ticketIds: string[];
@@ -30,23 +31,30 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
         "You do not have permission to bulk assign tickets"
       );
     }
+    let newAssignee: any = null;
+    if (req.assigneeId !== "Unassigned") {
+      // Validate assignee exists
+      const user = await prisma.user.findUnique({
+        where: { id: req.assigneeId },
+      });
 
-    // Validate assignee exists
-    const assignee = await prisma.user.findUnique({
-      where: { id: req.assigneeId },
-    });
-
-    if (!assignee) {
-      throw APIError.notFound("Assignee not found");
+      if (!user) {
+        throw APIError.notFound("New assignee not found");
+      }
+      newAssignee = user;
     }
 
     // For STAFF, ensure they can only assign to users in their market center
-    if (userContext.role === "STAFF" && userContext.marketCenterId) {
-      if (assignee.marketCenterId !== userContext.marketCenterId) {
-        throw APIError.permissionDenied(
-          "You can only assign tickets to users in your team"
-        );
-      }
+    if (
+      userContext?.role === "STAFF" &&
+      userContext?.marketCenterId &&
+      newAssignee &&
+      newAssignee?.marketCenterId &&
+      newAssignee.marketCenterId !== userContext.marketCenterId
+    ) {
+      throw APIError.permissionDenied(
+        "You can only assign tickets to users in your team"
+      );
     }
     // Get ticket scope filter
     const scopeFilter = await getTicketScopeFilter(userContext);
@@ -64,6 +72,8 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       select: {
         id: true,
         assigneeId: true,
+        assignee: true,
+        status: true,
       },
     });
 
@@ -74,47 +84,72 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       return { updated: 0, failed };
     }
 
+    const ticketHistoryData: any[] = [];
+    tickets.forEach((ticket) => {
+      if (req.assigneeId === "Unassigned" && !!ticket?.assigneeId) {
+        ticketHistoryData.push([
+          {
+            ticketId: ticket.id,
+            action: "REMOVE",
+            field: "assignment",
+            previousValue: ticket?.assignee?.name ?? "Unassigned",
+            newValue: "Unassigned",
+            snapshot: ticket,
+            changedAt: new Date(),
+            changedById: userContext.userId,
+          },
+          {
+            ticketId: ticket.id,
+            action: "UPDATE",
+            field: "status",
+            previousValue: ticket?.status ?? "CREATED",
+            newValue: "UNASSIGNED",
+            snapshot: ticket,
+            changedAt: new Date(),
+            changedById: userContext.userId,
+          },
+        ]);
+      }
+      if (newAssignee && newAssignee?.id !== ticket?.assigneeId) {
+        ticketHistoryData.push([
+          {
+            ticketId: ticket.id,
+            action: "ADD",
+            field: "assignment",
+            previousValue: ticket?.assignee?.name ?? "Unassigned",
+            newValue: newAssignee?.name ?? "Not found",
+            changedById: userContext?.userId,
+            changedAt: new Date(),
+          },
+          {
+            ticketId: ticket.id,
+            action: "UPDATE",
+            field: "status",
+            previousValue: ticket?.status ?? "CREATED",
+            newValue: "ASSIGNED",
+            snapshot: ticket,
+            changedAt: new Date(),
+            changedById: userContext.userId,
+          },
+        ]);
+      }
+    });
+
     // Transaction: Update only the existing tickets, then insert history
-    const result = await prisma.$transaction(async (tx) => {
-      const update = await tx.ticket.updateMany({
+    const result = await prisma.$transaction(async (p) => {
+      const update = await p.ticket.updateMany({
         where: { id: { in: existingIds } },
         data: {
-          assigneeId: req.assigneeId,
-          status: "ASSIGNED",
+          assigneeId: req.assigneeId !== "Unassigned" ? req.assigneeId : null,
+          status: req.assigneeId === "Unassigned" ? "UNASSIGNED" : "ASSIGNED",
           updatedAt: new Date(),
         },
       });
 
-      // Build ticket history records
-      const ticketHistoryRecords = tickets.map((ticket) => ({
-        ticketId: ticket.id,
-        field: "assigneeId",
-        previousValue: ticket.assigneeId ?? "",
-        newValue: req.assigneeId,
-        changedById: userContext?.userId,
-        changedAt: new Date(),
-      }));
-
-      await tx.ticketHistory.createMany({
-        data: ticketHistoryRecords,
+      await p.ticketHistory.createMany({
+        data: ticketHistoryData,
         skipDuplicates: true,
       });
-
-      // // //  Build User history records
-      // const userHistoryRecords = tickets.map((ticket) => ({
-      //   userId: assignee.id,
-      //   field: "ticketAssignment",
-      //   previousValue: "N/A",
-      //   newValue: ticket?.id,
-      //   snapshot: assignee,
-      //   changedById: userContext.userId,
-      //   changedAt: new Date(),
-      // }));
-
-      // await tx.userHistory.createMany({
-      //   data: userHistoryRecords,
-      //   skipDuplicates: true,
-      // });
 
       return update;
     });

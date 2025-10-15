@@ -6,7 +6,7 @@ import { Comment } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { ticketDetailQueryKeyParams } from "@/components/ui/tickets/ticket-detail-view";
 
 interface CreateCommentParams {
   userId: string;
@@ -31,10 +31,6 @@ export function useComments(ticketId: string) {
   const commentApi = useCommentApi();
   const queryClient = useQueryClient();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   // Handle real-time comment events
   const handleCommentEvent = useCallback(
@@ -178,9 +174,16 @@ export function useCreateComment() {
 
       toast.success("Comment added successfully");
     },
-    onSettled: (data, error, { ticketId }) => {
+    onSettled: async (data, error, { ticketId }) => {
       // Always refetch to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+      await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "ticket-history-recent",
+          ticketId,
+          ticketDetailQueryKeyParams,
+        ],
+      });
     },
   });
 }
@@ -242,8 +245,16 @@ export function useUpdateComment() {
 
       toast.success("Comment updated successfully");
     },
-    onSettled: (data, error, { ticketId }) => {
-      queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+    onSettled: async (data, error, { ticketId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "ticket-history-recent",
+          ticketId,
+          ticketDetailQueryKeyParams,
+        ],
+      });
     },
   });
 }
@@ -295,8 +306,15 @@ export function useDeleteComment() {
 
       toast.success("Comment deleted successfully");
     },
-    onSettled: (data, error, { ticketId }) => {
-      queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+    onSettled: async (data, error, { ticketId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "ticket-history-recent",
+          ticketId,
+          ticketDetailQueryKeyParams,
+        ],
+      });
     },
   });
 }

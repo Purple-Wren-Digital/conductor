@@ -110,7 +110,9 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       where.assigneeId = userContext.userId;
       where.creatorId = userContext.userId;
     } else {
-      if (req.assigneeId) where.assigneeId = req.assigneeId;
+      if (req.assigneeId)
+        where.assigneeId =
+          req.assigneeId === "Unassigned" ? { equals: null } : req.assigneeId;
       if (req.creatorId) where.creatorId = req.creatorId;
     }
 

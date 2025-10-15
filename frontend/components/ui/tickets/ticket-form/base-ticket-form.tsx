@@ -335,6 +335,7 @@ export function BaseTicketForm({
                   <SelectValue placeholder="Select an assignee" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={"Unassigned"}>Unassigned</SelectItem>
                   {marketCenterAssignees &&
                     marketCenterAssignees.length > 0 &&
                     marketCenterAssignees.map((user) => {

@@ -50,8 +50,9 @@ import {
   calculateTotalPages,
 } from "@/lib/utils";
 import {
+  ArrowDown,
   ArrowDownUp,
-  ArrowDownWideNarrow,
+  ArrowUp,
   Filter,
   Search,
   User,
@@ -59,7 +60,6 @@ import {
   Users,
   UserPlus,
   X,
-  ArrowDownNarrowWide,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -606,11 +606,7 @@ export default function UserManagement() {
                     {orderByOptions.map((direction) => (
                       <SelectItem key={direction} value={direction}>
                         <div className="flex gap-1 items-center mr-1">
-                          {direction === "asc" ? (
-                            <ArrowDownWideNarrow />
-                          ) : (
-                            <ArrowDownNarrowWide />
-                          )}
+                          {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
                           <p className="text-sm font-medium">
                             {formatOrderBy(direction)}
                           </p>

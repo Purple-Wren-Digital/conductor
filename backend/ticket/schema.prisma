@@ -52,7 +52,7 @@ model Ticket {
   id          String           @id @default(dbgenerated("(gen_random_uuid())::text"))
   title       String?
   description String?
-  status      TicketStatus?    @default(ASSIGNED)
+  status      TicketStatus?    @default(CREATED)
   urgency     Urgency?         @default(MEDIUM)
   categoryId  String?          @map("category_id")
   category    TicketCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -214,7 +214,9 @@ enum UserRole {
 }
 
 enum TicketStatus {
+  CREATED
   ASSIGNED
+  UNASSIGNED
   AWAITING_RESPONSE
   IN_PROGRESS
   RESOLVED

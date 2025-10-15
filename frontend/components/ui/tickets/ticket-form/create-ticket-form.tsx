@@ -20,7 +20,7 @@ const initialValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   categoryId: "",
   dueDate: undefined,
-  assigneeId: "",
+  assigneeId: "Unassigned",
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {

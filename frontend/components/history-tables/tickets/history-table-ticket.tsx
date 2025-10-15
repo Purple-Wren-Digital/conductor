@@ -20,6 +20,7 @@ import {
   CirclePlus,
   Clipboard,
   Mailbox,
+  MessageSquare,
   SquarePen,
   Trash2,
 } from "lucide-react";
@@ -128,7 +129,11 @@ export default function TicketHistoryTable({
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* ACTION */}
                   <TableCell className="flex gap-2 items-center font-semibold cursor-pointer">
-                    {getActionIcon(log.action)}
+                    {log?.field === "comment" ? (
+                      <MessageSquare className="h-3 w-3" />
+                    ) : (
+                      getActionIcon(log?.action)
+                    )}
                     {capitalizeEveryWord(log.action)}
                   </TableCell>
                   {/* FIELD */}

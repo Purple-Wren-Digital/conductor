@@ -35,7 +35,7 @@ export const getTicketHistory = api<
     const [history, total] = await Promise.all([
       prisma.ticketHistory.findMany({
         where: { ticketId: req.id },
-        include: { ticket: true },
+        include: { ticket: true, changedBy: true },
         orderBy: { changedAt: req.orderBy === "desc" ? "desc" : "asc" },
         take: limit,
         skip: offset,

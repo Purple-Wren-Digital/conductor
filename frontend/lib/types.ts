@@ -7,7 +7,10 @@ export type AppContext = {
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
+  | "DRAFT"
+  | "CREATED"
   | "ASSIGNED"
+  | "UNASSIGNED"
   | "AWAITING_RESPONSE"
   | "IN_PROGRESS"
   | "RESOLVED";

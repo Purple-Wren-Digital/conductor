@@ -38,9 +38,9 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import {
-  ArrowDownNarrowWide,
-  ArrowDownWideNarrow,
+  ArrowDown,
   ArrowDownUp,
+  ArrowUp,
   CalendarIcon,
   Filter,
   Search,
@@ -461,11 +461,7 @@ export default function AgentTicketList() {
                   {orderByOptions.map((direction) => (
                     <SelectItem key={direction} value={direction}>
                       <div className="flex gap-1 items-center mr-1">
-                        {direction === "asc" ? (
-                          <ArrowDownWideNarrow />
-                        ) : (
-                          <ArrowDownNarrowWide />
-                        )}
+                        {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
                         <p className="text-sm font-medium">
                           {formatOrderBy(direction)}
                         </p>
@@ -487,7 +483,7 @@ export default function AgentTicketList() {
 
           {!ticketsLoading &&
             tickets &&
-            tickets.length &&
+            tickets.length > 0 &&
             tickets.map((ticket: TicketWithUpdatedAt) => (
               <TicketListItemWrapper
                 key={ticket.id}

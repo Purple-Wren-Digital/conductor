@@ -57,9 +57,9 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import {
-  ArrowDownNarrowWide,
-  ArrowDownWideNarrow,
+  ArrowDown,
   ArrowDownUp,
+  ArrowUp,
   CalendarIcon,
   Filter,
   Plus,
@@ -426,20 +426,27 @@ export default function TicketListStaff() {
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent>
-                        {marketCenterId ? (
-                          <SelectItem value="all">All assignees</SelectItem>
-                        ) : (
+                        {marketCenterId && (
+                          <>
+                            <SelectItem value="all">All assignees</SelectItem>
+                            <SelectItem value="Unassigned">
+                              Unassigned
+                            </SelectItem>
+                            {teamMembers &&
+                              teamMembers.length > 0 &&
+                              teamMembers.map((user: PrismaUser) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                          </>
+                        )}
+
+                        {!marketCenterId && currentUser && (
                           <SelectItem value={`${currentUser?.name} You`}>
                             {currentUser?.name} (You)
                           </SelectItem>
                         )}
-                        {teamMembers &&
-                          teamMembers.length &&
-                          teamMembers.map((user: PrismaUser) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -712,11 +719,7 @@ export default function TicketListStaff() {
                       {orderByOptions.map((direction) => (
                         <SelectItem key={direction} value={direction}>
                           <div className="flex gap-1 items-center mr-1">
-                            {direction === "asc" ? (
-                              <ArrowDownWideNarrow />
-                            ) : (
-                              <ArrowDownNarrowWide />
-                            )}
+                            {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
                             <p className="text-sm font-medium">
                               {formatOrderBy(direction)}
                             </p>
@@ -742,7 +745,7 @@ export default function TicketListStaff() {
 
             {!ticketsLoading &&
               tickets &&
-              tickets.length &&
+              tickets.length > 0 &&
               tickets.map((ticket: TicketWithUpdatedAt) => (
                 <TicketListItemWrapper
                   key={ticket.id}

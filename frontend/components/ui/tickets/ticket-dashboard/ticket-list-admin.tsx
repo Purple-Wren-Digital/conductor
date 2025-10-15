@@ -52,8 +52,8 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import {
-  ArrowDownNarrowWide,
-  ArrowDownWideNarrow,
+  ArrowDown,
+  ArrowUp,
   ArrowDownUp,
   CalendarIcon,
   Filter,
@@ -440,6 +440,7 @@ export default function AdminTicketList() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All assignees</SelectItem>
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
                         {users.map((user: PrismaUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
@@ -709,11 +710,7 @@ export default function AdminTicketList() {
                       {orderByOptions.map((direction) => (
                         <SelectItem key={direction} value={direction}>
                           <div className="flex gap-1 items-center mr-1">
-                            {direction === "asc" ? (
-                              <ArrowDownWideNarrow />
-                            ) : (
-                              <ArrowDownNarrowWide />
-                            )}
+                            {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
                             <p className="text-sm font-medium">
                               {formatOrderBy(direction)}
                             </p>

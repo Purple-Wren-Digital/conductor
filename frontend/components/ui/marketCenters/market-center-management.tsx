@@ -32,9 +32,9 @@ import type {
 } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import {
-  ArrowDownNarrowWide,
+  ArrowDown,
   ArrowDownUp,
-  ArrowDownWideNarrow,
+  ArrowUp,
   Building,
   Filter,
   Plus,
@@ -467,10 +467,10 @@ export default function MarketCenterManagement() {
                         {orderByOptions.map((direction) => (
                           <SelectItem key={direction} value={direction}>
                             <div className="flex gap-1 items-center mr-1">
-                              {direction === "asc" ? (
-                                <ArrowDownWideNarrow />
+                              {direction === "desc" ? (
+                                <ArrowDown />
                               ) : (
-                                <ArrowDownNarrowWide />
+                                <ArrowUp />
                               )}
                               <p className="text-sm font-medium">
                                 {formatOrderBy(direction)}

@@ -45,6 +45,33 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    const unassignTicket = req.assigneeId === "Unassigned";
+
+    // Check if assignee exists and is in the same market center for STAFF users
+    let newAssignee = null;
+    if (req.assigneeId && !unassignTicket) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.assigneeId },
+      });
+      if (!user) {
+        throw APIError.notFound("New assignee not found");
+      }
+      newAssignee = user;
+    }
+
+    // For STAFF, ensure they can only assign to users in their market center
+    if (
+      userContext?.role === "STAFF" &&
+      userContext?.marketCenterId &&
+      newAssignee &&
+      newAssignee?.marketCenterId &&
+      newAssignee?.marketCenterId !== userContext.marketCenterId
+    ) {
+      throw APIError.permissionDenied(
+        "You can only assign tickets to users in your team"
+      );
+    }
+
     const updateData: any = {};
     let ticketHistoryData: any = [];
 
@@ -54,8 +81,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         ticketId: req.ticketId,
         action: "UPDATE",
         field: "title",
-        previousValue: oldTicket.title,
-        newValue: req.title,
+        previousValue: oldTicket?.title ?? null,
+        newValue: req?.title ?? null,
         snapshot: oldTicket,
         changedAt: new Date(),
         changedById: userContext.userId,
@@ -67,8 +94,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         ticketId: req.ticketId,
         action: "UPDATE",
         field: "description",
-        previousValue: oldTicket.description,
-        newValue: req.description,
+        previousValue: oldTicket?.description ?? null,
+        newValue: req?.description ?? null,
         snapshot: oldTicket,
         changedAt: new Date(),
         changedById: userContext.userId,
@@ -96,8 +123,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         ticketId: req.ticketId,
         action: "UPDATE",
         field: "category",
-        previousValue: oldTicket?.category?.name ?? "None",
-        newValue: newCategory?.name ?? "None",
+        previousValue: oldTicket?.category?.name ?? null,
+        newValue: newCategory?.name ?? null,
         snapshot: oldTicket,
         changedAt: new Date(),
         changedById: userContext.userId,
@@ -124,7 +151,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       }
     }
 
-    if (req.status && req.status !== oldTicket.status) {
+    if (
+      req.status &&
+      req.status !== oldTicket.status &&
+      req.assigneeId !== "Unassigned"
+    ) {
       updateData.status = req.status;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -140,24 +171,66 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         updateData.resolvedAt = new Date();
       }
     }
+    const previousAssignee = oldTicket?.assignee ?? null;
+    const previousAssigneeName =
+      previousAssignee && previousAssignee?.name
+        ? previousAssignee.name
+        : previousAssignee && !previousAssignee?.name
+        ? "No name listed"
+        : "Unassigned";
 
-    if (req.assigneeId && req.assigneeId !== oldTicket.assigneeId) {
-      const newAssignee = await prisma.user.findUnique({
-        where: { id: req.assigneeId },
-      });
+    if (req.assigneeId === "Unassigned" && !!oldTicket?.assigneeId) {
+      updateData.assigneeId = null;
+      updateData.status = "UNASSIGNED";
 
+      ticketHistoryData.push(
+        {
+          ticketId: req.ticketId,
+          action: "REMOVE",
+          field: "assignment",
+          previousValue: previousAssigneeName,
+          newValue: "Unassigned",
+          snapshot: oldTicket,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        },
+        {
+          ticketId: req.ticketId,
+          action: "UPDATE",
+          field: "status",
+          previousValue: oldTicket?.status ?? null,
+          newValue: "UNASSIGNED",
+          snapshot: oldTicket,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        }
+      );
+    } else if (newAssignee && newAssignee?.id !== oldTicket?.assigneeId) {
       updateData.assigneeId = req.assigneeId;
+      updateData.status = "ASSIGNED";
 
-      ticketHistoryData.push({
-        ticketId: req.ticketId,
-        action: "ADD",
-        field: "assignment",
-        previousValue: oldTicket?.assignee?.name ?? "None",
-        newValue: newAssignee?.name ?? "None",
-        snapshot: oldTicket,
-        changedAt: new Date(),
-        changedById: userContext.userId,
-      });
+      ticketHistoryData.push(
+        {
+          ticketId: req.ticketId,
+          action: "ADD",
+          field: "assignment",
+          previousValue: previousAssigneeName,
+          newValue: newAssignee?.name ?? "No name listed",
+          snapshot: oldTicket,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        },
+        {
+          ticketId: oldTicket.id,
+          action: "UPDATE",
+          field: "status",
+          previousValue: oldTicket?.status ?? "CREATED",
+          newValue: "ASSIGNED",
+          snapshot: oldTicket,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        }
+      );
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -198,7 +271,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       return { ticket: safeTicket } as UpdateTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
-        throw APIError.notFound("ticket not found");
+        throw APIError.notFound("Ticket not found");
       }
       throw error;
     }

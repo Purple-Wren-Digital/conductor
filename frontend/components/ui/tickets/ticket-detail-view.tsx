@@ -22,18 +22,31 @@ import TicketHistoryTable from "@/components/history-tables/tickets/history-tabl
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
+  ArrowRightLeft,
   CalendarIcon,
   CheckCircle,
+  CircleMinus,
+  CirclePlus,
+  Clipboard,
   Clock,
   Edit,
   History,
+  Mailbox,
+  MessageSquare,
+  SquarePen,
+  Trash2,
   User,
   X,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import type { Ticket, PrismaUser, TicketStatus, Urgency } from "@/lib/types";
+import type {
+  Ticket,
+  PrismaUser,
+  TicketStatus,
+  Urgency,
+  TicketHistory,
+} from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
@@ -50,6 +63,8 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
+import { useFetchTicketHistory } from "@/hooks/use-history";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TicketDetailViewProps {
   ticketId: string;
@@ -77,6 +92,13 @@ type emailNotificationTypes = {
   };
 };
 
+export const ticketDetailQueryParams = new URLSearchParams(
+  "orderBy=desc&limit=5"
+);
+export const ticketDetailQueryKeyParams = Object.fromEntries(
+  ticketDetailQueryParams.entries()
+) as Record<string, string>;
+
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
@@ -87,7 +109,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   const { user: authUser } = useUser();
   const { currentUser } = useStore();
-  const { permissions, role } = useUserRole(); // TODO: Current User Persistence with useUserRole()
+  const { permissions, role } = useUserRole();
+  const queryClient = useQueryClient();
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") {
@@ -130,6 +153,18 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   useEffect(() => {
     refreshAllData();
   }, [refreshAllData]);
+
+  const { data: ticketHistoryData, isLoading: isHistoryLoading } =
+    useFetchTicketHistory({
+      id: ticketId,
+      queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
+      queryParams: ticketDetailQueryParams,
+    });
+
+  const ticketHistory: TicketHistory[] = ticketHistoryData?.ticketHistory || [];
+  const invalidateTicketHistory = queryClient.invalidateQueries({
+    queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
+  });
 
   const findChangedFormValues = ({
     oldTicket,
@@ -313,6 +348,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         });
       }
       await parseJsonSafe(res);
+      await invalidateTicketHistory;
       await refreshAllData();
     } catch (error) {
       console.error("Failed to update ticket:", error);
@@ -354,6 +390,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       });
       await parseJsonSafe(res);
       await refreshAllData();
+      await invalidateTicketHistory;
 
       await sendEmailNotification({
         updatedTicket: ticket,
@@ -376,6 +413,27 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         return <Clock className="h-4 w-4" />;
       default:
         return <AlertTriangle className="h-4 w-4" />;
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch (action.toUpperCase()) {
+      case "CREATE":
+        return <Clipboard className="h-3 w-3" />;
+      case "UPDATE":
+        return <SquarePen className="h-3 w-3" />;
+      case "DELETE":
+        return <Trash2 className="h-3 w-3" />;
+      case "INVITE":
+        return <Mailbox className="h-3 w-3" />;
+      case "ADD":
+        return <CirclePlus className="h-3 w-3" />;
+      case "REMOVE":
+        return <CircleMinus className="h-3 w-3" />;
+      case "ROLE CHANGE":
+        return <ArrowRightLeft className="h-4 w-4" />;
+      default:
+        return <Clipboard className="h-3 w-3" />;
     }
   };
 
@@ -600,14 +658,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   <div className="space-y-2">
                     <Label>Assignee</Label>
                     <Select
-                      value={ticket.assignee?.id || "unassigned"}
+                      value={ticket.assignee?.id || "Unassigned"}
                       onValueChange={handleAssigneeChange}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
                         {users &&
                           users.length > 0 &&
                           users.map((u) => {
@@ -653,43 +711,58 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {ticket?.ticketHistory &&
-                  ticket?.ticketHistory.length > 0 &&
-                  ticket?.ticketHistory.slice(0, 3).map((entry) => {
+                {isHistoryLoading &&
+                  (!ticketHistory || !ticketHistory?.length) && (
+                    <div className="border-b pb-4">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Loading...
+                      </p>
+                    </div>
+                  )}
+                {!isHistoryLoading &&
+                  (!ticketHistory || !ticketHistory?.length) && (
+                    <div className="border-b pb-4">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No recent updates
+                      </p>
+                    </div>
+                  )}
+                {!isHistoryLoading &&
+                  ticketHistory &&
+                  ticketHistory.length > 0 &&
+                  ticketHistory.map((log: TicketHistory) => {
                     return (
-                      <div key={entry?.id} className="border-b pb-4">
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                      <div key={log?.id} className="border-b pb-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                           <Label>
-                            {entry?.action &&
-                              capitalizeEveryWord(entry?.action)}{" "}
-                            {entry?.field && capitalizeEveryWord(entry?.field)}
+                            {log?.action && capitalizeEveryWord(log?.action)}{" "}
+                            {log?.field && capitalizeEveryWord(log?.field)}
                           </Label>
                           <p className="text-sm font-medium">
-                            {new Date(entry?.changedAt).toLocaleDateString()}
+                            {new Date(log?.changedAt).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="flex gap-1 flex-wrap items-center  text-muted-foreground">
-                          <p className="text-sm">
-                            {entry?.previousValue &&
-                              capitalizeEveryWord(
-                                entry?.previousValue.replace("_", " ")
-                              )}
-                          </p>
-                          <ArrowRight className="h-4 w-4" />
-                          <p className="text-sm font-semibold">
-                            {entry?.newValue &&
-                              capitalizeEveryWord(
-                                entry?.newValue.replace("_", " ")
-                              )}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm ">
-                          <User className="h-3 w-3 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground ">
-                            {entry?.changedBy?.name
-                              ? entry?.changedBy?.name
-                              : `#${entry?.changedById}`}
-                          </p>
+                        <div className="flex flex-col justify-between gap-2 mb-1">
+                          <div className="flex gap-1 flex-wrap items-center text-muted-foreground">
+                            {log?.field === "comment" ? (
+                              <MessageSquare className="h-3 w-3" />
+                            ) : (
+                              getActionIcon(log?.action)
+                            )}
+                            <p
+                              className={`text-sm font-medium ${log?.field === "comment" && "truncate max-w-[100px] xs:max-w-[350px] lg:max-w-[175px]"}`}
+                            >
+                              {log?.newValue}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 flex-wrap items-center text-muted-foreground">
+                            <p className="text-sm font-medium">
+                              By:{" "}
+                              {log?.changedBy?.name
+                                ? log?.changedBy?.name
+                                : `#${log?.changedById}`}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );
