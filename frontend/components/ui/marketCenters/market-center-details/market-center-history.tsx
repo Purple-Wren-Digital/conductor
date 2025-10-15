@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+// TODO export table to computer - excel/google sheets ??
+
 
 export default function MarketCenterHistory({
   marketCenterId,
@@ -105,7 +107,6 @@ export default function MarketCenterHistory({
               <TableHead>Previous Data</TableHead>
               <TableHead>Changed By</TableHead>
               <TableHead>Changed On</TableHead>
-              {/* <TableHead className="text-center">Snapshot</TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -248,15 +249,6 @@ export default function MarketCenterHistory({
                           ? new Date(log.changedAt).toLocaleDateString()
                           : "N/a"}
                       </TableCell>
-                      {/* SNAPSHOT OR GO TO TICKET */}
-                      {/* <TableCell className="items-center justify-center">
-                              <Link href={`/dashboard/tickets/${log?.id}`}>
-                                <div className="flex gap-2 items-center justify-center">
-                                  <Eye className="h-4 w-4" />
-                                  <p>View</p>
-                                </div>
-                              </Link>
-                            </TableCell> */}
                     </TableRow>
                   );
                 }
@@ -277,3 +269,26 @@ export default function MarketCenterHistory({
     </div>
   );
 }
+
+// <TableHead className="text-center">Snapshot</TableHead>
+//  <TableCell className="font-medium">
+//   {log?.snapshot ? (
+//     <ToolTip
+//       content={`View snapshot of ticket at time of change`}
+//       trigger={
+//         <p
+//           className="underline decoration-dotted cursor-pointer text-center"
+//           onClick={() => {
+//             router.push(
+//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
+//             );
+//           }}
+//         >
+//           View
+//         </p>
+//       }
+//     />
+//   ) : (
+//     <p  className="text-muted-foreground">N/a</p>
+//   )}
+// </TableCell>

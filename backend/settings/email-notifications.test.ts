@@ -68,7 +68,7 @@ describe("Email Notifications", () => {
       where: {
         marketCenterId: "market-center-id",
         role: "ADMIN",
-        isDeleted: false,
+        isActive: false,
       },
       select: {
         id: true,

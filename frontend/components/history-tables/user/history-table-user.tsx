@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-// TODO: export table to computer - excel/google sheets ??
+// TODO export table to computer - excel/google sheets ??
 
 export default function UserHistoryTable({ userId }: { userId?: string }) {
   const router = useRouter();
@@ -96,7 +96,6 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
             <TableHead>Previous Data</TableHead>
             <TableHead>Changed By</TableHead>
             <TableHead>Changed On</TableHead>
-            {/* <TableHead className="text-center">Snapshot</TableHead> */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -239,3 +238,26 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
     </div>
   );
 }
+
+// <TableHead className="text-center">Snapshot</TableHead>
+//  <TableCell className="font-medium">
+//   {log?.snapshot ? (
+//     <ToolTip
+//       content={`View snapshot of ticket at time of change`}
+//       trigger={
+//         <p
+//           className="underline decoration-dotted cursor-pointer text-center"
+//           onClick={() => {
+//             router.push(
+//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
+//             );
+//           }}
+//         >
+//           View
+//         </p>
+//       }
+//     />
+//   ) : (
+//     <p  className="text-muted-foreground">N/a</p>
+//   )}
+// </TableCell>
