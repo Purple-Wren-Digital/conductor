@@ -43,12 +43,16 @@ vi.mock("~encore/auth", () => ({
   }),
 }));
 
-import { applyAutoAssignment } from "./ticket/auto-assignment";
+import {
+  applyAutoAssignment,
+  ASSIGNMENT_RULES,
+} from "./ticket/auto-assignment";
 
 const mockPrisma = hoisted.mockPrisma;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  ASSIGNMENT_RULES.length = 0;
 });
 
 describe("Category Auto-Routing Integration", () => {
