@@ -106,14 +106,14 @@ model TeamInvitation {
   email          String
   role           UserRole         @default(AGENT)
   status         InvitationStatus @default(PENDING)
-  marketCenterId String           @map("market_center_id")
+  marketCenterId String?           @map("market_center_id")
   invitedBy      String?          @map("invited_by")
   token          String           @unique
   expiresAt      DateTime         @map("expires_at")
   acceptedAt     DateTime?        @map("accepted_at")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
-  marketCenter   MarketCenter     @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  marketCenter   MarketCenter?     @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
 
   @@unique([marketCenterId, email])
   @@index([token])

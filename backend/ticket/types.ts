@@ -1,3 +1,5 @@
+import { MarketCenter } from "../marketCenters/types";
+
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
   | "DRAFT"
@@ -17,10 +19,7 @@ export interface User {
   isActive: boolean;
   auth0Id: string;
   marketCenterId: string | null;
-  marketCenter?: {
-    id: string;
-    name: string;
-  } | null;
+  marketCenter?: MarketCenter;
 }
 
 export interface Ticket {

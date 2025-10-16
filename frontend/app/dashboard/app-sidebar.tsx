@@ -20,6 +20,7 @@ import {
   Ticket,
   FileText,
   Folder,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
@@ -97,14 +98,24 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/dashboard/users">
+                  <Link href="/dashboard/users?tab=users">
                     <UsersIcon /> User Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
 
-            {!permissions?.canManageAllUsers && permissions?.canManageTeam && (
+            {permissions?.canManageAllUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/marketCenters">
+                    <Building2 /> Market Centers
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canManageTeam && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/settings?tab=team">

@@ -28,6 +28,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     auth: false,
   },
   async (req) => {
+    console.log("!! UPDATE USER END POINT !!");
     const userContext = await getUserContext();
 
     // Permission checks

@@ -1,5 +1,20 @@
-import { Shield, User, Crown, LucideProps } from "lucide-react";
-import { TicketStatus, Urgency, UserRole } from "./types";
+import {
+  Shield,
+  User,
+  Crown,
+  LucideProps,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import {
+  OrderBy,
+  TicketSortBy,
+  TicketStatus,
+  Urgency,
+  UserRole,
+  UserSortBy,
+} from "./types";
+import { ForwardRefExoticComponent, RefAttributes } from "react";
 
 // USERS
 export const ROLE_COLORS = {
@@ -8,7 +23,17 @@ export const ROLE_COLORS = {
   AGENT: "secondary",
 } as const;
 
-export const ROLE_ICONS = {
+export const ROLE_ICONS: {
+  ADMIN: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
+  STAFF: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
+  AGENT: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
+} = {
   ADMIN: Crown,
   STAFF: Shield,
   AGENT: User,
@@ -77,6 +102,70 @@ export const getUrgencyColor = (urgency: Urgency) => {
   }
 };
 
+// FILTERS
+export const defaultActiveStatuses: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+];
+export const statusOptions: TicketStatus[] = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+];
+export const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
+
+export const orderByOptions: OrderBy[] = ["asc", "desc"];
+export const orderByLabels: Record<OrderBy, string> = {
+  asc: "Ascending",
+  desc: "Descending",
+};
+
+export const formatOrderBy = (option: OrderBy) => {
+  return orderByLabels[option] ?? option;
+};
+export const sortByTicketOptions: TicketSortBy[] = [
+  "updatedAt",
+  "createdAt",
+  "urgency",
+  "status",
+];
+
+const ticketOptionLabels: Record<TicketSortBy, string> = {
+  updatedAt: "Updated At",
+  createdAt: "Created At",
+  urgency: "Urgency",
+  status: "Status",
+};
+
+export const formatTicketOptions = (option: TicketSortBy) => {
+  return ticketOptionLabels[option] ?? option;
+};
+
+export const sortByUserOptions: UserSortBy[] = [
+  "updatedAt",
+  "createdAt",
+  "name",
+];
+
+const userOptionLabels: Record<UserSortBy, string> = {
+  updatedAt: "Updated At",
+  createdAt: "Created At",
+  name: "Name",
+};
+
+export const formatUserOptions = (option: UserSortBy) => {
+  return userOptionLabels[option] ?? option;
+};
+
+export type UserStatusType = "Active" | "Inactive";
+export const userStatusOptions: UserStatusType[] = ["Active", "Inactive"];
+
+export const USER_STATUS_ICONS = {
+  Active: UserCheck,
+  Inactive: UserX,
+};
 // MISC
 export async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
@@ -96,3 +185,25 @@ export async function parseJsonSafe<T>(res: Response): Promise<T> {
     }. First 200 chars:\n${text.slice(0, 200)}`
   );
 }
+
+export const calculateTotalPages = ({
+  totalItems,
+  itemsPerPage,
+}: {
+  totalItems: number;
+  itemsPerPage: number;
+}) => {
+  return totalItems > 0 ? Math.ceil(totalItems / itemsPerPage) : 1;
+};
+
+export const formatPaginationText = ({
+  totalItems,
+  itemsPerPage,
+  currentPage,
+}: {
+  totalItems: number;
+  itemsPerPage: number;
+  currentPage: number;
+}) => {
+  return `${totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - ${Math.min(currentPage * itemsPerPage, totalItems)} `;
+};
