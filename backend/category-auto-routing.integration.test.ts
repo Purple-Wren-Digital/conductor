@@ -52,7 +52,6 @@ const mockPrisma = hoisted.mockPrisma;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  ASSIGNMENT_RULES.length = 0;
 });
 
 describe("Category Auto-Routing Integration", () => {
@@ -154,6 +153,8 @@ describe("Category Auto-Routing Integration", () => {
   });
 
   it("should return null when no category match and no rules match", async () => {
+    ASSIGNMENT_RULES.length = 0;
+
     mockPrisma.ticketCategory.findFirst.mockResolvedValue(null);
     mockPrisma.user.findFirst.mockResolvedValue(null);
 
