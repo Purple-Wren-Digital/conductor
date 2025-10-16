@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { Card, CardHeader } from "@/components/ui/card";
 import AdminTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-admin";
 import AgentTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-agent";
@@ -21,7 +21,7 @@ export default function TicketList() {
 
   switch (role) {
     case "ADMIN":
-      return  <AdminTicketList />;
+      return <AdminTicketList />;
     case "STAFF":
       return <StaffTicketList />;
     case "AGENT":

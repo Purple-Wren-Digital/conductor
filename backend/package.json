@@ -27,7 +27,7 @@
     "@prisma/extension-accelerate": "^2.0.2",
     "auth0": "^4.27.0",
     "dompurify": "^3.2.6",
-    "encore.dev": "^1.49.3",
+    "encore.dev": "^1.50.4",
     "jsdom": "^26.1.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",

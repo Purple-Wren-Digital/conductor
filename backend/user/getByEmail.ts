@@ -25,6 +25,7 @@ export const getByEmail = api<GetUserRequest, GetUserResponse>(
     }
     const user = await prisma.user.findUnique({
       where: { email: req.email },
+      include: { marketCenter: true },
     });
 
     if (!user) {

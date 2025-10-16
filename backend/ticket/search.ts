@@ -13,7 +13,7 @@ export interface SearchTicketsRequest {
   urgency?: Query<Urgency[]>;
   assigneeId?: Query<string>;
   creatorId?: Query<string>;
-  category?: Query<string>;
+  categoryId?: Query<string[]>;
   marketCenterId?: Query<string>;
 
   dateFrom?: Query<string>;
@@ -27,7 +27,7 @@ export interface SearchTicketsRequest {
 }
 
 export interface SearchTicketsResponse {
-  tickets: Ticket[];
+  tickets: Partial<Ticket>[];
   total: number;
 }
 
@@ -74,6 +74,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       where = {
         OR: [
           {
+            category: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
+          {
             creator: {
               marketCenterId: req.marketCenterId,
             },
@@ -96,6 +101,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.urgency && req.urgency.length > 0) {
       where.urgency = { in: req.urgency as Urgency[] };
     }
+    if (req.categoryId) where.categoryId = { in: req.categoryId };
+
     if (
       userContext.role === "AGENT" ||
       (userContext.role === "STAFF" && !userContext?.marketCenterId)
@@ -103,10 +110,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       where.assigneeId = userContext.userId;
       where.creatorId = userContext.userId;
     } else {
-      if (req.assigneeId) where.assigneeId = req.assigneeId;
+      if (req.assigneeId)
+        where.assigneeId =
+          req.assigneeId === "Unassigned" ? { equals: null } : req.assigneeId;
       if (req.creatorId) where.creatorId = req.creatorId;
     }
-    if (req.category) where.category = req.category;
 
     if (req.query) {
       const searchCondition = {
@@ -171,6 +179,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         );
         break;
       case "updatedAt":
+        orderBy.push({ updatedAt: sortDir }, { id: "desc" });
+        break;
       default:
         orderBy.push({ updatedAt: sortDir }, { id: "desc" });
         break;
@@ -182,6 +192,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         include: {
           creator: true,
           assignee: true,
+          category: true,
           _count: { select: { comments: true } },
         },
         orderBy,
@@ -191,13 +202,20 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       prisma.ticket.count({ where }),
     ]);
 
-    const ticketsMapped: Ticket[] = tickets.map((r) => ({
+    const ticketsMapped: Partial<Ticket>[] = tickets.map((r) => ({
       ...r,
       title: r.title ?? "",
       description: r.description ?? "",
       status: r.status ?? ("ASSIGNED" as TicketStatus),
       urgency: r.urgency ?? ("MEDIUM" as Urgency),
-      category: r.category ?? "",
+      categoryId: r.categoryId ?? "",
+      category: r?.category
+        ? {
+            ...r.category,
+            description: r.category.description ?? "",
+            defaultAssigneeId: r.category.defaultAssigneeId ?? null,
+          }
+        : null,
       creator: {
         ...r.creator,
         name: r.creator.name ?? "",
@@ -205,6 +223,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       assignee: r.assignee
         ? { ...r.assignee, name: r.assignee.name ?? "" }
         : null,
+
       commentCount: r._count.comments,
     }));
 

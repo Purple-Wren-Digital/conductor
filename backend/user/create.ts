@@ -3,6 +3,7 @@ import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { $Enums } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
+import { mapHistorySnapshot } from "../utils";
 
 export interface CreateUserRequest {
   email: string;
@@ -19,7 +20,6 @@ export interface CreateUserResponse {
 export const create = api<CreateUserRequest, CreateUserResponse>(
   { expose: true, method: "POST", path: "/users", auth: true },
   async (req) => {
-
     const userContext = await getUserContext();
     if (userContext?.role !== "ADMIN") {
       throw APIError.permissionDenied("Only admin can create users");
@@ -62,23 +62,47 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       marketCenterId: string | null;
     };
 
-    newUser = await prisma.user.create({
-      data: {
-        email: req.email,
-        name: req.name,
-        role: req.role || "AGENT",
-        isActive: true,
-        auth0Id: req.auth0Id,
-        marketCenter: req?.marketCenterId
-          ? {
-              connect: { id: req.marketCenterId }, // relation connect
-            }
-          : undefined,
-      },
+    const result = await prisma.$transaction(async (u) => {
+      const newUser = await u.user.create({
+        data: {
+          email: req.email,
+          name: req.name,
+          role: req.role || "AGENT",
+          isActive: true,
+          auth0Id: req.auth0Id,
+          marketCenter: req?.marketCenterId
+            ? {
+                connect: { id: req.marketCenterId }, // relation connect
+              }
+            : undefined,
+        },
+        include: {
+          userHistory: true,
+        },
+      });
+
+      const history = await u.userHistory.create({
+        data: {
+          userId: newUser.id,
+          marketCenterId: newUser?.marketCenterId,
+          action: "CREATE",
+          field: "isActive",
+          previousValue: "false",
+          newValue: "true",
+          changedById: userContext.userId,
+          snapshot: newUser,
+        },
+      });
+
+      return { newUser, history };
     });
 
     return {
-      user: { ...newUser, name: newUser.name ?? "" },
+      user: {
+        ...result.newUser,
+        name: result.newUser.name ?? "",
+        userHistory: mapHistorySnapshot([result.history]),
+      },
     };
   }
 );

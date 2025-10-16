@@ -6,6 +6,8 @@ import { PrismaUser } from "@/lib/types";
 import { ChevronDownIcon } from "lucide-react";
 
 type UserMultiSelectDropdown = {
+  type: "editing" | "search";
+  filter: boolean;
   disabled: boolean;
   marketCenterId: string | null;
   placeholder: string;
@@ -17,6 +19,8 @@ type UserMultiSelectDropdown = {
 };
 
 export default function UserMultiSelectDropdown({
+  type,
+  filter,
   disabled,
   marketCenterId,
   placeholder,
@@ -70,12 +74,19 @@ export default function UserMultiSelectDropdown({
             if (marketCenterId) {
               isAlreadyAssignedToMC = option.marketCenterId === marketCenterId;
             }
+            // if (type === "search" && isAlreadyAssignedToMC) {
+            //   handleSetSelectedOptions([option]);
+            // }
             // Filter out users assigned to other market centers
             if (
+              type === "editing" &&
+              filter &&
               option.marketCenterId &&
               option.marketCenterId !== marketCenterId
-            )
+            ) {
               return null;
+            }
+
             return (
               <li key={`${index}-${option.id}`} className="w-full">
                 <label
@@ -86,15 +97,18 @@ export default function UserMultiSelectDropdown({
                     type="checkbox"
                     id={`assignment-${option.id}`}
                     name={formFieldName}
-                    value={option.name}
+                    value={option?.name || option.id.slice(0, 8)}
                     disabled={!isDropdownExpanded}
                     defaultChecked={isAlreadyAssignedToMC}
                     className={`size-3.52 cursor-pointer accent-primary focus:bg-accent focus:text-accent-foreground`} // hover:accent-secondary
                     onChange={(event) => handleSelection(event, option)}
                   />
-                  <p className={"px-2 py-1.5 text-sm font-medium"}>
-                    {option.name}
-                  </p>
+                  <div className="px-2 py-1.5  gap-1">
+                    <p className={"text-sm font-medium"}>{option.name}</p>
+                    <p className={"text-xs font-medium text-muted-foreground"}>
+                      {option?.marketCenter?.name ?? "Unassigned"}
+                    </p>
+                  </div>
                 </label>
               </li>
             );

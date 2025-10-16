@@ -84,15 +84,8 @@ const myAuthHandler = authHandler(
     if (process.env.NODE_ENV === "development" && token === "local") {
       console.log("🔧 Local development mode: accepting 'local' token");
       // // DEFAULT
-      return {
-        userID: "local-dev-user",
-        imageUrl: "https://via.placeholder.com/150",
-        emailAddress: "local@localhost.com",
-      };
-
-      // // AGENT
       // return {
-      //   userID: "auth0|68c07090070c5a2759e2c928",
+      //   userID: "local-dev-user",
       //   imageUrl: "https://via.placeholder.com/150",
       //   emailAddress: "alice.agent@kw.com",
       // };
@@ -105,11 +98,11 @@ const myAuthHandler = authHandler(
       // };
 
       // // ADMIN
-      // return {
-      //   userID: "auth0|68c070eba093c0727999c608",
-      //   imageUrl: "https://via.placeholder.com/150",
-      //   emailAddress: "clara.admin@kw.com",
-      // };
+      return {
+        userID: "auth0|68c070eba093c0727999c608",
+        imageUrl: "https://via.placeholder.com/150",
+        emailAddress: "clara.admin@kw.com",
+      };
     }
 
     try {

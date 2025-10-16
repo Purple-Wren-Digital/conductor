@@ -2,7 +2,6 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canAccessTicket } from "../auth/permissions";
 
 export interface GetTicketRequest {
   ticketId: string;
@@ -20,16 +19,12 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
     auth: true,
   },
   async (req) => {
-    const userContext = await getUserContext();
-
-    const hasAccess = await canAccessTicket(userContext, req.ticketId);
-    if (!hasAccess) {
-      throw APIError.permissionDenied("You do not have permission to view this ticket");
-    }
+    await getUserContext();
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
       include: {
+        category: true,
         creator: true,
         assignee: true,
         _count: {
@@ -49,13 +44,24 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
       description: ticket.description ?? "",
       status: ticket.status ?? ("ASSIGNED" as TicketStatus),
       urgency: ticket.urgency ?? ("MEDIUM" as Urgency),
-      category: ticket.category ?? "",
+      categoryId: ticket.categoryId ?? "",
+      category: ticket?.category
+        ? {
+            ...ticket.category,
+            description: ticket.category.description ?? "",
+            defaultAssigneeId: ticket.category.defaultAssigneeId ?? null,
+          }
+        : null,
       creator: {
         ...ticket.creator,
         name: ticket.creator.name ?? "",
       },
+
       assignee: ticket.assignee
-        ? { ...ticket.assignee, name: ticket.assignee.name ?? "" }
+        ? {
+            ...ticket.assignee,
+            name: ticket.assignee.name ?? "",
+          }
         : null,
       commentCount: ticket._count.comments,
     };

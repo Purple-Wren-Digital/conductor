@@ -24,8 +24,22 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     const userContext = await getUserContext();
 
     if (userContext?.role === "AGENT") {
-      throw APIError.permissionDenied("Not authorized to view all  users");
+      const user = await prisma.user.findUnique({
+        where: { id: userContext.userId },
+      });
+
+      return {
+        users: user
+          ? [
+              {
+                ...user,
+                name: user.name ?? "",
+              },
+            ]
+          : [],
+      };
     }
+
     let where: any = {};
 
     if (req?.role) {
@@ -34,12 +48,16 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
 
     const users = await prisma.user.findMany({
       where,
+      include: {
+        marketCenter: true,
+      },
       orderBy: { name: "asc" },
     });
 
     const formattedUsers = users.map((user) => ({
       ...user,
       name: user.name ?? "",
+      marketCenter: user?.marketCenter ?? undefined,
     }));
 
     return { users: formattedUsers };

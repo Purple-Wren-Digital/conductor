@@ -43,7 +43,10 @@ vi.mock("~encore/auth", () => ({
   }),
 }));
 
-import { applyAutoAssignment } from "./ticket/auto-assignment";
+import {
+  applyAutoAssignment,
+  ASSIGNMENT_RULES,
+} from "./ticket/auto-assignment";
 
 const mockPrisma = hoisted.mockPrisma;
 
@@ -150,6 +153,8 @@ describe("Category Auto-Routing Integration", () => {
   });
 
   it("should return null when no category match and no rules match", async () => {
+    ASSIGNMENT_RULES.length = 0;
+
     mockPrisma.ticketCategory.findFirst.mockResolvedValue(null);
     mockPrisma.user.findFirst.mockResolvedValue(null);
 

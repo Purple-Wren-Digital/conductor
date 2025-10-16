@@ -59,7 +59,7 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
     }
 
     // Get ticket scope filter
-    const scopeFilter = getTicketScopeFilter(userContext);
+    const scopeFilter = await getTicketScopeFilter(userContext);
     
     // First, find which tickets are valid for update
     const whereClause: any = {
@@ -85,17 +85,41 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
     const failed = req.ticketIds.filter((id) => !validIds.includes(id));
 
     // Update only the valid tickets
-    const result = await prisma.ticket.updateMany({
-      where: {
-        id: {
-          in: validIds,
-        },
-      },
-      data: updateData,
+    if (validIds.length === 0) {
+      return { updated: 0, failed };
+    }
+
+    const results: number = await prisma.$transaction(async (tx) => {
+      let updatedCount = 0;
+
+      for (const oldTicket of validTickets) {
+        const updated = await tx.ticket.update({
+          where: { id: oldTicket.id },
+          data: updateData,
+        });
+
+        updatedCount++;
+
+        // Build history entries for each changed field
+        const histories = Object.keys(updateData).map((field) => ({
+          ticketId: oldTicket.id,
+          field,
+          previousValue: (oldTicket as any)[field]?.toString() ?? "null",
+          newValue: (updated as any)[field]?.toString() ?? "null",
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        }));
+
+        await tx.ticketHistory.createMany({
+          data: histories,
+        });
+      }
+
+      return updatedCount;
     });
 
     return {
-      updated: result.count,
+      updated: results,
       failed,
     };
   }

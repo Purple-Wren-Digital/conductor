@@ -9,7 +9,7 @@ import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { parseJsonSafe } from "@/lib/utils";

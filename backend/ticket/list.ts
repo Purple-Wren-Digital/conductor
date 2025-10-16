@@ -4,13 +4,14 @@ import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { getTicketScopeFilter } from "../auth/permissions";
+import { mapHistorySnapshot } from "../utils";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
   urgency?: Query<Urgency[]>;
   assigneeId?: Query<string>;
   creatorId?: Query<string>;
-  category?: Query<string>;
+  categoryId?: Query<string>;
   search?: Query<string>;
   marketCenterId?: Query<string>;
   limit?: Query<number>;
@@ -72,19 +73,19 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     if (req.creatorId) {
       where.creatorId = req.creatorId;
     }
-
-    if (req.category) {
-      where.category = req.category;
+    // TODO: LIST CATEGORIES BY MARKET CENTER
+    if (req.categoryId) {
+      where.categoryId = req.categoryId;
     }
-
-    console.log("????WHERE?????", where);
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
+          category: true,
           creator: true,
           assignee: true,
+          ticketHistory: true,
           _count: {
             select: { comments: true },
           },
@@ -105,7 +106,14 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       description: ticket.description ?? "",
       status: ticket.status ?? ("ASSIGNED" as TicketStatus),
       urgency: ticket.urgency ?? ("MEDIUM" as Urgency),
-      category: ticket.category ?? "",
+      categoryId: ticket.categoryId ?? "",
+      category: ticket?.category
+        ? {
+            ...ticket.category,
+            description: ticket.category.description ?? "",
+            defaultAssigneeId: ticket.category.defaultAssigneeId ?? null,
+          }
+        : null,
       creator: {
         ...ticket.creator,
         name: ticket.creator.name ?? "",
@@ -114,6 +122,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         ? { ...ticket.assignee, name: ticket.assignee.name ?? "" }
         : null,
       commentCount: ticket._count.comments,
+      ticketHistory: mapHistorySnapshot(ticket.ticketHistory),
     }));
 
     return { tickets: formattedTickets, total } as ListTicketsResponse;

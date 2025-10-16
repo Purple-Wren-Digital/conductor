@@ -51,7 +51,7 @@ export interface CreateRuleResponse {
 }
 
 // In-memory storage for rules (in production, use database)
-let ASSIGNMENT_RULES: AssignmentRule[] = [
+export let ASSIGNMENT_RULES: AssignmentRule[] = [
   {
     id: "rule_1",
     name: "High Priority to Senior Staff",

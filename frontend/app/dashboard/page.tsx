@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { AgentDashboard } from "@/components/dashboard/agent-dashboard";
 import { StaffDashboard } from "@/components/dashboard/staff-dashboard";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";

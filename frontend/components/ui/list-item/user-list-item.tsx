@@ -1,28 +1,33 @@
 "use client";
 
 import * as React from "react";
-import { ListItem, getRoleBadgeStyle } from "./base-list-item";
+import { ListItem } from "./base-list-item";
 import type { MarketCenter, PrismaUser } from "@/lib/types";
-import { Mail, Calendar as CalendarIcon, CircleMinus } from "lucide-react";
+import {
+  Mail,
+  CalendarIcon,
+  CircleMinus,
+  ArrowRightCircle,
+} from "lucide-react";
 import { format } from "date-fns";
-import { getRoleColor } from "@/lib/utils";
+import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export function UserListItem({
   user,
   onEdit,
   deleteLabel,
   onDelete,
-  disabled,
+  onClick,
 }: {
   user: PrismaUser & { ticketsAssigned?: number; ticketsCreated?: number };
+  onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
   deleteLabel: "Remove" | "Deactivate";
-  disabled: boolean;
 }) {
-  const { role } = useUserRole();
+  const { role, permissions } = useUserRole();
 
   const { data: marketCenterData } = useFetchMarketCenter(
     role,
@@ -34,18 +39,21 @@ export function UserListItem({
   return (
     <ListItem
       id={user.id}
-      title={user.name}
+      title={`${user.name}`}
       subtitle={
         marketCenter?.name
           ? `${marketCenter.name} Market Center${marketCenter?.id && ` (#${marketCenter?.id.slice(0, 8)})`}`
           : "No Assigned Market Center"
       }
       avatar={{
-        fallback: user.name
-          .split(" ")
-          .map((n: string) => n[0])
-          .join(""),
+        fallback: user?.name
+          ? user?.name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+          : "",
       }}
+      onClick={onClick}
       primaryBadges={[
         {
           label: user.role,
@@ -67,7 +75,7 @@ export function UserListItem({
       actions={[
         {
           label: "Edit",
-          disabled: disabled,
+          disabled: !permissions?.canManageAllUsers,
           icon: (
             <svg
               className="h-4 w-4"
@@ -89,7 +97,7 @@ export function UserListItem({
           label: deleteLabel,
           variant: "ghost",
 
-          disabled: disabled,
+          disabled: !permissions?.canDeactivateUsers,
           icon:
             deleteLabel === "Remove" ? (
               <CircleMinus className="h-4 w-4" />
@@ -109,6 +117,13 @@ export function UserListItem({
               </svg>
             ),
           onClick: onDelete,
+        },
+        {
+          label: "View",
+          variant: "outline",
+          disabled: !user?.id,
+          icon: <ArrowRightCircle className="h-4 w-4" />,
+          onClick: onClick,
         },
       ]}
     />

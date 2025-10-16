@@ -71,8 +71,9 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       };
     }
 
-    const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
-    const offset = Math.max(Number(req.offset ?? 0), 0);
+    const limit =
+      req.limit && Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
+    const offset = req.offset && Math.max(Number(req.offset ?? 0), 0);
 
     let where: any = {};
 

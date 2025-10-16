@@ -52,19 +52,69 @@ export const removeUsers = api<
       throw APIError.notFound("Cannot find Market Center");
     }
 
-    const updatedMarketCenter = await prisma.marketCenter.update({
-      where,
-      include: { users: true },
-      data: {
-        users: {
-          disconnect: req.users.map((u) => ({ id: u.id })),
+    // const updatedMarketCenter = await prisma.marketCenter.update({
+    //   where,
+    //   include: { users: true },
+    //   data: {
+    //     users: {
+    //       disconnect: req.users.map((u) => ({ id: u.id })),
+    //     },
+    //   },
+    // });
+
+    const result = await prisma.$transaction(async (pr) => {
+      const updatedMarketCenter = await pr.marketCenter.update({
+        where: { id: req.id },
+        include: { users: true },
+        data: {
+          users: {
+            disconnect: req.users.map((u) => ({ id: u.id })),
+          },
         },
-      },
+      });
+
+      const removedUsersData = req.users.map((user) => {
+        const removedUser = {
+          marketCenterId: marketCenter.id,
+          changedById: userContext.userId,
+          action: "REMOVE",
+          field: "team",
+          previousValue: JSON.stringify({id: user.id,name: user.name}),
+        };
+        return removedUser;
+      });
+
+      const marketCenterLog = await pr.marketCenterHistory.createMany({
+        data: removedUsersData,
+      });
+
+      // const settingsAuditLog = await pr.settingsAuditLog.createMany({
+      //   data: [
+      //     {
+      //       marketCenterId: marketCenter.id,
+      //       action: "REMOVE",
+      //       section: "team",
+      //       previousValue: {
+      //         old: marketCenter?.users
+      //           ? marketCenter.users.map((u) => ({ userId: u.id }))
+      //           : {},
+      //       },
+      //       newValue: {
+      //         new: updatedMarketCenter.users
+      //           ? updatedMarketCenter.users.map((u) => ({ userId: u.id }))
+      //           : {},
+      //       },
+      //       userId: userContext.userId,
+      //     },
+      //   ],
+      // });
+
+      return { updatedMarketCenter, marketCenterLog };
     });
 
     const formattedMarketCenter = {
-      ...updatedMarketCenter,
-      users: updatedMarketCenter.users.map((user) => ({
+      ...result.updatedMarketCenter,
+      users: result.updatedMarketCenter.users.map((user) => ({
         ...user,
         name: user.name ?? "",
       })),

@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { ListItem } from "@/components/ui/list-item/base-list-item";
+import type { Ticket } from "@/lib/types";
 import {
-  ListItem,
   getCategoryStyle,
   getStatusBadgeStyle,
+  getStatusColor,
   getUrgencyBadgeStyle,
-} from "./base-list-item";
-import type { Ticket } from "@/lib/types";
-import { getStatusColor, getUrgencyColor } from "@/lib/utils";
+  getUrgencyColor,
+} from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
@@ -29,10 +30,11 @@ export function TicketListItem({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
+  const categoryName = ticket?.category?.name ?? "Category - TBD";
   return (
     <ListItem
       id={ticket.id}
-      title={ticket.title}
+      title={ticket?.title ?? "No Title"}
       subtitle={`#${ticket.id}`}
       selectable
       selected={selected}
@@ -52,10 +54,10 @@ export function TicketListItem({
       ]}
       secondaryBadges={[
         {
-          label: ticket.category,
+          label: categoryName,
           variant: "category",
-          style: getCategoryStyle(ticket.category),
-          title: `Category: ${ticket.category}`,
+          style: getCategoryStyle(categoryName),
+          title: `Category: ${categoryName}`,
         },
       ]}
       metadata={[

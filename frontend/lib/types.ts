@@ -7,7 +7,10 @@ export type AppContext = {
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
+  | "DRAFT"
+  | "CREATED"
   | "ASSIGNED"
+  | "UNASSIGNED"
   | "AWAITING_RESPONSE"
   | "IN_PROGRESS"
   | "RESOLVED";
@@ -15,36 +18,77 @@ export type Urgency = "HIGH" | "MEDIUM" | "LOW";
 
 export interface Ticket {
   id: string;
-  title: string;
-  description: string;
+  title: string | null; // Prisma: title String?  => allow null (or keep string if you always normalize)
+  description: string | null; // Prisma: description String? => allow null
   status: TicketStatus;
   urgency: Urgency;
-  category: string;
+  categoryId?: string | null;
   creatorId?: string;
   assigneeId?: string | null;
-  creator: PrismaUser | null;
-  assignee: PrismaUser | null;
   dueDate: Date | null;
+  resolvedAt?: Date | null;
   createdAt: Date;
-  commentCount: number | null;
-  updatedAt?: Date | string;
-  comments?: Comment[];
+  updatedAt: Date;
+  creator?: PrismaUser;
+  assignee?: PrismaUser | null;
+  category?: TicketCategory | null;
+  commentCount?: number | null;
+  deletedAt?: Date | null;
+  isActive?: boolean;
+  ticketHistory: TicketHistory[];
 }
 
 export interface PrismaUser {
   id: string;
   email: string;
-  name: string;
+  name: string | null; // Prisma: name String?  => TypeScript: string | null
   role: UserRole;
   createdAt: Date;
-  updatedAt?: Date;
+  updatedAt: Date;
   isActive: boolean;
   auth0Id: string;
   marketCenterId: string | null;
-  marketCenter?: {
-    id: string;
-    name: string;
-  } | null;
+  marketCenter?: MarketCenter;
+  ticketHistory?: TicketHistory[];
+  userHistory?: UserHistory[];
+  otherUsersChanges?: UserHistory[];
+}
+
+export interface TicketHistory {
+  id: string;
+  ticketId: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  snapshot?: {}; // Ticket as it was in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: PrismaUser;
+  ticket?: Ticket;
+}
+
+export interface UserHistory {
+  id: string;
+  userId: string;
+  marketCenterId: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  snapshot?: {}; // User as they were in this moment
+  changedAt: Date;
+  changedById: string;
+  changedBy?: PrismaUser;
+  user?: PrismaUser;
+}
+
+export interface UserEditFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  marketCenterId?: string;
 }
 
 export interface UserWithStats extends PrismaUser {
@@ -118,10 +162,24 @@ export interface MarketCenter {
   settings?: {} | null;
   createdAt: Date;
   updatedAt: Date;
-  settingsAuditLogs?: SettingsAuditLog[];
+  marketCenterHistory: MarketCenterHistory[];
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
+  // settingsAuditLogs?: SettingsAuditLog[];
+}
+
+export interface MarketCenterHistory {
+  id: string;
+  marketCenterId: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  changedAt: Date;
+  changedById: string;
+  marketCenter?: MarketCenter;
+  changedBy?: PrismaUser;
 }
 
 export interface SettingsAuditLog {
@@ -157,27 +215,98 @@ export interface TeamInvitation {
 export interface TicketCategory {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   marketCenterId: string;
-  defaultAssigneeId?: string;
+  defaultAssigneeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  defaultAssignee?: PrismaUser;
-  marketCenter: MarketCenter;
+  defaultAssignee?: PrismaUser | null;
+  marketCenter?: MarketCenter;
 }
 
+// MARKET CENTERS
 export type MarketCenterForm = {
   name: string;
   selectedUsers: PrismaUser[];
+  ticketCategories?: any[];
 };
+
+export interface BusinessHours {
+  monday: { start: string; end: string; isOpen: boolean };
+  tuesday: { start: string; end: string; isOpen: boolean };
+  wednesday: { start: string; end: string; isOpen: boolean };
+  thursday: { start: string; end: string; isOpen: boolean };
+  friday: { start: string; end: string; isOpen: boolean };
+  saturday: { start: string; end: string; isOpen: boolean };
+  sunday: { start: string; end: string; isOpen: boolean };
+}
+
+export interface BrandingSettings {
+  primaryColor: string;
+  logoUrl?: string;
+  companyName?: string;
+}
+
+export interface MarketCenterSettings {
+  businessHours: BusinessHours;
+  branding: BrandingSettings;
+  holidays: string[];
+  integrations: {
+    apiKeys: Record<string, string>;
+    webhooks: {
+      url: string;
+      events: string[];
+    }[];
+  };
+  general: {
+    timezone: string;
+    language: string;
+    autoAssignment: boolean;
+  };
+  teamMembers: PrismaUser[];
+}
+
+export interface SettingsUpdateRequest {
+  settings: Partial<MarketCenterSettings>;
+}
+
+export interface SettingsAuditLogEntry {
+  id: string;
+  marketCenterId: string;
+  userId: string;
+  action: string;
+  section: string;
+  previousValue: any;
+  newValue: any;
+  createdAt: Date;
+}
+
+export interface TeamInviteRequest {
+  email: string;
+  role: "AGENT" | "STAFF" | "ADMIN";
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  name: string;
+  role: "AGENT" | "STAFF" | "ADMIN";
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface UpdateMemberRequest {
+  role: "AGENT" | "STAFF" | "ADMIN";
+}
 
 // FILTERS
 export type OrderBy = "asc" | "desc";
 
-export type UserSortBy = "updatedAt" | "createdAt" | "name"
-export type UsersResponse = { users: PrismaUser[] };
-
+export type UserSortBy = "updatedAt" | "createdAt" | "name";
+export type UsersResponse = { users: PrismaUser[]; total: number };
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
 export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 export type TicketsResponse = { tickets: TicketWithUpdatedAt[]; total: number };
+
+export type FormErrors = Record<string, string>;

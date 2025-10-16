@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ListItem } from "./base-list-item";
 import type { MarketCenter } from "@/lib/types";
-import { Calendar, CircleMinus, Users } from "lucide-react";
+import { Calendar, CircleMinus, Tags, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export function MarketCenterListItem({
@@ -23,42 +23,48 @@ export function MarketCenterListItem({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
-  const firstUser =
-    marketCenter?.users && marketCenter?.users.length > 0
-      ? marketCenter?.users[0].name
-      : "";
   return (
     <ListItem
       id={marketCenter.id}
       title={marketCenter.name}
-      subtitle={`#${marketCenter.id.slice(0, 8)}${firstUser ? ` | Manager - ${firstUser}` : ""}`}
+      subtitle={`#${marketCenter.id.slice(0, 8)}`}
       selectable={selectable}
       selected={selected}
       onSelect={(v) => onSelect?.(!!v)}
       onClick={onClick}
       metadata={[
         {
-          label:
+          label: `Users ${
             marketCenter?.users && marketCenter?.users.length
               ? String(marketCenter?.users.length)
-              : "0",
+              : "0"
+          }`,
           icon: <Users className="h-3 w-3" />,
+        },
+        {
+          label: `Categories ${
+            marketCenter?.ticketCategories &&
+            marketCenter?.ticketCategories.length
+              ? String(marketCenter?.ticketCategories.length)
+              : "0"
+          }`,
+          icon: <Tags className="h-3 w-3" />,
         },
         {
           label: `Created ${format(new Date(marketCenter.createdAt), "PP")}`,
           icon: <Calendar className="h-3 w-3" />,
         },
-        ...(marketCenter?.updatedAt
-          ? [
-              {
-                label: `Updated ${format(new Date(marketCenter.updatedAt), "PPp")}`,
-              },
-            ]
-          : []),
+        // ...(marketCenter?.updatedAt
+        //   ? [
+        //       {
+        //         label: `Updated ${format(new Date(marketCenter.updatedAt), "PPp")}`,
+        //       },
+        //     ]
+        //   : []),
       ]}
       actions={[
         {
-          label: "Edit", // Edit
+          label: "Edit",
           icon: (
             <svg
               className="h-4 w-4"

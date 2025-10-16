@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useFetchAgentTickets } from "@/hooks/use-tickets";
 import {
   calculateTotalPages,
@@ -38,9 +38,9 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import {
-  ArrowDownNarrowWide,
-  ArrowDownWideNarrow,
+  ArrowDown,
   ArrowDownUp,
+  ArrowUp,
   CalendarIcon,
   Filter,
   Search,
@@ -54,9 +54,12 @@ import type {
   TicketSortBy,
   TicketsResponse,
   TicketWithUpdatedAt,
+  TicketCategory,
 } from "@/lib/types";
 import { useQueryClient, UseQueryResult } from "@tanstack/react-query";
 import PagesAndItemsCount from "../../pagination/page-and-items-count";
+import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
+import { RadioGroup, RadioGroupItem } from "../../radio-group";
 
 export default function AgentTicketList() {
   const router = useRouter();
@@ -72,6 +75,7 @@ export default function AgentTicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
@@ -100,6 +104,9 @@ export default function AgentTicketList() {
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
 
+    if (selectedCategory !== "all")
+      params.append("categoryId", selectedCategory);
+
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
 
@@ -112,6 +119,7 @@ export default function AgentTicketList() {
     debouncedSearchQuery,
     selectedStatuses,
     selectedUrgencies,
+    selectedCategory,
     role,
     dateFrom,
     dateTo,
@@ -146,10 +154,16 @@ export default function AgentTicketList() {
     itemsPerPage,
   });
 
+  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
+    currentUser?.marketCenterId ?? ""
+  );
+  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
+
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
+    setSelectedCategory("all");
     setDateFrom(undefined);
     setDateTo(undefined);
     setOpenFrom(false);
@@ -163,6 +177,7 @@ export default function AgentTicketList() {
     !!searchQuery ||
     selectedStatuses.length !== defaultActiveStatuses.length ||
     selectedUrgencies.length > 0 ||
+    selectedCategory !== "all" ||
     !!dateFrom ||
     !!dateTo ||
     sortDir !== "desc" ||
@@ -176,15 +191,15 @@ export default function AgentTicketList() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <CardTitle>Assigned Tickets ({totalTickets})</CardTitle>
-          </div>
+        <div className="flex flex-col gap-4 items-center justify-between sm:flex-row">
+          <CardTitle className="space-y-2 text-left w-full sm:w-fit">
+            Assigned Tickets ({totalTickets})
+          </CardTitle>
         </div>
 
         <div className="space-y-4 mt-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+            <div className="relative flex-1 w-full sm:w-fit">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tickets..."
@@ -196,7 +211,7 @@ export default function AgentTicketList() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 bg-transparent"
+              className="gap-2 bg-transparent w-full sm:w-fit"
               onClick={() => setShowFilters(!showFilters)}
               type="button"
             >
@@ -214,7 +229,7 @@ export default function AgentTicketList() {
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="gap-2"
+                className="gap-2 w-full sm:w-fit"
                 type="button"
               >
                 <X className="h-4 w-4" />
@@ -356,6 +371,46 @@ export default function AgentTicketList() {
                     ))}
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <RadioGroup
+                    value={selectedCategory}
+                    onValueChange={(value) => setSelectedCategory(value)}
+                    defaultValue="all"
+                    aria-label="Filter by ticket categories"
+                    className="flex flex-wrap gap-4"
+                  >
+                    <div className="flex flex-wrap gap-2">
+                      <RadioGroupItem value={"all"} id={`category-all`} />
+                      <Label
+                        htmlFor={`category-all`}
+                        className="text-sm font-normal"
+                      >
+                        All
+                      </Label>
+                    </div>
+                    {categories &&
+                      categories &&
+                      categories.length > 0 &&
+                      categories.map((category: TicketCategory) => (
+                        <div className="flex flex-wrap gap-2">
+                          <RadioGroupItem
+                            key={category?.id}
+                            value={category?.id}
+                            id={`category-${category?.id}`}
+                          />
+
+                          <Label
+                            htmlFor={`category-${category?.id}`}
+                            className="text-sm font-normal"
+                          >
+                            {category?.name}
+                          </Label>
+                        </div>
+                      ))}
+                  </RadioGroup>
+                </div>
               </div>
             </Card>
           )}
@@ -368,8 +423,8 @@ export default function AgentTicketList() {
             ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="flex  items-center pb-2 border-b space-x-2">
-            <div className="space-y-2">
+          <div className="flex flex-wrap items-center pb-2 border-b space-x-2 gap-4 w-full">
+            <div className="space-y-2 w-full sm:w-fit">
               <Select
                 value={sortBy}
                 onValueChange={(value: TicketSortBy) => setSortBy(value)}
@@ -393,7 +448,7 @@ export default function AgentTicketList() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full sm:w-fit">
               <Select
                 value={sortDir}
                 onValueChange={(value: OrderBy) => setSortDir(value)}
@@ -406,11 +461,7 @@ export default function AgentTicketList() {
                   {orderByOptions.map((direction) => (
                     <SelectItem key={direction} value={direction}>
                       <div className="flex gap-1 items-center mr-1">
-                        {direction === "asc" ? (
-                          <ArrowDownWideNarrow />
-                        ) : (
-                          <ArrowDownNarrowWide />
-                        )}
+                        {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
                         <p className="text-sm font-medium">
                           {formatOrderBy(direction)}
                         </p>
@@ -425,17 +476,14 @@ export default function AgentTicketList() {
           {ticketsLoading && (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-16 bg-muted rounded animate-pulse"
-                ></div>
+                <div key={i} className="h-16 bg-muted rounded animate-pulse" />
               ))}
             </div>
           )}
 
           {!ticketsLoading &&
             tickets &&
-            tickets.length &&
+            tickets.length > 0 &&
             tickets.map((ticket: TicketWithUpdatedAt) => (
               <TicketListItemWrapper
                 key={ticket.id}

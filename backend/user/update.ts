@@ -2,18 +2,15 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
-import {
-  canChangeUserRoles,
-  canManageTeam,
-  canModifyOwnProfile,
-} from "../auth/permissions";
+import { canManageTeam } from "../auth/permissions";
 
 export interface UpdateUserRequest {
   id: string;
   name?: string;
   role?: UserRole;
-  // isActive?: boolean;
+  isActive?: boolean;
   email?: string;
+  marketCenterId?: string;
 }
 
 export interface UpdateUserResponse {
@@ -28,12 +25,10 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     auth: false,
   },
   async (req) => {
-    console.log("!! UPDATE USER END POINT !!");
     const userContext = await getUserContext();
 
     // Permission checks
     const canModifyUsers = await canManageTeam(userContext);
-    const isAdmin = await canChangeUserRoles(userContext);
 
     if (!canModifyUsers) {
       throw APIError.permissionDenied(
@@ -49,20 +44,122 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.notFound("User not found");
     }
 
-    // Build update data object
+    // Build update data object + user history
+    let marketCenterId: string | null = existingUser?.marketCenterId ?? null;
+
     const updateUserData: any = {};
-    if (req.name !== existingUser.name) updateUserData.name = req.name;
-    if (req.role !== existingUser.role && isAdmin)
+    let userHistoryData: any = [];
+
+    if (
+      req?.marketCenterId &&
+      req?.marketCenterId !== existingUser?.marketCenterId &&
+      userContext?.role === "ADMIN"
+    ) {
+      const marketCenter = await prisma.marketCenter.findFirst({
+        where: { id: req.marketCenterId },
+      });
+
+      marketCenterId = marketCenter?.id ?? null;
+      if (marketCenter) {
+        updateUserData.marketCenterId = {
+          ...updateUserData,
+          set: marketCenter?.id,
+          marketCenterId: marketCenter?.id,
+        };
+        userHistoryData.push({
+          userId: req.id,
+          action: "UPDATE",
+          field: "marketCenterId",
+          previousValue: existingUser?.marketCenterId ?? "Unassigned",
+          newValue: req.marketCenterId,
+          snapshot: existingUser,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        });
+      }
+    }
+
+    if (req.name !== existingUser?.name) {
+      updateUserData.name = req.name;
+      userHistoryData.push({
+        userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
+        field: "name",
+        previousValue: existingUser.name,
+        newValue: req.name,
+        snapshot: existingUser,
+        changedAt: new Date(),
+        changedById: userContext.userId,
+      });
+    }
+    if (req.role !== existingUser?.role && userContext?.role === "ADMIN") {
       updateUserData.role = req.role;
-    // if (req.isActive !== undefined && (isAdmin))
-    //   updateUserData.isActive = req.isActive;
-    if (req.email !== existingUser.email) updateUserData.email = req.email; // TODO: update email in Auth0 for existing user as well
+      userHistoryData.push({
+        userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
+        field: "role",
+        previousValue: existingUser.role,
+        newValue: req.role,
+        snapshot: existingUser,
+        changedAt: new Date(),
+        changedById: userContext.userId,
+      });
+    }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: req.id },
-      data: updateUserData,
-    });
+    if (req.isActive !== undefined && userContext?.role === "ADMIN") {
+      updateUserData.isActive = req.isActive;
+      userHistoryData.push({
+        userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
+        field: "isActive",
+        previousValue: existingUser.isActive,
+        newValue: req.isActive,
+        snapshot: existingUser,
+        changedAt: new Date(),
+        changedById: userContext.userId,
+      });
+    }
+    // TODO: update email in Auth0 for existing user as well
+    // if (req.email !== existingUser.email) {
+    //   updateUserData.email = req.email;
+    //   userHistoryData.push({
+    //     userId: req.id,
+    //     marketCenterId: marketCenterId,
+    //     field: "email",
+    //     previousValue: existingUser.email,
+    //     newValue: req.email,
+    //     snapshot: existingUser,
+    //     changedAt: new Date(),
+    //     changedById: userContext.userId,
+    //   });
+    // }
 
-    return { user: { ...updatedUser, name: updatedUser.name ?? "" } };
+    if (Object.keys(updateUserData).length === 0) {
+      throw APIError.invalidArgument("no fields to update");
+    }
+
+    const [updatedUser] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.id },
+        data: updateUserData,
+        include: {
+          marketCenter: true,
+        },
+      }),
+      prisma.userHistory.createMany({
+        data: userHistoryData,
+      }),
+    ]);
+
+    const safeUser = {
+      ...updatedUser,
+      name: updatedUser?.name ?? "",
+      marketCenter: updatedUser.marketCenter ?? undefined,
+    };
+
+    return { user: safeUser };
   }
 );

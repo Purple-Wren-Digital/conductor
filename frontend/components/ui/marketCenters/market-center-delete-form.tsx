@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { API_BASE } from "@/lib/api/utils";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { MarketCenter } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -24,8 +24,8 @@ type DeleteMarketCenterProps = {
   >;
   showDeleteModal: boolean;
   setShowDeleteModal: React.Dispatch<React.SetStateAction<boolean>>;
-  refreshMarketCenters: () => Promise<void>;
-  refreshUsers: () => Promise<void>;
+  refreshMarketCenters: Promise<void>;
+  refreshUsers: Promise<void>;
 };
 
 export default function DeleteMarketCenter({
@@ -82,8 +82,8 @@ export default function DeleteMarketCenter({
       toast.success(
         `${marketCenterToDelete?.name ? marketCenterToDelete.name : "Market Center"} was deactivated`
       );
-      await refreshMarketCenters();
-      await refreshUsers();
+      await refreshMarketCenters;
+      await refreshUsers;
       resetAndCloseModal();
     } catch (error) {
       console.error("Unable to remove market center", error);

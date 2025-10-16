@@ -15,7 +15,7 @@ export async function notifySettingsChange(
       where: {
         marketCenterId: marketCenterId,
         role: "ADMIN",
-        isDeleted: false
+        isActive: false
       },
       select: {
         id: true,

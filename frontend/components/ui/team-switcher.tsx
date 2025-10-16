@@ -8,20 +8,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building, Building2 } from "lucide-react";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { MarketCenter } from "@/lib/types";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 
 interface TeamSwitcherProps {
   selectedMarketCenterId: string;
-  setSelectedMarketCenterId: (value: React.SetStateAction<string>) => void;
-  setCurrentPage?: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedMarketCenterId: React.Dispatch<React.SetStateAction<string>>;
+  handleMarketCenterSelected?: (marketCenter?: MarketCenter) => void;
 }
 
 export function TeamSwitcher({
   selectedMarketCenterId,
   setSelectedMarketCenterId,
-  setCurrentPage,
+  handleMarketCenterSelected,
 }: TeamSwitcherProps) {
   const { role } = useUserRole();
 
@@ -33,13 +33,14 @@ export function TeamSwitcher({
 
   const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
 
-
   return (
     <Select
       value={selectedMarketCenterId}
       onValueChange={(value) => {
         setSelectedMarketCenterId(value);
-        if (setCurrentPage) setCurrentPage(1);
+        const selectedMarketCenter = marketCenters.find((mc) => mc.id == value);
+        handleMarketCenterSelected &&
+          handleMarketCenterSelected(selectedMarketCenter);
       }}
       disabled={isLoading || role === "STAFF"}
     >

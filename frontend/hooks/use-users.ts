@@ -61,6 +61,7 @@ export function useFetchAllUsers({
   });
 }
 
+// MARKET CENTER USERS
 export function useFetchUsersWithinMarketCenter({
   usersQueryKey,
   queryParams,
@@ -71,7 +72,7 @@ export function useFetchUsersWithinMarketCenter({
     queryKey: usersQueryKey,
     queryFn: async () => {
       if (role === "AGENT" || !marketCenterId)
-        throw new Error("Must be an admin or staff to view team memebers");
+        throw new Error("Must be an admin or staff to view team members");
       try {
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(
@@ -104,3 +105,24 @@ export function useFetchUsersWithinMarketCenter({
     enabled: !!marketCenterId && role !== "AGENT",
   });
 }
+
+// FETCH USER
+export function useFetchOneUser(id?: string) {
+  return useQuery({
+    queryKey: ["user-profile", id],
+    queryFn: async () => {
+      if (!id) return {};
+      const accessToken = await getAuth0AccessToken();
+      const response = await fetch(`/api/users/${id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch user");
+      const data = await response.json();
+      return data?.user;
+    },
+    enabled: !!id,
+  });
+}
+

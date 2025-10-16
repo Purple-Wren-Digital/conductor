@@ -9,8 +9,6 @@ const DEV = process.env.NEXT_PUBLIC_VERCEL_ENV;
 export async function POST(req: NextRequest) {
   const emailData = await req.json();
 
-  console.log("Email Data", emailData);
-
   if (!emailData) {
     return Response.json({ error: "Missing email data" }, { status: 400 });
   }

@@ -87,7 +87,9 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-grow container mx-auto p-6">{children}</main>
+        <main className="flex-grow container mx-auto p-6 overflow-y-auto">
+          {children}
+        </main>
       </div>
     </SidebarProvider>
   );

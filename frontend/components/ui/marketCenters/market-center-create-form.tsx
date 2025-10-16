@@ -23,8 +23,8 @@ type CreateMarketCenterProps = {
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   unassignedUsers: PrismaUser[];
-  refreshMarketCenters: () => Promise<void>;
-  refreshUsers: () => Promise<void>;
+  refreshMarketCenters: Promise<void>;
+  refreshUsers: Promise<void>;
 };
 
 export default function CreateMarketCenter({
@@ -101,8 +101,8 @@ export default function CreateMarketCenter({
       const data = await response.json();
       console.log("DATA", data);
       toast.success(`${formData.name.trim()} was created!`);
-      await refreshMarketCenters();
-      await refreshUsers();
+      await refreshMarketCenters;
+      await refreshUsers;
       resetAndCloseForm();
     } catch (error) {
       console.error("Failed to create new market center", error);

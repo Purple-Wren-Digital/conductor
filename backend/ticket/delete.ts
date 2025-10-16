@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import { getUserContext } from "../auth/user-context";
 import { canDeleteTicket } from "../auth/permissions";
+import { TicketHistory } from "./types";
 
 export interface DeleteTicketRequest {
   ticketId: string;
@@ -10,6 +11,7 @@ export interface DeleteTicketRequest {
 export interface DeleteTicketResponse {
   success: boolean;
   message: string;
+  // history: TicketHistory;
 }
 
 export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
@@ -21,10 +23,12 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-    
+
     const canDelete = await canDeleteTicket(userContext);
     if (!canDelete) {
-      throw APIError.permissionDenied("You do not have permission to delete tickets");
+      throw APIError.permissionDenied(
+        "You do not have permission to delete tickets"
+      );
     }
 
     const ticket = await prisma.ticket.findUnique({
@@ -35,6 +39,19 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    // const history = await prisma.ticketHistory.create({
+    //   data: {
+    //     ticketId: ticket.id,
+    //     action: "DELETE",
+    //     field: "ticket",
+    //     snapshot: ticket,
+    //     changedById: userContext.userId,
+    //   },
+    //   // include: {
+    //   //   ticket: true
+    //   // }
+    // });
+
     // Delete ticket (comments will cascade delete due to schema relation)
     await prisma.ticket.delete({
       where: { id: req.ticketId },
@@ -43,6 +60,7 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     return {
       success: true,
       message: "Ticket deleted successfully",
+      history: history,
     };
   }
 );

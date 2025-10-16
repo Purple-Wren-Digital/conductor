@@ -25,12 +25,20 @@ export const get = api<GetUserRequest, GetUserResponse>(
     }
     const user = await prisma.user.findUnique({
       where: { id: req.id },
+      include: {
+        marketCenter: true,
+      },
     });
 
     if (!user) {
       throw APIError.notFound("user not found");
     }
 
-    return { user: user } as GetUserResponse;
+    const safeUser = {
+      ...user,
+      marketCenter: user.marketCenter ?? undefined,
+    };
+
+    return { user: safeUser } as GetUserResponse;
   }
 );

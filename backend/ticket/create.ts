@@ -4,20 +4,21 @@ import type { Ticket, Urgency } from "./types";
 import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
+import { mapHistorySnapshot } from "../utils";
 
 export interface CreateTicketRequest {
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
   urgency: Urgency;
   dueDate?: Date;
+  assigneeId?: string;
 }
 
 export interface CreateTicketResponse {
   ticket: Ticket;
 }
 
-// Creates a new ticket.
 export const create = api<CreateTicketRequest, CreateTicketResponse>(
   {
     expose: true,
@@ -39,43 +40,72 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
 
       // Apply auto-assignment (checks category defaults first, then rules)
 
-      const assigneeId = await applyAutoAssignment({
-        category: req.category,
-        urgency: req.urgency,
-        title: req.title,
-        description: req.description,
-        creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
-      });
+      // const assigneeId = await applyAutoAssignment({
+      //   category: req.categoryId,
+      //   urgency: req.urgency,
+      //   title: req.title,
+      //   description: req.description,
+      //   creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
+      //   // assigneeId: req?.assigneeId,
+      // });
 
-      const ticket = await prisma.ticket.create({
-        data: {
-          title: req.title,
-          description: req.description,
-          category: req.category,
-          urgency: req.urgency,
-          creatorId: userContext.userId,
-          assigneeId: assigneeId,
-          dueDate: req.dueDate,
-        },
-        include: {
-          creator: true,
-          assignee: true,
-          _count: {
-            select: {
-              comments: true,
-            },
+      const result = await prisma.$transaction(async (tx) => {
+        const ticket = await tx.ticket.create({
+          data: {
+            title: req.title,
+            description: req.description,
+            categoryId: req.categoryId ?? null,
+            urgency: req.urgency,
+            creatorId: userContext.userId,
+            assigneeId:
+              req?.assigneeId && req?.assigneeId !== "Unassigned"
+                ? req.assigneeId
+                : null,
+            status:
+              req?.assigneeId && req?.assigneeId !== "Unassigned"
+                ? "ASSIGNED"
+                : "CREATED",
+            dueDate: req.dueDate,
           },
-        },
+          include: {
+            creator: true,
+            assignee: true,
+            _count: { select: { comments: true } },
+          },
+        });
+
+        const history = await tx.ticketHistory.create({
+          data: {
+            ticketId: ticket.id,
+            action: "CREATE",
+            field: "ticket",
+            changedById: userContext.userId,
+          },
+        });
+
+        return { ticket, history };
       });
 
       return {
         ticket: {
-          ...ticket,
-          commentCount: ticket._count.comments,
+          ...result.ticket,
+          commentCount: result.ticket._count.comments,
+          ticketHistory: mapHistorySnapshot([result.history]),
+          categoryId: result?.ticket?.categoryId ?? null,
+          creator: {
+            ...result.ticket.creator,
+            name: result.ticket.creator.name ?? "",
+          },
+          assignee: result.ticket.assignee
+            ? {
+                ...result.ticket.assignee,
+                name: result.ticket.assignee.name ?? "",
+              }
+            : null,
         },
       } as CreateTicketResponse;
     } catch (error) {
-      console.log("Failed to create ticket", error);
+      console.error("Failed to create ticket", error);
       throw new Error("Failed to create ticket");
     }
   }

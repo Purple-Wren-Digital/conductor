@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Ticket, TicketTemplate, Urgency } from "@/lib/types";
+import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import {
   BaseTicketForm,
   type TicketFormValues,
-  type TicketFormErrors,
+  // type TicketFormErrors,
 } from "./base-ticket-form";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useStore } from "@/app/store-provider";
 
 type Props = {
   ticket: Ticket | null;
@@ -20,17 +22,23 @@ const emptyValues: TicketFormValues = {
   title: "",
   description: "",
   urgency: "MEDIUM" as Urgency,
-  category: "",
+  categoryId: "",
   dueDate: undefined,
+  assigneeId: undefined,
 };
 
 export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
   const [values, setValues] = useState<TicketFormValues>(emptyValues);
-  const [errors, setErrors] = useState<TicketFormErrors>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+
+  const [marketCenterId, setMarketCenterId] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  const { role } = useUserRole();
+  const { currentUser } = useStore();
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
@@ -56,13 +64,28 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
 
     if (isOpen && ticket) {
       setValues({
-        title: ticket.title,
-        description: ticket.description,
+        title: ticket.title ?? "",
+        description: ticket.description ?? "",
         urgency: ticket.urgency as Urgency,
-        category: ticket.category,
+        categoryId: ticket.categoryId ?? "",
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
+        assigneeId: ticket.assigneeId ?? "Unassigned",
       });
       setErrors({});
+
+      const ticketMarketCenter =
+        ticket?.category?.marketCenterId ||
+        ticket?.assignee?.marketCenterId ||
+        null;
+
+      const userMarketCenterId =
+        role === "ADMIN"
+          ? ticketMarketCenter
+          : role === "STAFF" && currentUser?.marketCenterId
+            ? currentUser.marketCenterId
+            : null;
+
+      setMarketCenterId(userMarketCenterId);
       setSelectedTemplateId("");
       fetchTemplates();
     }
@@ -82,7 +105,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         title: t.title,
         description: t.ticketDescription,
         urgency: t.urgency,
-        category: t.category,
+        categoryId: t.category,
         dueDate: undefined,
       });
     }
@@ -92,11 +115,11 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     setValues((prev) => ({ ...prev, ...patch }));
   };
   const validate = (): boolean => {
-    const next: TicketFormErrors = {};
+    const next: FormErrors = {};
     if (!values.title.trim()) next.title = "Title is required";
     if (!values.description.trim())
       next.description = "Description is required";
-    if (!values.category.trim()) next.category = "Category is required";
+    if (!values.categoryId.trim()) next.category = "Category is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -117,6 +140,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         body: JSON.stringify({
           ...values,
           dueDate: values.dueDate ? values.dueDate : undefined,
+          assigneeId: values.assigneeId ? values.assigneeId : undefined,
         }),
       });
       if (!res.ok) {
@@ -147,6 +171,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
       templates={templates}
       selectedTemplateId={selectedTemplateId}
       onChangeTemplateId={handleTemplateChange}
+      marketCenterId={marketCenterId}
     />
   );
 }

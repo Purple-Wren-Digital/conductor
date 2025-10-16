@@ -1,3 +1,4 @@
+// import { MarketCenterSettings } from "../settings";
 import { User, UserRole } from "../ticket/types";
 
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
@@ -5,26 +6,26 @@ export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 export interface MarketCenter {
   id: string;
   name: string;
-  settings?: {} | null;
+  // settings?: MarketCenterSettings;
   createdAt: Date;
   updatedAt: Date;
-  settingsAuditLogs?: SettingsAuditLog[];
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: User[];
+  marketCenterHistory?: MarketCenterHistory[];
+  // settingsAuditLogs?: SettingsAuditLog[];
 }
-
-export interface SettingsAuditLog {
+export interface MarketCenterHistory {
   id: string;
   marketCenterId: string;
-  userId: string;
-  action: string;
-  section: string;
-  previousValue?: {};
-  newValue?: {};
-  createdAt: Date;
-  marketCenter: MarketCenter;
-  user: User;
+  action: string; // create, add, remove, update, delete
+  field: string; // users, name, ticketCategories
+  previousValue: string;
+  newValue: string;
+  changedAt: Date;
+  changedById: string;
+  marketCenter?: MarketCenter;
+  changedBy?: User;
 }
 
 export interface TeamInvitation {
@@ -45,11 +46,24 @@ export interface TeamInvitation {
 export interface TicketCategory {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   marketCenterId: string;
-  defaultAssigneeId?: string;
+  defaultAssigneeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  defaultAssignee?: User;
-  marketCenter: MarketCenter;
+  defaultAssignee?: User | null;
+  marketCenter?: MarketCenter;
 }
+
+// export interface SettingsAuditLog {
+//   id: string;
+//   marketCenterId: string;
+//   userId: string;
+//   action: string;
+//   section: string;
+//   previousValue?: {};
+//   newValue?: {};
+//   createdAt: Date;
+//   marketCenter: MarketCenter;
+//   user: User;
+// }

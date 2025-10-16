@@ -14,15 +14,17 @@ import {
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
 import { API_BASE } from "@/lib/api/utils";
-import { useUserRole } from "@/lib/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { MarketCenter, MarketCenterForm, PrismaUser } from "@/lib/types";
 import { toast } from "sonner";
 
 import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
+// import { arraysEqualById } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
 
 type EditMarketCenterProps = {
   editingMarketCenter: MarketCenter | null;
-  setEditingMarketCenter: React.Dispatch<
+  setEditingMarketCenter?: React.Dispatch<
     React.SetStateAction<MarketCenter | null>
   >;
   showEditMCForm: boolean;
@@ -31,8 +33,8 @@ type EditMarketCenterProps = {
   unassignedUsers: PrismaUser[];
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
-  refreshMarketCenters: () => Promise<void>;
-  refreshUsers: () => Promise<void>;
+  refreshMarketCenters: Promise<void>;
+  refreshUsers: Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -66,22 +68,14 @@ export default function EditMarketCenter({
     });
     setFormErrors({});
     setShowEditMCForm(false);
-    setEditingMarketCenter(null);
+    if (setEditingMarketCenter) setEditingMarketCenter(null);
   };
 
-  function arraysEqualById(a: { id: string }[], b: { id: string }[]) {
-    if (a.length !== b.length) return false;
-
-    const aIds = a.map((u) => u.id).sort();
-    const bIds = b.map((u) => u.id).sort();
-
-    return aIds.every((id, i) => id === bIds[i]);
-  }
-  const hasNameChanged: boolean =
-    formData.name.trim() === editingMarketCenter?.name.trim();
-  const haveAssignmentsChanged: boolean =
-    assignedUsers.length !== formData.selectedUsers.length ||
-    !arraysEqualById(assignedUsers, formData.selectedUsers);
+  // const hasNameChanged: boolean =
+  //   formData.name.trim() === editingMarketCenter?.name.trim();
+  // const haveAssignmentsChanged: boolean =
+  //   assignedUsers.length !== formData.selectedUsers.length ||
+  //   !arraysEqualById(assignedUsers, formData.selectedUsers);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -90,10 +84,10 @@ export default function EditMarketCenter({
       errors.users = "Select at least one user";
     }
 
-    if (!hasNameChanged && !haveAssignmentsChanged) {
-      errors.name = "Nothing to update";
-      errors.users = "Nothing to update";
-    }
+    // if (!hasNameChanged && !haveAssignmentsChanged) {
+    //   errors.name = "Nothing to update";
+    //   errors.users = "Nothing to update";
+    // }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -104,28 +98,12 @@ export default function EditMarketCenter({
     return await getAccessToken();
   }, []);
 
-  const handleUpdateMarketCenter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!permissions?.canManageAllMarketCenters) {
-      toast.warning("Only Admin can update market centers");
-      return;
-    }
-    setIsSubmitting(true);
-    if (!editingMarketCenter?.id) {
-      throw new Error("Missing marker center id");
-    }
+  const updateMarketCenterMutation = useMutation({
+    mutationFn: async () => {
+      // if (!userId) throw new Error("Missing editing user ID");
 
-    if (!validateForm()) {
-      toast.error("Invalid form input(s)");
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
       const accessToken = await getAuth0AccessToken();
-      if (!accessToken) {
-        throw new Error("No token fetched");
-      }
+      //  `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
       const response = await fetch(
         `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
         {
@@ -140,20 +118,44 @@ export default function EditMarketCenter({
           }),
         }
       );
-      if (!response.ok) throw new Error("Failed to update market center");
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update market center`);
+      }
+    },
+    onSuccess: async () => {
       toast.success(
         `${formData?.name ? formData.name : "Market Center"} was updated`
       );
-      await refreshMarketCenters();
-      await refreshUsers();
+      await refreshMarketCenters;
+      await refreshUsers;
       resetAndCloseForm();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Failed to edit new market center", error);
       toast.error(`Error: Unable to save changes`);
-    } finally {
-      setIsSubmitting(false);
+    },
+  });
+
+  const handleUpdateMarketCenter = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!permissions?.canManageAllMarketCenters) {
+      toast.warning("Only Admin can update market centers");
+      return;
     }
+    setIsSubmitting(true);
+    if (!editingMarketCenter?.id) {
+      throw new Error("Missing marker center id");
+    }
+    if (!validateForm()) {
+      toast.error("Invalid form input(s)");
+      setIsSubmitting(false);
+      return;
+    }
+    updateMarketCenterMutation.mutate();
+    setIsSubmitting(false);
   };
 
   return (
@@ -205,6 +207,8 @@ export default function EditMarketCenter({
             </div>
 
             <UserMultiSelectDropdown
+              type="editing"
+              filter={true}
               disabled={
                 (!assignedUsers || !assignedUsers.length) &&
                 (!unassignedUsers || !unassignedUsers.length)
@@ -244,9 +248,7 @@ export default function EditMarketCenter({
 
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !hasNameChanged || !haveAssignmentsChanged
-              }
+              disabled={isSubmitting} // { isSubmitting || !hasNameChanged || !haveAssignmentsChanged }
             >
               {isSubmitting ? "Saving..." : "Submit"}
             </Button>
@@ -255,7 +257,4 @@ export default function EditMarketCenter({
       </DialogContent>
     </Dialog>
   );
-}
-function setSelectedMarketCenterUsers(arg0: PrismaUser[]) {
-  throw new Error("Function not implemented.");
 }

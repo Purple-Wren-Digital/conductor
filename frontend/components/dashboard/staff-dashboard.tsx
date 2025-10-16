@@ -106,19 +106,19 @@ export function StaffDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Team Dashboard</h1>
           <p className="text-muted-foreground">
             Managing {marketCenter?.name || "your"} market center
           </p>
         </div>
-        <div className="flex gap-5 justify-between">
+        <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
           <Select
             value={selectedTeamMemberId}
             onValueChange={(value) => setSelectedTeamMemberId(value)}
           >
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-full sm:w-[250px]">
               <SelectValue placeholder="Select Team" />
             </SelectTrigger>
             <SelectContent>
@@ -139,7 +139,7 @@ export function StaffDashboard() {
             </SelectContent>
           </Select>
 
-          <Button asChild>
+          <Button asChild className="w-full sm:w-fit">
             <Link href="/dashboard/tickets">
               <Plus className="mr-2 h-4 w-4" /> Create Ticket
             </Link>
@@ -206,40 +206,47 @@ export function StaffDashboard() {
             <CardDescription>Latest tickets from your team</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 h-100">
-              {tickets.slice(0, 5).map((ticket: any) => (
-                <div
-                  key={ticket.id}
-                  className="flex items-center justify-between p-2 rounded hover:bg-muted"
-                >
-                  <div className="flex-1">
-                    <Link
-                      href={`/dashboard/tickets/${ticket.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {ticket.title}
-                    </Link>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        #{ticket.id.substring(0, 8)}
-                      </span>
-                      <Badge
-                        variant={
-                          ticket.urgency === "HIGH"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="text-xs"
+            <div className="space-y-2 md:h-100">
+              {!tickets && !tickets?.length && (
+                <p className="text-sm font-medium text-muted-foreground">
+                  No tickets found
+                </p>
+              )}
+              {tickets &&
+                tickets?.length > 0 &&
+                tickets.slice(0, 5).map((ticket: any) => (
+                  <div
+                    key={ticket.id}
+                    className="flex items-center p-2 rounded hover:bg-muted"
+                  >
+                    <div className="flex-1">
+                      <Link
+                        href={`/dashboard/tickets/${ticket.id}`}
+                        className="hover:underline"
                       >
-                        {ticket.urgency}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {ticket.status.replace("_", " ")}
-                      </Badge>
+                        <p className="font-medium ">{ticket.title}</p>
+                      </Link>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          #{ticket.id.substring(0, 8)}
+                        </span>
+                        <Badge
+                          variant={
+                            ticket.urgency === "HIGH"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {ticket.urgency}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {ticket.status.replace("_", " ")}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
               {tickets.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">
                   No tickets yet
@@ -262,7 +269,7 @@ export function StaffDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="space-y-4 h-100">
+            <ScrollArea className="space-y-4 md:h-100">
               {Object.entries(teamStats).map(
                 ([memberId, stats]: [string, any]) => {
                   const isViewingStats = selectedTeamMemberId === memberId;
@@ -300,8 +307,17 @@ export function StaffDashboard() {
               )}
             </ScrollArea>
             <div className="mt-4">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard/settings?tab=team">Manage Team</Link>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full"
+                disabled={!currentUser || !currentUser?.marketCenterId}
+              >
+                <Link
+                  href={`/dashboard/marketCenters/${currentUser?.marketCenterId}?tab=team`}
+                >
+                  Manage Team
+                </Link>
               </Button>
             </div>
           </CardContent>
