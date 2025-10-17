@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
-
+// GET + SEARCH USERS
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1];
@@ -93,7 +93,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ statusText: error }, { status: 500 });
   }
 }
-
+// CREATE USER
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1];
@@ -155,9 +155,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ statusText: error }, { status: 500 });
   }
 }
-
-// PATCH USERS BY ID
-// https://auth0.com/docs/api/management/v2/users/patch-users-by-id
+// UPDATE USER
 export async function PATCH(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1];
@@ -177,49 +175,34 @@ export async function PATCH(req: Request) {
     );
   }
 
-  console.log("REQ BODY", requestBody);
+  let updates: any = {};
 
-  let updates = {};
   if (requestBody?.name) {
-    updates = {
-      name: requestBody.name,
-      username: requestBody.name.split(" ").join(""),
-      // given_name: requestBody.name.split(" ")[0],
-      // family_name: requestBody.name.split(" ")[1],
-    };
+    updates.name = requestBody.name;
   } else if (requestBody?.email) {
     updates = { email: requestBody?.email };
   } else if (requestBody?.invited && requestBody?.invitedOn) {
-    updates = {
-      user_metadata: {
-        invited: requestBody.invited,
-        invitedOn: requestBody.invitedOn,
-      },
+    updates.user_metadata = {
+      invited: requestBody.invited,
+      invitedOn: requestBody.invitedOn,
     };
   } else if (requestBody?.accepted && requestBody?.acceptedOn) {
-    updates = {
-      user_metadata: {
-        accepted: requestBody.accepted,
-        acceptedOn: requestBody.acceptedOn,
-      },
+    updates.user_metadata = {
+      accepted: requestBody.accepted,
+      acceptedOn: requestBody.acceptedOn,
     };
   } else {
     return NextResponse.json(
-      { error: "Missing data in request body" },
+      { error: "Nothing to update from request body" },
       { status: 400 }
     );
   }
-  console.log("UPDATES", updates);
-
-  // If you are updating email, email_verified, phone_number, phone_verified, username or password of a secondary identity,
-  // you need to specify the connection property too
-  const body = {};
 
   try {
-    const updateResponse = await fetch(
+    const response = await fetch(
       `https://${AUTH0_DOMAIN}/api/v2/users/${requestBody.user_id}`,
       {
-        method: "PATCH", // Auth0 Permission update:users
+        method: "PATCH", // Auth0 Permissions = update:users, update:users_app_metadata, update:current_user_metadata
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -227,19 +210,10 @@ export async function PATCH(req: Request) {
         },
         body: JSON.stringify({
           connection: "Username-Password-Authentication",
-          ...updates,
+          updates,
         }),
       }
     );
-    console.log("UPDATE RESPONSE", updateResponse);
-
-    if (!updateResponse.ok) {
-      throw new Error(
-        updateResponse?.statusText
-          ? updateResponse.statusText
-          : "Failed to update user metadata"
-      );
-    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

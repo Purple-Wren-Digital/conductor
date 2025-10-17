@@ -31,7 +31,6 @@ export function useComments(ticketId: string) {
   const commentApi = useCommentApi();
   const queryClient = useQueryClient();
 
-
   // Handle real-time comment events
   const handleCommentEvent = useCallback(
     (event: CommentEvent) => {
@@ -155,6 +154,7 @@ export function useCreateComment() {
         );
       }
       toast.error(error.message || "Failed to add comment");
+      console.error("Failed to create comment", error);
     },
     onSuccess: (newComment, { ticketId }, context) => {
       // Replace optimistic update with real data
@@ -233,6 +233,7 @@ export function useUpdateComment() {
           context.previousComments
         );
       }
+      console.error("Failed to update comment", error);
       toast.error(error.message || "Failed to update comment");
     },
     onSuccess: (updatedComment, { ticketId }) => {
@@ -247,7 +248,6 @@ export function useUpdateComment() {
     },
     onSettled: async (data, error, { ticketId }) => {
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
-
       await queryClient.invalidateQueries({
         queryKey: [
           "ticket-history-recent",
@@ -307,6 +307,9 @@ export function useDeleteComment() {
       toast.success("Comment deleted successfully");
     },
     onSettled: async (data, error, { ticketId }) => {
+      if (error) {
+        console.error("Failed to delete comment", error);
+      }
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
       await queryClient.invalidateQueries({
         queryKey: [

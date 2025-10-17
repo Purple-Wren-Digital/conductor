@@ -5,6 +5,16 @@ const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
 export async function POST(req: Request) {
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1];
+
+  if (!authHeader || !authHeader.startsWith("Bearer ") || !token) {
+    return NextResponse.json(
+      { error: "Missing or invalid authorization header" },
+      { status: 401 }
+    );
+  }
+
   const body = await req.json();
 
   if (!body || !body?.role || (body && body?.role && body?.role === "AGENT")) {
@@ -22,7 +32,7 @@ export async function POST(req: Request) {
       }),
     });
 
-    // console.log("MANAGEMENT TOKEN RESPONSE", tokenRes);
+    console.log("MANAGEMENT TOKEN RESPONSE", tokenRes);
     if (!tokenRes.ok) {
       throw new Error("Failed to generate management access token");
     }
@@ -33,7 +43,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error", error);
+    console.error("Failed to get Auth0 Token", error);
     return NextResponse.json({ statusText: error }, { status: 500 });
   }
 }

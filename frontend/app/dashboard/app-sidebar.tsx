@@ -46,7 +46,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
-            {isLoading && currentUser && (
+            {isLoading && (
               <div className="flex flex-col gap-1 items-center w-full">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse w-full opacity-25">
@@ -59,7 +59,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             )}
             {!isLoading && currentUser && (
               <div className="flex flex-col gap-1">
-                <Link href={"/dashboard/profile"} className="hover:underline">
+                <Link href={"/dashboard/account"} className="hover:underline">
                   <p className="font-medium text-sm">
                     {currentUser?.name
                       ? `${currentUser.name}`
@@ -143,10 +143,18 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             )}
 
-            <SidebarMenuItem>
+            {/* <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href={`/dashboard/profile`}>
                   <CircleUserRound /> Profile
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem> */}
+
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+                <Link href={`/dashboard/account`}>
+                  <CircleUserRound /> Manage Account
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -3,29 +3,13 @@
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import type { Comment } from "@/lib/types";
 import { API_BASE } from "./utils";
+import { parseJsonSafe } from "../utils";
 
 async function getAuth0AccessToken(): Promise<string> {
   if (process.env.NODE_ENV === "development") {
     return "local";
   }
   return await getAccessToken();
-}
-
-async function parseJsonSafe<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") || "";
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `HTTP ${res.status} ${res.statusText} - ${text || "No body"}`
-    );
-  }
-  if (ct.includes("application/json")) {
-    return res.json();
-  }
-  const text = await res.text().catch(() => "");
-  throw new Error(
-    `Expected JSON but got ${ct || "unknown content-type"}. First 200 chars:\n${text.slice(0, 200)}`
-  );
 }
 
 interface CreateCommentRequest {
