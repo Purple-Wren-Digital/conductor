@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { User } from "../ticket/types";
+import type { User } from "../user/types";
 import { getAuthData } from "~encore/auth";
 
 export interface GetUserRequest {

@@ -1,6 +1,6 @@
 import { api, APIError, Query } from "encore.dev/api";
 import { prisma } from "../../ticket/db";
-import { UserHistory } from "../../ticket/types";
+import type { UserHistory } from "../../user/types";
 import { mapHistorySnapshot } from "../../utils";
 
 export interface GetUserHistoryRequest {

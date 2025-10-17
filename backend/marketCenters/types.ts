@@ -1,5 +1,4 @@
-// import { MarketCenterSettings } from "../settings";
-import { User, UserRole } from "../ticket/types";
+import { User, UserRole } from "../user/types";
 
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 

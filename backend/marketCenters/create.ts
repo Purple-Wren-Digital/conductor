@@ -3,7 +3,7 @@ import { canCreateMarketCenters } from "../auth/permissions";
 import { getUserContext } from "../auth/user-context";
 import { prisma } from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
-import { User } from "../ticket/types";
+import { User } from "../user/types";
 
 export interface CreateMarketCenterRequest {
   name: string;
