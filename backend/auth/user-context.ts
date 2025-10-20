@@ -1,7 +1,7 @@
 import { APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { prisma } from "../ticket/db";
-import type { UserRole } from "../ticket/types";
+import type { UserRole } from "../user/types";
 
 export interface UserContext {
   userId: string;

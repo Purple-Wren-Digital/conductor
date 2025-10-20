@@ -68,11 +68,48 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { currentUser } = useStore();
-  const { permissions } = useUserRole();
+  const { role, permissions } = useUserRole();
+
+  const canUpdateTeam =
+    role === "ADMIN"
+      ? true
+      : role === "STAFF" &&
+          currentUser?.marketCenterId &&
+          currentUser?.marketCenterId === user?.marketCenterId
+        ? true
+        : false;
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return await getAccessToken();
+  }, []);
+
+  const fetchManagementToken = useCallback(async () => {
+    if (!permissions?.canManageTeam) {
+      throw new Error("Not authorized to update this profile");
+    }
+    try {
+      const accessToken = await getAuth0AccessToken();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await fetch("/api/admin/managementToken", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          role: permissions?.canManageTeam ? "ADMIN" : "AGENT",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(response.statusText || "Failed to fetch token");
+      }
+      const data = await response.json();
+      return data.managementToken;
+    } catch (error) {
+      console.error("Failed to fetch management token: ", error);
+      return null;
+    }
   }, []);
 
   const getRoleIcon = (userRole: UserRole) => {
@@ -113,10 +150,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     return Object.keys(errors).length === 0;
   };
 
-  const updateUserMutation = useMutation({
-    mutationFn: async (userId?: string) => {
-      if (!userId) throw new Error("Missing editing user ID");
-
+  const updateUserInPrisma = async (userId: string) => {
+    if (!permissions?.canManageTeam || !userId) {
+      throw new Error("Not authorized to update this profile");
+    }
+    try {
       const accessToken = await getAuth0AccessToken();
       const response = await fetch(`/api/users/${userId}/update`, {
         method: "PUT",
@@ -125,49 +163,149 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          name: `${formData?.firstName} ${formData?.lastName}`,
-          email: formData?.email,
-          role: formData?.role,
+          name:
+            formData?.firstName && formData?.lastName
+              ? `${formData.firstName} ${formData.lastName}`
+              : user?.name
+                ? user.name
+                : null,
+          email: formData?.email
+            ? formData.email
+            : user?.email
+              ? user.email
+              : null,
+          role: formData.role,
         }),
       });
+      return response;
+    } catch (error) {
+      console.error("Prisma - Failed tfo update user", error);
+      return null;
+    }
+  };
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update user`);
-      }
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["user-profile", id],
+  const updateUserInAuth0 = async (auth0Id: string) => {
+    if (!permissions?.canManageTeam || !auth0Id) {
+      throw new Error("Not authorized to update this profile");
+    }
+    try {
+      const token = await fetchManagementToken();
+      if (!token) throw new Error("No token available");
+
+      const response = await fetch("/api/admin/auth0Users", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: auth0Id,
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+        }),
       });
+      if (!response || !response.ok) throw new Error("Response not okay");
+      const data = await response.json();
+      if (!data) throw new Error("No data from auth0");
+      return true;
+    } catch (error) {
+      console.error("AUTH0 - Failed to update user", error);
+      return false;
+    }
+  };
+
+  const updateUserMutation = useMutation<
+    PrismaUser,
+    Error,
+    { userId: string; auth0Id: string }
+  >({
+    mutationFn: async ({ userId, auth0Id }) => {
+      if (!userId || !auth0Id) throw new Error("Missing User ID");
+
+      const auth0Response = await updateUserInAuth0(auth0Id);
+      if (!auth0Response) {
+        throw new Error("Auth0 Error");
+      }
+      const prismaResponse = await updateUserInPrisma(userId);
+      if (!prismaResponse) {
+        throw new Error("Prisma Error");
+      }
+      const data = await prismaResponse.json();
+      if (!data || !data?.user)
+        throw new Error("Prisma - Updated data was not found");
+      return data.user as PrismaUser;
+    },
+    onSuccess: async (data: PrismaUser) => {
       resetFormAndClose();
-      toast.success(`${user?.name || "User"} was updated`);
+      toast.success(`${data?.name || "User"} was updated`);
     },
     onError: (error) => {
       console.error("Failed to update user", error);
       toast.error("Failed to update user");
     },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["user-profile", id],
+      });
+      setIsSubmitting(false);
+    },
   });
+
+  // const updateUserMutation = useMutation({
+  //   mutationFn: async (userId?: string) => {
+  //     if (!userId) throw new Error("Missing editing user ID");
+
+  //     const accessToken = await getAuth0AccessToken();
+  //     const response = await fetch(`/api/users/${userId}/update`, {
+  //       method: "PUT",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //       body: JSON.stringify({
+  //         name: `${formData?.firstName} ${formData?.lastName}`,
+  //         email: formData?.email,
+  //         role: formData?.role,
+  //       }),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       throw new Error(errorData.message || `Failed to update user`);
+  //     }
+  //   },
+  //   onSuccess: async () => {
+  //     await queryClient.invalidateQueries({
+  //       queryKey: ["user-profile", id],
+  //     });
+  //     resetFormAndClose();
+  //     toast.success(`${user?.name || "User"} was updated`);
+  //   },
+  //   onError: (error) => {
+  //     console.error("Failed to update user", error);
+  //     toast.error("Failed to update user");
+  //   },
+  // });
 
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!permissions?.canManageAllUsers) {
+
+    if (!permissions?.canManageTeam || !canUpdateTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     if (!validateForm()) return;
     setIsSubmitting(true);
-    updateUserMutation.mutate(user?.id);
-    setIsSubmitting(false);
+    updateUserMutation.mutate({ userId: user?.id, auth0Id: user?.auth0Id });
   };
 
   const handleRoleChange = async () => {
-    if (!permissions?.canManageAllUsers) {
+    if (!permissions?.canManageTeam || !canUpdateTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     setIsSubmitting(true);
-    updateUserMutation.mutate(user?.id);
+    updateUserMutation.mutate({ userId: user?.id, auth0Id: user?.auth0Id });
     setIsSubmitting(false);
   };
 
@@ -365,7 +503,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
-                disabled
               />
               <p className="text-sm text-destructive">
                 {formErrors?.email && formErrors.email}

@@ -1,31 +1,53 @@
-import { MarketCenter, TicketCategory } from "../marketCenters/types";
-import { Urgency, TicketHistory } from "../ticket/types";
+import {
+  MarketCenter,
+  MarketCenterHistory,
+  TicketCategory,
+} from "../marketCenters/types";
+import { Comment, Urgency, TicketHistory, Ticket } from "../ticket/types";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 
-export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "TEXT";
-export type NotificationFrequency = "INSTANT" | "DAILY" | "WEEKLY";
+export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
+export type NotificationFrequency =
+  | "NONE"
+  | "INSTANT"
+  | "DAILY"
+  | "WEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "ANNUALLY";
 export type NotificationCategory =
   | "ACCOUNT"
   | "ACTIVITY"
   | "MARKETING"
+  | "PERMISSIONS"
   | "PRODUCT";
 
 export interface User {
   id: string;
+  auth0Id: string;
   email: string;
-  name: string | null; // Prisma: name String?  => TypeScript: string | null
+  name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
-  auth0Id: string;
+  comments?: Comment[];
+
+  defaultForCategories?: TicketCategory[];
+  assignedTickets?: Ticket[];
+  createdTickets?: Ticket[];
+
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
+
   ticketHistory?: TicketHistory[];
   userHistory?: UserHistory[];
   otherUsersChanges?: UserHistory[];
-  ticketCategory?: TicketCategory[];
+  marketCenterHistory?: MarketCenterHistory[];
+
+  userSettings?: UserSettings;
+  notifications?: Notification[];
 }
 
 export interface UserHistory {
@@ -43,19 +65,42 @@ export interface UserHistory {
   user?: User;
 }
 
+export interface UserSettings {
+  id: string;
+  userId: string;
+  notificationPreferences?: NotificationPreferences[];
+  createdAt: Date;
+  updatedAt: Date;
+  user?: User;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  frequency: NotificationFrequency;
+  category: NotificationCategory;
+  type: string;
+  email: boolean;
+  push: boolean;
+  inApp: boolean;
+  sms: boolean;
+  userSettingsId: string;
+  userSettings?: UserSettings;
+}
+
 export interface Notification {
   id: string;
 
   userId: string;
-  user: User;
+  user?: User;
 
   channel?: NotificationChannel;
   category: NotificationCategory;
   priority: Urgency;
-  type: string; // e.g. "ticket_updated", "comment_reply", "weekly_summary"
+  type: string;
   title: string;
   body: string;
   data?: {
+    url?: string;
     ticketId?: string;
     marketCenterId?: string;
     userId?: string;
@@ -66,25 +111,4 @@ export interface Notification {
   read: boolean;
   deliveredAt: Date;
   createdAt: Date;
-}
-
-export interface UserSettings {
-  id: string;
-  userId: string;
-  notificationPreferences: NotificationPreferences;
-  createdAt: Date;
-  updatedAt: Date;
-  user: User;
-}
-
-export interface NotificationPreferences {
-  id: string;
-  frequency: NotificationFrequency;
-  type: string; // e.g. "ticket_updated", "comment_reply", "weekly_summary"
-  email: boolean;
-  push: boolean;
-  inApp: boolean;
-  text: boolean;
-  userSettingsId: string;
-  userSettings?: UserSettings;
 }

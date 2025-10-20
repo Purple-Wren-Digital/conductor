@@ -5,8 +5,6 @@ import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useStore } from "@/app/store-provider";
 import EditUserProfile from "@/components/account/edit-user-profile";
 import Notifications from "@/components/account/notifications";
-// import PasswordReset from "@/components/account/password-reset";
-import UserInformation from "@/components/account/user-information";
 import {
   Tabs,
   TabsContent,
@@ -16,10 +14,9 @@ import {
 
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
-import { UserRole } from "@/hooks/use-user-role";
 import { useFetchOneUser } from "@/hooks/use-users";
 import { MarketCenter, PrismaUser } from "@/lib/types";
-import { BellRing, Edit, History, Lock, User, UserCircle } from "lucide-react";
+import { BellRing, History, UserCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -33,7 +30,7 @@ export default function AccountLayout() {
     currentUser?.id
   );
   const user: PrismaUser = userData ?? {};
-  const marketCenter: MarketCenter = userData?.marketCenter ?? {};
+  // const marketCenter: MarketCenter = userData?.marketCenter ?? {};
 
   const isCurrentUserProfile =
     currentUser?.id === user?.id && currentUser?.auth0Id === user?.auth0Id;
@@ -81,7 +78,7 @@ export default function AccountLayout() {
       return null;
     }
   }, []);
-
+  // console.log("USER PROFILE", user);
   return (
     <div className="space-y-6">
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
@@ -127,7 +124,11 @@ export default function AccountLayout() {
           </section>
         </TabsContent>
         <TabsContent value="settings">
-          <Notifications />
+          <Notifications
+            user={user}
+            getAuth0AccessToken={getAuth0AccessToken}
+            invalidateUserQuery={invalidateUserQuery}
+          />
         </TabsContent>
 
         {/* <TabsContent value="passwordReset">

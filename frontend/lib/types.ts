@@ -16,6 +16,22 @@ export type TicketStatus =
   | "RESOLVED";
 export type Urgency = "HIGH" | "MEDIUM" | "LOW";
 
+export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
+export type NotificationFrequency =
+  | "NONE"
+  | "INSTANT"
+  | "DAILY"
+  | "WEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "ANNUALLY";
+export type NotificationCategory =
+  | "ACCOUNT"
+  | "ACTIVITY"
+  | "MARKETING"
+  | "PERMISSIONS"
+  | "PRODUCT";
+
 export interface Ticket {
   id: string;
   title: string | null; // Prisma: title String?  => allow null (or keep string if you always normalize)
@@ -40,18 +56,78 @@ export interface Ticket {
 
 export interface PrismaUser {
   id: string;
+  auth0Id: string;
   email: string;
-  name: string | null; // Prisma: name String?  => TypeScript: string | null
+  name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
-  auth0Id: string;
+  comments: Comment[];
+
+  defaultForCategories?: TicketCategory[];
+  assignedTickets?: Ticket[];
+  createdTickets?: Ticket[];
+
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
+
   ticketHistory?: TicketHistory[];
   userHistory?: UserHistory[];
   otherUsersChanges?: UserHistory[];
+  marketCenterHistory?: MarketCenterHistory[];
+
+  userSettings?: UserSettings;
+
+  notifications?: Notification[];
+}
+
+export interface Notification {
+  id: string;
+
+  userId: string;
+  user?: PrismaUser;
+
+  channel?: NotificationChannel;
+  category: NotificationCategory;
+  priority: Urgency;
+  type: string;
+  title: string;
+  body: string;
+  data?: {
+    url?: string;
+    ticketId?: string;
+    marketCenterId?: string;
+    userId?: string;
+    commentId?: string;
+    categoryId?: string;
+  };
+
+  read: boolean;
+  deliveredAt: Date;
+  createdAt: Date;
+}
+
+export interface UserSettings {
+  id: string;
+  userId: string;
+  notificationPreferences: NotificationPreferences[];
+  createdAt: Date;
+  updatedAt: Date;
+  user: PrismaUser;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  frequency: NotificationFrequency;
+  category: NotificationCategory;
+  type: string;
+  email: boolean;
+  push: boolean;
+  inApp: boolean;
+  sms: boolean;
+  userSettingsId: string;
+  userSettings?: UserSettings;
 }
 
 export interface TicketHistory {
