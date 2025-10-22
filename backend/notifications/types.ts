@@ -29,7 +29,7 @@ export interface Notification {
   type: string;
   title: string;
   body: string;
-  data?: NotificationData;
+  data?: NotificationData; // Record<string, any>
   read: boolean;
   deliveredAt: Date | null;
   createdAt: Date;
@@ -42,4 +42,13 @@ export interface NotificationData {
   userId?: string;
   commentId?: string;
   categoryId?: string;
+  emails?: string[];
+  emailTemplate?: string;
+}
+
+export interface PushNotificationPayload {
+  token: string;
+  userId: string;
+  title: string;
+  body: string;
 }

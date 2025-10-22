@@ -97,11 +97,19 @@ const myAuthHandler = authHandler(
       //   emailAddress: "bob.staff@kw.com",
       // };
 
-      // // ADMIN
+      // // ADMINS
+      // // TEST PERSON
+      // return {
+      //   userID: "auth0|68c070eba093c0727999c608",
+      //   imageUrl: "https://via.placeholder.com/150",
+      //   emailAddress: "clara.admin@kw.com",
+      // };
+      // // VICTORIA
       return {
-        userID: "auth0|68c070eba093c0727999c608",
-        imageUrl: "https://via.placeholder.com/150",
-        emailAddress: "clara.admin@kw.com",
+        userID: "auth0|68cae844030573fabd2a3e66",
+        imageUrl:
+          "https://s.gravatar.com/avatar/2bb287402c473ab2883c2b1844bde80c?s=480&r=pg&d=https%3A%2F%2Fcdn.auth0.com%2Favatars%2Fvm.png",
+        emailAddress: "vmcnorrill@gmail.com",
       };
     }
 

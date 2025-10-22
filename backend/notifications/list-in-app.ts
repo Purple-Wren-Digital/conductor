@@ -6,15 +6,14 @@ import { Notification, NotificationData } from "./types";
 export interface ListInAppNotificationsRequest {
   userId: string;
 
-  // limit?: Query<number>;
-  // offset?: Query<number>;
+  limit?: Query<number>;
+  offset?: Query<number>;
 }
 
 export interface ListInAppNotificationsResponse {
   notifications: Notification[];
   unReadAmount: number;
 }
-//
 export const listInApp = api<
   ListInAppNotificationsRequest,
   ListInAppNotificationsResponse
@@ -27,8 +26,8 @@ export const listInApp = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    // const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
-    // const offset = Math.max(Number(req.offset ?? 0), 0);
+    const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
+    const offset = Math.max(Number(req.offset ?? 0), 0);
     if (
       !userContext?.userId &&
       !req?.userId &&
