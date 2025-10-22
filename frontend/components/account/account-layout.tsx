@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import EditUserProfile from "@/components/account/edit-user-profile";
 import NotificationPreferences from "@/components/account/notification-preferences";
 import {

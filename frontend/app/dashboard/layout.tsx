@@ -6,7 +6,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import Link from "next/link";
 import { AppSidebar } from "./app-sidebar";
-import { useStore } from "../store-provider";
+import { useStore } from "@/context/store-provider";
 import { PrismaUser } from "@/lib/types";
 
 export default function DashboardLayout({

@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState, useCallback } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

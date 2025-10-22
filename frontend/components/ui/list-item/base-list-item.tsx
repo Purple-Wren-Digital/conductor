@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 
 export interface BaseAction {
   label: string;

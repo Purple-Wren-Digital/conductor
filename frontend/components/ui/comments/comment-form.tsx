@@ -10,7 +10,7 @@ import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { parseJsonSafe } from "@/lib/utils";
 

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

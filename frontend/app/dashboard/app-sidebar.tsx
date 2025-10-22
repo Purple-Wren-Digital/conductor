@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useStore } from "../store-provider";
+import { useStore } from "@/context/store-provider";
 import {
   LayoutDashboard,
   Users as UsersIcon,

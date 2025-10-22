@@ -7,7 +7,7 @@
 //   CardHeader,
 //   CardTitle,
 // } from "@/components/ui/card";
-// import { useStore } from "@/app/store-provider";
+// import { useStore } from "@/context/store-provider";
 
 // export default function PasswordReset({
 //   isCurrentUserProfile,

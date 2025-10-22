@@ -1,23 +1,82 @@
 import WebSocket, { WebSocketServer } from "ws";
 import { getUserContext } from "../../auth/user-context";
+import net from "net";
 
-const wss = new WebSocketServer({ port: 8080 });
-const clients = new Map<string, WebSocket>(); // userId → ws
+const PORT = 8081;
 
-wss.on("connection", async (ws: WebSocket, req) => {
-  const userContext = await getUserContext();
-  if (userContext && userContext?.userId) {
-    clients.set(userContext.userId, ws);
+const globalForWS = globalThis as unknown as {
+  _wss?: WebSocketServer;
+  _clients?: Map<string, WebSocket>;
+};
+
+if (!globalForWS._clients) {
+  globalForWS._clients = new Map<string, WebSocket>();
+}
+
+const clients = globalForWS._clients;
+
+// Check if port is already in use
+function isPortTaken(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const tester = net
+      .createServer()
+      .once("error", () => resolve(true))
+      .once("listening", function () {
+        tester.once("close", () => resolve(false)).close();
+      })
+      .listen(port);
+  });
+}
+
+async function createWebSocketServer() {
+  if (globalForWS._wss) return globalForWS._wss;
+
+  const taken = await isPortTaken(PORT);
+
+  if (taken) {
+    console.log(
+      `⚠️  WebSocket already running on port ${PORT}, skipping rebind.`
+    );
+    return globalForWS._wss;
   }
 
-  ws.on("close", () => clients.delete(userContext?.userId));
-});
+  const wss = new WebSocketServer({ port: PORT });
+  globalForWS._wss = wss;
+  console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
+
+  wss.on("connection", async (ws) => {
+    try {
+      const userContext = await getUserContext();
+      const userId = userContext?.userId;
+      if (!userId) {
+        ws.close(1008, "Unauthorized");
+        return;
+      }
+
+      clients.set(userId, ws);
+      console.log(`👤 Connected: ${userId}`);
+
+      ws.on("close", () => {
+        clients.delete(userId);
+        console.log(`❌ Disconnected: ${userId}`);
+      });
+    } catch (err) {
+      console.error("WebSocket connection error:", err);
+      ws.close(1011, "Server error");
+    }
+  });
+
+  return wss;
+}
+
+// Run immediately in dev
+createWebSocketServer();
 
 export async function broadcastNotification(userId: string, notification: any) {
-  console.log(`📡 TODO: Broadcast to ${userId}:`, notification);
-  // TODO: Implement WebSocket broadcast
   const client = clients.get(userId);
-  if (client && client?.readyState === client.OPEN) {
+  if (client && client.readyState === WebSocket.OPEN) {
     client.send(JSON.stringify(notification));
+  } else {
+    console.warn(`⚠️  User ${userId} not connected. Skipping.`);
   }
 }

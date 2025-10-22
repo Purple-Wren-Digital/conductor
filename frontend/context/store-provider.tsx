@@ -10,11 +10,7 @@ export const StoreContext = createContext({
 
 export const useStore = () => useContext(StoreContext);
 
-export default function StoreProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<PrismaUser | null>(null);
   const value: AppContext = useMemo(() => {
     return {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,

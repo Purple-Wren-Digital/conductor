@@ -2,8 +2,10 @@ import { cn } from "@/lib/cn";
 import { Auth0Provider } from "@auth0/nextjs-auth0";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { QueryClientProvider } from "./query-client-provider";
-import StoreProvider from "./store-provider";
+import { QueryClientProvider } from "@/context/query-client-provider";
+import { StoreProvider } from "@/context/store-provider";
+import { NotificationsProvider } from "@/context/notifications-provider";
+
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -38,10 +40,14 @@ export default function RootLayout({
         className={cn("antialiased", geistSans.variable, geistMono.variable)}
       >
         <Auth0Provider>
-          <StoreProvider>
-            <Toaster />
-            <QueryClientProvider>{children}</QueryClientProvider>
-          </StoreProvider>
+          <QueryClientProvider>
+            <StoreProvider>
+              <NotificationsProvider>
+                <Toaster />
+                {children}
+              </NotificationsProvider>
+            </StoreProvider>
+          </QueryClientProvider>
         </Auth0Provider>
       </body>
     </html>
