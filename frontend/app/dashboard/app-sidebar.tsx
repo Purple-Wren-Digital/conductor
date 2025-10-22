@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { useUserRole } from "@/hooks/use-user-role";
+import InAppNotifications from "@/components/notifications/notifications-in-app";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { className, ...rest } = props;
@@ -142,6 +143,18 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+                <Link href={`/dashboard/account`}>
+                  <CircleUserRound /> Manage Account
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <InAppNotifications
+              userId={currentUser?.id}
+              disabled={isLoading || !currentUser}
+            />
 
             {/* <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
@@ -151,13 +164,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem> */}
 
-            <SidebarMenuItem>
+            {/* <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
                 <Link href={`/dashboard/account`}>
                   <CircleUserRound /> Manage Account
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+          </SidebarMenu> */}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

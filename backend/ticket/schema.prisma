@@ -244,7 +244,7 @@ model Notification {
   userId      String
   user        User                     @relation(fields: [userId], references: [id])
 
-  channel     NotificationChannel?
+  channel     NotificationChannel
   category    NotificationCategory
   priority    Urgency?
   type        String                   // e.g. "ticket_updated", "comment_reply", "weekly_summary"

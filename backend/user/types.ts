@@ -3,25 +3,14 @@ import {
   MarketCenterHistory,
   TicketCategory,
 } from "../marketCenters/types";
-import { Comment, Urgency, TicketHistory, Ticket } from "../ticket/types";
+import { Comment, TicketHistory, Ticket } from "../ticket/types";
+import {
+  Notification,
+  NotificationCategory,
+  NotificationFrequency,
+} from "../notifications/types";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
-
-export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
-export type NotificationFrequency =
-  | "NONE"
-  | "INSTANT"
-  | "DAILY"
-  | "WEEKLY"
-  | "MONTHLY"
-  | "QUARTERLY"
-  | "ANNUALLY";
-export type NotificationCategory =
-  | "ACCOUNT"
-  | "ACTIVITY"
-  | "MARKETING"
-  | "PERMISSIONS"
-  | "PRODUCT";
 
 export interface User {
   id: string;
@@ -85,30 +74,4 @@ export interface NotificationPreferences {
   sms: boolean;
   userSettingsId: string;
   userSettings?: UserSettings;
-}
-
-export interface Notification {
-  id: string;
-
-  userId: string;
-  user?: User;
-
-  channel?: NotificationChannel;
-  category: NotificationCategory;
-  priority: Urgency;
-  type: string;
-  title: string;
-  body: string;
-  data?: {
-    url?: string;
-    ticketId?: string;
-    marketCenterId?: string;
-    userId?: string;
-    commentId?: string;
-    categoryId?: string;
-  };
-
-  read: boolean;
-  deliveredAt: Date;
-  createdAt: Date;
 }

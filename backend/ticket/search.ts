@@ -1,5 +1,4 @@
-import { api } from "encore.dev/api";
-import { Query } from "encore.dev/api";
+import { api, Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { Prisma } from "@prisma/client";

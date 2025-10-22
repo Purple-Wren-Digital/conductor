@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useStore } from "@/app/store-provider";
 import EditUserProfile from "@/components/account/edit-user-profile";
-import Notifications from "@/components/account/notifications";
+import NotificationPreferences from "@/components/account/notification-preferences";
 import {
   Tabs,
   TabsContent,
@@ -15,7 +15,7 @@ import {
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
 import { useFetchOneUser } from "@/hooks/use-users";
-import { MarketCenter, PrismaUser } from "@/lib/types";
+import { PrismaUser } from "@/lib/types";
 import { BellRing, History, UserCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,7 +30,6 @@ export default function AccountLayout() {
     currentUser?.id
   );
   const user: PrismaUser = userData ?? {};
-  // const marketCenter: MarketCenter = userData?.marketCenter ?? {};
 
   const isCurrentUserProfile =
     currentUser?.id === user?.id && currentUser?.auth0Id === user?.auth0Id;
@@ -124,7 +123,7 @@ export default function AccountLayout() {
           </section>
         </TabsContent>
         <TabsContent value="settings">
-          <Notifications
+          <NotificationPreferences
             user={user}
             getAuth0AccessToken={getAuth0AccessToken}
             invalidateUserQuery={invalidateUserQuery}
