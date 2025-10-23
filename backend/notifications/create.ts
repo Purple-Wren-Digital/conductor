@@ -5,7 +5,6 @@ import { sendPushNotification } from "./channels/push";
 import { broadcastNotification } from "./channels/websocket";
 import type { NotificationCategory, NotificationChannel } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { User } from "../user/types";
 // Payload
 export interface CreateNotificationRequest {
   userId: string;
@@ -16,7 +15,7 @@ export interface CreateNotificationRequest {
   body: string;
   data?: Record<string, any>;
 }
-export const createNotification = api<CreateNotificationRequest>(
+export const create = api<CreateNotificationRequest>(
   {
     expose: true,
     method: "POST",
@@ -25,9 +24,6 @@ export const createNotification = api<CreateNotificationRequest>(
   },
   async (req) => {
     await getUserContext();
-
-    let where: any = {};
-    // let user: User = {} as User;
 
     const user = await prisma.user.findUnique({
       where: {
@@ -42,9 +38,9 @@ export const createNotification = api<CreateNotificationRequest>(
     if (!user || !user.id) {
       throw APIError.notFound("User not found");
     }
-    // if (!user.userSettings?.notificationPreferences.at)
     const notificationPreference =
-      user.userSettings?.notificationPreferences.find((pref) => {
+      user.userSettings?.notificationPreferences &&
+      user?.userSettings?.notificationPreferences.find((pref) => {
         pref.type.toLocaleUpperCase() === req.type.toLocaleUpperCase();
       });
 
@@ -66,15 +62,14 @@ export const createNotification = api<CreateNotificationRequest>(
 
     if (
       req.channel === "PUSH" &&
-      notificationPreference &&
-      !notificationPreference?.push
+      (!notificationPreference || !notificationPreference?.push)
     ) {
       channelAllowed = false;
     }
 
     if (!channelAllowed) {
       throw APIError.permissionDenied(
-        `${req.channel} Notifications for ${req.type} are not permitted for this user`
+        `${req.channel} Notifications for ${req.type} are disabled for this user`
       );
     }
 
@@ -95,29 +90,29 @@ export const createNotification = api<CreateNotificationRequest>(
     }
 
     switch (notification.channel) {
-      case "EMAIL":
-        if (user?.email) {
-          await sendEmailNotification({
-            to: ["delivered@resend.dev"], // [user.id]
-            subject: notification.title,
-            html: `<p>${notification.body}</p>`, // TODO: Resend templates on backend
-          });
-        }
-        break;
+      // case "EMAIL":
+      //   if (user?.email) {
+      //     await sendEmailNotification({
+      //       to: ["delivered@resend.dev"], // [user.id]
+      //       subject: notification.title,
+      //       html: `<p>${notification.body}</p>`, // TODO: Resend templates on backend
+      //     });
+      //   }
+      //   break;
 
       case "IN_APP":
         await broadcastNotification(notification.userId, notification);
         break;
 
-      case "PUSH":
-        // TODO: Firebase Web Push Notifications
-        await sendPushNotification({
-          token: req.userId, // user?.userSettings?.browserPushToken
-          userId: req.userId,
-          title: req.title,
-          body: req.body,
-        });
-        break;
+      // case "PUSH":
+      //   // TODO: Firebase Web Push Notifications
+      //   await sendPushNotification({
+      //     token: req.userId, // user?.userSettings?.browserPushToken
+      //     userId: req.userId,
+      //     title: req.title,
+      //     body: req.body,
+      //   });
+      //   break;
     }
 
     return notification;

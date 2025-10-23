@@ -44,12 +44,15 @@ async function createWebSocketServer() {
   globalForWS._wss = wss;
   console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
 
-  wss.on("connection", async (ws) => {
+  wss.on("connection", async (ws, req) => {
     try {
-      const userContext = await getUserContext();
-      const userId = userContext?.userId;
+      const reqUrl = req.url || "/";
+      const base = `http://${req.headers.host}`;
+      const url = new URL(reqUrl, base);
+      const userId = url.searchParams.get("userId");
+
       if (!userId) {
-        ws.close(1008, "Unauthorized");
+        ws.close(1008, "Unauthorized: missing token (user id)");
         return;
       }
 

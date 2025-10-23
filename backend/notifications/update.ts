@@ -9,7 +9,7 @@ export interface UpdateNotificationRequest {
 }
 
 export interface UpdateNotificationResponse {
-  notification: Notification;
+  success: boolean;
 }
 
 export const update = api<
@@ -24,36 +24,31 @@ export const update = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    const userId = userContext?.userId;
 
-    const existingNotification = await prisma.notification.findFirst({
-      where: {
-        id: req.notificationId,
-        userId: req.userId,
-      },
+    if (!req.userId || !req.notificationId) {
+      throw APIError.invalidArgument("Missing notification information");
+    }
+
+    console.log("MARK AS READ PARAMS", "Notification ID:", req.notificationId);
+
+    const existingNotification = await prisma.notification.findUnique({
+      where: { id: req.notificationId },
     });
 
     if (!existingNotification) {
       throw APIError.notFound("Notification not found");
     }
-
-    if (existingNotification.userId !== userId) {
+    if (existingNotification.userId !== userContext?.userId) {
       throw APIError.permissionDenied(
         "You can only edit your own notifications"
       );
     }
 
-    const updatedNotificationRaw = await prisma.notification.update({
+    const updatedNotification = await prisma.notification.update({
       where: { id: existingNotification.id },
       data: { read: true },
     });
 
-    const updatedNotification = {
-      ...updatedNotificationRaw,
-      priority: updatedNotificationRaw?.priority ?? undefined,
-      data: updatedNotificationRaw.data as NotificationData,
-    };
-
-    return { notification: updatedNotification };
+    return { success: updatedNotification?.read };
   }
 );

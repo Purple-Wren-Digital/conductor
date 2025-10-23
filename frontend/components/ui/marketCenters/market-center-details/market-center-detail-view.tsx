@@ -54,7 +54,7 @@ export default function MarketCenterDetailView({
   const router = useRouter();
 
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") ?? "general";
+  const tab = searchParams.get("tab") ?? "team";
 
   const queryClient = useQueryClient();
 
