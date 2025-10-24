@@ -8,6 +8,7 @@
 		// (equivalent to ["*"]).
 		"allow_origins_without_credentials": [
 			"https://encorets-saas-starter.vercel.app",
+			"https://conductor-eight.vercel.app",
 		],
 		// allow_origins_with_credentials specifies the allowed origins for requests
 		// that include credentials. If a request is made from an Origin in this list
@@ -17,6 +18,7 @@
 		// or "https://*-myapp.example.com").
 		"allow_origins_with_credentials": [
 			"https://encorets-saas-starter.vercel.app",
+			"https://conductor-eight.vercel.app",
 		],
 	},
 }
