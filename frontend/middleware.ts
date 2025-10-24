@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const session = await auth0.getSession(request);
 
   if (!session) {
-    // Redirect to login (v4 uses /auth prefix)
+    // Redirect to login
     return NextResponse.redirect(
       new URL("/auth/login", request.nextUrl.origin)
     );
