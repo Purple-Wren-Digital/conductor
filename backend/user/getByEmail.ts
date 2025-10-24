@@ -3,15 +3,15 @@ import { prisma } from "../ticket/db";
 import type { User } from "../ticket/types";
 import { getAuthData } from "~encore/auth";
 
-export interface GetUserRequest {
+export interface GetUserByEmailRequest {
   email: string;
 }
 
-export interface GetUserResponse {
+export interface GetUserByEmailResponse {
   user: User;
 }
 
-export const getByEmail = api<GetUserRequest, GetUserResponse>(
+export const getByEmail = api<GetUserByEmailRequest, GetUserByEmailResponse>(
   {
     expose: true,
     method: "GET",
@@ -32,6 +32,6 @@ export const getByEmail = api<GetUserRequest, GetUserResponse>(
       throw APIError.notFound("user not found");
     }
 
-    return { user: user } as GetUserResponse;
+    return { user: user } as GetUserByEmailResponse;
   }
 );

@@ -3,7 +3,7 @@ import { prisma } from "../ticket/db";
 import { TicketHistory } from "../ticket/types";
 import { mapHistorySnapshot } from "../utils";
 
-export interface GetUserTicketHistoryRequest {
+export interface GetTicketHistoryRequest {
   id: string;
 
   orderBy: string;
@@ -12,14 +12,14 @@ export interface GetUserTicketHistoryRequest {
   offset?: number;
 }
 
-export interface GetUserTicketHistoryResponse {
+export interface GetTicketHistoryResponse {
   ticketHistory: TicketHistory[];
   total: number;
 }
 
 export const getTicketHistory = api<
-  GetUserTicketHistoryRequest,
-  GetUserTicketHistoryResponse
+  GetTicketHistoryRequest,
+  GetTicketHistoryResponse
 >(
   {
     expose: true,

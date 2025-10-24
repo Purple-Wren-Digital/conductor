@@ -297,6 +297,14 @@ export namespace marketCenters {
         changedBy?: ticket.User
     }
 
+    export interface RemoveUsersRequest {
+        users: ticket.User[]
+    }
+
+    export interface RemoveUsersResponse {
+        marketCenter: MarketCenter
+    }
+
     export interface TeamInvitation {
         id: string
         email: string
@@ -325,17 +333,9 @@ export namespace marketCenters {
     }
 
     export interface UpdateMarketCenterRequest {
-        users: ticket.User[]
-    }
-
-    export interface UpdateMarketCenterRequest {
         name?: string
         users?: ticket.User[]
         ticketCategories?: TicketCategory[]
-    }
-
-    export interface UpdateMarketCenterResponse {
-        marketCenter: MarketCenter
     }
 
     export interface UpdateMarketCenterResponse {
@@ -416,12 +416,12 @@ export namespace marketCenters {
         }
 
         /**
-         * Creates a new market center
+         * Removes users from a market center
          */
-        public async removeUsers(id: string, params: UpdateMarketCenterRequest): Promise<UpdateMarketCenterResponse> {
+        public async removeUsers(id: string, params: RemoveUsersRequest): Promise<RemoveUsersResponse> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI("PATCH", `/marketCenters/users/${encodeURIComponent(id)}`, JSON.stringify(params))
-            return await resp.json() as UpdateMarketCenterResponse
+            return await resp.json() as RemoveUsersResponse
         }
 
         public async search(params: ListMarketCentersRequest): Promise<ListMarketCentersResponse> {
@@ -600,19 +600,19 @@ export namespace ticket {
         templates: TicketTemplate[]
     }
 
-    export interface GetTicketResponse {
-        ticket: Ticket
-    }
-
-    export interface GetUserTicketHistoryRequest {
+    export interface GetTicketHistoryRequest {
         orderBy: string
         limit?: number
         offset?: number
     }
 
-    export interface GetUserTicketHistoryResponse {
+    export interface GetTicketHistoryResponse {
         ticketHistory: TicketHistory[]
         total: number
+    }
+
+    export interface GetTicketResponse {
+        ticket: Ticket
     }
 
     export interface ListTicketsRequest {
@@ -875,7 +875,7 @@ export namespace ticket {
             return await resp.json() as GetTemplatesResponse
         }
 
-        public async getTicketHistory(id: string, params: GetUserTicketHistoryRequest): Promise<GetUserTicketHistoryResponse> {
+        public async getTicketHistory(id: string, params: GetTicketHistoryRequest): Promise<GetTicketHistoryResponse> {
             // Convert our params into the objects we need for the request
             const query = makeRecord<string, string | string[]>({
                 limit:   params.limit === undefined ? undefined : String(params.limit),
@@ -885,7 +885,7 @@ export namespace ticket {
 
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI("GET", `/tickets/${encodeURIComponent(id)}/history`, undefined, {query})
-            return await resp.json() as GetUserTicketHistoryResponse
+            return await resp.json() as GetTicketHistoryResponse
         }
 
         public async list(params: ListTicketsRequest): Promise<ListTicketsResponse> {
@@ -898,8 +898,8 @@ export namespace ticket {
                 marketCenterId: params.marketCenterId,
                 offset:         params.offset === undefined ? undefined : String(params.offset),
                 search:         params.search,
-                status:         params.status?.map((v) => v === undefined ? undefined : String(v)),
-                urgency:        params.urgency?.map((v) => v === undefined ? undefined : String(v)),
+                status:         params.status?.map((v) => String(v)),
+                urgency:        params.urgency?.map((v) => String(v)),
             })
 
             // Now make the actual call to the API
@@ -921,8 +921,8 @@ export namespace ticket {
                 query:          params.query,
                 sortBy:         params.sortBy === undefined ? undefined : String(params.sortBy),
                 sortDir:        params.sortDir === undefined ? undefined : String(params.sortDir),
-                status:         params.status?.map((v) => v === undefined ? undefined : String(v)),
-                urgency:        params.urgency?.map((v) => v === undefined ? undefined : String(v)),
+                status:         params.status?.map((v) => String(v)),
+                urgency:        params.urgency?.map((v) => String(v)),
             })
 
             // Now make the actual call to the API
@@ -968,7 +968,7 @@ export namespace user {
         } | null
     }
 
-    export interface GetUserResponse {
+    export interface GetUserByEmailResponse {
         user: ticket.User
     }
 
@@ -1052,10 +1052,10 @@ export namespace user {
             return await resp.json() as GetUserResponse
         }
 
-        public async getByEmail(email: string): Promise<GetUserResponse> {
+        public async getByEmail(email: string): Promise<GetUserByEmailResponse> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI("GET", `/users/email/${encodeURIComponent(email)}`)
-            return await resp.json() as GetUserResponse
+            return await resp.json() as GetUserByEmailResponse
         }
 
         public async getUserHistory(id: string, params: history.GetUserHistoryRequest): Promise<history.GetUserHistoryResponse> {
@@ -1113,7 +1113,7 @@ export namespace user {
                 marketCenterId: params.marketCenterId,
                 offset:         params.offset === undefined ? undefined : String(params.offset),
                 query:          params.query,
-                role:           params.role?.map((v) => v === undefined ? undefined : String(v)),
+                role:           params.role?.map((v) => String(v)),
                 sortBy:         params.sortBy === undefined ? undefined : String(params.sortBy),
                 sortDir:        params.sortDir === undefined ? undefined : String(params.sortDir),
                 updatedAt:      params.updatedAt,

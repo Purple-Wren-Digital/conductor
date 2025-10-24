@@ -5,21 +5,21 @@ import { User } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { marketCenterScopeFilter } from "../auth/permissions";
 
-export interface UpdateMarketCenterRequest {
+export interface RemoveUsersRequest {
   id: string;
   users: User[];
   // settingsAuditLogs?: SettingsAuditLog[]; // TODO:
   // ticketCategories?: TicketCategory[]; // TODO:
 }
 
-export interface UpdateMarketCenterResponse {
+export interface RemoveUsersResponse {
   marketCenter: MarketCenter;
 }
 
-// Creates a new market center
+// Removes users from a market center
 export const removeUsers = api<
-  UpdateMarketCenterRequest,
-  UpdateMarketCenterResponse
+  RemoveUsersRequest,
+  RemoveUsersResponse
 >(
   {
     expose: true,
