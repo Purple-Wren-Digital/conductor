@@ -22,25 +22,38 @@ export default function DashboardLayout({
   }, []);
 
   const persistUserContext = async () => {
-    if (!auth0User || !auth0User?.email) throw new Error("No email to search");
-    const accessToken = await getAuth0AccessToken();
-    const response = await fetch(`${API_BASE}/users/email/${auth0User.email}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
-
-    if (response.ok) {
-      const data: { user: PrismaUser } = await response.json();
-      if (data && data?.user) {
-        setCurrentUser(data.user);
-        return;
-      }
+    if (!auth0User || !auth0User?.email) {
+      console.error("DashboardLayout: no email to search");
+      setCurrentUser(null);
+      return;
     }
-    setCurrentUser(null);
+
+    try {
+      const accessToken = await getAuth0AccessToken();
+      const encodedEmail = encodeURIComponent(auth0User.email);
+      const response = await fetch(`${API_BASE}/users/email/${encodedEmail}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        const data: { user: PrismaUser } = await response.json();
+        if (data && data?.user) {
+          setCurrentUser(data.user);
+          return;
+        }
+      } else {
+        console.error(`Failed to fetch user: ${response.status} ${response.statusText}`);
+      }
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      setCurrentUser(null);
+    }
   };
 
   // TODO: CURRENT USER PERSISTENCE
@@ -50,9 +63,8 @@ export default function DashboardLayout({
         "DashboardLayout: no Auth0 user, cannot persist App Context"
       );
       return;
-    } else {
-      persistUserContext();
     }
+    persistUserContext();
   }, [auth0User]);
 
   return (
