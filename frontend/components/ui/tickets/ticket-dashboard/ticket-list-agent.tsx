@@ -394,9 +394,8 @@ export default function AgentTicketList() {
                       categories &&
                       categories.length > 0 &&
                       categories.map((category: TicketCategory) => (
-                        <div className="flex flex-wrap gap-2">
+                        <div key={category?.id} className="flex flex-wrap gap-2">
                           <RadioGroupItem
-                            key={category?.id}
                             value={category?.id}
                             id={`category-${category?.id}`}
                           />

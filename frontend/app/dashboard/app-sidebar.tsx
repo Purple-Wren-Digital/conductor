@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -52,7 +51,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse w-full opacity-25">
                     <div
-                      className={`${i === 0 ? "h-5" : "h-2.5"} bg-muted-foreground rounded`}
+                      className={`${
+                        i === 0 ? "h-5" : "h-2.5"
+                      } bg-muted-foreground rounded`}
                     />
                   </div>
                 ))}

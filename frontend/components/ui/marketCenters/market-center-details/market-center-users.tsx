@@ -192,7 +192,7 @@ export default function MarketCenterUsers({
               })}
             {!isLoading && (!teamMembers || !teamMembers.length) && (
               <p className="text-muted-foreground">
-                No team members found. Contact Admin if you haven't been
+                No team members found. Contact Admin if you haven&apos;t been
                 assigned a team.
               </p>
             )}

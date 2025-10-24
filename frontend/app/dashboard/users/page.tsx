@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import UserManagementTabs from "@/components/ui/users/user-management-tabs";
 
 export default function UsersPage() {
@@ -11,7 +12,9 @@ export default function UsersPage() {
           Create, edit, and manage users & roles.
         </p>
       </div>
-      <UserManagementTabs />
+      <Suspense fallback={<div>Loading...</div>}>
+        <UserManagementTabs />
+      </Suspense>
     </div>
   );
 }

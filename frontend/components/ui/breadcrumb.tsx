@@ -48,6 +48,7 @@ const BreadcrumbLink = React.forwardRef<
     />
   );
 });
+BreadcrumbLink.displayName = "BreadcrumbLink";
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (

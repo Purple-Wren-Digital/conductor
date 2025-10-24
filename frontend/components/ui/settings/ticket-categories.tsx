@@ -386,7 +386,7 @@ export default function TicketCategories() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Category</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete the "{category.name}" category?
+                                Are you sure you want to delete the &quot;{category.name}&quot; category?
                                 This action cannot be undone and may affect existing tickets.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
@@ -430,10 +430,10 @@ export default function TicketCategories() {
           <div className="p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium mb-2">How Auto-routing Works</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• When a ticket is created with a specific category, it will be automatically assigned to the category's default assignee (if configured)</li>
+              <li>• When a ticket is created with a specific category, it will be automatically assigned to the category&apos;s default assignee (if configured)</li>
               <li>• If no default assignee is set for a category, tickets will remain unassigned and can be manually assigned later</li>
               <li>• Only active categories will appear in the ticket creation form</li>
-              <li>• Auto-routing requires the "Auto Assignment" setting to be enabled in General Settings</li>
+              <li>• Auto-routing requires the &quot;Auto Assignment&quot; setting to be enabled in General Settings</li>
             </ul>
           </div>
         </CardContent>

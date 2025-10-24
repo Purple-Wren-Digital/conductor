@@ -220,7 +220,7 @@ export default function GeneralSettings() {
               Branding
             </CardTitle>
             <CardDescription>
-              Customize your market center's appearance and branding
+              Customize your market center&apos;s appearance and branding
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -376,7 +376,7 @@ export default function GeneralSettings() {
               Holiday Calendar
             </CardTitle>
             <CardDescription>
-              Manage your company's holiday schedule
+              Manage your company&apos;s holiday schedule
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

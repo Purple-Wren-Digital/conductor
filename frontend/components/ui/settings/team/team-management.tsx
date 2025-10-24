@@ -1,3 +1,12 @@
+export default function TeamManagement() {
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold">Team Management</h2>
+      <p className="mt-2 text-muted-foreground">Team management coming soon.</p>
+    </div>
+  );
+}
+
 // "use client";
 
 // import { useCallback, useEffect, useMemo, useState } from "react";

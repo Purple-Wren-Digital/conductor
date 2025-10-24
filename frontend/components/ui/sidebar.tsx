@@ -548,6 +548,7 @@ const SidebarMenuButton = React.forwardRef<
     );
   }
 );
+SidebarMenuButton.displayName = "SidebarMenuButton";
 
 function SidebarMenuAction({
   className,

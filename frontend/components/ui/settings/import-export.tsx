@@ -218,8 +218,8 @@ export default function ImportExport() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Confirm Settings Import</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to import these settings from "{importData.marketCenter.name}"?
-                        {overwriteExisting 
+                        Are you sure you want to import these settings from &quot;{importData.marketCenter.name}&quot;?
+                        {overwriteExisting
                           ? " This will overwrite all your current settings."
                           : " This will merge with your current settings."
                         }

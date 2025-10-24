@@ -156,6 +156,8 @@ export default function CreateMarketCenter({
             </div>
 
             <UserMultiSelectDropdown
+              type="editing"
+              filter={true}
               disabled={!unassignedUsers || !unassignedUsers.length}
               marketCenterId={null}
               placeholder={

@@ -628,9 +628,8 @@ export default function TicketListStaff() {
                         marketCenter?.ticketCategories.length > 0 &&
                         marketCenter?.ticketCategories.map(
                           (category: TicketCategory) => (
-                            <div className="flex items-center gap-2">
+                            <div key={category?.id} className="flex items-center gap-2">
                               <RadioGroupItem
-                                key={category?.id}
                                 value={category?.id}
                                 id={`category-${category?.id}`}
                               />

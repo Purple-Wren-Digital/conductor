@@ -24,12 +24,11 @@ export function TeamSwitcher({
   handleMarketCenterSelected,
 }: TeamSwitcherProps) {
   const { role } = useUserRole();
+  const { data, isLoading } = useFetchAllMarketCenters(role);
 
   if (role === "AGENT") {
     return null;
   }
-
-  const { data, isLoading } = useFetchAllMarketCenters(role);
 
   const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
 

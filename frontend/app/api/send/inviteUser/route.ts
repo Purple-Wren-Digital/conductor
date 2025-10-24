@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         newUserName: emailData?.newUserName,
         newUserEmail: emailData?.newUserEmail,
         newUserRole: emailData?.newUserRole,
+        newUserMarketCenter: emailData?.newUserMarketCenter || null,
         inviterName: emailData?.inviterName,
         inviterEmail: emailData?.inviterEmail,
         inviteLink: emailData?.inviteLink,
