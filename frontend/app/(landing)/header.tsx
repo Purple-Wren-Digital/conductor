@@ -16,6 +16,7 @@ import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "../store-provider";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "@/lib/api/utils";
 
 export function Header() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export function Header() {
   const fetchAndSetExistingPrismaUser = async () => {
     if (!auth0User || !auth0User?.email) throw new Error("No email to search");
     const accessToken = await getAuth0AccessToken();
-    const response = await fetch(`/api/users/email/${auth0User.email}`, {
+    const response = await fetch(`${API_BASE}/users/email/${auth0User.email}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
