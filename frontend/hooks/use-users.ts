@@ -29,7 +29,7 @@ export function useFetchAllUsers({
       try {
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(
-          `/api/users/search?${queryParams.toString()}`,
+          `${API_BASE}/users/search?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -76,7 +76,7 @@ export function useFetchUsersWithinMarketCenter({
       try {
         const accessToken = await getAuth0AccessToken();
         const response = await fetch(
-          `/api/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
+          `${API_BASE}/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -113,7 +113,7 @@ export function useFetchOneUser(id?: string) {
     queryFn: async () => {
       if (!id) return {};
       const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`/api/users/${id}`, {
+      const response = await fetch(`${API_BASE}/users/${id}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

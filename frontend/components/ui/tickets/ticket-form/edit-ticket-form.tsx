@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import { API_BASE } from "@/lib/api/utils";
 import {
   BaseTicketForm,
   type TicketFormValues,
@@ -49,7 +50,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     const fetchTemplates = async () => {
       try {
         const accessToken = await getAuth0AccessToken();
-        const res = await fetch("/api/ticket-templates", {
+        const res = await fetch(`${API_BASE}/ticket-templates`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
         });
@@ -130,7 +131,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     setLoading(true);
     try {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch(`/api/tickets/update/${ticket.id}`, {
+      const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

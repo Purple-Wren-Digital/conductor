@@ -45,7 +45,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
     const fetchTemplates = async () => {
       try {
         const accessToken = await getAuth0AccessToken();
-        const res = await fetch("/api/ticket-templates", {
+        const res = await fetch(`${API_BASE}/ticket-templates`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
         });

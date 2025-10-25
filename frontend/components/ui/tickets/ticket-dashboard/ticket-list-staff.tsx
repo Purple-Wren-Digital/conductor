@@ -222,7 +222,7 @@ export default function TicketListStaff() {
       assigneeId: string;
     }) => {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/tickets/bulk-assign", {
+      const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -246,7 +246,7 @@ export default function TicketListStaff() {
       status: TicketStatus;
     }) => {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/tickets/bulk-update", {
+      const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -274,7 +274,7 @@ export default function TicketListStaff() {
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch(`/api/tickets/${ticketId}`, {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -173,7 +173,7 @@ export default function MarketCenterManagement() {
     queryKey: ["market-center-filter-users"],
     queryFn: async (): Promise<UsersResponse> => {
       const accessToken = await getAuth0AccessToken();
-      const res = await fetch("/api/users", {
+      const res = await fetch(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
       });

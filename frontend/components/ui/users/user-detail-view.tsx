@@ -118,7 +118,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       if (!userId) throw new Error("Missing editing user ID");
 
       const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`/api/users/${userId}/update`, {
+      const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

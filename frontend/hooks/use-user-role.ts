@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
 import { PrismaUser } from "@/lib/types";
+import { API_BASE } from "@/lib/api/utils";
 
 export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 
@@ -110,10 +111,11 @@ export function useUserRole() {
       // }
 
       const accessToken = await getAccessToken();
-      const response = await fetch("/api/users/me", {
+      const response = await fetch(`${API_BASE}/users/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
+        cache: "no-store",
       });
 
       if (!response.ok) {

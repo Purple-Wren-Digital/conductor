@@ -4,6 +4,7 @@ import type React from "react";
 import { useState, useCallback } from "react";
 import { getAccessToken } from "@auth0/nextjs-auth0";
 import { useStore } from "@/app/store-provider";
+import { API_BASE } from "@/lib/api/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,7 +120,7 @@ export default function UserProfileLayout() {
       if (!userId) throw new Error("Missing editing user ID");
 
       const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`/api/users/${userId}/update`, {
+      const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

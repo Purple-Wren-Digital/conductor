@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { API_BASE } from "@/lib/api/utils"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Plus, Ticket, Clock, AlertTriangle, Users, TrendingUp } from "lucide-react"
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -69,7 +70,7 @@ export function DashboardOverview() {
   const fetchMetrics = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/dashboard/metrics")
+      const response = await fetch(`${API_BASE}/dashboard/metrics`)
       if (!response.ok) throw new Error("Failed to fetch dashboard metrics")
       const data = await response.json()
       setMetrics(data.metrics)

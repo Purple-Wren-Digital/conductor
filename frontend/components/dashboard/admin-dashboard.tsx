@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@auth0/nextjs-auth0";
+import { API_BASE } from "@/lib/api/utils";
 import {
   AlertCircle,
   BarChart,
@@ -65,7 +66,7 @@ export function AdminDashboard() {
         process.env.NODE_ENV === "development"
           ? "local"
           : await getAccessToken();
-      const response = await fetch(`/api/users`, {
+      const response = await fetch(`${API_BASE}/users`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
