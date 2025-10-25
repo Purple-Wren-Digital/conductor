@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,10 +45,6 @@ export default function DeleteMarketCenter({
     setMarketCenterToDelete(null);
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const confirmDeleteMarketCenter = async () => {
     if (!permissions?.canDeactivateUsers) {
@@ -62,7 +58,7 @@ export default function DeleteMarketCenter({
 
     try {
       setDeleting(true);
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/${marketCenterToDelete.id}`,
         {

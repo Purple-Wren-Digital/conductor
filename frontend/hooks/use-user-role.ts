@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { PrismaUser } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 
@@ -91,7 +91,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
 }
 
 export function useUserRole() {
-  const { user: auth0User, isLoading: auth0Loading } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
 
   const {
     data: PrismaUser,
@@ -100,20 +100,13 @@ export function useUserRole() {
   } = useQuery<PrismaUser>({
     queryKey: ["CurrentUser"],
     queryFn: async () => {
-      // if (process.env.NODE_ENV === "development") {
-      //   return {
-      //     id: "local-dev-user",
-      //     email: "local@localhost.com",
-      //     name: "Local Dev User",
-      //     role: "ADMIN" as UserRole,
-      //     marketCenterId: null,
-      //   };
-      // }
+      if (!clerkUser?.id) {
+        throw new Error("Not authenticated");
+      }
 
-      const accessToken = await getAccessToken();
       const response = await fetch(`${API_BASE}/users/me`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`,
         },
         cache: "no-store",
       });
@@ -128,7 +121,7 @@ export function useUserRole() {
       }
       return data as PrismaUser;
     },
-    enabled: !!auth0User || process.env.NODE_ENV === "development",
+    enabled: isLoaded && !!clerkUser?.id,
     staleTime: 5 * 60 * 1000,
   });
   const role = PrismaUser?.role as UserRole | undefined;
@@ -137,7 +130,7 @@ export function useUserRole() {
   return {
     role,
     permissions,
-    isLoading: auth0Loading || userLoading,
+    isLoading: !isLoaded || userLoading,
     error,
     isAdmin: role === "ADMIN",
     isStaff: role === "STAFF",

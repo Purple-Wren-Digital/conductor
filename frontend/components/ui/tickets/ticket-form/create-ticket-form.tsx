@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -24,6 +24,7 @@ const initialValues: TicketFormValues = {
 };
 
 export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
+  const { user: clerkUser, isLoaded } = useUser();
   const [values, setValues] = useState<TicketFormValues>(initialValues);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -38,15 +39,17 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+    if (!clerkUser?.id) throw new Error("Not authenticated");
+    return clerkUser.id;
+  }, [clerkUser]);
 
   useEffect(() => {
     const fetchTemplates = async () => {
+      if (!isLoaded || !clerkUser?.id) return;
+
       try {
-        const accessToken = await getAuth0AccessToken();
         const res = await fetch(`${API_BASE}/ticket-templates`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { Authorization: `Bearer ${clerkUser.id}` },
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch templates");
@@ -75,7 +78,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         : null;
 
     setMarketCenterId(userMarketCenterId);
-  }, [isOpen, getAuth0AccessToken]);
+  }, [isOpen, isLoaded, clerkUser, role, currentUser, getAuth0AccessToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -149,14 +152,19 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
+    if (!isLoaded || !clerkUser?.id) {
+      console.error("User not loaded yet");
+      return;
+    }
+
     setLoading(true);
     try {
-      const accessToken = await getAuth0AccessToken();
       const res = await fetch(`${API_BASE}/tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`,
         },
         cache: "no-store",
         body: JSON.stringify(values),

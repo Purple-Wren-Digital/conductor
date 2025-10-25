@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0"; // handleLogout
+import { useEffect } from "react";
+import { useUser, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -21,75 +21,50 @@ import { API_BASE } from "@/lib/api/utils";
 export function Header() {
   const router = useRouter();
 
-  const [isSignUpClicked, setIsSignUpClicked] = useState(false);
-
-  const { user: auth0User, isLoading } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
   const { currentUser, setCurrentUser } = useStore();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+  const fetchOrCreateUser = async () => {
+    if (!clerkUser?.id) {
+      console.error("No Clerk user ID");
+      setCurrentUser(null);
+      return;
+    }
 
-  const fetchAndSetExistingPrismaUser = async () => {
-    if (!auth0User || !auth0User?.email) throw new Error("No email to search");
-    const accessToken = await getAuth0AccessToken();
-    const response = await fetch(`${API_BASE}/users/email/${auth0User.email}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
+    try {
+      // Call /users/me which will auto-create the user via getUserContext() if they don't exist
+      const response = await fetch(`${API_BASE}/users/me`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
+        },
+        cache: "no-store",
+      });
 
-    if (response.ok) {
-      const data: { user: PrismaUser } = await response.json();
-      if (data && data?.user) {
-        setCurrentUser(data.user);
-        return;
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          setCurrentUser(data as PrismaUser);
+          return;
+        }
       }
+      console.error("Failed to fetch/create user:", response.status);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      setCurrentUser(null);
     }
-    setCurrentUser(null);
-  };
-
-  const createAndSetNewPrismaUser = async () => {
-    if (!auth0User || !auth0User?.email) {
-      throw new Error("no user information");
-    }
-    const accessToken = await getAuth0AccessToken();
-    const response = await fetch("api/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      body: JSON.stringify({
-        email: auth0User.email,
-        name: auth0User?.name || auth0User?.nickname || "",
-        role: "AGENT", // TODO: get meta data?? auth0User?.user_metadata?.role
-      }),
-    });
-    if (response.ok) {
-      const data: { user: PrismaUser } = await response.json();
-      if (data && data?.user) {
-        setCurrentUser(data.user);
-        return;
-      }
-    }
-    setCurrentUser(null);
   };
 
   useEffect(() => {
-    if (!auth0User) return;
-
-    if (isSignUpClicked) {
-      createAndSetNewPrismaUser();
-    } else {
-      fetchAndSetExistingPrismaUser();
+    if (!isLoaded) return;
+    if (!clerkUser) {
+      setCurrentUser(null);
+      return;
     }
-  }, [auth0User, isSignUpClicked]);
+    fetchOrCreateUser();
+  }, [clerkUser, isLoaded]);
 
   return (
     <header className="border-b">
@@ -154,55 +129,24 @@ export function Header() {
           </NavigationMenuList>
         </NavigationMenu>
         <div className="flex flex-wrap items-center gap-4">
-          {auth0User && currentUser && (
+          {clerkUser && currentUser ? (
             <>
               <Button
-                asChild
-                variant="ghost"
-                disabled={isLoading || !currentUser}
-                onClick={() => {
-                  setCurrentUser(null);
-                  router.push("/auth/logout");
-                }}
-              >
-                <p>Log Out</p>
-              </Button>
-              <Button
-                asChild
                 variant="outline"
-                disabled={isLoading || !currentUser}
                 onClick={() => router.push("/dashboard")}
               >
-                <p>
-                  Dashboard <ArrowRight />
-                </p>
+                Dashboard <ArrowRight />
               </Button>
+              <UserButton afterSignOutUrl="/" />
             </>
-          )}
-          {(!auth0User || !currentUser) && (
+          ) : (
             <>
-              <Button
-                asChild
-                variant="secondary"
-                disabled={isLoading}
-                onClick={() => {
-                  setIsSignUpClicked(false);
-                  router.push("/auth/login");
-                }}
-              >
-                <p>Log in</p>
-              </Button>
-
-              <Button
-                asChild
-                disabled={isLoading}
-                onClick={() => {
-                  setIsSignUpClicked(true);
-                  router.push("/auth/login?screen_hint=signup");
-                }}
-              >
-                <p>Sign up</p>
-              </Button>
+              <SignInButton mode="modal">
+                <Button variant="secondary">Log in</Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button>Sign up</Button>
+              </SignUpButton>
             </>
           )}
         </div>

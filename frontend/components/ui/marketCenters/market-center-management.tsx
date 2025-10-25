@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -172,7 +172,7 @@ export default function MarketCenterManagement() {
   >({
     queryKey: ["market-center-filter-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -216,10 +216,6 @@ export default function MarketCenterManagement() {
     orderDir !== "desc" ||
     sortBy !== "updatedAt";
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const openCreateModal = () => {
     setEditingMarketCenter(null);

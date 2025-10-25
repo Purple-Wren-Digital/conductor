@@ -23,6 +23,7 @@
     "vitest": "~3.0.7"
   },
   "dependencies": {
+    "@clerk/backend": "^2.19.0",
     "@prisma/client": "^6.15.0",
     "@prisma/extension-accelerate": "^2.0.2",
     "auth0": "^4.27.0",

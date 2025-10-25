@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ErrCode, isAPIError } from "@/lib/api/encore-client";
 import { getApiClient } from "@/lib/api/server-side";
-import { auth0 } from "@/lib/auth0";
+import { auth } from "@clerk/nextjs/server";
 import { plans } from "@/lib/plans";
 import { redirect } from "next/navigation";
 
@@ -27,9 +27,9 @@ export default async function SubscriptionPage(
 ) {
   const { success, canceled } = await props.searchParams;
 
-  const session = await auth0.getSession();
-  if (!session?.user) {
-    redirect("/auth/login");
+  const { userId } = await auth();
+  if (!userId) {
+    redirect("/sign-in");
   }
 
   const apiClient = await getApiClient();

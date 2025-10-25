@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/app/store-provider";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,7 @@ const EditUserProfile = () => {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +63,7 @@ const EditUserProfile = () => {
     // }
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/users/${currentUser?.id}/update`,
         {

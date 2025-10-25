@@ -11,7 +11,7 @@ export default function TeamManagement() {
 
 // import { useCallback, useEffect, useMemo, useState } from "react";
 // import { useStore } from "@/app/store-provider";
-// import { getAccessToken } from "@auth0/nextjs-auth0";
+// import { useUser } from "@clerk/nextjs";
 // import {
 //   AlertDialog,
 //   AlertDialogContent,
@@ -206,7 +206,7 @@ export default function TeamManagement() {
 
 //   const getAuth0AccessToken = useCallback(async () => {
 //     if (process.env.NODE_ENV === "development") return "local";
-//     return await getAccessToken();
+//     return clerkUser?.id || "";
 //   }, []);
 
 //   const sendUserUpdateNotification = async (
@@ -251,7 +251,7 @@ export default function TeamManagement() {
 //       if (!marketCenter || !marketCenter?.id)
 //         throw new Error("Missing Market Center ID");
 
-//       const accessToken = await getAuth0AccessToken();
+//       const accessToken = clerkUser?.id || "";
 //       const response = await fetch(
 //         `${API_BASE}/marketCenters/users/${marketCenter.id}`,
 //         {

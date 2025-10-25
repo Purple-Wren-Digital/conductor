@@ -6,14 +6,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getApiClient } from "@/lib/api/server-side";
-import { auth0 } from "@/lib/auth0";
+import { auth } from "@clerk/nextjs/server";
 
 /**
  * This component shows how you can fetch data from the encore backend using server components.
  */
 export async function ServerSideData() {
-  const session = await auth0.getSession();
-  if (!session?.user) {
+  const { userId } = await auth();
+  if (!userId) {
     return (
       <Card>
         <CardHeader>

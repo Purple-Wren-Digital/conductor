@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import {
   AlertCircle,
@@ -30,6 +30,7 @@ import { TeamSwitcher } from "../ui/team-switcher";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export function AdminDashboard() {
+  const { user: clerkUser } = useUser();
   const { role } = useUserRole();
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
@@ -62,18 +63,16 @@ export function AdminDashboard() {
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
+      if (!clerkUser?.id) throw new Error("Not authenticated");
       const response = await fetch(`${API_BASE}/users`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
       return response.json();
     },
+    enabled: !!clerkUser?.id,
   });
 
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =

@@ -1,5 +1,5 @@
 import { clientSideEnv } from "@/lib/env/client-side";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import Client, { Environment, Local, PreviewEnv } from "./encore-client";
 
 // Get the correct encore environment
@@ -32,19 +32,13 @@ export function useApiClient() {
         };
       }
 
-      if (!user) {
+      if (!user?.id) {
         throw new Error("User not authenticated");
       }
 
-      // Get Auth0 access token from our API route
-      const tokenResponse = await fetch("/api/auth/token");
-      if (!tokenResponse.ok) {
-        throw new Error("Failed to get access token");
-      }
-      
-      const { accessToken } = await tokenResponse.json();
+      // Use Clerk user ID as the auth token
       return {
-        authorization: `Bearer ${accessToken}`,
+        authorization: `Bearer ${user.id}`,
       };
     },
   });

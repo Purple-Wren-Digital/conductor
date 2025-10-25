@@ -57,15 +57,18 @@ export async function getUserContext(): Promise<UserContext> {
 
   // }
 
+  // Try to find user by Clerk ID (stored in auth0Id field for now)
   let user = await prisma.user.findUnique({
     where: { auth0Id: authData.userID },
   });
 
-  if (!user) {
+  // If not found and we have an email, try to find by email
+  if (!user && authData.emailAddress) {
     user = await prisma.user.findUnique({
       where: { email: authData.emailAddress },
     });
 
+    // If found, update with Clerk user ID
     if (user) {
       await prisma.user.update({
         where: { id: user.id },
@@ -74,15 +77,29 @@ export async function getUserContext(): Promise<UserContext> {
     }
   }
 
+  // If still not found, create new user
   if (!user) {
+    const email = authData.emailAddress;
+    if (!email) {
+      throw APIError.unauthenticated("No email address found for user");
+    }
+
+    // Extract name from email (e.g., "john.doe@example.com" -> "John Doe")
+    const nameParts = email.split("@")[0].split(/[._-]/);
+    const name = nameParts
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+
     user = await prisma.user.create({
       data: {
-        email: authData.emailAddress,
+        email: email,
         auth0Id: authData.userID,
-        role: "AGENT",
-        name: authData.emailAddress.split("@")[0],
+        role: "AGENT", // New users default to AGENT role
+        name: name,
       },
     });
+
+    console.log(`✅ Created new user: ${name} (${email}) with role AGENT`);
   }
 
   return {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import {
   BaseTicketForm,
@@ -29,6 +29,7 @@ const emptyValues: TicketFormValues = {
 };
 
 export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
+  const { user: clerkUser } = useUser();
   const [values, setValues] = useState<TicketFormValues>(emptyValues);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -43,13 +44,13 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
+        const accessToken = clerkUser?.id || "";
         const res = await fetch(`${API_BASE}/ticket-templates`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
@@ -130,7 +131,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     if (!validate() || !ticket?.id) return;
     setLoading(true);
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {

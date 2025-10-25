@@ -8,35 +8,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/app/store-provider";
+import { API_BASE } from "@/lib/api/utils";
 import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 
 export function AgentDashboard() {
+  const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading } = useQuery({
     queryKey: ["agent-tickets", currentUser?.id],
     queryFn: async () => {
-      const accessToken =
-        process.env.NODE_ENV === "development"
-          ? "local"
-          : await getAccessToken();
+      if (!clerkUser?.id) throw new Error("Not authenticated");
       const response = await fetch(
-        `/api/tickets/search?assigneeId=${currentUser?.id}`,
+        `${API_BASE}/tickets/search?assigneeId=${currentUser?.id}`,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${clerkUser.id}`,
           },
         }
       );
       if (!response.ok) throw new Error("Failed to fetch tickets");
       return response.json();
     },
-    enabled: !!currentUser?.id,
+    enabled: !!currentUser?.id && !!clerkUser?.id,
   });
 
   const tickets = ticketsData?.tickets || [];

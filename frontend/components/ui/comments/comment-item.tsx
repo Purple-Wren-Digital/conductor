@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useUpdateComment, useDeleteComment } from "@/hooks/use-comments";
 import { Comment } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";

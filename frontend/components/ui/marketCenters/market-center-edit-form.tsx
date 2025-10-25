@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useCallback, useState } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,16 +93,12 @@ export default function EditMarketCenter({
     return Object.keys(errors).length === 0;
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const updateMarketCenterMutation = useMutation({
     mutationFn: async () => {
       // if (!userId) throw new Error("Missing editing user ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       //  `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
       const response = await fetch(
         `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,

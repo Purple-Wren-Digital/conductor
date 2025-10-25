@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,13 +36,10 @@ export default function CreateMarketCenter({
   refreshMarketCenters,
   refreshUsers,
 }: CreateMarketCenterProps) {
+  const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const resetAndCloseForm = () => {
     setFormData({
@@ -82,7 +79,7 @@ export default function CreateMarketCenter({
     }
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       if (!accessToken) {
         throw new Error("No token fetched");
       }

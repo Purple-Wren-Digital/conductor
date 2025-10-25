@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { useUser, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { AppSidebar } from "./app-sidebar";
 import { useStore } from "../store-provider";
@@ -14,36 +14,30 @@ export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { setCurrentUser } = useStore();
-  const { user: auth0User } = useUser();
-
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+  const { user: clerkUser, isLoaded } = useUser();
 
   const persistUserContext = async () => {
-    if (!auth0User || !auth0User?.email) {
-      console.error("DashboardLayout: no email to search");
+    if (!clerkUser?.id) {
+      console.error("DashboardLayout: no Clerk user");
       setCurrentUser(null);
       return;
     }
 
     try {
-      const accessToken = await getAuth0AccessToken();
-      const encodedEmail = encodeURIComponent(auth0User.email);
-      const response = await fetch(`${API_BASE}/users/email/${encodedEmail}`, {
+      // Call /users/me which will auto-create the user if they don't exist
+      const response = await fetch(`${API_BASE}/users/me`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
         },
         cache: "no-store",
       });
 
       if (response.ok) {
-        const data: { user: PrismaUser } = await response.json();
-        if (data && data?.user) {
-          setCurrentUser(data.user);
+        const data = await response.json();
+        if (data) {
+          setCurrentUser(data as PrismaUser);
           return;
         }
       } else {
@@ -56,16 +50,15 @@ export default function DashboardLayout({
     }
   };
 
-  // TODO: CURRENT USER PERSISTENCE
   useEffect(() => {
-    if (!auth0User) {
-      console.error(
-        "DashboardLayout: no Auth0 user, cannot persist App Context"
-      );
+    if (!isLoaded) return;
+    if (!clerkUser) {
+      console.error("DashboardLayout: no Clerk user, cannot persist App Context");
+      setCurrentUser(null);
       return;
     }
     persistUserContext();
-  }, [auth0User]);
+  }, [clerkUser, isLoaded]);
 
   return (
     <SidebarProvider>
@@ -82,20 +75,7 @@ export default function DashboardLayout({
             </Link>
 
             <div className="flex items-center gap-2">
-              {auth0User?.picture && (
-                <img
-                  src={auth0User.picture}
-                  alt={auth0User.name || "User Photo"}
-                  className="w-8 h-8 rounded-full"
-                />
-              )}
-              <Link
-                href="/auth/logout"
-                onClick={() => setCurrentUser(null)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Logout
-              </Link>
+              <UserButton afterSignOutUrl="/" />
             </div>
           </div>
         </header>

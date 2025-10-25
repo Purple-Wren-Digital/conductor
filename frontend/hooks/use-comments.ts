@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 import { ticketDetailQueryKeyParams } from "@/components/ui/tickets/ticket-detail-view";
+import { useUser } from "@clerk/nextjs";
 
 interface CreateCommentParams {
   userId: string;
@@ -28,7 +29,9 @@ interface DeleteCommentParams {
 }
 
 export function useComments(ticketId: string) {
-  const commentApi = useCommentApi();
+  const { user: clerkUser, isLoaded } = useUser();
+  const authToken = clerkUser?.id || "";
+  const commentApi = useCommentApi(authToken);
   const queryClient = useQueryClient();
 
 
@@ -85,13 +88,16 @@ export function useComments(ticketId: string) {
       const response = await commentApi.listComments(ticketId);
       return response.comments;
     },
+    enabled: isLoaded && !!clerkUser?.id,
     refetchInterval: 30000, // Poll every 30 seconds as fallback // TODO: adjust or remove intervals - higher intervals are better for performance
     staleTime: 10000, // Consider data stale after 10 seconds
   });
 }
 
 export function useCreateComment() {
-  const commentApi = useCommentApi();
+  const { user: clerkUser } = useUser();
+  const authToken = clerkUser?.id || "";
+  const commentApi = useCommentApi(authToken);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -189,7 +195,9 @@ export function useCreateComment() {
 }
 
 export function useUpdateComment() {
-  const commentApi = useCommentApi();
+  const { user: clerkUser } = useUser();
+  const authToken = clerkUser?.id || "";
+  const commentApi = useCommentApi(authToken);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -260,7 +268,9 @@ export function useUpdateComment() {
 }
 
 export function useDeleteComment() {
-  const commentApi = useCommentApi();
+  const { user: clerkUser } = useUser();
+  const authToken = clerkUser?.id || "";
+  const commentApi = useCommentApi(authToken);
   const queryClient = useQueryClient();
 
   return useMutation({

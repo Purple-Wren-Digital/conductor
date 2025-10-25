@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/app/store-provider";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,7 @@ import {
 } from "@tanstack/react-query";
 
 export default function AdminTicketList() {
+  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
@@ -135,7 +136,7 @@ export default function AdminTicketList() {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const queryParams = useMemo(() => {
@@ -206,7 +207,7 @@ export default function AdminTicketList() {
   >({
     queryKey: ["users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -232,7 +233,7 @@ export default function AdminTicketList() {
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
@@ -256,7 +257,7 @@ export default function AdminTicketList() {
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
@@ -284,7 +285,7 @@ export default function AdminTicketList() {
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {

@@ -8,7 +8,7 @@ import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
 import { Ticket } from "../../../lib/types";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import { API_BASE } from "@/lib/api/utils";
@@ -21,6 +21,7 @@ interface CommentFormProps {
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
 export function CommentForm({ ticketId }: CommentFormProps) {
+  const { user: clerkUser } = useUser();
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,7 +32,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const createMutation = useCreateComment();
@@ -63,7 +64,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -98,7 +99,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
       assignee: ticket?.assignee,
     };
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch("/api/send/newComment", {
         method: "POST",
         headers: {

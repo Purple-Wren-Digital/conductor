@@ -1,7 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -73,10 +73,6 @@ export default function MarketCenterTicketCategories({
   const ticketCategories: TicketCategory[] =
     marketCenter?.ticketCategories ?? ([] as TicketCategory[]);
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   // const sendUserUpdateNotification = async (
   //   data: PrismaUser,
@@ -190,7 +186,7 @@ export default function MarketCenterTicketCategories({
         setFormErrors({ general: "To submit, please make edits" });
         return;
       }
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories/${editingTicketCategory?.id}`,
         {
@@ -226,7 +222,7 @@ export default function MarketCenterTicketCategories({
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories`,
         {
@@ -286,7 +282,7 @@ export default function MarketCenterTicketCategories({
         throw new Error("Missing ID");
       }
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories/${categoryToRemove.id}`,
         {

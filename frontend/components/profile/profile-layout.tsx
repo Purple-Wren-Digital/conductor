@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/app/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,7 @@ import { useFetchOneUser } from "@/hooks/use-users";
 
 export default function UserProfileLayout() {
   const queryClient = useQueryClient();
-
+  const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
 
   const { data: userData, isLoading: userLoading } = useFetchOneUser(
@@ -73,10 +73,10 @@ export default function UserProfileLayout() {
 
   const { permissions } = useUserRole();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
+  const getClerkToken = useCallback(() => {
+    if (!clerkUser?.id) throw new Error("Not authenticated");
+    return clerkUser.id;
+  }, [clerkUser]);
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
@@ -119,12 +119,12 @@ export default function UserProfileLayout() {
     mutationFn: async (userId?: string) => {
       if (!userId) throw new Error("Missing editing user ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const token = getClerkToken();
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: `${formData?.firstName} ${formData?.lastName}`,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -86,10 +86,6 @@ export default function MarketCenterDetailView({
     router.replace(`?${params.toString()}`);
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
     UsersResponse,
@@ -98,7 +94,7 @@ export default function MarketCenterDetailView({
   >({
     queryKey: ["market-center-detail-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",

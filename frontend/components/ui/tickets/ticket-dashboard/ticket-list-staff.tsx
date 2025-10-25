@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/app/store-provider";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
@@ -80,6 +80,7 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function TicketListStaff() {
+  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
@@ -138,7 +139,7 @@ export default function TicketListStaff() {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const { data: marketCenter, isLoading: marketCenterLoading } =
@@ -221,7 +222,7 @@ export default function TicketListStaff() {
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
@@ -245,7 +246,7 @@ export default function TicketListStaff() {
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
@@ -273,7 +274,7 @@ export default function TicketListStaff() {
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { JSX, useCallback, useEffect, useState } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,17 +52,13 @@ export default function AddTeamMember({
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const fetchActiveUsers = useCallback(async () => {
     setIsLoading(true);
     const params = !permissions?.canCreateUsers ? `?role=AGENT` : "";
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       if (!accessToken) {
         throw new Error("No token fetched");
       }
@@ -102,7 +98,7 @@ export default function AddTeamMember({
     mutationFn: async (user: PrismaUser) => {
       if (!marketCenter?.id) throw new Error("Missing Market Center ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/${marketCenter.id}`,
         {

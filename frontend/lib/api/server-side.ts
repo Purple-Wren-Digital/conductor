@@ -1,5 +1,5 @@
 import { serverSideEnv } from "@/lib/env/server-side";
-import { auth0 } from "@/lib/auth0";
+import { auth } from "@clerk/nextjs/server";
 import Client, { Environment, Local, PreviewEnv } from "./encore-client";
 
 // Get the correct encore environment
@@ -28,13 +28,13 @@ export async function getApiClient() {
         };
       }
 
-      const session = await auth0.getSession();
-      if (!session?.tokenSet?.accessToken) {
-        throw new Error("User not authenticated or access token not available");
+      const { userId } = await auth();
+      if (!userId) {
+        throw new Error("User not authenticated");
       }
 
       return {
-        authorization: `Bearer ${session.tokenSet.accessToken}`,
+        authorization: `Bearer ${userId}`,
       };
     },
   });

@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useCallback } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/app/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ type UserDetailViewProps = {
 };
 
 export default function UserDetailView({ id }: UserDetailViewProps) {
+  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -72,7 +73,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const getRoleIcon = (userRole: UserRole) => {
@@ -117,7 +118,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     mutationFn: async (userId?: string) => {
       if (!userId) throw new Error("Missing editing user ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {

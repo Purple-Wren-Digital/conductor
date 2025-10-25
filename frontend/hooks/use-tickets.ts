@@ -1,12 +1,7 @@
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { TicketsResponse, UserRole } from "@/lib/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-
-const getAuth0AccessToken = async () => {
-  if (process.env.NODE_ENV === "development") return "local";
-  return await getAccessToken();
-};
 
 type AgentSearchTicketsQuery = {
   queryParams: URLSearchParams;
@@ -19,22 +14,20 @@ export function useFetchAgentTickets({
   agentTicketsQueryKey,
   userId,
 }: AgentSearchTicketsQuery) {
+  const { user: clerkUser } = useUser();
+
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: agentTicketsQueryKey,
     queryFn: async () => {
-      if (!userId) {
+      if (!userId || !clerkUser?.id) {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
-        const accessToken =
-          process.env.NODE_ENV === "development"
-            ? "local"
-            : await getAccessToken();
         const response = await fetch(
-          `/api/tickets/search?assigneeId=${userId}${queryParams ? `&${queryParams.toString()}` : ""}`,
+          `${API_BASE}/tickets/search?assigneeId=${userId}${queryParams ? `&${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -46,7 +39,7 @@ export function useFetchAgentTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: !!userId,
+    enabled: !!userId && !!clerkUser?.id,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
@@ -65,18 +58,19 @@ export function useFetchStaffTickets({
   queryParams,
   staffTicketsQueryKey,
 }: StaffSearchTicketsQuery) {
+  const { user: clerkUser } = useUser();
+
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: staffTicketsQueryKey,
     queryFn: async () => {
       try {
-        if (!marketCenterId || !userId)
+        if (!marketCenterId || !userId || !clerkUser?.id)
           return { tickets: [], total: 0 } as TicketsResponse;
-        const accessToken = await getAuth0AccessToken();
         const response = await fetch(
-          `/api/tickets/search?${marketCenterId ? `marketCenterId=${marketCenterId}&` : ""}${queryParams.toString()}`,
+          `${API_BASE}/tickets/search?${marketCenterId ? `marketCenterId=${marketCenterId}&` : ""}${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -89,7 +83,7 @@ export function useFetchStaffTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: !!marketCenterId || !!userId,
+    enabled: (!!marketCenterId || !!userId) && !!clerkUser?.id,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
@@ -106,18 +100,19 @@ export function useFetchAdminTickets({
   adminTicketsQueryKey,
   queryParams,
 }: AdminSearchTicketsQuery) {
+  const { user: clerkUser } = useUser();
+
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: adminTicketsQueryKey,
     queryFn: async (): Promise<TicketsResponse> => {
-      if (!role || role !== "ADMIN") {
+      if (!role || role !== "ADMIN" || !clerkUser?.id) {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
-        const accessToken = await getAuth0AccessToken();
         const res = await fetch(
-          `/api/tickets/search?${queryParams.toString()}`,
+          `${API_BASE}/tickets/search?${queryParams.toString()}`,
           {
-            headers: { Authorization: `Bearer ${accessToken}` },
+            headers: { Authorization: `Bearer ${clerkUser.id}` },
             cache: "no-store",
           }
         );
@@ -129,7 +124,7 @@ export function useFetchAdminTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: role === "ADMIN",
+    enabled: role === "ADMIN" && !!clerkUser?.id,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });

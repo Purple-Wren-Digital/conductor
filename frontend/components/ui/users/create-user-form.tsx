@@ -23,7 +23,7 @@ import { Building, User } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
 import { useStore } from "@/app/store-provider";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
@@ -68,6 +68,7 @@ type CreateUserProps = {
 };
 
 export default function CreateUser({
+  const { user: clerkUser } = useUser();
   showCreateUserForm,
   setShowCreateUserForm,
   handleInviteUser,
@@ -89,7 +90,7 @@ export default function CreateUser({
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const { data, isLoading } = useFetchAllMarketCenters(role);
@@ -170,7 +171,7 @@ export default function CreateUser({
     }
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: {

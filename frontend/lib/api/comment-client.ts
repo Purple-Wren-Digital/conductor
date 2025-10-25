@@ -1,15 +1,7 @@
 "use client";
 
-import { getAccessToken } from "@auth0/nextjs-auth0";
 import type { Comment } from "@/lib/types";
 import { API_BASE } from "./utils";
-
-async function getAuth0AccessToken(): Promise<string> {
-  if (process.env.NODE_ENV === "development") {
-    return "local";
-  }
-  return await getAccessToken();
-}
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
@@ -56,11 +48,12 @@ interface CommentResponse {
 }
 
 class CommentApiClient {
+  constructor(private authToken: string) {}
+
   async listComments(ticketId: string): Promise<ListCommentsResponse> {
-    const accessToken = await getAuth0AccessToken();
     const res = await fetch(`${API_BASE}/tickets/${ticketId}/comments`, {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${this.authToken}`,
       },
       cache: "no-store",
     });
@@ -68,14 +61,13 @@ class CommentApiClient {
   }
 
   async createComment(request: CreateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.authToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({
@@ -88,14 +80,13 @@ class CommentApiClient {
   }
 
   async updateComment(request: UpdateCommentRequest): Promise<CommentResponse> {
-    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.authToken}`,
         },
         cache: "no-store",
         body: JSON.stringify({
@@ -108,13 +99,12 @@ class CommentApiClient {
   }
 
   async deleteComment(request: DeleteCommentRequest): Promise<void> {
-    const accessToken = await getAuth0AccessToken();
     const res = await fetch(
       `${API_BASE}/tickets/${request.ticketId}/comments/${request.commentId}`,
       {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${this.authToken}`,
         },
         cache: "no-store",
       }
@@ -124,6 +114,6 @@ class CommentApiClient {
 }
 
 // Hook to use the comment API client
-export function useCommentApi(): CommentApiClient {
-  return new CommentApiClient();
+export function useCommentApi(authToken: string): CommentApiClient {
+  return new CommentApiClient(authToken);
 }

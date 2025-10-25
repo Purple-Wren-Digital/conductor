@@ -50,7 +50,7 @@ import type {
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
-import { getAccessToken, useUser } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/app/store-provider";
 import {
@@ -100,6 +100,7 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
 ) as Record<string, string>;
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
+  const { user: clerkUser } = useUser();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,14 +117,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     if (process.env.NODE_ENV === "development") {
       return "local";
     }
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -331,7 +332,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
@@ -376,7 +377,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     });
 
     try {
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {

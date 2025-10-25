@@ -1,12 +1,6 @@
-// import { API_BASE } from "@/lib/api/utils";
 import { API_BASE } from "@/lib/api/utils";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
-
-const getAuth0AccessToken = async () => {
-  if (process.env.NODE_ENV === "development") return "local";
-  return await getAccessToken();
-};
 
 type FetchHistoryType = {
   id?: string;
@@ -20,19 +14,21 @@ export function useFetchUserHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
+  const { user: clerkUser } = useUser();
+
   return useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
         if (!id) {
           throw new Error("Missing user id");
         }
+        if (!clerkUser?.id) throw new Error("Not authenticated");
         const response = await fetch(
-          `/api/users/${id}/history${queryParams ? `?${queryParams.toString()}` : ""}`,
+          `${API_BASE}/users/${id}/history${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -44,7 +40,7 @@ export function useFetchUserHistory({
         throw error;
       }
     },
-    enabled: !!id,
+    enabled: !!id && !!clerkUser?.id,
   });
 }
 
@@ -54,19 +50,21 @@ export function useFetchUserTicketHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
+  const { user: clerkUser } = useUser();
+
   return useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
         if (!id) {
           throw new Error("Missing user id");
         }
+        if (!clerkUser?.id) throw new Error("Not authenticated");
         const response = await fetch(
-          `/api/users/${id}/history/tickets${queryParams ? `?${queryParams.toString()}` : ""}`,
+          `${API_BASE}/users/${id}/history/tickets${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -79,7 +77,7 @@ export function useFetchUserTicketHistory({
         throw error;
       }
     },
-    enabled: !!id,
+    enabled: !!id && !!clerkUser?.id,
   });
 }
 
@@ -89,19 +87,21 @@ export function useFetchTicketHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
+  const { user: clerkUser } = useUser();
+
   return useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
         if (!id) {
           throw new Error("Missing ticket id");
         }
+        if (!clerkUser?.id) throw new Error("Not authenticated");
         const response = await fetch(
-          `/api/tickets/${id}/history${queryParams ? `?${queryParams.toString()}` : ""}`,
+          `${API_BASE}/tickets/${id}/history${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -113,7 +113,7 @@ export function useFetchTicketHistory({
         throw error;
       }
     },
-    enabled: !!id,
+    enabled: !!id && !!clerkUser?.id,
   });
 }
 
@@ -123,19 +123,21 @@ export function useFetchMarketCenterHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
+  const { user: clerkUser } = useUser();
+
   return useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
         if (!id) {
           throw new Error("Missing market center id");
         }
+        if (!clerkUser?.id) throw new Error("Not authenticated");
         const response = await fetch(
           `${API_BASE}/marketCenter/${id}/history${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkUser.id}`,
             },
           }
         );
@@ -149,6 +151,6 @@ export function useFetchMarketCenterHistory({
         throw error;
       }
     },
-    enabled: !!id,
+    enabled: !!id && !!clerkUser?.id,
   });
 }

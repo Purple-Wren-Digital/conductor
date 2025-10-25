@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useStore } from "@/app/store-provider";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -63,10 +63,6 @@ export default function MarketCenterUsers({
     setShowRemoveUserForm(true);
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
 
   const sendUserUpdateNotification = async (
     data: PrismaUser,
@@ -103,7 +99,7 @@ export default function MarketCenterUsers({
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/users/${marketCenter.id}`,
         {

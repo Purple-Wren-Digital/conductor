@@ -10,7 +10,7 @@ import type {
   UserSortBy,
   UserWithStats,
 } from "@/lib/types";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -66,6 +66,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function UserManagement() {
+  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -125,7 +126,7 @@ export default function UserManagement() {
 
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
+    return clerkUser?.id || "";
   }, []);
 
   const queryParams = useMemo(() => {
@@ -268,7 +269,7 @@ export default function UserManagement() {
     mutationFn: async (userId?: string) => {
       if (!userId) throw new Error("Missing editing user ID");
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
@@ -323,7 +324,7 @@ export default function UserManagement() {
       )
         return;
 
-      const accessToken = await getAuth0AccessToken();
+      const accessToken = clerkUser?.id || "";
       const res = await fetch(`${API_BASE}/users/${userToDelete.id}/update`, {
         method: "PUT",
         headers: {
@@ -356,7 +357,7 @@ export default function UserManagement() {
   //       !userToDelete?.id
   //     )
   //       return;
-  //     const accessToken = await getAuth0AccessToken();
+  //     const accessToken = clerkUser?.id || "";
   //     const response = await fetch(`/api/users/${userToDelete.id}`, {
   //       method: "DELETE",
   //       headers: { Authorization: `Bearer ${accessToken}` },
