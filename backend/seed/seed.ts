@@ -18,9 +18,21 @@ export const seedData = api<void, SeedResponse>(
   async () => {
     console.log("Seeding database...");
 
+    // Clean up in correct order (respecting foreign keys)
     await prisma.comment.deleteMany({});
     await prisma.ticket.deleteMany({});
+    await prisma.ticketCategory.deleteMany({});
     await prisma.user.deleteMany({});
+    await prisma.marketCenter.deleteMany({});
+
+    // Create a market center
+    const marketCenter = await prisma.marketCenter.create({
+      data: {
+        id: "mc1",
+        name: "Keller Williams Downtown",
+        settings: {},
+      },
+    });
 
     const users = await prisma.user.createManyAndReturn({
       data: [
@@ -30,6 +42,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Alice Johnson",
           role: UserRole.AGENT,
           auth0Id: "auth-u1",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u2",
@@ -37,6 +50,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Bob Smith",
           role: UserRole.STAFF,
           auth0Id: "auth-u2",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u3",
@@ -44,6 +58,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Clara Davis",
           role: UserRole.ADMIN,
           auth0Id: "auth-u3",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u4",
@@ -51,6 +66,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Dan Williams",
           role: UserRole.AGENT,
           auth0Id: "auth-u4",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u5",
@@ -58,6 +74,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Emma Brown",
           role: UserRole.STAFF,
           auth0Id: "auth-u5",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u6",
@@ -65,6 +82,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Frank Miller",
           role: UserRole.AGENT,
           auth0Id: "auth-u6",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u7",
@@ -72,6 +90,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Gina Wilson",
           role: UserRole.STAFF,
           auth0Id: "auth-u7",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u8",
@@ -79,6 +98,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Henry Clark",
           role: UserRole.AGENT,
           auth0Id: "auth-u8",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u9",
@@ -86,6 +106,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Isla Martinez",
           role: UserRole.STAFF,
           auth0Id: "auth-u9",
+          marketCenterId: marketCenter.id,
         },
         {
           id: "u10",
@@ -93,6 +114,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Jack Lee",
           role: UserRole.AGENT,
           auth0Id: "auth-u10",
+          marketCenterId: marketCenter.id,
         },
       ],
     });
@@ -102,8 +124,33 @@ export const seedData = api<void, SeedResponse>(
     const admin = users.find((u) => u.role === UserRole.ADMIN)!;
     const now = new Date();
 
+    // Create ticket categories
+    const categoryNames = [
+      "Contracts", "Showing Request", "Listings", "Feature Request",
+      "Client Comments", "Inspections", "Documents", "Maintenance",
+      "Financial", "Marketing", "Compliance", "Onboarding",
+      "Technical", "Appraisals", "Finance"
+    ];
+
+    const categories = await Promise.all(
+      categoryNames.map(name =>
+        prisma.ticketCategory.create({
+          data: {
+            name,
+            marketCenterId: marketCenter.id,
+          },
+        })
+      )
+    );
+
+    // Create a map for easy lookup
+    const categoryMap = Object.fromEntries(
+      categories.map(c => [c.name, c.id])
+    );
+
     const templates: Array<
-      Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId"> & {
+      Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId" | "categoryId"> & {
+        categoryName: string;
         dueDate?: Date | null;
         resolvedAt?: Date | null;
       }
@@ -114,7 +161,7 @@ export const seedData = api<void, SeedResponse>(
           "Financing contingency expires tomorrow, awaiting appraisal report.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
-        category: "Contracts",
+        categoryName: "Contracts",
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 1),
       },
@@ -123,7 +170,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Client viewed property; need follow-up on feedback.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.MEDIUM,
-        category: "Showing Request",
+        categoryName: "Showing Request",
         createdAt: subDays(now, 3),
         dueDate: subDays(now, 1),
       },
@@ -132,7 +179,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Photos completed and ready for MLS upload.",
         status: TicketStatus.RESOLVED,
         urgency: Urgency.MEDIUM,
-        category: "Listings",
+        categoryName: "Listings",
         createdAt: subDays(now, 10),
         resolvedAt: subDays(now, 8),
       },
@@ -141,7 +188,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Integrate school rating system into listings.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.LOW,
-        category: "Feature Request",
+        categoryName: "Feature Request",
         createdAt: subDays(now, 5),
       },
       {
@@ -150,7 +197,7 @@ export const seedData = api<void, SeedResponse>(
           "Mr. Smith reports unresponsive agent on inspection issue.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
-        category: "Client Comments",
+        categoryName: "Client Comments",
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 2),
       },
@@ -159,7 +206,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Agreement requires pest inspection within 5 days.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Inspections",
+        categoryName: "Inspections",
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 3),
       },
@@ -169,7 +216,7 @@ export const seedData = api<void, SeedResponse>(
           "Buyer for 555 Cedar Ct requested HOA bylaws and statements.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.LOW,
-        category: "Documents",
+        categoryName: "Documents",
         createdAt: subDays(now, 3),
       },
       {
@@ -177,7 +224,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Update MLS from $450,000 to $435,000.",
         status: TicketStatus.RESOLVED,
         urgency: Urgency.MEDIUM,
-        category: "Listings",
+        categoryName: "Listings",
         createdAt: subDays(now, 15),
         resolvedAt: subDays(now, 14),
       },
@@ -186,7 +233,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Tenant reports leak in master bathroom faucet.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Maintenance",
+        categoryName: "Maintenance",
         createdAt: subDays(now, 1),
       },
       {
@@ -194,7 +241,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Clarify co-agent commission split for 888 Redwood Dr.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.LOW,
-        category: "Financial",
+        categoryName: "Financial",
         createdAt: subDays(now, 6),
       },
       {
@@ -202,7 +249,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Need flyers, social posts, and email blast.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
-        category: "Marketing",
+        categoryName: "Marketing",
         createdAt: subDays(now, 3),
         dueDate: addDays(now, 2),
       },
@@ -211,7 +258,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Review 'Find Your Dream Home' campaign for compliance.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Compliance",
+        categoryName: "Compliance",
         createdAt: subDays(now, 4),
       },
       {
@@ -219,7 +266,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Prepare welcome kit, access, and training schedule.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Onboarding",
+        categoryName: "Onboarding",
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 4),
       },
@@ -228,7 +275,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Agents report 500 error when uploading PDFs.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.HIGH,
-        category: "Technical",
+        categoryName: "Technical",
         createdAt: now,
       },
       {
@@ -236,7 +283,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Mark Main, Broad, and Church properties as sold.",
         status: TicketStatus.RESOLVED,
         urgency: Urgency.LOW,
-        category: "Marketing",
+        categoryName: "Marketing",
         createdAt: subDays(now, 20),
         resolvedAt: subDays(now, 18),
       },
@@ -245,7 +292,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Appraisal needed within 7 days per lender.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Appraisals",
+        categoryName: "Appraisals",
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 7),
       },
@@ -254,7 +301,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Provide breakdown of FHA vs Conventional.",
         status: TicketStatus.AWAITING_RESPONSE,
         urgency: Urgency.LOW,
-        category: "Finance",
+        categoryName: "Finance",
         createdAt: subDays(now, 2),
       },
       {
@@ -262,7 +309,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Review inspection report with client for 101 Maple St.",
         status: TicketStatus.IN_PROGRESS,
         urgency: Urgency.MEDIUM,
-        category: "Inspections",
+        categoryName: "Inspections",
         createdAt: subDays(now, 1),
       },
       {
@@ -270,7 +317,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Client wants virtual staging before MLS listing.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.LOW,
-        category: "Listings",
+        categoryName: "Listings",
         createdAt: subDays(now, 3),
       },
       {
@@ -278,7 +325,7 @@ export const seedData = api<void, SeedResponse>(
         description: "Ensure all agents complete compliance training.",
         status: TicketStatus.ASSIGNED,
         urgency: Urgency.MEDIUM,
-        category: "Compliance",
+        categoryName: "Compliance",
         createdAt: now,
         dueDate: addDays(now, 10),
       },
@@ -291,7 +338,7 @@ export const seedData = api<void, SeedResponse>(
           description: t.description,
           status: t.status,
           urgency: t.urgency,
-          category: t.category,
+          categoryId: categoryMap[t.categoryName],
           creatorId: rand(agents).id,
           assigneeId: rand(staff).id,
           createdAt: t.createdAt,
