@@ -68,6 +68,7 @@ import {
   settingsSectionOptions,
 } from "@/lib/utils";
 import PagesAndItemsCount from "../pagination/page-and-items-count";
+import { useUser } from "@clerk/nextjs";
 
 const ACTION_COLORS = {
   CREATE: "default",
@@ -88,6 +89,7 @@ const SECTION_COLORS = {
 } as const;
 
 export default function AuditLog() {
+  const { user: clerkUser } = useUser();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,10 +97,11 @@ export default function AuditLog() {
   const [sectionFilter, setSectionFilter] = useState<string>("all");
 
   const { data: auditData, isLoading } = useSettingsAuditLog(
+    clerkUser?.id,
     currentPage,
     itemsPerPage
   );
-  const { data: teamData } = useListTeamMembers();
+  const { data: teamData } = useListTeamMembers(clerkUser?.id);
 
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
 

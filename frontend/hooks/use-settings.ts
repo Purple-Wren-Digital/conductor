@@ -18,122 +18,157 @@ export const settingsKeys = {
   ticketCategories: () => [...settingsKeys.all, 'ticket-categories'] as const,
 };
 
-export function useMarketCenterSettings() {
+export function useMarketCenterSettings(clerkUserId: string | undefined) {
   return useQuery({
     queryKey: settingsKeys.marketCenter(),
-    queryFn: () => settingsApi.getMarketCenterSettings(),
+    queryFn: () => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.getMarketCenterSettings(clerkUserId);
+    },
+    enabled: !!clerkUserId,
   });
 }
 
-export function useUpdateMarketCenterSettings() {
+export function useUpdateMarketCenterSettings(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (request: SettingsUpdateRequest) => settingsApi.updateMarketCenterSettings(request),
+    mutationFn: (request: SettingsUpdateRequest) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.updateMarketCenterSettings(clerkUserId, request);
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(settingsKeys.marketCenter(), data);
-      // Invalidate audit log to show the new change
       queryClient.invalidateQueries({ queryKey: settingsKeys.auditLog() });
     },
   });
 }
 
-export function useSettingsAuditLog(page = 1, limit = 10) {
+export function useSettingsAuditLog(clerkUserId: string | undefined, page = 1, limit = 10) {
   return useQuery({
     queryKey: settingsKeys.auditLog(page, limit),
-    queryFn: () => settingsApi.getAuditLog(page, limit),
+    queryFn: () => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.getAuditLog(clerkUserId, page, limit);
+    },
+    enabled: !!clerkUserId,
   });
 }
 
-export function useListTeamMembers() {
+export function useListTeamMembers(clerkUserId: string | undefined) {
   return useQuery({
     queryKey: settingsKeys.teamMembers(),
-    queryFn: () => settingsApi.getTeamMembers(),
+    queryFn: () => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.getTeamMembers(clerkUserId);
+    },
+    enabled: !!clerkUserId,
   });
 }
 
-export function useInviteTeamMember() {
+export function useInviteTeamMember(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (request: TeamInviteRequest) => settingsApi.inviteTeamMember(request),
+    mutationFn: (request: TeamInviteRequest) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.inviteTeamMember(clerkUserId, request);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
     },
   });
 }
 
-export function useRemoveTeamMember() {
+export function useRemoveTeamMember(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (userId: string) => settingsApi.removeTeamMember(userId),
+    mutationFn: (userId: string) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.removeTeamMember(clerkUserId, userId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
     },
   });
 }
 
-export function useUpdateTeamMemberRole() {
+export function useUpdateTeamMemberRole(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ userId, request }: { userId: string; request: UpdateMemberRoleRequest }) => 
-      settingsApi.updateTeamMemberRole(userId, request),
+    mutationFn: ({ userId, request }: { userId: string; request: UpdateMemberRoleRequest }) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.updateTeamMemberRole(clerkUserId, userId, request);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
     },
   });
 }
 
-export function useUpdateTeamMemberInformation() {
+export function useUpdateTeamMemberInformation(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ userId, request }: { userId: string; request: UpdateMemberRoleRequest }) => 
-      settingsApi.updateTeamMemberRole(userId, request),
+    mutationFn: ({ userId, request }: { userId: string; request: UpdateMemberRoleRequest }) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.updateTeamMemberRole(clerkUserId, userId, request);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.teamMembers() });
     },
   });
 }
 
-export function useTicketCategories() {
+export function useTicketCategories(clerkUserId: string | undefined) {
   return useQuery({
     queryKey: settingsKeys.ticketCategories(),
-    queryFn: () => settingsApi.getTicketCategories(),
+    queryFn: () => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.getTicketCategories(clerkUserId);
+    },
+    enabled: !!clerkUserId,
   });
 }
 
-export function useCreateTicketCategory() {
+export function useCreateTicketCategory(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ name, defaultAssigneeId }: { name: string; defaultAssigneeId?: string }) => 
-      settingsApi.createTicketCategory(name, defaultAssigneeId),
+    mutationFn: ({ name, defaultAssigneeId }: { name: string; defaultAssigneeId?: string }) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.createTicketCategory(clerkUserId, name, defaultAssigneeId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.ticketCategories() });
     },
   });
 }
 
-export function useUpdateTicketCategory() {
+export function useUpdateTicketCategory(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name?: string; defaultAssigneeId?: string; isActive?: boolean } }) => 
-      settingsApi.updateTicketCategory(id, data),
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; defaultAssigneeId?: string; isActive?: boolean } }) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.updateTicketCategory(clerkUserId, id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.ticketCategories() });
     },
   });
 }
 
-export function useDeleteTicketCategory() {
+export function useDeleteTicketCategory(clerkUserId: string | undefined) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (id: string) => settingsApi.deleteTicketCategory(id),
+    mutationFn: (id: string) => {
+      if (!clerkUserId) throw new Error("Not authenticated");
+      return settingsApi.deleteTicketCategory(clerkUserId, id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.ticketCategories() });
     },

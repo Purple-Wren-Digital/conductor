@@ -43,10 +43,12 @@ import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@/app/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useUser } from "@clerk/nextjs";
 
 
 export default function GeneralSettings() {
   const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
 
   const { currentUser } = useStore();
   const { role, permissions } = useUserRole();
@@ -62,7 +64,7 @@ export default function GeneralSettings() {
 
   console.log("MARKET CENTER", marketCenter);
 
-  const updateSettings = useUpdateMarketCenterSettings();
+  const updateSettings = useUpdateMarketCenterSettings(clerkUser?.id);
 
   // const form = useForm<GeneralSettingsForm>({
   //   resolver: zodResolver(generalSettingsSchema),

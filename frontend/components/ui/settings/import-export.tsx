@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Download, Upload, AlertCircle, CheckCircle, FileText } from "lucide-rea
 import { settingsApi, SettingsExportData, SettingsImportRequest } from "@/lib/api/settings";
 
 export default function ImportExport() {
+  const { user: clerkUser } = useUser();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -21,12 +23,17 @@ export default function ImportExport() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleExport = async () => {
+    if (!clerkUser?.id) {
+      setError("Not authenticated");
+      return;
+    }
+
     setIsExporting(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const exportData = await settingsApi.exportSettings();
+      const exportData = await settingsApi.exportSettings(clerkUser.id);
       
       // Create and download JSON file
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -80,6 +87,11 @@ export default function ImportExport() {
   const handleImport = async () => {
     if (!importData) return;
 
+    if (!clerkUser?.id) {
+      setError("Not authenticated");
+      return;
+    }
+
     setIsImporting(true);
     setError(null);
     setSuccess(null);
@@ -90,7 +102,7 @@ export default function ImportExport() {
         overwriteExisting
       };
 
-      const result = await settingsApi.importSettings(request);
+      const result = await settingsApi.importSettings(clerkUser.id, request);
       
       setSuccess(result.message);
       setImportFile(null);

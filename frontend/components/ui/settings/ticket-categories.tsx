@@ -24,6 +24,7 @@ import {
   useListTeamMembers 
 } from "@/hooks/use-settings";
 import { toast } from "sonner";
+import { useUser } from "@clerk/nextjs";
 
 const categoryFormSchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -33,11 +34,12 @@ const categoryFormSchema = z.object({
 type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
 export default function TicketCategories() {
-  const { data: categoriesData, isLoading: categoriesLoading } = useTicketCategories();
-  const { data: teamData } = useListTeamMembers();
-  const createCategory = useCreateTicketCategory();
-  const updateCategory = useUpdateTicketCategory();
-  const deleteCategory = useDeleteTicketCategory();
+  const { user: clerkUser } = useUser();
+  const { data: categoriesData, isLoading: categoriesLoading } = useTicketCategories(clerkUser?.id);
+  const { data: teamData } = useListTeamMembers(clerkUser?.id);
+  const createCategory = useCreateTicketCategory(clerkUser?.id);
+  const updateCategory = useUpdateTicketCategory(clerkUser?.id);
+  const deleteCategory = useDeleteTicketCategory(clerkUser?.id);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);

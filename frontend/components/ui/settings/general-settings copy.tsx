@@ -39,6 +39,7 @@ import {
 } from "@/hooks/use-settings";
 import { toast } from "sonner";
 import { DAYS, LANGUAGES, TIMEZONES } from "@/lib/utils";
+import { useUser } from "@clerk/nextjs";
 
 const businessHoursSchema = z.object({
   monday: z.object({ start: z.string(), end: z.string(), isOpen: z.boolean() }),
@@ -86,12 +87,9 @@ const generalSettingsSchema = z.object({
 type GeneralSettingsForm = z.infer<typeof generalSettingsSchema>;
 
 export default function GeneralSettings() {
-  const { data: settings, isLoading } = useMarketCenterSettings();
-
-
-
-  
-  const updateSettings = useUpdateMarketCenterSettings();
+  const { user: clerkUser } = useUser();
+  const { data: settings, isLoading } = useMarketCenterSettings(clerkUser?.id);
+  const updateSettings = useUpdateMarketCenterSettings(clerkUser?.id);
   const [holidayInput, setHolidayInput] = useState("");
 
   const form = useForm<GeneralSettingsForm>({
