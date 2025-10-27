@@ -68,12 +68,12 @@ type CreateUserProps = {
 };
 
 export default function CreateUser({
-  const { user: clerkUser } = useUser();
   showCreateUserForm,
   setShowCreateUserForm,
   handleInviteUser,
   queryInvalidation,
 }: CreateUserProps) {
+  const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
 
   const [newUserFormData, setNewUserFormData] = useState<CreateAuth0UserForm>({
