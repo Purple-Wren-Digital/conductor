@@ -1,7 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
-  seed = "tsx seed/seed-prisma.ts"
+  seed          = "tsx seed/seed-prisma.ts"
 }
 
 datasource db {
@@ -10,71 +10,65 @@ datasource db {
 }
 
 model MarketCenter {
-  id                String             @id @default(dbgenerated("(gen_random_uuid())::text"))
-  name              String
-  settings          Json               @default("{}")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
-  // settingsAuditLogs SettingsAuditLog[]
-  teamInvitations   TeamInvitation[]
-  ticketCategories  TicketCategory[]
-  users             User[]
-  marketCenterHistory  MarketCenterHistory[]
+  id                  String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                String
+  settings            Json                  @default("{}")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at")
+  marketCenterHistory MarketCenterHistory[]
+  teamInvitations     TeamInvitation[]
+  ticketCategories    TicketCategory[]
+  users               User[]
 
   @@map("market_centers")
 }
 
 model User {
-  id                     String                   @id @default(dbgenerated("(gen_random_uuid())::text"))
-  clerkId                String             @unique @map("clerk_id")
-// auth0Id                String                   @unique
-  email                  String                   @unique
-  name                   String?
-  role                   UserRole                 @default(AGENT)
-  createdAt              DateTime                 @default(now()) @map("created_at")
-  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at")
-  deletedAt              DateTime?
-  isActive               Boolean                  @default(true)
-  comments               Comment[]
-
-  defaultForCategories   TicketCategory[]
-  assignedTickets        Ticket[]                 @relation("TicketAssignee")
-  createdTickets         Ticket[]                 @relation("TicketCreator")
-
-  marketCenterId         String?                  @map("market_center_id")
-  marketCenter           MarketCenter?            @relation(fields: [marketCenterId], references: [id])
-
-  ticketHistory          TicketHistory[]
-  userHistory            UserHistory[]            @relation("UpdatedUser") // one user can have many history records about *themselves*
-  otherUsersChanges      UserHistory[]            @relation("ChangedBy") // one user can also be the "changer" for many other
-  marketCenterHistory    MarketCenterHistory[]    @relation("MarketCenterChangedBy")
-
-  userSettings           UserSettings?            @relation("UserToUserSettings") // 1:1 relation
-  notifications          Notification[]
+  id                   String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  email                String                @unique
+  name                 String?
+  role                 UserRole              @default(AGENT)
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at")
+  deletedAt            DateTime?
+  isActive             Boolean               @default(true)
+  marketCenterId       String?               @map("market_center_id")
+  clerkId              String                @unique(map: "users_auth0Id_key") @map("clerk_id")
+  marketCenterHistory  MarketCenterHistory[] @relation("MarketCenterChangedBy")
+  notifications        Notification[]
+  ticketHistory        TicketHistory[]
+  otherUsersChanges    UserHistory[]         @relation("ChangedBy")
+  userHistory          UserHistory[]         @relation("UpdatedUser")
+  userSettings         UserSettings?         @relation("UserToUserSettings")
+  comments             Comment[]
+  defaultForCategories TicketCategory[]
+  assignedTickets      Ticket[]              @relation("TicketAssignee")
+  createdTickets       Ticket[]              @relation("TicketCreator")
+  marketCenter         MarketCenter?         @relation(fields: [marketCenterId], references: [id])
 
   @@index([marketCenterId])
   @@map("users")
 }
 
 model Ticket {
-  id          String           @id @default(dbgenerated("(gen_random_uuid())::text"))
-  title       String?
-  description String?
-  status      TicketStatus?    @default(CREATED)
-  urgency     Urgency?         @default(MEDIUM)
-  categoryId  String?          @map("category_id")
-  category    TicketCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  creatorId   String           @map("creator_id")
-  assigneeId  String?          @map("assignee_id")
-  dueDate     DateTime?        @map("due_date")
-  resolvedAt  DateTime?        @map("resolved_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at")
-  publishedAt DateTime?
-  comments    Comment[]
-  assignee    User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  creator     User            @relation("TicketCreator", fields: [creatorId], references: [id])
+  id            String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  title         String?
+  description   String?
+  status        TicketStatus?   @default(CREATED)
+  urgency       Urgency?        @default(MEDIUM)
+  creatorId     String          @map("creator_id")
+  assigneeId    String?         @map("assignee_id")
+  dueDate       DateTime?       @map("due_date")
+  resolvedAt    DateTime?       @map("resolved_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
+  publishedAt   DateTime?
+  categoryId    String?         @map("category_id")
   ticketHistory TicketHistory[]
+  comments      Comment[]
+  assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  category      TicketCategory? @relation(fields: [categoryId], references: [id])
+  creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -102,16 +96,16 @@ model Comment {
 }
 
 model TicketCategory {
-  id                 String         @id @default(dbgenerated("(gen_random_uuid())::text"))
-  name               String
-  description        String?
-  marketCenterId     String         @map("market_center_id")
-  defaultAssigneeId  String?        @map("default_assignee_id")
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at")
-  defaultAssignee    User?          @relation(fields: [defaultAssigneeId], references: [id])
-  marketCenter       MarketCenter   @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-  tickets            Ticket[]      
+  id                String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name              String
+  description       String?
+  marketCenterId    String       @map("market_center_id")
+  defaultAssigneeId String?      @map("default_assignee_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at")
+  defaultAssignee   User?        @relation(fields: [defaultAssigneeId], references: [id])
+  marketCenter      MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  tickets           Ticket[]
 
   @@unique([marketCenterId, name])
   @@index([marketCenterId])
@@ -123,14 +117,14 @@ model TeamInvitation {
   email          String
   role           UserRole         @default(AGENT)
   status         InvitationStatus @default(PENDING)
-  marketCenterId String?           @map("market_center_id")
+  marketCenterId String?          @map("market_center_id")
   invitedBy      String?          @map("invited_by")
   token          String           @unique
   expiresAt      DateTime         @map("expires_at")
   acceptedAt     DateTime?        @map("accepted_at")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
-  marketCenter   MarketCenter?     @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  marketCenter   MarketCenter?    @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
 
   @@unique([marketCenterId, email])
   @@index([token])
@@ -138,126 +132,103 @@ model TeamInvitation {
   @@map("team_invitations")
 }
 
-// model SettingsAuditLog {
-//   id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
-//   marketCenterId String       @map("market_center_id")
-//   userId         String       @map("user_id")
-//   action         String
-//   section        String
-//   previousValue  Json?        @map("previous_value")
-//   newValue       Json?        @map("new_value")
-//   createdAt      DateTime     @default(now()) @map("created_at")
-//   marketCenter   MarketCenter @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
-//   // user           User         @relation(fields: [userId], references: [id])
-
-//   @@index([marketCenterId])
-//   @@index([createdAt])
-//   @@map("settings_audit_logs")
-// }
-
 model TicketHistory {
-  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
-  ticketId         String     @map("ticket_id")
-  action           String     @default("UPDATE")
-  field            String?
-  previousValue    String?
-  newValue         String?
-  snapshot         Json?         
-  changedAt        DateTime   @default(now())
-  changedById      String     @map("changed_by_id")
-
-  ticket           Ticket     @relation(fields: [ticketId], references: [id])
-  changedBy   User    @relation(fields: [changedById], references: [id])
+  id            String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ticketId      String   @map("ticket_id")
+  field         String?
+  previousValue String?
+  newValue      String?
+  snapshot      Json?
+  changedAt     DateTime @default(now())
+  changedById   String   @map("changed_by_id")
+  action        String   @default("UPDATE")
+  changedBy     User     @relation(fields: [changedById], references: [id])
+  ticket        Ticket   @relation(fields: [ticketId], references: [id])
 
   @@index([ticketId])
   @@index([changedById])
 }
 
 model UserHistory {
-  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
-  userId           String
-  marketCenterId   String?    @map("market_center_id")
-  action           String     @default("UPDATE")
-  field            String?
-  previousValue    String?
-  newValue         String?
-  snapshot         Json?         
-  changedAt        DateTime   @default(now())
-  changedById      String?    @map("changed_by_id")
-
-  user             User       @relation("UpdatedUser", fields: [userId], references: [id])
-  changedBy        User?      @relation("ChangedBy", fields: [changedById], references: [id])
-
-  // marketCenter     User?    @relation(fields: [marketCenterId], references: [id])
+  id             String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  marketCenterId String?  @map("market_center_id")
+  field          String?
+  previousValue  String?
+  newValue       String?
+  snapshot       Json?
+  changedAt      DateTime @default(now())
+  changedById    String?  @map("changed_by_id")
+  userId         String
+  action         String   @default("UPDATE")
+  changedBy      User?    @relation("ChangedBy", fields: [changedById], references: [id])
+  user           User     @relation("UpdatedUser", fields: [userId], references: [id])
 
   @@index([userId])
   @@index([changedById])
-  // @@index([marketCenterId])
 }
 
 model MarketCenterHistory {
-  id               String     @id @default(dbgenerated("(gen_random_uuid())::text"))
-  marketCenterId   String     @map("market_center_id")
-  action           String     @default("UPDATE")
-  field            String?
-  previousValue    String?
-  newValue         String?
-  snapshot         Json?         
-  changedAt        DateTime   @default(now())
-  changedById      String?    @map("changed_by_id")
-
-  marketCenter     MarketCenter @relation(fields: [marketCenterId], references: [id])
-  changedBy        User?      @relation("MarketCenterChangedBy", fields: [changedById], references: [id])
+  id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  marketCenterId String       @map("market_center_id")
+  field          String?
+  previousValue  String?
+  newValue       String?
+  snapshot       Json?
+  changedAt      DateTime     @default(now())
+  changedById    String?      @map("changed_by_id")
+  action         String       @default("UPDATE")
+  changedBy      User?        @relation("MarketCenterChangedBy", fields: [changedById], references: [id])
+  marketCenter   MarketCenter @relation(fields: [marketCenterId], references: [id])
 
   @@index([changedById])
   @@index([marketCenterId])
-
 }
 
 model UserSettings {
-  id                            String                      @id @unique @default(dbgenerated("(gen_random_uuid())::text"))
-  userId                        String                      @unique
-  notificationPreferences       NotificationPreferences[]
-  createdAt                     DateTime @default(now())
-  updatedAt                     DateTime @updatedAt
-
-  user                          User                        @relation("UserToUserSettings", fields: [userId], references: [id])
+  id                      String                    @id @unique @default(dbgenerated("(gen_random_uuid())::text"))
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  userId                  String                    @unique
+  notificationPreferences NotificationPreferences[]
+  user                    User                      @relation("UserToUserSettings", fields: [userId], references: [id])
 
   @@index([userId])
 }
 
 model NotificationPreferences {
-  id                String                  @id @unique @default(cuid())
-  frequency         NotificationFrequency  
-  category          NotificationCategory    @default(ACCOUNT)
-  type              String                  //@unique // e.g. "ticket_updated", "comment_reply", "weekly_summary"
-  email             Boolean                 @default(true)
-  push              Boolean                 @default(true)
-  inApp             Boolean                 @default(true)
-  sms               Boolean                 @default(false)
-  userSettingsId    String
-  userSettings      UserSettings            @relation(fields: [userSettingsId], references: [id])
+  id             String                @id @unique @default(cuid())
+  type           String
+  email          Boolean               @default(true)
+  push           Boolean               @default(true)
+  inApp          Boolean               @default(true)
+  userSettingsId String
+  category       NotificationCategory  @default(ACCOUNT)
+  frequency      NotificationFrequency
+  sms            Boolean               @default(false)
+  userSettings   UserSettings          @relation(fields: [userSettingsId], references: [id])
 
   @@index([userSettingsId])
 }
 
 model Notification {
-  id          String                   @id @default(cuid())
-
+  id          String               @id @default(cuid())
   userId      String
-  user        User                     @relation(fields: [userId], references: [id])
-
   channel     NotificationChannel
   category    NotificationCategory
   priority    Urgency?
-  type        String                   // e.g. "ticket_updated", "comment_reply", "weekly_summary"
+  type        String
   title       String
   body        String
-  data        Json?                    // can hold dynamic metadata like { "ticketId": "abc123" }
-   
-  read        Boolean                  @default(false)
-  deliveredAt DateTime?             
-  createdAt   DateTime                 @default(now())
+  data        Json?
+  read        Boolean              @default(false)
+  deliveredAt DateTime?
+  createdAt   DateTime             @default(now())
+  user        User                 @relation(fields: [userId], references: [id])
+}
+
+model schema_migrations {
+  version BigInt  @id
+  dirty   Boolean
 }
 
 enum NotificationCategory {
@@ -292,13 +263,13 @@ enum UserRole {
 }
 
 enum TicketStatus {
-  CREATED
   ASSIGNED
-  UNASSIGNED
   AWAITING_RESPONSE
   IN_PROGRESS
   RESOLVED
   DRAFT
+  CREATED
+  UNASSIGNED
 }
 
 enum Urgency {
