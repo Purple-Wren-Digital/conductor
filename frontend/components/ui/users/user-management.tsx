@@ -125,11 +125,6 @@ export default function UserManagement() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, []);
-
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);

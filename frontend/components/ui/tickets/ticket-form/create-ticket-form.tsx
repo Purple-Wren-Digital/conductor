@@ -37,12 +37,6 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
   const { role } = useUserRole();
   const { currentUser } = useStore();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    if (!clerkUser?.id) throw new Error("Not authenticated");
-    return clerkUser.id;
-  }, [clerkUser]);
-
   useEffect(() => {
     const fetchTemplates = async () => {
       if (!isLoaded || !clerkUser?.id) return;
@@ -78,7 +72,7 @@ export function CreateTicketForm({ isOpen, onClose, onSuccess }: Props) {
         : null;
 
     setMarketCenterId(userMarketCenterId);
-  }, [isOpen, isLoaded, clerkUser, role, currentUser, getAuth0AccessToken]);
+  }, [isOpen, isLoaded, clerkUser, role, currentUser]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);

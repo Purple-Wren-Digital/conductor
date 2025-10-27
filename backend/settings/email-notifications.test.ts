@@ -22,7 +22,7 @@ vi.mock("./db", () => ({
 }));
 
 vi.mock("./email-service", () => ({
-  getEmailService: vi.fn(() => mockEmailService),
+  emailService: mockEmailService,
 }));
 
 import { notifySettingsChange } from "./notifications";

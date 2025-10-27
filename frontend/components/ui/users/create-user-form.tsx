@@ -88,11 +88,6 @@ export default function CreateUser({
 
   const { role, permissions } = useUserRole();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, []);
-
   const { data, isLoading } = useFetchAllMarketCenters(role);
 
   const marketCenters: MarketCenter[] = data?.marketCenters ?? [];

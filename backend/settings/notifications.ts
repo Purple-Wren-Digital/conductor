@@ -1,5 +1,5 @@
 import { getPrisma } from "./db";
-import { getEmailService } from "./email-service";
+import { emailService } from "./email-service";
 
 export async function notifySettingsChange(
   marketCenterId: string,
@@ -8,7 +8,6 @@ export async function notifySettingsChange(
 ): Promise<void> {
   try {
     const prisma = getPrisma();
-    const emailService = getEmailService();
 
     // Get all admins for this market center
     const admins = await prisma.user.findMany({

@@ -112,13 +112,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const { permissions, role } = useUserRole();
   const queryClient = useQueryClient();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") {
-      return "local";
-    }
-    return clerkUser?.id || "";
-  }, []);
-
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
@@ -148,7 +141,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [ticketId, getAuth0AccessToken]);
+  }, [ticketId, clerkUser]);
 
   useEffect(() => {
     refreshAllData();

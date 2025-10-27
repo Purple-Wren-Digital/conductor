@@ -42,11 +42,6 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
   const { role } = useUserRole();
   const { currentUser } = useStore();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, []);
-
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
@@ -91,7 +86,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket, getAuth0AccessToken]);
+  }, [isOpen, ticket, clerkUser]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);

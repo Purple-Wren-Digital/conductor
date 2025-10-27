@@ -30,11 +30,6 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, []);
-
   const createMutation = useCreateComment();
 
   // Load draft from localStorage on mount

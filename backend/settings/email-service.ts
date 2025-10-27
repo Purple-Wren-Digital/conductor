@@ -1,4 +1,9 @@
 import { Resend } from 'resend';
+import { secret } from 'encore.dev/config';
+
+const RESEND_API_KEY = secret('RESEND_API_KEY');
+const EMAIL_FROM_ADDRESS = 'noreply@conductor.app'; // Can be made configurable via Encore config if needed
+const EMAIL_FROM_NAME = 'Conductor'; // Can be made configurable via Encore config if needed
 
 interface EmailConfig {
   apiKey: string;
@@ -98,20 +103,11 @@ class EmailService {
   }
 }
 
-const getEmailService = (): EmailService => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'noreply@conductor.app';
-  const fromName = process.env.EMAIL_FROM_NAME || 'Conductor';
+// Create EmailService singleton at module level (reused for all requests)
+const emailService = new EmailService({
+  apiKey: RESEND_API_KEY(),
+  fromAddress: EMAIL_FROM_ADDRESS,
+  fromName: EMAIL_FROM_NAME,
+});
 
-  if (!apiKey) {
-    throw new Error('RESEND_API_KEY environment variable is required');
-  }
-
-  return new EmailService({
-    apiKey,
-    fromAddress,
-    fromName,
-  });
-};
-
-export { EmailService, getEmailService };
+export { emailService };
