@@ -11,7 +11,7 @@ import { Badge } from "../badge";
 import { SafeHtml } from "../safe-html";
 import { formatDistanceToNow } from "date-fns";
 import { Edit2, Trash2, Check, X } from "lucide-react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 
 interface CommentItemProps {
   comment: Comment;

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +10,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useStore } from "../store-provider";
+import SideBarNewNotification from "@/components/notifications/new-notification-detail";
+import { useStore } from "@/context/store-provider";
+import { useUserRole } from "@/hooks/use-user-role";
+import { cn } from "@/lib/cn";
+import type { Notification } from "@/lib/types";
 import {
   LayoutDashboard,
   Users as UsersIcon,
@@ -21,10 +25,33 @@ import {
   Building,
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/cn";
-import { useUserRole } from "@/hooks/use-user-role";
+import { UseMutationResult } from "@tanstack/react-query";
 
-export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+type AppSidebarProps = {
+  props: React.ComponentProps<typeof Sidebar>;
+  unReadNotificationTotal: number;
+  newestNotification: Notification | null;
+  setNewestNotification: Dispatch<SetStateAction<Notification | null>>;
+  markAsReadMutation: UseMutationResult<
+    {
+      success: boolean;
+    },
+    Error,
+    {
+      userId?: string;
+      notificationId?: string;
+    },
+    unknown
+  >;
+};
+
+export function AppSidebar({
+  props,
+  unReadNotificationTotal,
+  newestNotification,
+  setNewestNotification,
+  markAsReadMutation,
+}: AppSidebarProps) {
   const { className, ...rest } = props;
   const { role, permissions, isLoading } = useUserRole();
   const { currentUser } = useStore();
@@ -46,7 +73,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
-            {isLoading && currentUser && (
+            {isLoading && (
               <div className="flex flex-col gap-1 items-center w-full">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse w-full opacity-25">
@@ -61,7 +88,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             )}
             {!isLoading && currentUser && (
               <div className="flex flex-col gap-1">
-                <Link href={"/dashboard/profile"} className="hover:underline">
+                <Link href={"/dashboard/account"} className="hover:underline">
                   <p className="font-medium text-sm">
                     {currentUser?.name
                       ? `${currentUser.name}`
@@ -84,6 +111,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
+            {/* DASHBOARD */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
@@ -91,7 +119,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
+            {/* TICKETS */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard/tickets">
@@ -99,7 +127,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
+            {/* ADMIN - USER MANAGEMENT */}
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
@@ -109,7 +137,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
+            {/* ADMIN - MARKET CENTER MANAGEMENT */}
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
@@ -119,7 +147,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
+            {/* STAFF - MARKET CENTER MANAGEMENT */}
             {role === "STAFF" && (
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -134,7 +162,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
+            {/* REPORTS */}
             {permissions?.canAccessReports && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
@@ -144,14 +172,39 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
+            {/* ACCOUNT */}
             <SidebarMenuItem>
+              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+                <Link href={`/dashboard/account`}>
+                  <CircleUserRound /> Manage Account
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SideBarNewNotification
+              disabled={isLoading || !currentUser}
+              unReadNotificationTotal={unReadNotificationTotal}
+              newestNotification={newestNotification}
+              setNewestNotification={setNewestNotification}
+              markAsReadMutation={markAsReadMutation}
+            />
+
+            {/* <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href={`/dashboard/profile`}>
                   <CircleUserRound /> Profile
                 </Link>
               </SidebarMenuButton>
+            </SidebarMenuItem> */}
+
+            {/* <SidebarMenuItem>
+              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+                <Link href={`/dashboard/account`}>
+                  <CircleUserRound /> Manage Account
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
+          </SidebarMenu> */}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

@@ -1,7 +1,6 @@
-import { MarketCenter } from "../marketCenters/types";
-import { TicketCategory } from "../marketCenters/types";
+import type { MarketCenter, TicketCategory } from "../marketCenters/types";
+import type { User } from "../user/types";
 
-export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 export type TicketStatus =
   | "DRAFT"
   | "CREATED"
@@ -11,7 +10,6 @@ export type TicketStatus =
   | "IN_PROGRESS"
   | "RESOLVED";
 export type Urgency = "HIGH" | "MEDIUM" | "LOW";
-
 export type TicketField =
   | "isActive"
   | "title"
@@ -30,22 +28,6 @@ export type UserFields =
   | "marketCenterId"
   | "ticketAssignment"
   | "ticketCreation";
-
-export interface User {
-  id: string;
-  email: string;
-  name: string | null; // Prisma: name String?  => TypeScript: string | null
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-  isActive: boolean;
-  clerkId: string;
-  marketCenterId: string | null;
-  marketCenter?: MarketCenter;
-  ticketHistory?: TicketHistory[];
-  userHistory?: UserHistory[];
-  otherUsersChanges?: UserHistory[];
-}
 
 export interface Ticket {
   id: string;
@@ -110,19 +92,4 @@ export interface TicketHistory {
   changedAt: Date;
   changedById: string;
   changedBy?: User;
-}
-
-export interface UserHistory {
-  id: string;
-  userId: string;
-  marketCenterId: string;
-  action: string;
-  field: string | null;
-  previousValue: string | null;
-  newValue: string | null;
-  snapshot?: {}; // User as they were in this moment
-  changedAt: Date;
-  changedById: string;
-  changedBy?: User;
-  user?: User;
 }

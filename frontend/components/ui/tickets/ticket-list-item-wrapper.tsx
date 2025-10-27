@@ -4,7 +4,7 @@ import * as React from "react";
 import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
 import type { Ticket } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 
 type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
 

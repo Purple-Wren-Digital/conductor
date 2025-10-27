@@ -41,7 +41,7 @@ import { toast } from "sonner";
 // import { DAYS, LANGUAGES, TIMEZONES } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useQueryClient } from "@tanstack/react-query";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useUser } from "@clerk/nextjs";
 

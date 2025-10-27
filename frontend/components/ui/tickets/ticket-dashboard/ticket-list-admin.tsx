@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

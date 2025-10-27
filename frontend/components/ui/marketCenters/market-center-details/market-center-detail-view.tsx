@@ -56,7 +56,7 @@ export default function MarketCenterDetailView({
   const { user: clerkUser } = useUser();
 
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") ?? "general";
+  const tab = searchParams.get("tab") ?? "team";
 
   const queryClient = useQueryClient();
 

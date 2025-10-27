@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { User } from "../ticket/types";
+import type { User } from "../user/types";
 import { getAuthData } from "~encore/auth";
 
 export interface GetUserRequest {
@@ -27,6 +27,11 @@ export const get = api<GetUserRequest, GetUserResponse>(
       where: { id: req.id },
       include: {
         marketCenter: true,
+        userSettings: {
+          include: {
+            notificationPreferences: true,
+          },
+        },
       },
     });
 
@@ -37,6 +42,7 @@ export const get = api<GetUserRequest, GetUserResponse>(
     const safeUser = {
       ...user,
       marketCenter: user.marketCenter ?? undefined,
+      userSettings: user.userSettings ?? undefined,
     };
 
     return { user: safeUser } as GetUserResponse;

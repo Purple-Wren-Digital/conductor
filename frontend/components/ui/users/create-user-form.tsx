@@ -22,7 +22,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Building, User } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";

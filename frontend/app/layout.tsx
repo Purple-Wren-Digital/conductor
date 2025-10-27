@@ -2,8 +2,8 @@ import { cn } from "@/lib/cn";
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { QueryClientProvider } from "./query-client-provider";
-import StoreProvider from "./store-provider";
+import { QueryClientProvider } from "@/context/query-client-provider";
+import { StoreProvider } from "@/context/store-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";

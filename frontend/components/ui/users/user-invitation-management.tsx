@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,8 @@ import {
 } from "@/lib/utils";
 import { Badge } from "../badge";
 
+// TODO: Update how we invite users with Clerkjs
+
 type Auth0User = {
   user_id: string;
   name: string;
@@ -58,7 +60,8 @@ type Auth0User = {
 };
 
 type Auth0UserMetadataType = {
-  auth0Id: string;
+  clerkId: string;
+  // auth0Id: string;
   token: string;
   invited?: boolean;
   invitedOn?: Date;
@@ -263,15 +266,15 @@ export default function UserInvitationManagement() {
       accepted?: boolean;
       acceptedOn?: Date;
     };
-    if (metadata.auth0Id && metadata?.invited && metadata?.invitedOn) {
+    if (metadata.clerkId && metadata?.invited && metadata?.invitedOn) {
       body = {
-        user_id: metadata.auth0Id,
+        user_id: metadata.clerkId,
         invited: metadata.invited,
         invitedOn: metadata.invitedOn,
       };
-    } else if (metadata.auth0Id && metadata?.accepted && metadata?.acceptedOn) {
+    } else if (metadata.clerkId && metadata?.accepted && metadata?.acceptedOn) {
       body = {
-        user_id: metadata.auth0Id,
+        user_id: metadata.clerkId,
         accepted: metadata.accepted,
         acceptedOn: metadata.acceptedOn,
       };
@@ -330,7 +333,7 @@ export default function UserInvitationManagement() {
 
       // Update user metadata to mark as invited
       const metadataResult = await updateAuth0UserMetadata({
-        auth0Id: user.user_id,
+        clerkId: user.user_id,
         token: token,
         invited: true,
         invitedOn: new Date(),
@@ -372,7 +375,7 @@ export default function UserInvitationManagement() {
       const results = await Promise.allSettled(
         selectedNewUsers.map((user) =>
           updateAuth0UserMetadata({
-            auth0Id: user.user_id,
+            clerkId: user.user_id,
             accepted: true,
             acceptedOn,
             token: token,

@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { User, UserRole } from "../ticket/types";
+import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 
@@ -28,9 +28,10 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const userContext = await getUserContext();
 
     // Permission checks
+    const isEditingSelf = userContext?.userId === req.id;
     const canModifyUsers = await canManageTeam(userContext);
 
-    if (!canModifyUsers) {
+    if (!isEditingSelf && !canModifyUsers) {
       throw APIError.permissionDenied(
         "Insufficient permissions to update other users"
       );
@@ -51,6 +52,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     let userHistoryData: any = [];
 
     if (
+      !isEditingSelf &&
       req?.marketCenterId &&
       req?.marketCenterId !== existingUser?.marketCenterId &&
       userContext?.role === "ADMIN"
@@ -79,21 +81,11 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       }
     }
 
-    if (req.name !== existingUser?.name) {
-      updateUserData.name = req.name;
-      userHistoryData.push({
-        userId: req.id,
-        marketCenterId: marketCenterId,
-        action: "UPDATE",
-        field: "name",
-        previousValue: existingUser.name,
-        newValue: req.name,
-        snapshot: existingUser,
-        changedAt: new Date(),
-        changedById: userContext.userId,
-      });
-    }
-    if (req.role !== existingUser?.role && userContext?.role === "ADMIN") {
+    if (
+      !isEditingSelf &&
+      req.role !== existingUser?.role &&
+      userContext?.role === "ADMIN"
+    ) {
       updateUserData.role = req.role;
       userHistoryData.push({
         userId: req.id,
@@ -108,7 +100,11 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       });
     }
 
-    if (req.isActive !== undefined && userContext?.role === "ADMIN") {
+    if (
+      !isEditingSelf &&
+      req.isActive !== undefined &&
+      userContext?.role === "ADMIN"
+    ) {
       updateUserData.isActive = req.isActive;
       userHistoryData.push({
         userId: req.id,
@@ -122,6 +118,22 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         changedById: userContext.userId,
       });
     }
+
+    if (req.name !== existingUser?.name) {
+      updateUserData.name = req.name;
+      userHistoryData.push({
+        userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
+        field: "name",
+        previousValue: existingUser.name,
+        newValue: req.name,
+        snapshot: existingUser,
+        changedAt: new Date(),
+        changedById: userContext.userId,
+      });
+    }
+
     // TODO: update email in Auth0 for existing user as well
     // if (req.email !== existingUser.email) {
     //   updateUserData.email = req.email;
@@ -138,7 +150,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     // }
 
     if (Object.keys(updateUserData).length === 0) {
-      throw APIError.invalidArgument("no fields to update");
+      throw APIError.invalidArgument("No fields to update");
     }
 
     const [updatedUser] = await prisma.$transaction([

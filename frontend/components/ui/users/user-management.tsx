@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import type {
   OrderBy,
   UserEditFormData,

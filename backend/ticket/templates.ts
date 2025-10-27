@@ -1,6 +1,5 @@
 import { api } from "encore.dev/api";
 import type { Urgency } from "./types";
-// import { getAuthData } from "~encore/auth";
 
 export interface TicketTemplate {
   id: string;

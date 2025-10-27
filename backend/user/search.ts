@@ -1,6 +1,6 @@
 import { api, Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { User, UserRole } from "../ticket/types";
+import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { Prisma } from "@prisma/client";
 

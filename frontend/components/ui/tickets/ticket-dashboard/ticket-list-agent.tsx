@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

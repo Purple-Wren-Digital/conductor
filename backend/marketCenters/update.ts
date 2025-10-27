@@ -1,9 +1,7 @@
-import { api, APIError, Query } from "encore.dev/api";
-// import { canCreateMarketCenters } from "../auth/permissions";
-// import { getUserContext } from "../auth/user-context";
+import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
-import { User } from "../ticket/types";
+import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageMarketCenters } from "../auth/permissions";
 
@@ -59,8 +57,6 @@ export const update = api<
         newValue: req.name,
       });
     }
-
-    
 
     if (req?.users) {
       const oldUserIds = marketCenter.users.map((u) => u.id);
@@ -130,7 +126,6 @@ export const update = api<
       const marketCenterLog = await pr.marketCenterHistory.createMany({
         data: marketCenterHistory,
       });
-
 
       return {
         updatedMarketCenter,

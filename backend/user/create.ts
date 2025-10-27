@@ -1,9 +1,13 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { User, UserRole } from "../ticket/types";
-import { $Enums } from "@prisma/client";
+import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
-import { mapHistorySnapshot } from "../utils";
+import {
+  defaultNotificationPreferences,
+  handleUserCreationNotification,
+} from "../utils";
+import { MarketCenter } from "../marketCenters/types";
+import { $Enums } from "@prisma/client";
 
 export interface CreateUserRequest {
   email: string;
@@ -14,7 +18,8 @@ export interface CreateUserRequest {
 }
 
 export interface CreateUserResponse {
-  user: User;
+  user?: User;
+  success: boolean;
 }
 
 export const create = api<CreateUserRequest, CreateUserResponse>(
@@ -34,14 +39,31 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
     });
 
     if (existingUser) {
-      // TODO: how to check duplicate emails for Clerk Accounts (extension or custom?)
-      return { user: { ...existingUser, name: existingUser.name ?? "" } };
+      // TODO: how to check duplicate emails for Auth0 Accounts (extension or custom?)
+      return {
+        user: { ...existingUser, name: existingUser.name ?? "" },
+        success: false, // indicate user was not created
+      };
+    }
+
+    let marketCenterAssignment: MarketCenter | null = null;
+    if (req?.marketCenterId) {
+      const marketCenter = await prisma.marketCenter.findUnique({
+        where: { id: req.marketCenterId },
+        include: { users: true },
+      });
+      if (!marketCenter) {
+        APIError.notFound("Market Center not found");
+      } else {
+        marketCenterAssignment = marketCenter;
+      }
     }
 
     let newUser: {
       id: string;
       email: string;
       clerkId: string;
+      // auth0Id: string;
       name: string | null;
       role: $Enums.UserRole;
       createdAt: Date;
@@ -53,6 +75,8 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       id: string;
       email: string;
       clerkId: string;
+
+      // auth0Id: string;
       name: string | null;
       role: $Enums.UserRole;
       createdAt: Date;
@@ -62,14 +86,18 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       marketCenterId: string | null;
     };
 
-    const result = await prisma.$transaction(async (u) => {
-      const newUser = await u.user.create({
+    const result = await prisma.$transaction(async (p) => {
+      const newUser = await p.user.create({
         data: {
           email: req.email,
           name: req.name,
           role: req.role || "AGENT",
           isActive: true,
           clerkId: req.clerkId,
+          // auth0Id: req.auth0Id,
+          // userSettings: {
+          //   create: {},
+          // },
           marketCenter: req?.marketCenterId
             ? {
                 connect: { id: req.marketCenterId }, // relation connect
@@ -78,10 +106,28 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
         },
         include: {
           userHistory: true,
+          // userSettings: true,
         },
       });
+      // let userSettingsDefault = undefined;
+      // if (newUser && newUser?.userSettings && newUser?.userSettings?.id) {
+      // const userSettingsDefault = await p.userSettings.update({
+      //   where: { id: newUser?.userSettings?.id },
+      //   data: {
+      //     notificationPreferences: {
+      //       create: defaultNotificationPreferences,
+      //     },
+      //   },
+      //   include: {
+      //     notificationPreferences: true,
+      //     user: false,
+      //   },
+      // });
 
-      const history = await u.userHistory.create({
+      //   userSettingsDefault = userSettingsUpdate ?? undefined;
+      // }
+
+      const history = await p.userHistory.create({
         data: {
           userId: newUser.id,
           marketCenterId: newUser?.marketCenterId,
@@ -94,15 +140,22 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
         },
       });
 
-      return { newUser, history };
+      // 🔔 Generate notifications dynamically
+      await handleUserCreationNotification({
+        newUser,
+        userContext,
+        marketCenterAssignment,
+      });
+
+      return { newUser, userSettingsDefault, history };
     });
 
+    if (!result || !result?.newUser) {
+      throw APIError.internal("New user not created");
+    }
+
     return {
-      user: {
-        ...result.newUser,
-        name: result.newUser.name ?? "",
-        userHistory: mapHistorySnapshot([result.history]),
-      },
+      success: true,
     };
   }
 );

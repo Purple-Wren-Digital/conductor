@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import {
   AlertDialog,

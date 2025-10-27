@@ -52,7 +52,7 @@ import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
 import { useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import {
   capitalizeEveryWord,
   getCategoryStyle,

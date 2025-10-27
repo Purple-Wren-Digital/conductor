@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -625,7 +625,10 @@ export default function TicketListStaff() {
                         marketCenter?.ticketCategories.length > 0 &&
                         marketCenter?.ticketCategories.map(
                           (category: TicketCategory) => (
-                            <div key={category?.id} className="flex items-center gap-2">
+                            <div
+                              key={category?.id}
+                              className="flex items-center gap-2"
+                            >
                               <RadioGroupItem
                                 value={category?.id}
                                 id={`category-${category?.id}`}

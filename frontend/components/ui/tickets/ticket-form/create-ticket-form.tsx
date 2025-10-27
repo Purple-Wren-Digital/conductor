@@ -6,7 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 
 type Props = {
   isOpen: boolean;

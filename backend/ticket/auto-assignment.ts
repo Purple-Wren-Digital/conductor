@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
-import type { UserRole, Urgency } from "./types";
+import type { Urgency } from "./types";
+import type { UserRole } from "../user/types";
 
 export interface AssignmentRule {
   id: string;

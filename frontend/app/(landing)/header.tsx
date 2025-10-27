@@ -14,7 +14,7 @@ import {
 import { PrismaUser } from "@/lib/types";
 import { ArrowRight, House } from "lucide-react";
 import Link from "next/link";
-import { useStore } from "../store-provider";
+import { useStore } from "@/context/store-provider";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api/utils";
 

@@ -1,7 +1,7 @@
 import { api, APIError, Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { MarketCenter } from "./types";
-import { User } from "../ticket/types";
+import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { marketCenterScopeFilter } from "../auth/permissions";
 

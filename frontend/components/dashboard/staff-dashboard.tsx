@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

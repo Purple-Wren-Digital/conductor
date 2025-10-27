@@ -25,26 +25,32 @@ model MarketCenter {
 }
 
 model User {
-  id                   String             @id @default(dbgenerated("(gen_random_uuid())::text"))
-  email                String             @unique
-  name                 String?
-  role                 UserRole           @default(AGENT)
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @default(now()) @updatedAt @map("updated_at")
-  deletedAt            DateTime?
-  isActive             Boolean            @default(true)
-  marketCenterId       String?            @map("market_center_id")
-  clerkId              String             @unique @map("clerk_id")
-  comments             Comment[]
-  // auditLogs            SettingsAuditLog[]
-  defaultForCategories TicketCategory[]
-  assignedTickets      Ticket[]           @relation("TicketAssignee")
-  createdTickets       Ticket[]           @relation("TicketCreator")
-  marketCenter         MarketCenter?      @relation(fields: [marketCenterId], references: [id])
-  ticketHistory        TicketHistory[]
-  userHistory          UserHistory[]      @relation("UpdatedUser") // one user can have many history records about *themselves*
-  otherUsersChanges    UserHistory[]      @relation("ChangedBy") // one user can also be the "changer" for many others
-  marketCenterHistory  MarketCenterHistory[] @relation("MarketCenterChangedBy")
+  id                     String                   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  clerkId                String             @unique @map("clerk_id")
+// auth0Id                String                   @unique
+  email                  String                   @unique
+  name                   String?
+  role                   UserRole                 @default(AGENT)
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at")
+  deletedAt              DateTime?
+  isActive               Boolean                  @default(true)
+  comments               Comment[]
+
+  defaultForCategories   TicketCategory[]
+  assignedTickets        Ticket[]                 @relation("TicketAssignee")
+  createdTickets         Ticket[]                 @relation("TicketCreator")
+
+  marketCenterId         String?                  @map("market_center_id")
+  marketCenter           MarketCenter?            @relation(fields: [marketCenterId], references: [id])
+
+  ticketHistory          TicketHistory[]
+  userHistory            UserHistory[]            @relation("UpdatedUser") // one user can have many history records about *themselves*
+  otherUsersChanges      UserHistory[]            @relation("ChangedBy") // one user can also be the "changer" for many other
+  marketCenterHistory    MarketCenterHistory[]    @relation("MarketCenterChangedBy")
+
+  userSettings           UserSettings?            @relation("UserToUserSettings") // 1:1 relation
+  notifications          Notification[]
 
   @@index([marketCenterId])
   @@map("users")
@@ -208,6 +214,76 @@ model MarketCenterHistory {
 
 }
 
+model UserSettings {
+  id                            String                      @id @unique @default(dbgenerated("(gen_random_uuid())::text"))
+  userId                        String                      @unique
+  notificationPreferences       NotificationPreferences[]
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  user                          User                        @relation("UserToUserSettings", fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model NotificationPreferences {
+  id                String                  @id @unique @default(cuid())
+  frequency         NotificationFrequency  
+  category          NotificationCategory    @default(ACCOUNT)
+  type              String                  //@unique // e.g. "ticket_updated", "comment_reply", "weekly_summary"
+  email             Boolean                 @default(true)
+  push              Boolean                 @default(true)
+  inApp             Boolean                 @default(true)
+  sms               Boolean                 @default(false)
+  userSettingsId    String
+  userSettings      UserSettings            @relation(fields: [userSettingsId], references: [id])
+
+  @@index([userSettingsId])
+}
+
+model Notification {
+  id          String                   @id @default(cuid())
+
+  userId      String
+  user        User                     @relation(fields: [userId], references: [id])
+
+  channel     NotificationChannel
+  category    NotificationCategory
+  priority    Urgency?
+  type        String                   // e.g. "ticket_updated", "comment_reply", "weekly_summary"
+  title       String
+  body        String
+  data        Json?                    // can hold dynamic metadata like { "ticketId": "abc123" }
+   
+  read        Boolean                  @default(false)
+  deliveredAt DateTime?             
+  createdAt   DateTime                 @default(now())
+}
+
+enum NotificationCategory {
+  ACCOUNT
+  ACTIVITY
+  MARKETING
+  PRODUCT
+  PERMISSIONS
+}
+
+enum NotificationFrequency {
+  NONE
+  INSTANT
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  IN_APP
+  SMS
+}
 
 enum UserRole {
   AGENT
