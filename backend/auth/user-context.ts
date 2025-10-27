@@ -8,7 +8,7 @@ export interface UserContext {
   email: string;
   role: UserRole;
   marketCenterId: string | null;
-  auth0Id: string;
+  clerkId: string;
 }
 
 export async function getUserContext(): Promise<UserContext> {
@@ -28,7 +28,7 @@ export async function getUserContext(): Promise<UserContext> {
   //   //     email: "local@localhost.com",
   //   //     role: "ADMIN",
   //   //     marketCenterId: null,
-  //   //     auth0Id: "local-dev-user",
+  //   //     clerkId: "local-dev-user",
   //   //   };
   //   // // ADMIN USER
   //   // return {
@@ -36,7 +36,7 @@ export async function getUserContext(): Promise<UserContext> {
   //   //   email: "clara.admin@kw.com",
   //   //   role: "ADMIN",
   //   //   marketCenterId: null,
-  //   //   auth0Id: "auth0|68c070eba093c0727999c608",
+  //   //   clerkId: "auth0|68c070eba093c0727999c608",
   //   // };
   //   // // AGENT USER
   //   // return {
@@ -44,7 +44,7 @@ export async function getUserContext(): Promise<UserContext> {
   //   //   email: "alice.agent@kw.com",
   //   //   role: "AGENT",
   //   //   marketCenterId: null,
-  //   //   auth0Id: "auth0|68c07090070c5a2759e2c928",
+  //   //   clerkId: "auth0|68c07090070c5a2759e2c928",
   //   // };
   //   // // STAFF USER
   //   return {
@@ -52,14 +52,14 @@ export async function getUserContext(): Promise<UserContext> {
   //     email: "bob.staff@kw.com",
   //     role: "STAFF",
   //     marketCenterId: null,
-  //     auth0Id: "auth0|68c070b2070c5a2759e2c934",
+  //     clerkId: "auth0|68c070b2070c5a2759e2c934",
   //   };
 
   // }
 
-  // Try to find user by Clerk ID (stored in auth0Id field for now)
+  // Try to find user by Clerk ID
   let user = await prisma.user.findUnique({
-    where: { auth0Id: authData.userID },
+    where: { clerkId: authData.userID },
   });
 
   // If not found and we have an email, try to find by email
@@ -72,7 +72,7 @@ export async function getUserContext(): Promise<UserContext> {
     if (user) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { auth0Id: authData.userID },
+        data: { clerkId: authData.userID },
       });
     }
   }
@@ -93,7 +93,7 @@ export async function getUserContext(): Promise<UserContext> {
     user = await prisma.user.create({
       data: {
         email: email,
-        auth0Id: authData.userID,
+        clerkId: authData.userID,
         role: "AGENT", // New users default to AGENT role
         name: name,
       },
@@ -107,6 +107,6 @@ export async function getUserContext(): Promise<UserContext> {
     email: user.email,
     role: user.role as UserRole,
     marketCenterId: user.marketCenterId,
-    auth0Id: authData.userID,
+    clerkId: authData.userID,
   };
 }

@@ -34,7 +34,7 @@ model User {
   deletedAt            DateTime?
   isActive             Boolean            @default(true)
   marketCenterId       String?            @map("market_center_id")
-  auth0Id              String             @unique
+  clerkId              String             @unique @map("clerk_id")
   comments             Comment[]
   // auditLogs            SettingsAuditLog[]
   defaultForCategories TicketCategory[]

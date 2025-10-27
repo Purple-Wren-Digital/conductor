@@ -41,7 +41,7 @@ export const seedData = api<void, SeedResponse>(
           email: "alice.agent@kw.com",
           name: "Alice Johnson",
           role: UserRole.AGENT,
-          auth0Id: "auth-u1",
+          clerkId: "auth-u1",
           marketCenterId: marketCenter.id,
         },
         {
@@ -49,7 +49,7 @@ export const seedData = api<void, SeedResponse>(
           email: "bob.staff@kw.com",
           name: "Bob Smith",
           role: UserRole.STAFF,
-          auth0Id: "auth-u2",
+          clerkId: "auth-u2",
           marketCenterId: marketCenter.id,
         },
         {
@@ -57,7 +57,7 @@ export const seedData = api<void, SeedResponse>(
           email: "clara.admin@kw.com",
           name: "Clara Davis",
           role: UserRole.ADMIN,
-          auth0Id: "auth-u3",
+          clerkId: "auth-u3",
           marketCenterId: marketCenter.id,
         },
         {
@@ -65,7 +65,7 @@ export const seedData = api<void, SeedResponse>(
           email: "dan.agent@kw.com",
           name: "Dan Williams",
           role: UserRole.AGENT,
-          auth0Id: "auth-u4",
+          clerkId: "auth-u4",
           marketCenterId: marketCenter.id,
         },
         {
@@ -73,7 +73,7 @@ export const seedData = api<void, SeedResponse>(
           email: "emma.staff@kw.com",
           name: "Emma Brown",
           role: UserRole.STAFF,
-          auth0Id: "auth-u5",
+          clerkId: "auth-u5",
           marketCenterId: marketCenter.id,
         },
         {
@@ -81,7 +81,7 @@ export const seedData = api<void, SeedResponse>(
           email: "frank.agent@kw.com",
           name: "Frank Miller",
           role: UserRole.AGENT,
-          auth0Id: "auth-u6",
+          clerkId: "auth-u6",
           marketCenterId: marketCenter.id,
         },
         {
@@ -89,7 +89,7 @@ export const seedData = api<void, SeedResponse>(
           email: "gina.staff@kw.com",
           name: "Gina Wilson",
           role: UserRole.STAFF,
-          auth0Id: "auth-u7",
+          clerkId: "auth-u7",
           marketCenterId: marketCenter.id,
         },
         {
@@ -97,7 +97,7 @@ export const seedData = api<void, SeedResponse>(
           email: "henry.agent@kw.com",
           name: "Henry Clark",
           role: UserRole.AGENT,
-          auth0Id: "auth-u8",
+          clerkId: "auth-u8",
           marketCenterId: marketCenter.id,
         },
         {
@@ -105,7 +105,7 @@ export const seedData = api<void, SeedResponse>(
           email: "isla.staff@kw.com",
           name: "Isla Martinez",
           role: UserRole.STAFF,
-          auth0Id: "auth-u9",
+          clerkId: "auth-u9",
           marketCenterId: marketCenter.id,
         },
         {
@@ -113,7 +113,7 @@ export const seedData = api<void, SeedResponse>(
           email: "jack.agent@kw.com",
           name: "Jack Lee",
           role: UserRole.AGENT,
-          auth0Id: "auth-u10",
+          clerkId: "auth-u10",
           marketCenterId: marketCenter.id,
         },
       ],

@@ -8,7 +8,7 @@
 | UI Components | React Query + Tailwind CSS | Data fetching + utility-first styling |
 | Backend API | Encore TS | Backend framework with flexible queries |
 | Database | PostgreSQL + Prisma ORM | Relational data + type-safe ORM |
-| Auth & RBAC | Auth0 | Authentication + role-based access control |
+| Auth & RBAC | Clerk | Authentication + role-based access control |
 | Notifications | SendGrid or Resend | Email notifications |
 | Hosting | Vercel (Frontend) + AWS (Backend) | Scalable deployment |
 
@@ -233,11 +233,11 @@ const useCreateTicket = () => {
 
 ### 11. Authentication Flow
 
-1. User visits site → Redirect to Auth0
-2. User logs in → Auth0 returns JWT
-3. Store JWT in httpOnly cookie
-4. Include JWT in API requests
-5. Verify JWT on backend
+1. User visits site → Redirect to Clerk
+2. User logs in → Clerk returns session token
+3. Frontend uses Clerk session token
+4. Include Clerk user ID in API requests via Authorization header
+5. Backend validates Clerk user ID via Clerk API
 6. Check user role for authorization
 
 ### 12. Real-time Updates
@@ -265,9 +265,8 @@ useEffect(() => {
 ```env
 # .env.local
 NEXT_PUBLIC_API_URL=http://localhost:4000
-AUTH0_DOMAIN=
-AUTH0_CLIENT_ID=
-AUTH0_CLIENT_SECRET=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
 DATABASE_URL=postgresql://...
 SENDGRID_API_KEY=
 ```
@@ -297,10 +296,10 @@ SENDGRID_API_KEY=
 Conductor is a [brief description of what your app does]. Built with Next.js frontend and Encore backend.
 
 ## Architecture
-- **Frontend**: Next.js 14+ with Auth0 authentication
+- **Frontend**: Next.js 14+ with Clerk authentication
 - **Backend**: Encore framework with TypeScript
-- **Auth**: Auth0 with JWT tokens
-- **Database**: [your database if any]
+- **Auth**: Clerk for user management and authentication
+- **Database**: PostgreSQL with Prisma ORM
 
 ## Development Setup
 ```bash
@@ -320,9 +319,10 @@ cd backend && npm test
 - [Add other common commands you use]
 
 ## Authentication Flow
-- Frontend uses Auth0 NextJS SDK v4
-- Backend validates JWT tokens with Auth0 public certificate
-- Access tokens passed via `Authorization: Bearer <token>` header
+- Frontend uses Clerk React SDK
+- Backend validates Clerk user ID via Clerk API (@clerk/backend)
+- Clerk user ID passed via `Authorization: Bearer <clerk_user_id>` header
+- Users are automatically created in database on first login
 
 ## Project Structure
 ```
@@ -343,5 +343,6 @@ conductor/
 ## Notes for Claude
 - Always run lint/typecheck after code changes
 - Use existing error handling patterns (APIError class)
-- Follow Auth0 v4 patterns for authentication
+- Follow Clerk authentication patterns (@clerk/backend for user validation)
 - Test endpoints with `/health` for connectivity
+- User database records use `clerkId` field to link to Clerk users

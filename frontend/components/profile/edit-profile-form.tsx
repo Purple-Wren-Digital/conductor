@@ -43,11 +43,6 @@ const EditUserProfile = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, [clerkUser]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsFormLoading(true);
@@ -142,8 +137,8 @@ const EditUserProfile = () => {
             {isFormLoading
               ? "Refreshing..."
               : isFormLoading
-                ? "Saving..."
-                : "Save Profile"}
+              ? "Saving..."
+              : "Save Profile"}
           </Button>
         </div>
       </div>

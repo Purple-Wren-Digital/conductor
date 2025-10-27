@@ -72,11 +72,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return clerkUser?.id || "";
-  }, []);
-
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
     return Icon ? (
@@ -145,7 +140,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       resetFormAndClose();
       toast.success(`${user?.name || "User"} was updated`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Failed to update user", error);
       toast.error("Failed to update user");
     },

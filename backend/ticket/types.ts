@@ -39,7 +39,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
-  auth0Id: string;
+  clerkId: string;
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
   ticketHistory?: TicketHistory[];
