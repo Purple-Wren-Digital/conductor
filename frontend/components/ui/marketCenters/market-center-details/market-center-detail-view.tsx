@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/tabs/base-tabs";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
+import { API_BASE } from "@/lib/api/utils";
 import type {
   PrismaUser,
   MarketCenterForm,
@@ -52,6 +53,7 @@ export default function MarketCenterDetailView({
   marketCenterId,
 }: MarketCenterDetailProps) {
   const router = useRouter();
+  const { user: clerkUser } = useUser();
 
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "general";

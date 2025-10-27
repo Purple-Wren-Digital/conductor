@@ -37,6 +37,7 @@ export default function DeleteMarketCenter({
   refreshUsers,
 }: DeleteMarketCenterProps) {
   const [deleting, setDeleting] = useState(false);
+  const { user: clerkUser } = useUser();
 
   const { permissions } = useUserRole();
 

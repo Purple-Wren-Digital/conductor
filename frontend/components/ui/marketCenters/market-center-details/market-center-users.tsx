@@ -49,6 +49,7 @@ export default function MarketCenterUsers({
   invalidateMarketCenter: Promise<void>; // () => void;
 }) {
   const router = useRouter();
+  const { user: clerkUser } = useUser();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<PrismaUser | null>(null);
 

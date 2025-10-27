@@ -108,7 +108,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  const { user: authUser } = useUser();
   const { currentUser } = useStore();
   const { permissions, role } = useUserRole();
   const queryClient = useQueryClient();
@@ -257,8 +256,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         updatedOn: updatedTicket?.createdAt,
         editedBy: currentUser || {
           id: "",
-          email: authUser?.email || "",
-          name: authUser?.name || "",
+          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
+          name: clerkUser?.fullName || "",
           role: "AGENT",
         },
         field: updates?.quickUpdate?.field,
@@ -275,8 +274,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         updatedOn: updatedTicket?.createdAt,
         editedBy: currentUser || {
           id: "",
-          email: authUser?.email || "",
-          name: authUser?.name || "",
+          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
+          name: clerkUser?.fullName || "",
           role: "AGENT",
         },
         currentAssignment: updates?.reassignmentUpdate?.currentAssignment,
@@ -298,8 +297,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         updatedOn: updatedTicket?.createdAt,
         editedBy: currentUser || {
           id: "",
-          email: authUser?.email || "",
-          name: authUser?.name || "",
+          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
+          name: clerkUser?.fullName || "",
           role: "AGENT",
         },
         changedDetails: ticketEdits,

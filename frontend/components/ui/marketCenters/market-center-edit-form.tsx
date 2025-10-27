@@ -49,6 +49,7 @@ export default function EditMarketCenter({
   refreshMarketCenters,
   refreshUsers,
 }: EditMarketCenterProps) {
+  const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 

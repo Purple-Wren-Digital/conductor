@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
+import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
@@ -64,6 +65,7 @@ import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown"
 export default function MarketCenterManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
 
   const { role } = useUserRole();
 

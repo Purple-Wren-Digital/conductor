@@ -49,6 +49,7 @@ export default function MarketCenterTicketCategories({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
 }) {
+  const { user: clerkUser } = useUser();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
   const [categoryToRemove, setCategoryToRemove] =
     useState<TicketCategory | null>(null);

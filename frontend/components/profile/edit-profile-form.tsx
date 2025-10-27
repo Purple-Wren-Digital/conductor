@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 const EditUserProfile = () => {
   const { currentUser, setCurrentUser } = useStore();
+  const { user: clerkUser } = useUser();
 
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -45,7 +46,7 @@ const EditUserProfile = () => {
   const getAuth0AccessToken = useCallback(async () => {
     if (process.env.NODE_ENV === "development") return "local";
     return clerkUser?.id || "";
-  }, []);
+  }, [clerkUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

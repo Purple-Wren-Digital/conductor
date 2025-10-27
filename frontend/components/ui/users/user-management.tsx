@@ -37,6 +37,7 @@ import { TeamSwitcher } from "@/components/ui/team-switcher";
 import CreateUser from "./create-user-form";
 import { useFetchAllUsers } from "@/hooks/use-users";
 import { useUserRole } from "@/hooks/use-user-role";
+import { API_BASE } from "@/lib/api/utils";
 import {
   userStatusOptions,
   UserStatusType,

@@ -42,6 +42,7 @@ export default function AddTeamMember({
   sendUserUpdateNotification,
 }: AddTeamMemberProps) {
   const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
 
   const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,7 +83,7 @@ export default function AddTeamMember({
     } finally {
       setIsLoading(false);
     }
-  }, [getAuth0AccessToken]);
+  }, [permissions, clerkUser]);
 
   useEffect(() => {
     if (!showInviteDialog) return;
