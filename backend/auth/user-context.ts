@@ -70,6 +70,7 @@ export async function getUserContext(): Promise<UserContext> {
 
     // If found, update with Clerk user ID
     if (user) {
+      //  && !user.clerkId
       await prisma.user.update({
         where: { id: user.id },
         data: { clerkId: authData.userID },
@@ -87,7 +88,7 @@ export async function getUserContext(): Promise<UserContext> {
     // Extract name from email (e.g., "john.doe@example.com" -> "John Doe")
     const nameParts = email.split("@")[0].split(/[._-]/);
     const name = nameParts
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
 
     user = await prisma.user.create({

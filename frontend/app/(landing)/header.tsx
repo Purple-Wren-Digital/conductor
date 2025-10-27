@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useUser, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +20,15 @@ import { API_BASE } from "@/lib/api/utils";
 
 export function Header() {
   const router = useRouter();
+  //   const { isSignedIn, isLoaded, user } = useUser();
 
-  const { user: clerkUser, isLoaded } = useUser();
+  const { user: clerkUser, isSignedIn, isLoaded } = useUser();
   const { currentUser, setCurrentUser } = useStore();
+
+  // const getAuth0AccessToken = useCallback(async () => {
+  //   if (process.env.NODE_ENV === "development") return "local";
+  //   return await getAccessToken();
+  // }, []);
 
   const fetchOrCreateUser = async () => {
     if (!clerkUser?.id) {
@@ -44,6 +50,7 @@ export function Header() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("LANDING HEADER: ", data);
         if (data) {
           setCurrentUser(data as PrismaUser);
           return;
@@ -58,13 +65,14 @@ export function Header() {
   };
 
   useEffect(() => {
-    if (!isLoaded) return;
     if (!clerkUser) {
       setCurrentUser(null);
       return;
     }
     fetchOrCreateUser();
   }, [clerkUser, isLoaded]);
+
+  if (isLoaded && !isSignedIn) return null;
 
   return (
     <header className="border-b">

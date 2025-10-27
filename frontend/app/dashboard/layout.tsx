@@ -14,7 +14,7 @@ export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { setCurrentUser } = useStore();
-  const { user: clerkUser, isLoaded } = useUser();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
 
   const persistUserContext = async () => {
     if (!clerkUser?.id) {
@@ -34,16 +34,14 @@ export default function DashboardLayout({
         cache: "no-store",
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data) {
-          setCurrentUser(data as PrismaUser);
-          return;
-        }
+      if (!response.ok) throw new Error("User not found");
+      const data = await response.json();
+      console.log("DASHBOARD LAYOUT: ", data);
+      if (data) {
+        setCurrentUser(data as PrismaUser);
       } else {
-        console.error(`Failed to fetch user: ${response.status} ${response.statusText}`);
+        throw new Error("User not found");
       }
-      setCurrentUser(null);
     } catch (error) {
       console.error("Error fetching user:", error);
       setCurrentUser(null);
@@ -51,14 +49,19 @@ export default function DashboardLayout({
   };
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!clerkUser) {
-      console.error("DashboardLayout: no Clerk user, cannot persist App Context");
+    // if (!isLoaded) return;
+    if (isLoaded && !clerkUser) {
+      console.error(
+        "DashboardLayout: No Clerk user found, cannot persist App Context"
+      );
       setCurrentUser(null);
       return;
     }
     persistUserContext();
   }, [clerkUser, isLoaded]);
+
+  // const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  if (isLoaded && !isSignedIn) return null;
 
   return (
     <SidebarProvider>
