@@ -7,6 +7,7 @@ export interface GetCurrentUserResponse {
   email: string;
   name: string;
   role: string;
+  isActive: boolean;
   marketCenterId: string | null;
   marketCenter?: {
     id: string;
