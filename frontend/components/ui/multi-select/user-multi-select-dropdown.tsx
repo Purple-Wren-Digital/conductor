@@ -59,7 +59,7 @@ export default function UserMultiSelectDropdown({
         disabled={disabled}
         onChange={() => setIsDropdownExpanded(!isDropdownExpanded)}
       />
-      <p className="text-sm text-muted-foreground ">{placeholder}</p>
+      <p className="text-sm">{placeholder}</p>
       <ChevronDownIcon
         className={`size-4 peer-checked:-rotate-180 duration-450 ease-in-out`}
       />

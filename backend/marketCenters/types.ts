@@ -12,6 +12,7 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: User[];
   marketCenterHistory?: MarketCenterHistory[];
+  totalTickets?: number;
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 export interface MarketCenterHistory {
@@ -52,6 +53,7 @@ export interface TicketCategory {
   updatedAt: Date;
   defaultAssignee?: User | null;
   marketCenter?: MarketCenter;
+  ticketCount?: number;
 }
 
 // export interface SettingsAuditLog {

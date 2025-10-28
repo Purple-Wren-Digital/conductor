@@ -20,9 +20,11 @@ export const getByEmail = api<GetUserByEmailRequest, GetUserByEmailResponse>(
   },
   async (req) => {
     const authData = await getAuthData();
+
     if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+      throw APIError.unauthenticated("User not authenticated");
     }
+
     const user = await prisma.user.findUnique({
       where: { email: req.email },
       include: { marketCenter: true },

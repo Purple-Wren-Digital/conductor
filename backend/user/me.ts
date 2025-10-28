@@ -30,7 +30,7 @@ export const me = api<void, GetCurrentUserResponse>(
       include: { marketCenter: true },
     });
 
-    if (!user) {
+    if (!user || !user?.id) {
       throw APIError.notFound("User not found");
     }
 

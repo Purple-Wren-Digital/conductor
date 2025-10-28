@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useStore } from "@/context/store-provider";
 import type {
   OrderBy,
@@ -81,7 +81,7 @@ export default function UserManagement() {
 
   const defaultMarketCenterId = role === "STAFF" ? marketCenterId : "all";
 
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -161,7 +161,8 @@ export default function UserManagement() {
     selectedRole,
     selectedUserStatus,
     selectedMarketCenterId,
-    sortBy,
+    currentUser?.marketCenterId,
+    role,
     orderDir,
     currentPage,
     itemsPerPage,
@@ -180,6 +181,7 @@ export default function UserManagement() {
     usersQueryKey,
     queryParams,
     role,
+    clerkId: clerkUser?.id,
   });
 
   const userQueryInvalidator = () =>
@@ -331,20 +333,23 @@ export default function UserManagement() {
         body: JSON.stringify({ isActive: false }),
       });
       if (!res.ok) throw new Error("Failed to deactivate user");
-      return res.json();
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(`${userToDelete?.name || "User"} was removed`);
+      await userQueryInvalidator();
       setConfirmOpen(false);
       setUserToDelete(null);
-      userQueryInvalidator;
     },
     onError: (error) => {
       console.error("Failed to deactivate user", error);
       toast.error("Failed to deactivate user");
     },
+    onSettled: () => {
+      setDeleting(false);
+    },
   });
-
+  // TODO: COMPLETELY DELETE IN PRISMA/CLERK
   // const deleteUserMutation = useMutation({
   //   mutationFn: async (userId: string) => {
   //     if (
@@ -391,7 +396,6 @@ export default function UserManagement() {
     setDeleting(true);
     // if (type === "delete") deleteUserMutation.mutate(userToDelete?.id);
     if (type === "deactivate") deactivateUserMutation.mutate(userToDelete?.id);
-    setDeleting(false);
   };
 
   const getRoleIcon = (role: string) => {
@@ -635,9 +639,8 @@ export default function UserManagement() {
                     onEdit={() => handleEditUser(user)}
                     onDelete={() => openDeleteModal(user)}
                     onClick={() => {
-                      //handleGoToUserProfile()
-                      if (!user.id) return;
-                      router.push(`/dashboard/users/${user.id}`);
+                      if (!user?.email) return;
+                      router.push(`/dashboard/users/${user?.id}`);
                     }}
                   />
                 );
@@ -676,7 +679,6 @@ export default function UserManagement() {
           </DialogHeader>
 
           <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
-            {/* TODO: FIRST AND LAST NAME */}
             <div className="space-y-2">
               <label htmlFor="firstName" className="text-sm font-medium">
                 First Name *

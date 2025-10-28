@@ -49,12 +49,16 @@ export const listCategories = api<
       where.marketCenterId = userContext.marketCenterId;
     }
 
-    const marketCenterTicketCategories = await prisma.ticketCategory.findMany({
+    const categoriesRaw = await prisma.ticketCategory.findMany({
       where: where,
     });
 
-    return {
-      categories: marketCenterTicketCategories,
-    };
+    const categories = categoriesRaw.map((category) => ({
+      ...category,
+      name: category.name ?? "",
+      description: category.description ?? "",
+    }));
+
+    return { categories: categories };
   }
 );

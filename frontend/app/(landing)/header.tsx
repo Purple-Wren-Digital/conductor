@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useUser, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,59 +20,51 @@ import { API_BASE } from "@/lib/api/utils";
 
 export function Header() {
   const router = useRouter();
-  //   const { isSignedIn, isLoaded, user } = useUser();
 
-  const { user: clerkUser, isSignedIn, isLoaded } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
   const { currentUser, setCurrentUser } = useStore();
 
-  // const getAuth0AccessToken = useCallback(async () => {
-  //   if (process.env.NODE_ENV === "development") return "local";
-  //   return await getAccessToken();
-  // }, []);
-
-  const fetchOrCreateUser = async () => {
-    if (!clerkUser?.id) {
-      console.error("No Clerk user ID");
-      setCurrentUser(null);
-      return;
-    }
-
-    try {
-      // Call /users/me which will auto-create the user via getUserContext() if they don't exist
-      const response = await fetch(`${API_BASE}/users/me`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
-        },
-        cache: "no-store",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("LANDING HEADER: ", data);
-        if (data) {
-          setCurrentUser(data as PrismaUser);
-          return;
-        }
-      }
-      console.error("Failed to fetch/create user:", response.status);
-      setCurrentUser(null);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      setCurrentUser(null);
-    }
-  };
-
   useEffect(() => {
+    if (!isLoaded) return;
     if (!clerkUser) {
       setCurrentUser(null);
       return;
     }
-    fetchOrCreateUser();
-  }, [clerkUser, isLoaded]);
+    const fetchOrCreateUser = async () => {
+      if (!clerkUser?.id) {
+        console.error("No Clerk user ID");
+        setCurrentUser(null);
+        return;
+      }
 
-  if (isLoaded && !isSignedIn) return null;
+      try {
+        // Call /users/me which will auto-create the user via getUserContext() if they don't exist
+        const response = await fetch(`${API_BASE}/users/me`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
+          },
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("LANDING HEADER: ", data);
+          if (data) {
+            setCurrentUser(data as PrismaUser);
+            return;
+          }
+        }
+        console.error("Failed to fetch/create user:", response.status);
+        setCurrentUser(null);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        setCurrentUser(null);
+      }
+    };
+    fetchOrCreateUser();
+  }, [clerkUser, isLoaded, setCurrentUser]);
 
   return (
     <header className="border-b">
@@ -145,7 +137,7 @@ export function Header() {
               >
                 Dashboard <ArrowRight />
               </Button>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </>
           ) : (
             <>

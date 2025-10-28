@@ -48,6 +48,7 @@ export interface TicketCategory {
   updatedAt: Date;
   defaultAssignee?: PrismaUser | null;
   marketCenter?: MarketCenter;
+  ticketCount?: number;
 }
 export interface TicketHistory {
   id: string;
@@ -219,6 +220,7 @@ export interface MarketCenter {
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
+  totalTickets?: number;
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 

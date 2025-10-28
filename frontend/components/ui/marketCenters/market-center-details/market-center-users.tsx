@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -17,25 +11,22 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import AddTeamMemberModal from "@/components/ui/marketCenters/market-center-add-user";
 import { UserListItem } from "@/components/ui/list-item/user-list-item";
-// import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import type { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
-type UpdateUserForm = {
-  marketCenter: MarketCenter;
-  role: UserRole;
-  name: string;
-  email: string;
-};
+// type UpdateUserForm = {
+//   marketCenter: MarketCenter;
+//   role: UserRole;
+//   name: string;
+//   email: string;
+// };
 
 export default function MarketCenterUsers({
   marketCenter,
@@ -63,7 +54,6 @@ export default function MarketCenterUsers({
     setUserToRemove(user);
     setShowRemoveUserForm(true);
   };
-
 
   const sendUserUpdateNotification = async (
     data: PrismaUser,

@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import EditUserProfile from "@/components/account/edit-user-profile";
 import NotificationPreferences from "@/components/account/notification-preferences";
@@ -11,10 +10,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs/base-tabs";
-
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
-import { useFetchOneUser } from "@/hooks/use-users";
+import { useFetchOneUserByEmail } from "@/hooks/use-users";
 import { PrismaUser } from "@/lib/types";
 import { BellRing, History, UserCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,14 +23,16 @@ export default function AccountLayout() {
 
   const router = useRouter();
   const { currentUser } = useStore();
+  const { user: clerkUser } = useUser();
 
-  const { data: userData, isLoading: userLoading } = useFetchOneUser(
-    currentUser?.id
-  );
+  const { data: userData, isLoading: userLoading } = useFetchOneUserByEmail({
+    email: currentUser?.email,
+    clerkId: clerkUser?.id,
+  });
   const user: PrismaUser = userData ?? {};
 
   const isCurrentUserProfile =
-    currentUser?.id === user?.id && currentUser?.auth0Id === user?.auth0Id;
+    currentUser?.email === user?.email && clerkUser?.id === user?.clerkId;
 
   const invalidateUserQuery = queryClient.invalidateQueries({
     queryKey: ["user-profile", user?.id],
@@ -47,37 +47,6 @@ export default function AccountLayout() {
     router.replace(`?${params.toString()}`);
   };
 
-  const getAuth0AccessToken = useCallback(async () => {
-    if (process.env.NODE_ENV === "development") return "local";
-    return await getAccessToken();
-  }, []);
-
-  const fetchManagementToken = useCallback(async () => {
-    if (!isCurrentUserProfile) {
-      throw new Error("Not authorized to update this profile");
-    }
-    try {
-      const accessToken = await getAuth0AccessToken();
-      if (!accessToken) throw new Error("No access token available");
-      const response = await fetch("/api/admin/managementToken", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ role: "ADMIN" }),
-      });
-      if (!response.ok) {
-        throw new Error(response.statusText || "Failed to fetch token");
-      }
-      const data = await response.json();
-      return data.managementToken;
-    } catch (error) {
-      console.error("Failed to fetch management token: ", error);
-      return null;
-    }
-  }, []);
-  // console.log("USER PROFILE", user);
   return (
     <div className="space-y-6">
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
@@ -100,8 +69,6 @@ export default function AccountLayout() {
           <EditUserProfile
             user={user}
             isCurrentUserProfile={isCurrentUserProfile}
-            fetchManagementToken={fetchManagementToken}
-            getAuth0AccessToken={getAuth0AccessToken}
             invalidateUserQuery={invalidateUserQuery}
           />
         </TabsContent>
@@ -125,7 +92,6 @@ export default function AccountLayout() {
         <TabsContent value="settings">
           <NotificationPreferences
             user={user}
-            getAuth0AccessToken={getAuth0AccessToken}
             invalidateUserQuery={invalidateUserQuery}
           />
         </TabsContent>

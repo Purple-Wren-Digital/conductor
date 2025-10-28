@@ -1,6 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
 import { PrismaUser, UserRole, UserWithStats } from "@/lib/types";
-import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 // GET ALL USERS
@@ -9,27 +8,27 @@ type SearchUsersQuery = {
   queryParams: URLSearchParams;
   role?: UserRole;
   marketCenterId?: string;
+  clerkId?: string;
 };
 
 export function useFetchAllUsers({
   usersQueryKey,
   queryParams,
   role,
+  clerkId,
 }: SearchUsersQuery) {
-  const { user: clerkUser } = useUser();
-
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: async () => {
       if (role !== "ADMIN")
         throw new Error("Must be an admin to view all users");
-      if (!clerkUser?.id) throw new Error("Not authenticated");
+      if (!clerkId) throw new Error("Not authenticated");
       try {
         const response = await fetch(
           `${API_BASE}/users/search?${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${clerkId}`,
             },
           }
         );
@@ -54,7 +53,7 @@ export function useFetchAllUsers({
         return { users: [] as UserWithStats[] };
       }
     },
-    enabled: role === "ADMIN",
+    enabled: !!clerkId && role === "ADMIN",
   });
 }
 
@@ -64,21 +63,20 @@ export function useFetchUsersWithinMarketCenter({
   queryParams,
   role,
   marketCenterId,
+  clerkId,
 }: SearchUsersQuery) {
-  const { user: clerkUser } = useUser();
-
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: async () => {
+      if (!clerkId) throw new Error("Not authenticated");
       if (role === "AGENT" || !marketCenterId)
         throw new Error("Must be an admin or staff to view team members");
-      if (!clerkUser?.id) throw new Error("Not authenticated");
       try {
         const response = await fetch(
           `${API_BASE}/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${clerkId}`,
             },
           }
         );
@@ -101,29 +99,58 @@ export function useFetchUsersWithinMarketCenter({
         return { users: [] as UserWithStats[] };
       }
     },
-    enabled: !!marketCenterId && role !== "AGENT",
+    enabled: !!clerkId && !!marketCenterId && role !== "AGENT",
   });
 }
 
 // FETCH USER
-export function useFetchOneUser(id?: string) {
-  const { user: clerkUser } = useUser();
-
+export function useFetchOneUser({
+  id,
+  clerkId,
+}: {
+  id?: string;
+  clerkId?: string;
+}) {
   return useQuery({
     queryKey: ["user-profile", id],
     queryFn: async () => {
-      if (!id) return {};
-      if (!clerkUser?.id) throw new Error("Not authenticated");
+      if (!clerkId) throw new Error("Not authenticated");
+
       const response = await fetch(`${API_BASE}/users/${id}`, {
         headers: {
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${clerkId}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch user");
       const data = await response.json();
       return data?.user;
     },
-    enabled: !!id && !!clerkUser?.id,
+    enabled: !!id && !!clerkId,
   });
 }
 
+
+export function useFetchOneUserByEmail({
+  email,
+  clerkId,
+}: {
+  email?: string;
+  clerkId?: string;
+}) {
+  return useQuery({
+    queryKey: ["user-profile", email],
+    queryFn: async () => {
+      if (!clerkId) throw new Error("Not authenticated");
+
+      const response = await fetch(`${API_BASE}/users/email/${email}`, {
+        headers: {
+          Authorization: `Bearer ${clerkId}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch user");
+      const data = await response.json();
+      return data?.user;
+    },
+    enabled: !!email && !!clerkId,
+  });
+}

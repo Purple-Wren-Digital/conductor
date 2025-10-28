@@ -10,16 +10,14 @@ import { Mailbox, UserPlus, Users } from "lucide-react";
 import UserManagement from "./user-management";
 import { useRouter, useSearchParams } from "next/navigation";
 import UserInvitationManagement from "./user-invitation-management";
-import { Card, CardHeader, CardTitle } from "../card";
 import { useUserRole } from "@/hooks/use-user-role";
-import { Button } from "../button";
 
 export default function UserManagementTabs() {
   const router = useRouter();
   const { permissions } = useUserRole();
 
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") ?? "active";
+  const tab = searchParams.get("tab") ?? "users";
 
   const handleTabChange = (newTab: string) => {
     const params = new URLSearchParams(searchParams);
@@ -34,19 +32,19 @@ export default function UserManagementTabs() {
           <Users className="h-4 w-4" />
           Users
         </TabsTrigger>
-        <TabsTrigger value="invitations" className="flex items-center gap-2">
+        {/* <TabsTrigger value="invitations" className="flex items-center gap-2">
           <Mailbox className="h-4 w-4" />
           User Invitations
-        </TabsTrigger>
+        </TabsTrigger> */}
       </TabsList>
 
       <TabsContent value="users">
         {permissions?.canManageAllUsers && <UserManagement />}
       </TabsContent>
 
-      <TabsContent value="invitations">
+      {/* <TabsContent value="invitations">
         {permissions?.canManageAllUsers && <UserInvitationManagement />}
-      </TabsContent>
+      </TabsContent> */}
     </Tabs>
   );
 }

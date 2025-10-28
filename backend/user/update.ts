@@ -22,7 +22,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     expose: true,
     method: "PUT",
     path: "/users/:id/update",
-    auth: false,
+    auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
@@ -30,7 +30,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     // Permission checks
     const isEditingSelf = userContext?.userId === req.id;
     const canModifyUsers = await canManageTeam(userContext);
-
     if (!isEditingSelf && !canModifyUsers) {
       throw APIError.permissionDenied(
         "Insufficient permissions to update other users"
@@ -83,6 +82,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
 
     if (
       !isEditingSelf &&
+      req?.role &&
       req.role !== existingUser?.role &&
       userContext?.role === "ADMIN"
     ) {
@@ -102,7 +102,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
 
     if (
       !isEditingSelf &&
-      req.isActive !== undefined &&
+      req?.isActive !== undefined &&
       userContext?.role === "ADMIN"
     ) {
       updateUserData.isActive = req.isActive;
@@ -110,16 +110,17 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         userId: req.id,
         marketCenterId: marketCenterId,
         action: "UPDATE",
-        field: "isActive",
-        previousValue: existingUser.isActive,
-        newValue: req.isActive,
+        field: req.isActive === true ? "Activated" : "Deactivated",
+        previousValue:
+          existingUser?.isActive === true ? "Active" : "Not Active",
+        newValue: req.isActive === true ? "Active" : "Not Active",
         snapshot: existingUser,
         changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
 
-    if (req.name !== existingUser?.name) {
+    if (req?.name && req.name !== existingUser?.name) {
       updateUserData.name = req.name;
       userHistoryData.push({
         userId: req.id,
@@ -134,8 +135,8 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       });
     }
 
-    // TODO: update email in Auth0 for existing user as well
-    // if (req.email !== existingUser.email) {
+    // TODO: update email in CLERK for existing user as well
+    // if (req?.email && req.email !== existingUser.email) {
     //   updateUserData.email = req.email;
     //   userHistoryData.push({
     //     userId: req.id,
@@ -153,12 +154,12 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.invalidArgument("No fields to update");
     }
 
-    const [updatedUser] = await prisma.$transaction([
+    const [updatedUser, userHistory] = await prisma.$transaction([
       prisma.user.update({
         where: { id: req.id },
         data: updateUserData,
         include: {
-          marketCenter: true,
+          marketCenter: req?.isActive ?? true,
         },
       }),
       prisma.userHistory.createMany({

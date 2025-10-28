@@ -1,5 +1,13 @@
 "use client";
 
+import { useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,20 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import type { NotificationPreferences, PrismaUser } from "@/lib/types";
-import { useState } from "react";
-import { Label } from "../ui/label";
-import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/api/utils";
-import { Separator } from "../ui/separator";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "../ui/accordion";
+
 // import { useFetchNotificationPreferences } from "@/hooks/use-user-notifications";
 
 export default function NotificationPreferences({
@@ -125,19 +126,19 @@ export default function NotificationPreferences({
       ? updateNotificationPreferences.filter((p) => p.category === "ACTIVITY")
       : null;
 
-  const ticketActivity =
-    notificationActivity && notificationActivity.length > 0
-      ? notificationActivity.filter((p) =>
-          p.type.toLowerCase().includes("ticket")
-        )
-      : null;
+  // const ticketActivity =
+  //   notificationActivity && notificationActivity.length > 0
+  //     ? notificationActivity.filter((p) =>
+  //         p.type.toLowerCase().includes("ticket")
+  //       )
+  //     : null;
 
-  const marketCenterActivity =
-    notificationActivity && notificationActivity.length > 0
-      ? notificationActivity.filter((p) =>
-          p.type.toLowerCase().includes("market center")
-        )
-      : null;
+  // const marketCenterActivity =
+  //   notificationActivity && notificationActivity.length > 0
+  //     ? notificationActivity.filter((p) =>
+  //         p.type.toLowerCase().includes("market center")
+  //       )
+  //     : null;
 
   const notificationMarketing =
     updateNotificationPreferences && updateNotificationPreferences.length > 0
@@ -517,25 +518,25 @@ export default function NotificationPreferences({
             </CardContent>
           </Card>
         </div>
-        {/* ACTIVITY - TICKET AND MARKET CENTER */}
+        {/* ACTIVITY - TICKETS AND COMMENTS */}
         <div className="md:col-span-2 space-y-6">
           {/* TICKET */}
           <Card className="flex flex-col gap-2 h-fit">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="flex flex-col gap-2">
-                <CardTitle className="text-lg">Ticket Activity</CardTitle>
+                <CardTitle className="text-lg">App Activity</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {ticketActivity &&
-                ticketActivity.map((pref) => {
-                  const label = pref.type.split(" ").slice(1).join(" ");
+              {notificationActivity &&
+                notificationActivity.map((pref) => {
+                  // const label = pref.type.split(" ").slice(1).join(" ");
                   return (
                     <Accordion key={pref.type} type="single" collapsible>
                       <AccordionItem value={pref.type}>
                         <AccordionTrigger>
                           <Label className="font-semibold capitalize">
-                            {label}
+                            {pref.type}
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
@@ -578,7 +579,7 @@ export default function NotificationPreferences({
           </Card>
 
           {/* MARKET CENTER */}
-          <Card className="flex flex-col gap-2 h-fit">
+          {/* <Card className="flex flex-col gap-2 h-fit">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="flex flex-col gap-2">
                 <CardTitle className="text-lg">
@@ -635,7 +636,7 @@ export default function NotificationPreferences({
                   );
                 })}
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>

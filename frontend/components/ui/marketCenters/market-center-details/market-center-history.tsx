@@ -27,7 +27,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 // TODO export table to computer - excel/google sheets ??
 
-
 export default function MarketCenterHistory({
   marketCenterId,
 }: {
@@ -53,7 +52,7 @@ export default function MarketCenterHistory({
   );
   const marketCenterHistoryQueryKey = useMemo(
     () => ["market-center-history", marketCenterId, queryKeyParams] as const,
-    [queryKeyParams]
+    [marketCenterId, queryKeyParams]
   );
   const { data: marketCenterHistoryData, isLoading } =
     useFetchMarketCenterHistory({

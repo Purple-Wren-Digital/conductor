@@ -100,7 +100,11 @@ export function AppSidebar({
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">
                   {currentUser?.role && currentUser?.role?.toLowerCase()} •{" "}
-                  {currentUser?.marketCenter?.name || "Global"}
+                  {currentUser?.role === "ADMIN"
+                    ? "Global"
+                    : currentUser?.marketCenter?.name
+                      ? currentUser?.marketCenter?.name
+                      : "No Market Center Assigned"}
                 </p>
               </div>
             )}

@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User } from "../user/types";
-import { getAuthData } from "~encore/auth";
+import { getUserContext } from "../auth/user-context";
 
 export interface GetUserRequest {
   id: string;
@@ -19,9 +19,10 @@ export const get = api<GetUserRequest, GetUserResponse>(
     auth: true,
   },
   async (req) => {
-    const authData = await getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("user not authenticated");
+    const userContext = await getUserContext();
+
+    if (!userContext) {
+      throw APIError.unauthenticated("User not authenticated");
     }
     const user = await prisma.user.findUnique({
       where: { id: req.id },

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ListItem } from "./base-list-item";
 import type { MarketCenter } from "@/lib/types";
-import { Calendar, CircleMinus, Tags, Users } from "lucide-react";
+import { Calendar, CircleMinus, Tags, Ticket, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export function MarketCenterListItem({
@@ -49,6 +49,14 @@ export function MarketCenterListItem({
               : "0"
           }`,
           icon: <Tags className="h-3 w-3" />,
+        },
+        {
+          label: `Tickets ${
+            marketCenter?.totalTickets
+              ? String(marketCenter?.totalTickets)
+              : "0"
+          }`,
+          icon: <Ticket className="h-3 w-3" />,
         },
         {
           label: `Created ${format(new Date(marketCenter.createdAt), "PP")}`,

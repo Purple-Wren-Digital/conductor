@@ -33,6 +33,7 @@ import {
   Hash,
   History,
   Tags,
+  Ticket,
   Users,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -68,6 +69,7 @@ export default function MarketCenterDetailView({
   const totalCategories = marketCenter?.ticketCategories
     ? marketCenter?.ticketCategories.length
     : 0;
+  const totalTickets = marketCenter?.totalTickets ?? 0;
 
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [marketCenterFormData, setMarketCenterFormData] =
@@ -87,7 +89,6 @@ export default function MarketCenterDetailView({
     params.set("tab", newTab);
     router.replace(`?${params.toString()}`);
   };
-
 
   const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
     UsersResponse,
@@ -151,7 +152,7 @@ export default function MarketCenterDetailView({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="h-4 w-4 text-muted-foreground" />
                 <p className="text-muted-foreground">ID:</p>
@@ -170,6 +171,11 @@ export default function MarketCenterDetailView({
                 <Tags className="h-4 w-4 text-muted-foreground" />
                 <p className="text-muted-foreground">Categories:</p>
                 <p className="font-medium">{totalCategories}</p>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Ticket className="h-4 w-4 text-muted-foreground" />
+                <p className="text-muted-foreground">Tickets:</p>
+                <p className="font-medium">{totalTickets}</p>
               </div>
             </div>
           </div>

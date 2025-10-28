@@ -1,9 +1,7 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Prisma } from "@prisma/client";
-import type { TicketStatus, Urgency } from "../ticket/types";
-import type { UserRole } from "../user/types";
-// import type { TicketStatus, Urgency, UserRole } from "@prisma/client";
+import { defaultNotificationPreferences } from "../utils";
 
 export interface SeedResponse {
   message: string;
@@ -24,7 +22,15 @@ export const seedData = api<void, SeedResponse>(
     await prisma.comment.deleteMany({});
     await prisma.ticket.deleteMany({});
     await prisma.ticketCategory.deleteMany({});
+    // await prisma.teamInvitation.deleteMany({});
+
+    await prisma.userHistory.deleteMany({});
+    await prisma.notification.deleteMany({});
+    await prisma.notificationPreferences.deleteMany({});
+    await prisma.userSettings.deleteMany({});
     await prisma.user.deleteMany({});
+
+    await prisma.marketCenterHistory.deleteMany({});
     await prisma.marketCenter.deleteMany({});
 
     const now = new Date();
@@ -53,77 +59,129 @@ export const seedData = api<void, SeedResponse>(
           email: "alice.agent@kw.com",
           name: "Alice Johnson",
           role: "AGENT",
-          clerkId: "clerk-u01",
-          marketCenterId: undefined,
+          clerkId: "seed-01",
+          marketCenterId: mc[0]?.id,
         },
         {
           email: "bob.staff@kw.com",
           name: "Bob Smith",
           role: "STAFF",
-          clerkId: "clerk-u02",
+          clerkId: "seed-02",
           marketCenterId: mc[0]?.id,
         },
         {
           email: "clara.admin@kw.com",
           name: "Clara Davis",
           role: "ADMIN",
-          clerkId: "clerk-u03",
-          marketCenterId: mc[0]?.id,
+          clerkId: "seed-03",
+          marketCenterId: undefined,
         },
         {
           email: "dan.agent@kw.com",
           name: "Dan Williams",
           role: "AGENT",
-          clerkId: "clerk-u04",
+          clerkId: "seed-04",
           marketCenterId: mc[0]?.id,
         },
         {
           email: "emma.staff@kw.com",
           name: "Emma Brown",
           role: "STAFF",
-          clerkId: "clerk-u05",
+          clerkId: "seed-05",
           marketCenterId: mc[1]?.id,
         },
         {
           email: "frank.agent@kw.com",
           name: "Frank Miller",
           role: "AGENT",
-          clerkId: "clerk-u06",
+          clerkId: "seed-06",
           marketCenterId: mc[1]?.id,
         },
         {
           email: "gina.staff@kw.com",
           name: "Gina Wilson",
           role: "STAFF",
-          clerkId: "clerk-u07",
+          clerkId: "seed-07",
           marketCenterId: mc[1]?.id,
         },
         {
           email: "henry.agent@kw.com",
           name: "Henry Clark",
           role: "AGENT",
-          clerkId: "clerk-u08",
+          clerkId: "seed-08",
           marketCenterId: mc[2]?.id,
         },
         {
           email: "isla.staff@kw.com",
           name: "Isla Martinez",
           role: "STAFF",
-          clerkId: "clerk-u09",
+          clerkId: "seed-09",
           marketCenterId: mc[2]?.id,
         },
         {
           email: "jack.agent@kw.com",
           name: "Jack Lee",
           role: "AGENT",
-          clerkId: "clerk-u10",
+          clerkId: "seed-10",
           marketCenterId: mc[2]?.id,
+        },
+        {
+          email: "kathryn.hann@kw.com",
+          name: "Kathryn Hann",
+          role: "ADMIN",
+          clerkId: "seed-11",
+          marketCenterId: undefined,
         },
       ],
     });
     const agents = createdUsers.filter((u) => u.role === "AGENT");
     const staff = createdUsers.filter((u) => u.role === "STAFF");
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
+
+    // Create User Default settings
+    // const setUpUserSettings = createdUsers.forEach(async (user, index) => {
+    //   await prisma.user.update({
+    //     where: { id: user?.id },
+    //     data: {
+    //       userSettings: {
+    //         create: {
+    //           notificationPreferences: {
+    //             create: defaultNotificationPreferences,
+    //           },
+    //         },
+    //       },
+    //     },
+    //     include: {
+    //       userSettings: true,
+    //     },
+    //   });
+
+    //   await prisma.notification.create({
+    //     data: {
+    //       userId: user?.id,
+    //       channel: "IN_APP",
+    //       category: "ACCOUNT",
+    //       priority: "HIGH",
+    //       type: "General",
+    //       title: "Welcome to Conductor",
+    //       body: "Take a moment to look around and get familiar",
+    //       deliveredAt: new Date(),
+    //     },
+    //   });
+
+    // await prisma.notification.create({
+    //   data: {
+    //     userId: user?.id,
+    //     channel: "EMAIL",
+    //     category: "ACCOUNT",
+    //     priority: "HIGH",
+    //     type: "General",
+    //     title: "Welcome to Conductor",
+    //     body: "Take a moment to look around and get familiar",
+    //     deliveredAt: new Date(),
+    //   },
+    // });
+    // });
 
     // Create ticket categories
     const categoryNames = [
@@ -391,6 +449,7 @@ export const seedData = api<void, SeedResponse>(
     }
 
     await prisma.comment.createMany({ data: comments });
+
     console.log("Seed completed.");
 
     return {

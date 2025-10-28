@@ -104,13 +104,26 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
       prisma.marketCenter.count({ where }),
     ]);
 
-    const formattedMarketCenters = marketCenters.map((mc) => ({
-      ...mc,
-      users: mc.users.map((user) => ({
-        ...user,
-        name: user.name ?? "",
-      })),
-    }));
+    const formattedMarketCenters = await Promise.all(
+      marketCenters.map(async (mc) => {
+        const totalTickets = await prisma.ticket.count({
+          where: {
+            category: {
+              marketCenterId: mc.id,
+            },
+          },
+        });
+
+        return {
+          ...mc,
+          totalTickets,
+          users: mc.users.map((user) => ({
+            ...user,
+            name: user.name ?? "",
+          })),
+        };
+      })
+    );
     return { marketCenters: formattedMarketCenters, total: total };
   }
 );

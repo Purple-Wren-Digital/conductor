@@ -45,18 +45,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchOneUser } from "@/hooks/use-users";
 
-type UserDetailViewProps = {
-  id: string;
-};
+type UserDetailViewProps = { id: string };
 
 export default function UserDetailView({ id }: UserDetailViewProps) {
-  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
 
-  const { data: userData, isLoading: userLoading } = useFetchOneUser(id);
-  const user: PrismaUser = userData ?? ({} as PrismaUser);
-  const marketCenter: MarketCenter = userData?.marketCenter ?? {};
+  const { data: userData, isLoading: userLoading } = useFetchOneUser({
+    id: id,
+    clerkId: clerkUser?.id,
+  });
+  const user: PrismaUser = userData ?? {};
+  const marketCenter: MarketCenter = user?.marketCenter ?? ({} as MarketCenter);
 
   // EDIT USER STATES
   const [showEditUserForm, setShowEditUserForm] = useState(false);
@@ -110,82 +111,83 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     return Object.keys(errors).length === 0;
   };
 
-  const updateUserMutation = useMutation({
-    mutationFn: async (userId?: string) => {
-      if (!userId) throw new Error("Missing editing user ID");
+  const updateUserInPrisma = async (userId: string, quickEdit: boolean) => {
+    if (!clerkUser?.id) throw new Error("Missing auth token");
+    let body: any = {};
+    if (quickEdit) {
+      body.role = formData.role;
+    } else {
+      body.name = `${formData.firstName} ${formData.lastName}`;
+      body.email = formData.email;
+      body.role = formData.role;
 
-      const accessToken = clerkUser?.id || "";
+      body.marketCenterId = formData?.marketCenterId;
+    }
+    if (!body) throw new Error("Nothing to update");
+    try {
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`,
         },
-        body: JSON.stringify({
-          name:
-            formData?.firstName && formData?.lastName
-              ? `${formData.firstName} ${formData.lastName}`
-              : user?.name
-                ? user.name
-                : null,
-          email: formData?.email
-            ? formData.email
-            : user?.email
-              ? user.email
-              : null,
-          role: formData.role,
-        }),
+        body: JSON.stringify(body),
       });
       return response;
     } catch (error) {
-      console.error("Prisma - Failed tfo update user", error);
+      console.error("Prisma - Failed to update user", error);
       return null;
     }
   };
 
-  const updateUserInAuth0 = async (auth0Id: string) => {
-    if (!permissions?.canManageTeam || !auth0Id) {
-      throw new Error("Not authorized to update this profile");
-    }
-    try {
-      const token = await fetchManagementToken();
-      if (!token) throw new Error("No token available");
+  // const updateUserInClerk = async (clerkId: string) => {
+  //   if (!isCurrentUserProfile || !clerkId) {
+  //     throw new Error("Not authorized to update this profile");
+  //   }
+  //   try {
+  //     const token = "<CLERK_BACKEND_SECRET_TOKEN>"; // process.env.CLERK_BACKEND_SECRET_TOKEN
+  //     if (!token) throw new Error("No token available");
 
-      const response = await fetch("/api/admin/auth0Users", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: auth0Id,
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-        }),
-      });
-      if (!response || !response.ok) throw new Error("Response not okay");
-      const data = await response.json();
-      if (!data) throw new Error("No data from auth0");
-      return true;
-    } catch (error) {
-      console.error("AUTH0 - Failed to update user", error);
-      return false;
-    }
-  };
-
+  //     const response = await fetch(
+  //       `https://api.clerk.com/v1/users/${clerkId}`,
+  //       {
+  //         method: "PATCH",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           // id: clerkId,
+  //           // name: `${formData.firstName} ${formData.lastName}`,
+  //           first_name: formData.firstName,
+  //           last_name: formData.lastName,
+  //           // notify_primary_email_address_changed:
+  //           // primary_email_address_id: formData.email,
+  //         }),
+  //       }
+  //     );
+  //     if (!response || !response.ok) throw new Error("Response not okay");
+  //     const data = await response.json();
+  //     if (!data) throw new Error("No data from auth0");
+  //     return true;
+  //   } catch (error) {
+  //     console.error("AUTH0 - Failed to update user", error);
+  //     return false;
+  //   }
+  // };
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
-    { userId: string; auth0Id: string }
+    { userId: string; clerkId: string; quickEdit: boolean }
   >({
-    mutationFn: async ({ userId, auth0Id }) => {
-      if (!userId || !auth0Id) throw new Error("Missing User ID");
+    mutationFn: async ({ userId, clerkId, quickEdit }) => {
+      if (!userId || !clerkId) throw new Error("Missing User ID");
 
-      const auth0Response = await updateUserInAuth0(auth0Id);
-      if (!auth0Response) {
-        throw new Error("Auth0 Error");
-      }
-      const prismaResponse = await updateUserInPrisma(userId);
+      // const clerkResponse = await updateUserInClerk(clerkId);
+      // if (!clerkResponse) {
+      //   throw new Error("Clerk Error");
+      // }
+      const prismaResponse = await updateUserInPrisma(userId, quickEdit);
       if (!prismaResponse) {
         throw new Error("Prisma Error");
       }
@@ -210,61 +212,33 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     },
   });
 
-  // const updateUserMutation = useMutation({
-  //   mutationFn: async (userId?: string) => {
-  //     if (!userId) throw new Error("Missing editing user ID");
-
-  //     const accessToken = await getAuth0AccessToken();
-  //     const response = await fetch(`/api/users/${userId}/update`, {
-  //       method: "PUT",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${accessToken}`,
-  //       },
-  //       body: JSON.stringify({
-  //         name: `${formData?.firstName} ${formData?.lastName}`,
-  //         email: formData?.email,
-  //         role: formData?.role,
-  //       }),
-  //     });
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json().catch(() => ({}));
-  //       throw new Error(errorData.message || `Failed to update user`);
-  //     }
-  //   },
-  //   onSuccess: async () => {
-  //     await queryClient.invalidateQueries({
-  //       queryKey: ["user-profile", id],
-  //     });
-  //     resetFormAndClose();
-  //     toast.success(`${user?.name || "User"} was updated`);
-  //   },
-  //   onError: (error) => {
-  //     console.error("Failed to update user", error);
-  //     toast.error("Failed to update user");
-  //   },
-  // });
-
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!permissions?.canManageTeam || !canUpdateTeam) {
+    if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     if (!validateForm()) return;
     setIsSubmitting(true);
-    updateUserMutation.mutate({ userId: user?.id, auth0Id: user?.auth0Id });
+    updateUserMutation.mutate({
+      userId: user?.id,
+      clerkId: user?.clerkId,
+      quickEdit: false,
+    });
   };
 
   const handleRoleChange = async () => {
-    if (!permissions?.canManageTeam || !canUpdateTeam) {
+    if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     setIsSubmitting(true);
-    updateUserMutation.mutate({ userId: user?.id, auth0Id: user?.auth0Id });
+    updateUserMutation.mutate({
+      userId: user?.id,
+      clerkId: user?.clerkId,
+      quickEdit: true,
+    });
     setIsSubmitting(false);
   };
 
@@ -388,9 +362,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </div>
           <div className="space-y-10">
             <p className="text-md font-bold m-4 ml-2">Users</p>
-            <UserHistoryTable userId={id} />
+            <UserHistoryTable userId={user?.id} />
             <p className="text-md font-bold m-4 ml-2">Tickets</p>
-            <UserTicketHistoryTable userId={id} username={user?.name ?? ""} />
+            <UserTicketHistoryTable
+              userId={user?.id}
+              username={user?.name ?? ""}
+            />
           </div>
         </section>
       </div>

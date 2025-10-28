@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -217,7 +217,6 @@ export default function MarketCenterManagement() {
     (selectedUsers && selectedUsers?.length > 0) ||
     orderDir !== "desc" ||
     sortBy !== "updatedAt";
-
 
   const openCreateModal = () => {
     setEditingMarketCenter(null);

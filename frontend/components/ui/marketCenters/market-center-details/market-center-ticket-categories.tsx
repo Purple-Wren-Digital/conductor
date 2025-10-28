@@ -74,7 +74,6 @@ export default function MarketCenterTicketCategories({
   const ticketCategories: TicketCategory[] =
     marketCenter?.ticketCategories ?? ([] as TicketCategory[]);
 
-
   // const sendUserUpdateNotification = async (
   //   data: PrismaUser,
   //   userUpdate: "added" | "removed"
@@ -372,12 +371,18 @@ export default function MarketCenterTicketCategories({
                     </Tooltip>
 
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span>
+                      <span
+                        className={`${category?.defaultAssignee && !category?.defaultAssignee?.isActive && "text-red-800"}`}
+                      >
+                        Default:{" "}
                         {category?.defaultAssignee?.name
-                          ? `Default: ${category?.defaultAssignee?.name}`
-                          : "No default user"}
+                          ? `${category?.defaultAssignee?.name}`
+                          : "None"}
+                        {category?.defaultAssignee &&
+                          !category?.defaultAssignee?.isActive &&
+                          " (Deactivated)"}
                       </span>
-                      <span>Tickets: 0</span>
+                      <span>Tickets: {category.ticketCount}</span>
                       <span>
                         Created on{" "}
                         {category?.createdAt

@@ -37,13 +37,49 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
       where,
       include: {
         users: true,
-        ticketCategories: true,
+        ticketCategories: {
+          include: {
+            defaultAssignee: true,
+            _count: {
+              select: { tickets: true },
+            },
+          },
+        },
       },
     });
     if (!marketCenter) {
       throw APIError.notFound("Market Center not found");
     }
 
-    return { marketCenter: marketCenter } as GetMarketCenterResponse;
+    const totalTickets = await prisma.ticket.count({
+      where: {
+        category: {
+          marketCenterId: req.id,
+        },
+      },
+    });
+
+    const formattedMarketCenter = {
+      ...marketCenter,
+      totalTickets: totalTickets,
+      ticketCategories: (marketCenter.ticketCategories || []).map(
+        (category) => ({
+          ...category,
+          name: category.name ?? "",
+          description: category.description ?? "",
+          defaultAssignee: category.defaultAssignee
+            ? {
+                ...category.defaultAssignee,
+                name: category.defaultAssignee.name ?? "",
+              }
+            : null,
+          ticketCount: category._count?.tickets ?? 0,
+        })
+      ),
+    };
+
+    return {
+      marketCenter: formattedMarketCenter,
+    } as GetMarketCenterResponse;
   }
 );

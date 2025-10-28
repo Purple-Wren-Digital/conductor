@@ -12,23 +12,23 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/api/utils";
 import { PrismaUser } from "@/lib/types";
 import { Edit, Lock, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import UserInformation from "./user-information";
 
+// TODO:
+// (1) Update user in Clerk
+
 const EditUserProfile = ({
   user,
   isCurrentUserProfile,
-  fetchManagementToken,
-  getAuth0AccessToken,
   invalidateUserQuery,
 }: {
   user: PrismaUser;
   isCurrentUserProfile: boolean;
-  fetchManagementToken: () => Promise<any>;
-  getAuth0AccessToken: () => Promise<string>;
   invalidateUserQuery: Promise<void>;
 }) => {
   const prefilledData = {
@@ -87,12 +87,11 @@ const EditUserProfile = ({
 
   const updateUserInPrisma = async (userId: string) => {
     try {
-      const accessToken = await getAuth0AccessToken();
-      const response = await fetch(`/api/users/${userId}/update`, {
+      const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${user?.clerkId}`,
         },
         body: JSON.stringify({
           name: `${formData.firstName} ${formData.lastName}`,
@@ -106,49 +105,55 @@ const EditUserProfile = ({
     }
   };
 
-  const updateUserInAuth0 = async (auth0Id: string) => {
-    if (!isCurrentUserProfile || !auth0Id) {
-      throw new Error("Not authorized to update this profile");
-    }
-    try {
-      const token = await fetchManagementToken();
-      if (!token) throw new Error("No token available");
+  // const updateUserInClerk = async (clerkId: string) => {
+  //   if (!isCurrentUserProfile || !clerkId) {
+  //     throw new Error("Not authorized to update this profile");
+  //   }
+  //   try {
+  //     const token = "<CLERK_BACKEND_SECRET_TOKEN>"; // process.env.CLERK_BACKEND_SECRET_TOKEN
+  //     if (!token) throw new Error("No token available");
 
-      const response = await fetch("/api/admin/auth0Users", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: auth0Id,
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-        }),
-      });
-      if (!response || !response.ok) throw new Error("Response not okay");
-      const data = await response.json();
-      if (!data) throw new Error("No data from auth0");
-      return true;
-    } catch (error) {
-      console.error("AUTH0 - Failed to update user", error);
-      return false;
-    }
-  };
+  //     const response = await fetch(
+  //       `https://api.clerk.com/v1/users/${clerkId}`,
+  //       {
+  //         method: "PATCH",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           // id: clerkId,
+  //           // name: `${formData.firstName} ${formData.lastName}`,
+  //           first_name: formData.firstName,
+  //           last_name: formData.lastName,
+  //           // notify_primary_email_address_changed:
+  //           // primary_email_address_id: formData.email,
+  //         }),
+  //       }
+  //     );
+  //     if (!response || !response.ok) throw new Error("Response not okay");
+  //     const data = await response.json();
+  //     if (!data) throw new Error("No data from auth0");
+  //     return true;
+  //   } catch (error) {
+  //     console.error("AUTH0 - Failed to update user", error);
+  //     return false;
+  //   }
+  // };
 
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
-    { userId: string; auth0Id: string }
+    { userId: string; clerkId: string }
   >({
-    mutationFn: async ({ userId, auth0Id }) => {
-      if (!isCurrentUserProfile || !userId || !auth0Id)
+    mutationFn: async ({ userId, clerkId }) => {
+      if (!isCurrentUserProfile || !userId || !clerkId)
         throw new Error("Missing User ID");
 
-      const auth0Response = await updateUserInAuth0(auth0Id);
-      if (!auth0Response) {
-        throw new Error("Auth0 Error");
-      }
+      // const clerkResponse = await updateUserInClerk(clerkId);
+      // if (!clerkResponse) {
+      //   throw new Error("Clerk Error");
+      // }
       const prismaResponse = await updateUserInPrisma(userId);
       if (!prismaResponse) {
         throw new Error("Prisma Error");
@@ -189,58 +194,8 @@ const EditUserProfile = ({
     }
     updateUserMutation.mutate({
       userId: user?.id ?? "",
-      auth0Id: user?.auth0Id ?? "",
+      clerkId: user?.clerkId ?? "",
     });
-  };
-
-  const generatePasswordResetLink = async (auth0Id: string) => {
-    if (!isCurrentUserProfile) {
-      throw new Error("Not authorized to update this profile");
-    }
-    try {
-      const token = await fetchManagementToken();
-      if (!token) throw new Error("No token available");
-      const response = await fetch("/api/admin/passwordReset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ auth0Id: auth0Id }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to generate password reset link"
-        );
-      }
-      const data = await response.json();
-      console.log("Password Reset Data", data);
-      if (!data || !data?.ticket) {
-        throw new Error("No password reset link returned from Auth0");
-      }
-
-      return data.ticket;
-    } catch (error) {
-      console.error("Error generating password reset link:", error);
-      return null;
-    }
-  };
-
-  const handleResetRequest = async () => {
-    if (!isCurrentUserProfile || !user?.auth0Id) {
-      alert("Error: No user information available. Cannot reset password.");
-      return;
-    }
-    const resetLink = await generatePasswordResetLink(user.auth0Id);
-    if (resetLink) {
-      alert("Please check your email for the password reset link.");
-      // window.open(resetLink, "_blank");
-    } else {
-      alert("Error: Failed to generate password reset link.");
-    }
   };
 
   return (
@@ -360,6 +315,7 @@ const EditUserProfile = ({
         </CardContent>
       </Card>
 
+      {/* TODO: CLERK PASSWORD RESET */}
       <Card className="max-h-fit">
         <CardHeader className="flex flex-wrap flex-row items-center justify-between gap-4 ">
           <div className="flex flex-col gap-2">
@@ -374,8 +330,8 @@ const EditUserProfile = ({
           </div>
           <Button
             className="w-full sm:w-fit"
-            disabled={!isCurrentUserProfile || !user?.auth0Id}
-            onClick={handleResetRequest}
+            disabled //</CardHeader>={!isCurrentUserProfile || !user?.clerkId}
+            // onClick={handleResetRequest}
           >
             Send Reset Email
           </Button>

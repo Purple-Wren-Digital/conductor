@@ -94,38 +94,36 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
           role: req.role || "AGENT",
           isActive: true,
           clerkId: req.clerkId,
-          // auth0Id: req.auth0Id,
-          // userSettings: {
-          //   create: {},
-          // },
+          userSettings: {
+            create: {
+              notificationPreferences: {
+                create: defaultNotificationPreferences,
+              },
+            },
+          },
           marketCenter: req?.marketCenterId
             ? {
-                connect: { id: req.marketCenterId }, // relation connect
+                connect: { id: req.marketCenterId },
               }
             : undefined,
         },
         include: {
           userHistory: true,
-          // userSettings: true,
+          userSettings: true,
         },
       });
-      // let userSettingsDefault = undefined;
-      // if (newUser && newUser?.userSettings && newUser?.userSettings?.id) {
-      // const userSettingsDefault = await p.userSettings.update({
-      //   where: { id: newUser?.userSettings?.id },
-      //   data: {
-      //     notificationPreferences: {
-      //       create: defaultNotificationPreferences,
-      //     },
-      //   },
-      //   include: {
-      //     notificationPreferences: true,
-      //     user: false,
-      //   },
-      // });
-
-      //   userSettingsDefault = userSettingsUpdate ?? undefined;
-      // }
+      await prisma.notification.create({
+        data: {
+          userId: newUser?.id,
+          channel: "IN_APP",
+          category: "ACCOUNT",
+          priority: "HIGH",
+          type: "General",
+          title: "Welcome to Conductor",
+          body: "Take a moment to look around and get familiar",
+          deliveredAt: new Date(),
+        },
+      });
 
       const history = await p.userHistory.create({
         data: {
@@ -147,7 +145,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
         marketCenterAssignment,
       });
 
-      return { newUser, userSettingsDefault, history };
+      return { newUser, history };
     });
 
     if (!result || !result?.newUser) {

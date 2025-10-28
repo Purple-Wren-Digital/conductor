@@ -25,51 +25,8 @@ export default function DashboardLayout({
 
   const queryClient = useQueryClient();
 
-  const persistUserContext = async () => {
-    if (!clerkUser?.id) {
-      console.error("DashboardLayout: no Clerk user");
-      setCurrentUser(null);
-      return;
-    }
-
-    try {
-      // Call /users/me which will auto-create the user if they don't exist
-      const response = await fetch(`${API_BASE}/users/me`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) throw new Error("User not found");
-      const data = await response.json();
-      console.log("DASHBOARD LAYOUT: ", data);
-      if (data) {
-        setCurrentUser(data as PrismaUser);
-      } else {
-        throw new Error("User not found");
-      }
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      setCurrentUser(null);
-    }
-  };
-
-  // useEffect(() => {
-  //   if (!auth0User) {
-  //     console.error(
-  //       "DashboardLayout: no Auth0 user, cannot persist App Context"
-  //     );
-  //     return;
-  //   } else {
-  //     persistUserContext();
-  //   }
-  // }, [auth0User]);
-
   useEffect(() => {
-    // if (!isLoaded) return;
+    if (!isLoaded) return;
     if (isLoaded && !clerkUser) {
       console.error(
         "DashboardLayout: No Clerk user found, cannot persist App Context"
@@ -77,11 +34,38 @@ export default function DashboardLayout({
       setCurrentUser(null);
       return;
     }
-    persistUserContext();
-  }, [clerkUser, isLoaded]);
+    const persistUserContext = async () => {
+      if (!clerkUser?.id) {
+        console.error("DashboardLayout: no Clerk user");
+        setCurrentUser(null);
+        return;
+      }
 
-  // const { user: clerkUser, isLoaded, isSignedIn } = useUser();
-  if (isLoaded && !isSignedIn) return null;
+      try {
+        // Call /users/me which will auto-create the user if they don't exist
+        const response = await fetch(`${API_BASE}/users/me`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) throw new Error("User not found");
+        const data = await response.json();
+        if (data) {
+          setCurrentUser(data as PrismaUser);
+        } else {
+          throw new Error("User not found");
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        setCurrentUser(null);
+      }
+    };
+    persistUserContext();
+  }, [clerkUser, isLoaded, setCurrentUser]);
 
   const { data: notificationsData, isLoading: isNotificationsLoading } =
     useFetchAllUserNotifications({
@@ -193,14 +177,15 @@ export default function DashboardLayout({
                   className="w-8 h-8 rounded-full"
                 />
               )} */}
-              <Link
+              <UserButton />
+
+              {/* <Link
                 href="/auth/logout"
                 onClick={() => setCurrentUser(null)}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 Logout
-              </Link>
-              <UserButton afterSignOutUrl="/" />
+              </Link> */}
             </div>
           </div>
         </header>
