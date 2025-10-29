@@ -8,15 +8,8 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-
-type CreatedTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  creatorName: string;
-  creatorId: string;
-  createdOn: Date;
-  dueDate?: Date;
-};
+import { CreatedTicketNotificationProps } from "./types";
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const CreatedTicketNotification = ({
   ticketTitle,
@@ -63,7 +56,7 @@ const CreatedTicketNotification = ({
               You may view and manage your ticket by clicking the link below.
             </Text>
             <Button
-              href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
               View Ticket

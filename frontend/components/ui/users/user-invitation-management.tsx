@@ -3,9 +3,11 @@
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "@/context/store-provider";
+import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { InvitationUserListItem } from "@/components/ui/list-item/user-list-item-invitation";
 import {
   Select,
   SelectContent,
@@ -15,8 +17,8 @@ import {
 } from "@/components/ui/select";
 import CreateUser from "./create-user-form";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { OrderBy, UserRole, UserSortBy } from "@/lib/types";
-import { InvitationUserListItem } from "../list-item/user-list-item-invitation";
+import type { ClerkUser, ClerkUserUpdates } from "@/lib/clerk/types";
+import type { OrderBy, UserSortBy } from "@/lib/types";
 import {
   ArrowDown,
   ArrowDownUp,
@@ -28,9 +30,6 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { NewUserInvitationProps } from "@/packages/transactional/emails/UserInvitation";
 import {
   formatOrderBy,
   formatPaginationText,
@@ -38,36 +37,11 @@ import {
   orderByOptions,
   sortByUserOptions,
 } from "@/lib/utils";
-import { Badge } from "../badge";
-
-// TODO: Update how we invite users with Clerkjs
-
-type Auth0User = {
-  user_id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  user_metadata: {
-    created: Date | null;
-    createdBy: string;
-    invited: boolean;
-    invitedOn: Date | null;
-    accepted: boolean;
-    acceptedOn: Date | null;
-    role: UserRole;
-    marketCenterId: string | null;
-  };
-};
-
-type Auth0UserMetadataType = {
-  clerkId: string;
-  // auth0Id: string;
-  token: string;
-  invited?: boolean;
-  invitedOn?: Date;
-  accepted?: boolean;
-  acceptedOn?: Date;
-};
+import { useRouter } from "next/navigation";
+import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
+import { toast } from "sonner";
+import { API_BASE } from "@/lib/api/utils";
+import { useUser } from "@clerk/nextjs";
 
 type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
 const invitationStatusOptions: InvitationStatus[] = [
@@ -80,16 +54,16 @@ const invitationStatusOptions: InvitationStatus[] = [
 export default function UserInvitationManagement() {
   const router = useRouter();
 
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
-  const [newAuth0Users, setNewAuth0Users] = useState<any[]>([]);
-  const [totalAuth0Users, setTotalAuth0Users] = useState<number>(0);
+  const [clerkUsers, setClerkUsers] = useState<any[]>([]);
+  const [totalClerkUsers, setTotalClerkUsers] = useState<number>(0);
 
   const [selectedNewUsers, setSelectedNewUsers] = useState<any[]>([]);
   const [invitationStatus, setInvitationStatus] =
@@ -103,32 +77,11 @@ export default function UserInvitationManagement() {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const { currentUser } = useStore();
+  const { user: clerkUser } = useUser();
+
   const { permissions } = useUserRole();
 
-  const handleRefresh = async () => {
-    router.refresh();
-  };
-
-  const fetchManagementToken = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/managementToken", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role: currentUser?.role || "AGENT" }),
-      });
-      if (!response.ok) {
-        throw new Error(response.statusText || "Failed to fetch token");
-      }
-      const data = await response.json();
-      return data.managementToken;
-    } catch (error) {
-      console.error("Failed to fetch management token: ", error);
-      return null;
-    }
-  }, []);
-
+  // TODO: QUERY THE CLERK USERS FETCH
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append("invitationStatus", invitationStatus);
@@ -140,48 +93,6 @@ export default function UserInvitationManagement() {
     return params;
   }, [invitationStatus, sortBy, sortDir, itemsPerPage, currentPage]);
 
-  const fetchNewAuth0Users = useCallback(async () => {
-    if (!permissions?.canManageAllUsers) return;
-    setLoadingUsers(true);
-
-    try {
-      const token = await fetchManagementToken();
-      if (!token) {
-        throw new Error("No management token available");
-      }
-
-      const response = await fetch(
-        `/api/admin/auth0Users${queryParams && `?${queryParams.toString()}`}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      console.log("FRINT END RESPONSE", response);
-
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText ? response.statusText : "Failed to fetch users"
-        );
-      }
-      const data = await response.json();
-
-      setNewAuth0Users(data?.users ?? []);
-      setTotalAuth0Users(data?.total ?? 0);
-    } catch (error) {
-      console.error("Error fetching unverified users:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [queryParams, fetchManagementToken]);
-
-  useEffect(() => {
-    fetchNewAuth0Users();
-  }, [fetchNewAuth0Users]);
-
   const clearFilters = () => {
     setInvitationStatus("All");
     setSortBy("updatedAt");
@@ -191,104 +102,63 @@ export default function UserInvitationManagement() {
   const hasActiveFilters =
     invitationStatus !== "All" || sortBy !== "updatedAt" || sortDir !== "desc";
 
-  const generatePasswordResetLink = async (auth0Id: string, token: string) => {
+  const handleSelectUser = async (selectedUser: any, checked: boolean) => {
+    setSelectedNewUsers((prev) =>
+      checked
+        ? [...prev, selectedUser]
+        : prev.filter((user) => user.email !== selectedUser.email)
+    );
+  };
+
+  const fetchClerkUsers = useCallback(async () => {
+    if (!permissions?.canManageAllUsers) return;
+    setLoadingUsers(true);
+
     try {
-      const response = await fetch("/api/admin/auth0PasswordReset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ auth0Id: auth0Id }),
-      });
+      const response = await fetch(
+        `/api/clerk/list-users`, // ${queryParams && `?${queryParams.toString()}`}
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(
           response?.statusText
             ? response.statusText
-            : "Failed to generate password reset link"
+            : "Failed to fetch clerk users"
         );
       }
       const data = await response.json();
-      if (!data || !data?.ticket) {
-        throw new Error("No password reset link returned from Auth0");
-      }
 
-      return data.ticket;
+      setClerkUsers(data?.data ?? []);
+      setTotalClerkUsers(data?.data?.length ?? 0);
     } catch (error) {
-      console.error("Error generating password reset link:", error);
-      return null;
+      console.error("Error fetching clerk users:", error);
+    } finally {
+      setLoadingUsers(false);
     }
-  };
+  }, [permissions?.canManageAllUsers]); //, queryParams
 
-  const sendSingUpInviteEmail = async ({
-    newUserEmail,
-    newUserRole,
-    newUserMarketCenter,
-    inviterName,
-    inviterEmail,
-    inviteLink,
-  }: NewUserInvitationProps) => {
-    try {
-      const response = await fetch("/api/send/inviteUser", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          newUserEmail: newUserEmail,
-          newUserRole: newUserRole,
-          newUserMarketCenter: newUserMarketCenter,
-          inviterName: inviterName,
-          inviterEmail: inviterEmail,
-          inviteLink: inviteLink,
-        } as NewUserInvitationProps),
-      });
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to send invitation email"
-        );
-      }
-      return true;
-    } catch (error) {
-      console.error("Resend unable to send invite email:", error);
-      return false;
-    }
-  };
+  useEffect(() => {
+    fetchClerkUsers();
+  }, [fetchClerkUsers]);
 
-  const updateAuth0UserMetadata = async (metadata: Auth0UserMetadataType) => {
-    let body: {
-      user_id: string;
-      invited?: boolean;
-      invitedOn?: Date;
-      accepted?: boolean;
-      acceptedOn?: Date;
-    };
-    if (metadata.clerkId && metadata?.invited && metadata?.invitedOn) {
-      body = {
-        user_id: metadata.clerkId,
-        invited: metadata.invited,
-        invitedOn: metadata.invitedOn,
-      };
-    } else if (metadata.clerkId && metadata?.accepted && metadata?.acceptedOn) {
-      body = {
-        user_id: metadata.clerkId,
-        accepted: metadata.accepted,
-        acceptedOn: metadata.acceptedOn,
-      };
-    } else {
-      throw new Error("Nothing to update");
+  const handleUpdateInClerk = async (payload: ClerkUserUpdates) => {
+    if (!payload?.clerkId) {
+      throw new Error("Missing Clerk Id");
     }
     try {
-      const response = await fetch(`/api/admin/auth0Users`, {
+      const response = await fetch(`/api/clerk/update-user`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${metadata.token}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         throw new Error(
@@ -304,81 +174,85 @@ export default function UserInvitationManagement() {
     }
   };
 
-  const handleInviteUserToApp = async (user: Auth0User) => {
-    setIsSendingInvitation(true);
-    try {
-      const token = await fetchManagementToken();
-      if (!token) {
-        throw new Error("No management token available");
+  const handleSendInvitation = useCallback(
+    async (user: ClerkUser) => {
+      if (!user || !user?.id || !clerkUser || !clerkUser?.id) {
+        throw new Error("Missing authentication and/or payload");
       }
-      //  Generate password reset link from Auth0
-      const inviteLink = await generatePasswordResetLink(user.user_id, token);
-      if (!inviteLink) {
-        throw new Error("No password reset link returned from Auth0");
+      setIsSendingInvitation(true);
+      console.log("Sending invite to:", user);
+      try {
+        const response = await fetch(
+          `${API_BASE}/notifications/create/${user.id}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${clerkUser.id}`,
+            },
+            body: JSON.stringify({
+              trigger: "Invitation",
+              channel: "EMAIL",
+              category: "ACCOUNT",
+              type: "General",
+              title: "Join Conductor Ticketing",
+              body: `${currentUser?.name || currentUser?.email} invited you to Conductor Ticketing`,
+              data: {
+                invitation: {
+                  newUserName:
+                    user?.first_name && user?.last_name
+                      ? `${user?.first_name} ${user?.last_name}`
+                      : user?.username,
+                  newUserEmail: user.email_addresses[0].email_address,
+                  newUserRole: user?.public_metadata?.role ?? "AGENT",
+                  newUserMarketCenter: null,
+                  inviterName: clerkUser.fullName,
+                  inviterEmail: clerkUser.emailAddresses[0].emailAddress,
+                } as NewUserInvitationProps,
+              },
+            }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error(
+            response?.statusText
+              ? response.statusText
+              : "Failed to send invitation email"
+          );
+        }
+        const updated = await handleUpdateInClerk({
+          clerkId: user.id,
+          invited: true,
+          invitedOn: new Date(),
+        });
+
+        if (!updated) {
+          throw new Error("Clerk failed to update");
+        }
+        toast.success(`Invitation sent!`);
+      } catch (error) {
+        console.error("Failed to invite user", error);
+      } finally {
+        setIsSendingInvitation(false);
+        await fetchClerkUsers();
       }
-      // Send email with Resend
-      const emailResult = await sendSingUpInviteEmail({
-        newUserName: user.name ?? "",
-        newUserEmail: user.email,
-        newUserRole: user?.user_metadata?.role || "AGENT",
-        newUserMarketCenter: user?.user_metadata?.marketCenterId || null,
-        inviterName: currentUser?.name || "Admin User",
-        inviterEmail: currentUser?.email || "onboarding@resend.dev", // TODO: tech support email ?
-        inviteLink: inviteLink,
-      });
+    },
+    [fetchClerkUsers, clerkUser, currentUser]
+  );
 
-      if (!emailResult) {
-        throw new Error("Resend failed to send invitation email");
-      }
-
-      // Update user metadata to mark as invited
-      const metadataResult = await updateAuth0UserMetadata({
-        clerkId: user.user_id,
-        token: token,
-        invited: true,
-        invitedOn: new Date(),
-      });
-      if (!metadataResult) {
-        throw new Error("Failed to update user metadata after invitation");
-      }
-      // Refresh user list to show updated status
-      await fetchNewAuth0Users();
-      handleRefresh();
-      toast.success(`Invitation sent to ${user.email}`);
-    } catch (error) {
-      console.error("Error sending invitation:", error);
-    } finally {
-      setIsSendingInvitation(false);
-    }
-  };
-
-  const handleSelectUser = async (selectedUser: any, checked: boolean) => {
-    setSelectedNewUsers((prev) =>
-      checked
-        ? [...prev, selectedUser]
-        : prev.filter((user) => user.email !== selectedUser.email)
-    );
-  };
-
-  const handleMarkUsersAsAccepted = async () => {
+  const handleMarkUsersAsAccepted = useCallback(async () => {
     if (!selectedNewUsers || !selectedNewUsers.length) {
       throw new Error("no users selected");
     }
     setLoadingUsers(true);
 
     try {
-      const acceptedOn = new Date();
-      const token = await fetchManagementToken();
-      if (!token) {
-        throw new Error("No management token available");
-      }
       const results = await Promise.allSettled(
         selectedNewUsers.map((user) =>
-          updateAuth0UserMetadata({
+          handleUpdateInClerk({
             clerkId: user.user_id,
             accepted: true,
-            acceptedOn,
-            token: token,
+            acceptedOn: new Date(),
           })
         )
       );
@@ -391,17 +265,14 @@ export default function UserInvitationManagement() {
         toast.success("All selected users marked as accepted");
       }
       setSelectedNewUsers([]);
-
-      await fetchNewAuth0Users();
-
-      return;
     } catch (error) {
-      console.error("Failed to mark user(s) as accepted:", error);
+      console.error("Failed to mark user(s) as accepted in Clerk:", error);
       toast.error("Failed to mark user(s) as accepted");
     } finally {
+      await fetchClerkUsers();
       setLoadingUsers(false);
     }
-  };
+  }, [fetchClerkUsers, selectedNewUsers]);
 
   return (
     <div className="space-y-6">
@@ -411,7 +282,7 @@ export default function UserInvitationManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Created Users ({totalAuth0Users})
+                Created Users ({totalClerkUsers})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create and invite new users to join Conductor Ticketing
@@ -436,7 +307,7 @@ export default function UserInvitationManagement() {
             <div className="flex items-center justify-between gap-4">
               <Button
                 variant="outline"
-                onClick={handleMarkUsersAsAccepted}
+                onClick={() => handleMarkUsersAsAccepted()}
                 disabled={
                   loadingUsers ||
                   !permissions?.canManageAllUsers ||
@@ -518,7 +389,7 @@ export default function UserInvitationManagement() {
                         setSortBy(value);
                         setCurrentPage(1);
                       }}
-                      disabled={!newAuth0Users || !newAuth0Users.length}
+                      disabled={!clerkUsers || !clerkUsers.length}
                     >
                       <SelectTrigger>
                         <SelectValue
@@ -581,7 +452,7 @@ export default function UserInvitationManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          {loadingUsers && newAuth0Users && newAuth0Users.length === 0 ? (
+          {loadingUsers && clerkUsers && clerkUsers.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -596,61 +467,73 @@ export default function UserInvitationManagement() {
               }`}
             >
               {!loadingUsers &&
-                newAuth0Users &&
-                newAuth0Users.length > 0 &&
-                newAuth0Users.map((user, index) => (
-                  <InvitationUserListItem
-                    key={index}
-                    disabled={
-                      isSendingInvitation ||
-                      !permissions?.canManageAllUsers ||
-                      user?.user_metadata?.accepted
-                    }
-                    onInvite={() => handleInviteUserToApp(user)}
-                    selected={selectedNewUsers.includes(user)}
-                    onSelect={(checked: boolean) =>
-                      handleSelectUser(user, checked)
-                    }
-                    selectable={!user?.user_metadata?.accepted}
-                    user={{
-                      name: user?.name,
-                      email: user?.email,
-                      emailVerified: user?.email_verified,
-                      user_metadata: {
-                        created: user.user_metadata?.created
-                          ? new Date(user.user_metadata.created)
-                          : null,
-                        createdBy: user.user_metadata?.createdBy || "unknown",
-                        invited: user.user_metadata?.invited || false,
-                        invitedOn: user?.user_metadata?.invitedOn
-                          ? new Date(user.user_metadata.invitedOn)
-                          : null,
-                        accepted: user?.user_metadata?.accepted || false,
-                        acceptedOn: user?.user_metadata?.acceptedOn
-                          ? new Date(user.user_metadata.acceptedOn)
-                          : null,
-                        role: user.user_metadata?.role || "AGENT",
-                      },
-                    }}
-                  />
-                ))}
-              {(!newAuth0Users || newAuth0Users.length === 0) &&
-                !loadingUsers && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No users found matching your criteria.
-                  </div>
-                )}
+                clerkUsers &&
+                clerkUsers.length > 0 &&
+                clerkUsers.map((user: ClerkUser, index) => {
+                  // console.log(
+                  //   user?.email_addresses[0]?.email_address,
+                  //   "Clerk User Id",
+                  //   user.id
+                  // );
+                  return (
+                    <InvitationUserListItem
+                      key={index}
+                      disabled={
+                        isSendingInvitation ||
+                        !permissions?.canManageAllUsers ||
+                        user?.public_metadata?.accepted === true
+                      }
+                      onInvite={() => handleSendInvitation(user)}
+                      selected={selectedNewUsers.includes(user)}
+                      onSelect={(checked: boolean) =>
+                        handleSelectUser(user, checked)
+                      }
+                      selectable={!user?.public_metadata?.accepted}
+                      user={{
+                        name:
+                          user?.first_name && user?.last_name
+                            ? `${user?.first_name} ${user?.last_name}`
+                            : user?.email_addresses[0]?.email_address,
+                        email: user?.email_addresses[0]?.email_address,
+                        emailVerified:
+                          user?.email_addresses?.[0]?.verification?.status ??
+                          "unknown",
+                        user_metadata: {
+                          created: user?.created_at
+                            ? new Date(user.created_at)
+                            : null,
+                          //   createdBy: user.user_metadata?.createdBy || "unknown",
+                          invited: user.public_metadata?.invited || false,
+                          invitedOn: user?.public_metadata?.invitedOn
+                            ? new Date(user.public_metadata.invitedOn)
+                            : null,
+                          accepted: user?.public_metadata?.accepted || false,
+                          acceptedOn: user?.public_metadata?.acceptedOn
+                            ? new Date(user.public_metadata.acceptedOn)
+                            : null,
+                          role:
+                            user?.public_metadata?.role || "No role assigned",
+                        },
+                      }}
+                    />
+                  );
+                })}
+              {(!clerkUsers || clerkUsers.length === 0) && !loadingUsers && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No users found matching your criteria.
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between pt-4">
             <div className="text-sm text-muted-foreground">
               Showing{" "}
               {formatPaginationText({
-                totalItems: newAuth0Users?.length ?? 0,
+                totalItems: clerkUsers?.length ?? 0,
                 itemsPerPage,
                 currentPage,
               })}{" "}
-              of {totalAuth0Users} Total Users
+              of {totalClerkUsers} Total Users
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -683,7 +566,7 @@ export default function UserInvitationManagement() {
       <CreateUser
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
-        queryInvalidation={fetchNewAuth0Users}
+        queryInvalidation={fetchClerkUsers}
       />
     </div>
   );

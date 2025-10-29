@@ -1,3 +1,12 @@
+import {
+  CreatedTicketNotificationProps,
+  EditedTicketNotificationProps,
+  MarketCenterUserUpdateProps,
+  NewCommentNotificationProps,
+  NewUserInvitationProps,
+  QuickEditTicketNotificationProps,
+  ReassignedTicketNotificationProps,
+} from "@/emails/types";
 import { Urgency } from "../ticket/types";
 import { User } from "../user/types";
 
@@ -17,6 +26,27 @@ export type NotificationCategory =
   | "PERMISSIONS"
   | "PRODUCT";
 
+export type NotificationTrigger =
+  // ACCOUNT
+  | "Invitation"
+  | "Welcome"
+  | "PasswordChange"
+  | "UsernameChange"
+  | "EmailChange"
+  // ACTIVITY
+  | "TicketCreated"
+  | "TicketUpdated"
+  | "TicketAssignment"
+  | "Mentions"
+  | "NewComments"
+  | "MarketCenterAssignment"
+  | "CategoryAssignment"
+  | "DailySummary"
+  | "WeeklySummary"
+  // MARKETING/PRODUCT
+  | "MarketingNewsletter"
+  | "ProductUpdate";
+
 export interface Notification {
   id: string;
 
@@ -33,17 +63,28 @@ export interface Notification {
   read: boolean;
   deliveredAt: Date | null;
   createdAt: Date;
+
+  trigger?: NotificationTrigger;
 }
 
 export interface NotificationData {
+  // IN-APP OR BROWSER
   url?: string;
   ticketId?: string;
   marketCenterId?: string;
   userId?: string;
   commentId?: string;
   categoryId?: string;
+
+  // EMAIL
   emails?: string[];
-  emailTemplate?: string;
+  invitation?: NewUserInvitationProps;
+  marketCenterAssignment?: MarketCenterUserUpdateProps;
+  createdTicket?: CreatedTicketNotificationProps;
+  editedTicket?: EditedTicketNotificationProps;
+  reassignedTicket?: ReassignedTicketNotificationProps;
+  quickEditTicket?: QuickEditTicketNotificationProps;
+  newComment?: NewCommentNotificationProps;
 }
 
 export interface PushNotificationPayload {

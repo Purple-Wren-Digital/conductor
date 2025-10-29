@@ -26,15 +26,15 @@ export function InvitationUserListItem({
   user: {
     name: string;
     email: string;
-    emailVerified?: boolean;
+    emailVerified: "verified" | "unverified" | "unknown";
     user_metadata: {
       created: Date | null;
-      createdBy: string; // auth0 user
+      // createdBy: string; // auth0 user
       invited: boolean;
       invitedOn: Date | null;
       accepted: boolean;
       acceptedOn: Date | null;
-      role: UserRole;
+      role: UserRole | string;
     };
   };
   onInvite: () => void;
@@ -43,6 +43,7 @@ export function InvitationUserListItem({
   onSelect?: (checked: boolean) => void; // onRemove: () => void;
 }) {
   const { permissions } = useUserRole();
+
 
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;

@@ -1,4 +1,3 @@
-import { MarketCenter } from "@/lib/types";
 import {
   Body,
   Container,
@@ -8,36 +7,32 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { MarketCenterUserUpdateProps } from "./types";
 
-export type MarketCenterUserUpdateProps = {
-  userUpdate: "added" | "removed";
-  marketCenter: MarketCenter;
-  userName: string;
-  editorName: string;
-  editorEmail: string;
-};
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const MarketCenterUserUpdate = ({
   userUpdate,
   userName,
   editorName,
   editorEmail,
-  marketCenter,
+  marketCenterName,
+  marketCenterId
 }: MarketCenterUserUpdateProps) => {
   return (
     <Html>
       <Head />
       <Preview>
-        You've been {userUpdate === "added" ? "added to" : "removed from"}
-        {marketCenter?.name ? marketCenter.name : "a market center"}
+        You&apos;ve been {userUpdate === "added" ? "added to" : "removed from"}
+        {marketCenterName ? marketCenterName : "a market center"}
       </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
             <Text style={headerText}>
-              You've been added to
-              {marketCenter?.name ? marketCenter.name : "a market center"}
+              You&apos;ve been added to
+              {marketCenterName ? marketCenterName : "a market center"}
             </Text>
           </Section>
 
@@ -51,24 +46,16 @@ const MarketCenterUserUpdate = ({
               </Text>
             </div>
 
-            {/* <Text style={subheaderText}>
-              <b>Invitation Details</b>
-            </Text>
-
-            <Text style={labelText}>Name: {userName}</Text>
-            <Text style={labelText}>Email: {userEmail}</Text>
-          */}
-
             <Text style={subheaderText}>
               <b>Market Center Details</b>
             </Text>
 
             <Text style={labelText}>
-              Market Center: {marketCenter?.name ? marketCenter.name : "N/A"}
+              Market Center: {marketCenterName ? marketCenterName : "N/A"}
             </Text>
             <Text style={labelText}>
               Id:{" "}
-              {marketCenter?.id ? `#${marketCenter?.id.slice(0, 8)}` : "N/A"}
+              {marketCenterId ? `#${marketCenterId.slice(0, 8)}` : "N/A"}
             </Text>
             {/*  <Text style={labelText}>
               Manager: {userRole}

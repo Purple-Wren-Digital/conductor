@@ -1,4 +1,3 @@
-import type { PrismaUser as UserType } from "@/lib/types";
 import {
   Body,
   Button,
@@ -9,26 +8,16 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { EditedTicketNotificationProps } from "./types";
 
-export type PossibleChangesProps = {
-  label: string;
-  originalValue: string | null;
-  newValue: string;
-};
-
-export type EditedTicketNotificationProps = {
-  ticketNumber: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedBy: UserType;
-  changedDetails: PossibleChangesProps[];
-};
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const EditedTicketNotification = ({
   ticketNumber,
   createdOn,
   updatedOn,
-  editedBy,
+  editedByName,
+  editedById,
   changedDetails,
 }: EditedTicketNotificationProps) => {
   return (
@@ -56,7 +45,8 @@ const EditedTicketNotification = ({
           <Section>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Edited by: {editedBy?.name} {editedBy?.id && `(${editedBy.id})`}
+              Edited by: {editedByName ?? "N/A"}
+              {editedById && ` (#${editedById.slice(0, 8)})`}
             </Text>
           </Section>
 
@@ -92,7 +82,7 @@ const EditedTicketNotification = ({
                 );
               })}
             <Button
-              href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
               View Ticket

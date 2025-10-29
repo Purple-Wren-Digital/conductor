@@ -8,24 +8,17 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { PrismaUser as UserType } from "@/lib/types";
+import { QuickEditTicketNotificationProps } from "./types";
 
-export type QuickEditTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedBy: UserType;
-  field: string; // "urgency" or "status"
-  currentData: string;
-};
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const QuickEditTicketNotification = ({
   ticketNumber,
   ticketTitle,
   createdOn,
   updatedOn,
-  editedBy,
+  editedByName,
+  editedById,
   field,
   currentData,
 }: QuickEditTicketNotificationProps) => {
@@ -57,7 +50,8 @@ const QuickEditTicketNotification = ({
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Edited By: {editedBy?.name} {editedBy?.id && `(${editedBy.id})`}
+              Edited By: {editedByName}
+              {editedById && ` (#${editedById})`}
             </Text>
           </Section>
 
@@ -74,7 +68,7 @@ const QuickEditTicketNotification = ({
               </ul>
             </div>
             <Button
-              href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`}
               style={button}
             >
               View Ticket

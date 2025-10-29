@@ -8,24 +8,16 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { PrismaUser as UserType } from "@/lib/types";
-
-export type ReassignedTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedBy: UserType;
-  currentAssignment: UserType | null;
-  previousAssignment: UserType | null;
-};
+import { ReassignedTicketNotificationProps } from "./types";
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const ReassignedTicketNotification = ({
   ticketNumber,
   ticketTitle,
   createdOn,
   updatedOn,
-  editedBy,
+  editedByName,
+  editedById,
   currentAssignment,
   previousAssignment,
 }: ReassignedTicketNotificationProps) => {
@@ -55,8 +47,8 @@ const ReassignedTicketNotification = ({
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Reassigned By: {editedBy?.name}{" "}
-              {editedBy?.id && `(${editedBy.id})`}
+              Reassigned By: {editedByName}
+              {editedById && ` #${editedById.slice(0, 8)})`}
             </Text>
           </Section>
 
@@ -83,7 +75,7 @@ const ReassignedTicketNotification = ({
               </ul>
             </div>
             <Button
-              href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
               View Ticket

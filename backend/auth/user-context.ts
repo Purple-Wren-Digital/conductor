@@ -18,45 +18,6 @@ export async function getUserContext(): Promise<UserContext> {
     throw APIError.unauthenticated("User not authenticated");
   }
 
-  // if (
-  //   process.env.NODE_ENV === "development" &&
-  //   authData.userID === "local-dev-user"
-  // ) {
-  //   // // LOCAL DEV USER
-  //   // return   {
-  //   //     userId: "e5f4c18b-7a88-49ac-8aef-fe7dd6054206",
-  //   //     email: "local@localhost.com",
-  //   //     role: "ADMIN",
-  //   //     marketCenterId: null,
-  //   //     clerkId: "local-dev-user",
-  //   //   };
-  //   // // ADMIN USER
-  //   // return {
-  //   //   userId: "u3",
-  //   //   email: "clara.admin@kw.com",
-  //   //   role: "ADMIN",
-  //   //   marketCenterId: null,
-  //   //   clerkId: "auth0|68c070eba093c0727999c608",
-  //   // };
-  //   // // AGENT USER
-  //   // return {
-  //   //   userId: "u1",
-  //   //   email: "alice.agent@kw.com",
-  //   //   role: "AGENT",
-  //   //   marketCenterId: null,
-  //   //   clerkId: "auth0|68c07090070c5a2759e2c928",
-  //   // };
-  //   // // STAFF USER
-  //   return {
-  //     userId: "u2",
-  //     email: "bob.staff@kw.com",
-  //     role: "STAFF",
-  //     marketCenterId: null,
-  //     clerkId: "auth0|68c070b2070c5a2759e2c934",
-  //   };
-
-  // }
-
   // Try to find user by Clerk ID
   let user = await prisma.user.findUnique({
     where: { clerkId: authData.userID },
@@ -111,3 +72,42 @@ export async function getUserContext(): Promise<UserContext> {
     clerkId: authData.userID,
   };
 }
+
+// if (
+//   process.env.NODE_ENV === "development" &&
+//   authData.userID === "local-dev-user"
+// ) {
+//   // // LOCAL DEV USER
+//   // return   {
+//   //     userId: "e5f4c18b-7a88-49ac-8aef-fe7dd6054206",
+//   //     email: "local@localhost.com",
+//   //     role: "ADMIN",
+//   //     marketCenterId: null,
+//   //     clerkId: "local-dev-user",
+//   //   };
+//   // // ADMIN USER
+//   // return {
+//   //   userId: "u3",
+//   //   email: "clara.admin@kw.com",
+//   //   role: "ADMIN",
+//   //   marketCenterId: null,
+//   //   clerkId: "auth0|68c070eba093c0727999c608",
+//   // };
+//   // // AGENT USER
+//   // return {
+//   //   userId: "u1",
+//   //   email: "alice.agent@kw.com",
+//   //   role: "AGENT",
+//   //   marketCenterId: null,
+//   //   clerkId: "auth0|68c07090070c5a2759e2c928",
+//   // };
+//   // // STAFF USER
+//   return {
+//     userId: "u2",
+//     email: "bob.staff@kw.com",
+//     role: "STAFF",
+//     marketCenterId: null,
+//     clerkId: "auth0|68c070b2070c5a2759e2c934",
+//   };
+
+// }

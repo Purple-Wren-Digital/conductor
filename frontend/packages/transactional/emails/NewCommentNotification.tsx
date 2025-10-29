@@ -8,35 +8,28 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { PrismaUser as UserType } from "@/lib/types";
+import { NewCommentNotificationProps } from "./types";
 
-export type NewCommentNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  commenter: UserType;
-  comment: string;
-  isInternal: Boolean;
-  assignee: UserType | null;
-};
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const NewCommentNotification = ({
   ticketNumber,
   ticketTitle,
   createdOn,
-  commenter,
+  commenterName,
+  commenterId,
   comment,
   isInternal,
 }: NewCommentNotificationProps) => {
   return (
     <Html>
       <Head />
-      <Preview>Comment: "{comment}"</Preview>
+      <Preview>Comment: &quot;{comment}&quot;</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>New Comment from {commenter?.name}</Text>
+            <Text style={headerText}>New Comment from {commenterName}</Text>
             <Text style={datesText}>
               {createdOn &&
                 `Ticket Created: ${new Date(createdOn).toLocaleDateString()}`}
@@ -47,21 +40,24 @@ const NewCommentNotification = ({
 
           <Section>
             <Text style={subheaderText}>Ticket Title: {ticketTitle}</Text>
-            <Text style={subheaderText}>Ticket Id: {ticketNumber}</Text>
+            <Text style={subheaderText}>
+              Ticket Id: {ticketNumber.slice(0, 8)}
+            </Text>
             <Text style={subheaderText}>Comment Details:</Text>
           </Section>
 
           <Section>
             <div style={commentContainer}>
               {isInternal && <Text style={isInternalText}>Internal Only</Text>}
-              <Text style={text}>"{comment}"</Text>
+              <Text style={text}>&quot;{comment}&quot;</Text>
               <Text style={text}>
-                Author: {commenter?.name} {commenter?.id && `(${commenter.id})`}
+                Author: {commenterName}
+                {commenterId && ` (#${commenterId.slice(0, 8)})`}
               </Text>
             </div>
 
             <Button
-              href={`http://localhost:3000/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`}
               style={button}
             >
               View Ticket

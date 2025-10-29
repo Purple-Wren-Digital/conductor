@@ -32,19 +32,19 @@ export default function UserManagementTabs() {
           <Users className="h-4 w-4" />
           Users
         </TabsTrigger>
-        {/* <TabsTrigger value="invitations" className="flex items-center gap-2">
+        <TabsTrigger value="invitations" className="flex items-center gap-2">
           <Mailbox className="h-4 w-4" />
           User Invitations
-        </TabsTrigger> */}
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="users">
         {permissions?.canManageAllUsers && <UserManagement />}
       </TabsContent>
 
-      {/* <TabsContent value="invitations">
+      <TabsContent value="invitations">
         {permissions?.canManageAllUsers && <UserInvitationManagement />}
-      </TabsContent> */}
+      </TabsContent>
     </Tabs>
   );
 }

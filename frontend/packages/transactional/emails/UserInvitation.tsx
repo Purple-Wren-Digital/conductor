@@ -1,4 +1,4 @@
-import { UserRole } from "@/lib/types";
+import { NewUserInvitationProps } from "./types";
 import {
   Body,
   Button,
@@ -10,15 +10,7 @@ import {
   Text,
 } from "@react-email/components";
 
-export type NewUserInvitationProps = {
-  newUserName: string;
-  newUserEmail: string;
-  newUserRole: UserRole;
-  newUserMarketCenter: string | null;
-  inviterName: string;
-  inviterEmail: string;
-  inviteLink: string;
-};
+const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const NewUserInvitation = ({
   newUserName,
@@ -27,7 +19,6 @@ const NewUserInvitation = ({
   newUserMarketCenter,
   inviterName,
   inviterEmail,
-  inviteLink,
 }: NewUserInvitationProps) => {
   return (
     <Html>
@@ -67,7 +58,7 @@ const NewUserInvitation = ({
               Click below to set your password and sign up with this email
               address:
             </Text>
-            <Button href={inviteLink} style={button}>
+            <Button href={`${APP_BASE_URL}`} style={button}>
               Sign up
             </Button>
 

@@ -22,48 +22,24 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Building, User } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
-import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
-import { TeamSwitcher } from "../team-switcher";
+// import { ClerkCreateUser } from "@/lib/clerk/types";
+// import { TeamSwitcher } from "../team-switcher";
 
-interface CreateAuth0UserRequest {
-  createdBy: string; // current user's auth0id
-  name: string;
-  email: string;
-  role: UserRole;
-  marketCenterId: string | null;
-}
-
-interface CreateAuth0UserForm {
+interface CreateClerkUserForm {
   firstName: string;
   lastName: string;
   email: string;
   role: UserRole | string;
 }
 
-type Auth0User = {
-  user_id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  user_metadata: {
-    created: Date | null;
-    createdBy: string;
-    invited: boolean;
-    invitedOn: Date | null;
-    accepted: boolean;
-    acceptedOn: Date | null;
-    role: UserRole;
-  };
-};
-
 type CreateUserProps = {
   showCreateUserForm: boolean;
   setShowCreateUserForm: React.Dispatch<React.SetStateAction<boolean>>;
-  handleInviteUser?: (user: Auth0User) => Promise<void>;
+  handleInviteUser?: () => Promise<void>;
   queryInvalidation: () => Promise<void>;
 };
 
@@ -73,44 +49,27 @@ export default function CreateUser({
   handleInviteUser,
   queryInvalidation,
 }: CreateUserProps) {
-  const { user: clerkUser } = useUser();
-  const { currentUser } = useStore();
-
-  const [newUserFormData, setNewUserFormData] = useState<CreateAuth0UserForm>({
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
+  const [newUserFormData, setNewUserFormData] = useState<CreateClerkUserForm>({
     firstName: "",
     lastName: "",
     email: "",
     role: "",
   });
-  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { user: clerkUser } = useUser();
 
   const { role, permissions } = useUserRole();
 
   const { data, isLoading } = useFetchAllMarketCenters(role);
 
   const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
-
-  const fetchManagementToken = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/managementToken", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role: currentUser?.role || "AGENT" }),
-      });
-      if (!response.ok) {
-        throw new Error(response.statusText || "Failed to fetch token");
-      }
-      const data = await response.json();
-      return data.managementToken;
-    } catch (error) {
-      console.error("Failed to fetch management token: ", error);
-      return null;
-    }
-  }, []);
+  const getRoleIcon = (role: string) => {
+    const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
+    return <Icon className="h-4 w-4" />;
+  };
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -129,40 +88,38 @@ export default function CreateUser({
     return Object.keys(errors).length === 0;
   };
 
-  const createNewAuth0User = async () => {
+  const createClerkUser = async () => {
     try {
-      const token = await fetchManagementToken();
-      if (!token) {
-        throw new Error("No management token available");
-      }
-      const response = await fetch("/api/admin/auth0Users", {
+      const response = await fetch("/api/clerk/create-user", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Origin: "Access-Control-Allow-Origin",
         },
+
         body: JSON.stringify({
-          ...newUserFormData,
-          name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
-          createdBy: currentUser?.auth0Id || "system",
-          marketCenterId:
-            selectedMarketCenterId !== "null" ? selectedMarketCenterId : null,
-        } as CreateAuth0UserRequest),
+          email: [newUserFormData?.email],
+          firstName: newUserFormData.firstName,
+          lastName: newUserFormData.lastName,
+          role: newUserFormData.role,
+          marketCenterId: selectedMarketCenterId ?? null,
+        }),
       });
-      if (!response.ok) {
-        throw new Error(response.statusText || "Failed to create user");
+      if (response?.status === 422) {
+        toast.error("A user with that email already exists");
+        throw new Error("Unprocessable Entity");
       }
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Failed to create new Auth0 User", error);
+      console.error("Unable to create Clerk User", error);
       return null;
     }
   };
 
-  const createNewPrismaUser = async (auth0Id: string) => {
-    if (!auth0Id) {
-      throw new Error("Missing auth0Id");
+  const createNewPrismaUser = async (clerkId?: string) => {
+    if (!clerkId) {
+      throw new Error("Missing Clerk Id");
     }
 
     try {
@@ -178,15 +135,13 @@ export default function CreateUser({
           email: newUserFormData.email,
           name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
           role: newUserFormData.role || "AGENT",
-          auth0Id: auth0Id,
+          clerkId: clerkId,
           marketCenterId:
             selectedMarketCenterId !== "null" ? selectedMarketCenterId : "",
         }),
       });
-      if (response.ok) {
-        const data: { user: PrismaUser } = await response.json();
-        return data;
-      }
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Failed to create prisma user", error);
       return null;
@@ -195,32 +150,36 @@ export default function CreateUser({
 
   const createUserMutation = useMutation({
     mutationFn: async () => {
-      const newAuth0User = await createNewAuth0User();
-      if (!newAuth0User || !newAuth0User?.user_id) {
-        throw new Error("Failed to create new Auth0 User");
+      const newClerkUser = await createClerkUser();
+      if (!newClerkUser || !newClerkUser?.id) {
+        throw new Error("Failed to create Clerk User");
       }
-      const newPrismaUser = await createNewPrismaUser(newAuth0User.user_id);
+      const newPrismaUser = await createNewPrismaUser(newClerkUser.id);
       if (!newPrismaUser) {
         throw new Error(
-          "Auth0 user created, but Failed to create new Prisma User"
+          "Clerk user created, but failed to create new Prisma User"
         );
       }
     },
-    onSuccess: async (newAuth0User: any) => {
-      toast.success(`${newAuth0User?.name || "User"} was removed`);
-      toast.success("User created!");
-
+    onSuccess: async (newPrismaUser: any) => {
       if (handleInviteUser) {
-        toast.success("User created! Sending invitation now...");
-        await handleInviteUser(newAuth0User);
+        toast.success(
+          `${newPrismaUser?.name || "User"} added! Sending invitation now...`
+        );
+        // await handleInviteUser(newPrismaUser);
+      } else {
+        toast.success(`${newPrismaUser?.name || "User"} added!`);
       }
       setShowCreateUserForm(false);
       setFormErrors({});
-      queryInvalidation;
     },
     onError: (error) => {
       console.error("Failed to create new user: ", error);
       toast.error("Failed to create new user");
+    },
+    onSettled: async () => {
+      await queryInvalidation();
+      setIsSubmitting(false);
     },
   });
 
@@ -237,13 +196,6 @@ export default function CreateUser({
     }
     setIsSubmitting(true);
     createUserMutation.mutate();
-
-    setIsSubmitting(false);
-  };
-
-  const getRoleIcon = (role: string) => {
-    const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
-    return <Icon className="h-4 w-4" />;
   };
 
   return (

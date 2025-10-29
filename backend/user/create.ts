@@ -2,10 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
-import {
-  defaultNotificationPreferences,
-  handleUserCreationNotification,
-} from "../utils";
+import { defaultNotificationPreferences } from "../utils";
 import { MarketCenter } from "../marketCenters/types";
 import { $Enums } from "@prisma/client";
 
@@ -112,18 +109,6 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
           userSettings: true,
         },
       });
-      await prisma.notification.create({
-        data: {
-          userId: newUser?.id,
-          channel: "IN_APP",
-          category: "ACCOUNT",
-          priority: "HIGH",
-          type: "General",
-          title: "Welcome to Conductor",
-          body: "Take a moment to look around and get familiar",
-          deliveredAt: new Date(),
-        },
-      });
 
       const history = await p.userHistory.create({
         data: {
@@ -136,13 +121,6 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
           changedById: userContext.userId,
           snapshot: newUser,
         },
-      });
-
-      // 🔔 Generate notifications dynamically
-      await handleUserCreationNotification({
-        newUser,
-        userContext,
-        marketCenterAssignment,
       });
 
       return { newUser, history };

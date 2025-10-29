@@ -1,4 +1,13 @@
 import { Dispatch, SetStateAction } from "react";
+import {
+  CreatedTicketNotificationProps,
+  EditedTicketNotificationProps,
+  MarketCenterUserUpdateProps,
+  NewCommentNotificationProps,
+  NewUserInvitationProps,
+  QuickEditTicketNotificationProps,
+  ReassignedTicketNotificationProps,
+} from "@/packages/transactional/emails/types";
 
 // CONTEXT
 export type AppContext = {
@@ -97,7 +106,6 @@ export interface BulkUpdateRequest {
 }
 
 // COMMENTS
-
 export interface Comment {
   id: string;
   content: string;
@@ -170,7 +178,6 @@ export interface UserWithStats extends PrismaUser {
 }
 
 // USER SETTINGS
-
 export interface UserSettings {
   id: string;
   userId: string;
@@ -191,7 +198,6 @@ export interface NotificationPreferences {
   userSettingsId: string;
   userSettings?: UserSettings;
 }
-
 export interface ProfileTemplate {
   id: string;
   name: string;
@@ -385,14 +391,23 @@ export interface Notification {
   createdAt: Date;
 }
 export interface NotificationData {
+  // IN-APP OR BROWSER
   url?: string;
   ticketId?: string;
   marketCenterId?: string;
   userId?: string;
   commentId?: string;
   categoryId?: string;
+
+  // EMAIL
   emails?: string[];
-  emailTemplate?: string;
+  invitation?: NewUserInvitationProps;
+  marketCenterAssignment?: MarketCenterUserUpdateProps;
+  createdTicket?: CreatedTicketNotificationProps;
+  editedTicket?: EditedTicketNotificationProps;
+  reassignedTicket?: ReassignedTicketNotificationProps;
+  quickEditTicket?: QuickEditTicketNotificationProps;
+  newComment?: NewCommentNotificationProps;
 }
 
 export interface PushNotificationPayload {
