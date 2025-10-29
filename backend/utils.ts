@@ -1,9 +1,4 @@
-import {
-  NotificationCategory,
-  NotificationChannel,
-  NotificationFrequency,
-} from "@prisma/client";
-import { prisma } from "./ticket/db";
+import { NotificationCategory, NotificationFrequency } from "@prisma/client";
 
 export function mapHistorySnapshot(history: any[]): any[] {
   return history.map((h) => ({
@@ -55,7 +50,7 @@ export const defaultNotificationPreferences = [
   {
     frequency: NotificationFrequency.INSTANT,
     category: NotificationCategory.ACCOUNT,
-    type: "Onboarding",
+    type: "General",
     email: true,
     inApp: true,
     push: true,

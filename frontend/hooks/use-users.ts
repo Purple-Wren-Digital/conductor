@@ -129,7 +129,6 @@ export function useFetchOneUser({
   });
 }
 
-
 export function useFetchOneUserByEmail({
   email,
   clerkId,
@@ -152,5 +151,37 @@ export function useFetchOneUserByEmail({
       return data?.user;
     },
     enabled: !!email && !!clerkId,
+  });
+}
+
+export function useFetchUserSettings({
+  id,
+  clerkId,
+  notificationsQueryKey,
+}: {
+  id?: string;
+  clerkId?: string;
+  notificationsQueryKey: (string | undefined)[];
+}) {
+  return useQuery({
+    queryKey: notificationsQueryKey,
+    queryFn: async () => {
+      if (!clerkId || !id) throw new Error("Not authenticated");
+      try {
+        const response = await fetch(`${API_BASE}/users/${id}/settings`, {
+          headers: {
+            Authorization: `Bearer ${clerkId}`,
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch user settings");
+        const data = await response.json();
+
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch user settings", error);
+        return {};
+      }
+    },
+    enabled: !!id && !!clerkId,
   });
 }

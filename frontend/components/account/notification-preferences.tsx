@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   Accordion,
   AccordionContent,
@@ -18,55 +19,43 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import type { NotificationPreferences, PrismaUser } from "@/lib/types";
-import { toast } from "sonner";
+import { useFetchUserSettings } from "@/hooks/use-users";
 import { API_BASE } from "@/lib/api/utils";
-
-// import { useFetchNotificationPreferences } from "@/hooks/use-user-notifications";
+import type { NotificationPreferences } from "@/lib/types";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function NotificationPreferences({
-  user,
-  getAuth0AccessToken,
+  userId,
   invalidateUserQuery,
 }: {
-  user: PrismaUser;
-  getAuth0AccessToken: () => Promise<string>;
+  userId?: string;
   invalidateUserQuery: Promise<void>;
 }) {
+  const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
+
+  const notificationsQueryKey = [
+    "user-account-settings",
+    userId,
+    clerkUser?.id,
+  ];
+  const { data: userSettingsData, isLoading: isLoadingSettings } =
+    useFetchUserSettings({
+      id: userId,
+      clerkId: clerkUser?.id,
+      notificationsQueryKey: notificationsQueryKey,
+    });
+
+  const invalidateUserSettingsQuery = queryClient.invalidateQueries({
+    queryKey: notificationsQueryKey,
+  });
   const oldNotificationPreferences: NotificationPreferences[] =
-    user &&
-    user?.userSettings &&
-    user?.userSettings?.notificationPreferences &&
-    user?.userSettings?.notificationPreferences.length > 0
-      ? user.userSettings.notificationPreferences
-      : [];
-
-  // console.log("User Settings", user?.userSettings);
-
-  // const notificationsQueryKey = [
-  //   "user-settings-notifications",
-  //   user?.id,
-  //   user?.userSettings?.id,
-  // ];
-
-  // const { data: notificationPreferenceData, isLoading } =
-  //   useFetchNotificationPreferences({
-  //     id: user?.id,
-  //     userSettingsId: user?.userSettings?.id,
-  //     queryKey: notificationsQueryKey,
-  //     getAuth0AccessToken: getAuth0AccessToken
-  //   });
-
-  // console.log("notificationPreferenceData", notificationPreferenceData);
-
-  // const oldNotificationPreferences: NotificationPreferences[] =
-  //   notificationPreferenceData ?? [];
+    userSettingsData?.settings?.notificationPreferences ?? [];
 
   const [updateNotificationPreferences, setUpdateNotificationPreferences] =
     useState<NotificationPreferences[] | []>(oldNotificationPreferences);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasAllNotificationPermissions, setHasAllNotificationPermissions] =
-    useState(true);
 
   const formatUpdatedPreferences = (): NotificationPreferences[] => {
     if (
@@ -77,7 +66,7 @@ export default function NotificationPreferences({
     }
 
     if (!oldNotificationPreferences || !oldNotificationPreferences.length) {
-      console.log("Nothing to update");
+      console.error("Nothing to update");
       return updateNotificationPreferences;
     }
     const updatedPreferences: NotificationPreferences[] = [];
@@ -126,20 +115,6 @@ export default function NotificationPreferences({
       ? updateNotificationPreferences.filter((p) => p.category === "ACTIVITY")
       : null;
 
-  // const ticketActivity =
-  //   notificationActivity && notificationActivity.length > 0
-  //     ? notificationActivity.filter((p) =>
-  //         p.type.toLowerCase().includes("ticket")
-  //       )
-  //     : null;
-
-  // const marketCenterActivity =
-  //   notificationActivity && notificationActivity.length > 0
-  //     ? notificationActivity.filter((p) =>
-  //         p.type.toLowerCase().includes("market center")
-  //       )
-  //     : null;
-
   const notificationMarketing =
     updateNotificationPreferences && updateNotificationPreferences.length > 0
       ? updateNotificationPreferences.filter((p) => p.category === "MARKETING")
@@ -151,9 +126,8 @@ export default function NotificationPreferences({
       : null;
 
   const handleSaveNotificationPreferences = async () => {
-    if (!user || !user?.id) {
-      // || !userId) {
-      throw new Error("Missing user id");
+    if (!clerkUser?.id || !userId) {
+      throw new Error("Missing user's auth");
     }
     setIsSubmitting(true);
     // const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
@@ -165,18 +139,16 @@ export default function NotificationPreferences({
       toast.error("Nothing to update");
       setIsSubmitting(false);
       return;
-      // throw new Error("Nothing to update");
     }
 
     try {
-      const accessToken = await getAuth0AccessToken();
       const response = await fetch(
-        `${API_BASE}/users/${user.id}/update/settings/notifications`,
+        `${API_BASE}/users/${userId}/update/settings/notifications`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${clerkUser?.id}`,
           },
           body: JSON.stringify({
             notificationPreferences: hasNotificationPreferenceUpdates,
@@ -184,17 +156,14 @@ export default function NotificationPreferences({
         }
       );
 
-      console.log("response", response);
-      const data = await response.json();
       toast.success("Preferences saved!");
-
-      console.log("data", data);
     } catch (error) {
       toast.error("Error: Unable to save preferences");
       console.error("Failed to save notifications", error);
     } finally {
-      setIsSubmitting(false);
+      await invalidateUserSettingsQuery;
       await invalidateUserQuery;
+      setIsSubmitting(false);
     }
   };
 
@@ -265,6 +234,32 @@ export default function NotificationPreferences({
     return { isChecked, showOption };
   };
 
+  const resetAllNotificationPreferences = async () => {
+    try {
+      await fetch(
+        `${API_BASE}/users/${userId}/settings/notificationPreferences/reset`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${clerkUser?.id}`,
+          },
+          body: JSON.stringify({
+            type: "reset",
+          }),
+        }
+      );
+      toast.success("Preferences reset!");
+    } catch (error) {
+      console.error("Failed to reset user notification preferences");
+      toast.error("Error: Preferences were not reset");
+    } finally {
+      await invalidateUserSettingsQuery;
+      await invalidateUserQuery;
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* NOTIFICATIONS */}
@@ -277,18 +272,29 @@ export default function NotificationPreferences({
               it
             </CardDescription>
           </div>
-          <Button
-            // variant={"secondary"}
-            className="w-fit"
-            onClick={handleSaveNotificationPreferences}
-            disabled={
-              isSubmitting ||
-              !hasNotificationPreferenceUpdates ||
-              !hasNotificationPreferenceUpdates.length
-            }
-          >
-            Save Preferences
-          </Button>
+          <div className="flex flex-row gap-2">
+            <Button
+              variant={"secondary"}
+              className="w-fit"
+              onClick={resetAllNotificationPreferences}
+              disabled={isLoadingSettings || isSubmitting}
+            >
+              Reset All Preferences
+            </Button>
+            <Button
+              // variant={"secondary"}
+              className="w-fit"
+              onClick={handleSaveNotificationPreferences}
+              disabled={
+                isLoadingSettings ||
+                isSubmitting ||
+                !hasNotificationPreferenceUpdates ||
+                !hasNotificationPreferenceUpdates.length
+              }
+            >
+              Save Preferences
+            </Button>
+          </div>
         </CardHeader>
         {/*  mx-20 sm:max-w-lg lg:max-w-2xl */}
         <Separator className="mt-5 max-w-11/12 self-center" />
@@ -350,7 +356,6 @@ export default function NotificationPreferences({
             <CardContent className="space-y-6">
               {notificationAccount &&
                 notificationAccount.map((pref) => {
-                  if (pref.type == "Onboarding") return null;
                   return (
                     <Accordion key={pref.type} type="single" collapsible>
                       <AccordionItem value={pref.type}>
@@ -386,6 +391,7 @@ export default function NotificationPreferences({
                                       checked
                                     )
                                   }
+                                  disabled
                                 />
                               </div>
                             );

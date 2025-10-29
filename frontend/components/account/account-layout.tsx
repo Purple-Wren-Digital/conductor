@@ -91,17 +91,10 @@ export default function AccountLayout() {
         </TabsContent>
         <TabsContent value="settings">
           <NotificationPreferences
-            user={user}
+            userId={user?.id}
             invalidateUserQuery={invalidateUserQuery}
           />
         </TabsContent>
-
-        {/* <TabsContent value="passwordReset">
-          <PasswordReset
-            isCurrentUserProfile={isCurrentUserProfile}
-            fetchManagementToken={fetchManagementToken}
-          />
-        </TabsContent> */}
       </Tabs>
     </div>
   );

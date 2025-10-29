@@ -1,37 +1,31 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
-import { getUserContext } from "../../auth/user-context";
-import { defaultNotificationPreferences } from "../../utils";
-import { NotificationPreferences } from "../types";
+import { prisma } from "../../../ticket/db";
+import { getUserContext } from "../../../auth/user-context";
+import { defaultNotificationPreferences } from "../../../utils";
 
-export interface ResetNotificationsRequest {
+export interface CreateNotificationsRequest {
   id: string;
 }
 
-export interface resetNotificationsResponse {
-  reset: boolean;
+export interface CreateNotificationsResponse {
+  created: boolean;
 }
 
-export const resetNotifications = api<
-  ResetNotificationsRequest,
-  resetNotificationsResponse
+export const createNotifications = api<
+  CreateNotificationsRequest,
+  CreateNotificationsResponse
 >(
   {
     expose: true,
-    method: "PATCH",
-    path: "/users/:id/settings/reset/notifications-default",
+    method: "PUT",
+    path: "/users/:id/create/settings/notifications-default",
     auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
-
-    // Permission checks
-    const isEditingSelf = userContext?.userId === req.id;
-    // const canModifyUsers = await canManageTeam(userContext);
-
-    if (!isEditingSelf) {
+    if (userContext.role !== "ADMIN") {
       throw APIError.permissionDenied(
-        "Insufficient permissions to update other users' notifications"
+        "You do not have permissions to create notifications"
       );
     }
 
@@ -44,9 +38,8 @@ export const resetNotifications = api<
       throw APIError.notFound("User not found");
     }
 
-    console.log("Existing User", existingUser);
-
     const result = await prisma.$transaction(async (p) => {
+      // 1. Create userSettings to user (if needed)
       let user = existingUser;
       if (!existingUser || !existingUser?.userSettings) {
         const updatedUser = await p.user.update({
@@ -63,11 +56,20 @@ export const resetNotifications = api<
       if (!user || !user?.userSettings || !user?.userSettings?.id) {
         throw APIError.unimplemented("User settings not created");
       }
+      const existingPrefs = await p.notificationPreferences.findMany({
+        where: { userSettingsId: user.userSettings.id },
+        select: { type: true },
+      });
+      const existingTypes = new Set(existingPrefs.map((p) => p.type));
+      const prefsToCreate = defaultNotificationPreferences.filter(
+        (pref) => !existingTypes.has(pref.type)
+      );
+
       const userSettingsDefault = await p.userSettings.update({
         where: { id: user.userSettings.id },
         data: {
           notificationPreferences: {
-            create: defaultNotificationPreferences,
+            create: prefsToCreate,
           },
         },
       });
@@ -79,6 +81,6 @@ export const resetNotifications = api<
       throw APIError.notFound("User settings not created");
     }
 
-    return { reset: true };
+    return { created: true };
   }
 );

@@ -1,8 +1,8 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
-import { getUserContext } from "../../auth/user-context";
-import { defaultNotificationPreferences } from "../../utils";
-import { NotificationPreferences } from "../types";
+import { prisma } from "../../../ticket/db";
+import { getUserContext } from "../../../auth/user-context";
+import { defaultNotificationPreferences } from "../../../utils";
+import { NotificationPreferences } from "../../types";
 
 export interface UpdateNotificationsRequest {
   id: string;
@@ -14,7 +14,7 @@ export interface UpdateNotificationsResponse {
   updated: boolean;
 }
 
-export const updateNotifications = api<
+export const updateNotificationPreferences = api<
   UpdateNotificationsRequest,
   UpdateNotificationsResponse
 >(
@@ -25,7 +25,6 @@ export const updateNotifications = api<
     auth: false,
   },
   async (req) => {
-    console.log("HELLO YOU MADE IT");
     const userContext = await getUserContext();
 
     if (userContext?.userId && req?.id && userContext?.userId !== req.id) {
