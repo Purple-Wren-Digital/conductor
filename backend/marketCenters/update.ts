@@ -14,6 +14,12 @@ export interface UpdateMarketCenterRequest {
 
 export interface UpdateMarketCenterResponse {
   marketCenter: MarketCenter;
+  usersToNotify: {
+    id: string;
+    name: string | null;
+    email: string;
+    userUpdate: "added" | "removed";
+  }[];
 }
 
 // Creates a new market center
@@ -45,6 +51,8 @@ export const update = api<
 
     const updateMarketCenterData: any = {};
     let marketCenterHistory: any = [];
+    let removedUsers: User[] = [];
+    let addedUsers: User[] = [];
 
     if (req?.name !== marketCenter.name) {
       updateMarketCenterData.name = req.name;
@@ -67,8 +75,8 @@ export const update = api<
         (id) => !newUserIds.includes(id)
       );
 
-      const addedUsers = req.users.filter((u) => addedUserIds.includes(u.id));
-      const removedUsers = marketCenter.users.filter((u) =>
+      addedUsers = req.users.filter((u) => addedUserIds.includes(u.id));
+      removedUsers = marketCenter.users.filter((u) =>
         removedUserIds.includes(u.id)
       );
 
@@ -119,7 +127,6 @@ export const update = api<
     const result = await prisma.$transaction(async (pr) => {
       const updatedMarketCenter = await pr.marketCenter.update({
         where: { id: req.id },
-        include: { users: true },
         data: updateMarketCenterData,
       });
 
@@ -133,13 +140,24 @@ export const update = api<
       };
     });
 
-    const formattedMarketCenter = {
-      ...result.updatedMarketCenter,
-      users: result.updatedMarketCenter.users.map((user) => ({
-        ...user,
-        name: user.name ?? "",
+    const usersToNotify = [
+      ...addedUsers.map((user: User) => ({
+        id: user.id,
+        name: user?.name,
+        email: user?.email,
+        userUpdate: "added" as const,
       })),
+      ...removedUsers.map((user: User) => ({
+        id: user.id,
+        name: user?.name,
+        email: user?.email,
+        userUpdate: "removed" as const,
+      })),
+    ];
+
+    return {
+      marketCenter: result.updatedMarketCenter,
+      usersToNotify: usersToNotify,
     };
-    return { marketCenter: formattedMarketCenter };
   }
 );

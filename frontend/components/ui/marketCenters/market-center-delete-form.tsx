@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,14 @@ import {
 } from "@/components/ui/dialog/base-dialog";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { MarketCenter } from "@/lib/types";
+import type {
+  MarketCenter,
+  MarketCenterNotificationCallback,
+  PrismaUser,
+} from "@/lib/types";
 import { toast } from "sonner";
+import { useStore } from "@/context/store-provider";
+import { useMutation } from "@tanstack/react-query";
 
 type DeleteMarketCenterProps = {
   marketCenterToDelete: MarketCenter | null;
@@ -26,6 +32,11 @@ type DeleteMarketCenterProps = {
   setShowDeleteModal: React.Dispatch<React.SetStateAction<boolean>>;
   refreshMarketCenters: Promise<void>;
   refreshUsers: Promise<void>;
+  handleSendMarketCenterNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: MarketCenterNotificationCallback) => Promise<void>;
 };
 
 export default function DeleteMarketCenter({
@@ -35,60 +46,94 @@ export default function DeleteMarketCenter({
   setShowDeleteModal,
   refreshMarketCenters,
   refreshUsers,
+  handleSendMarketCenterNotifications,
 }: DeleteMarketCenterProps) {
   const [deleting, setDeleting] = useState(false);
   const { user: clerkUser } = useUser();
 
   const { permissions } = useUserRole();
+  const { currentUser } = useStore();
 
   const resetAndCloseModal = () => {
     setShowDeleteModal(false);
     setMarketCenterToDelete(null);
   };
 
-
-  const confirmDeleteMarketCenter = async () => {
-    if (!permissions?.canDeactivateUsers) {
-      toast.warning("Only Admin users can deactivate market centers.");
-      return;
-    }
-    if (!marketCenterToDelete || !marketCenterToDelete?.id) {
-      toast.error("Cannot find market center");
-      return;
-    }
-
-    try {
+  const deleteMarketCenterMutation = useMutation({
+    mutationFn: async () => {
+      if (!permissions?.canDeactivateUsers) {
+        toast.warning("Only Admin users can deactivate market centers.");
+        return;
+      }
+      if (!marketCenterToDelete || !marketCenterToDelete?.id) {
+        toast.error("Cannot find market center");
+        return;
+      }
       setDeleting(true);
       const accessToken = clerkUser?.id || "";
       const response = await fetch(
         `${API_BASE}/marketCenters/${marketCenterToDelete.id}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({ id: marketCenterToDelete.id }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to deactivate market center");
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to delete market center"
+        );
       }
-      const data = await response.json();
-      if (!data) {
-        throw new Error("Failed to deactivate user");
-      }
+    },
+    onSuccess: async () => {
       toast.success(
         `${marketCenterToDelete?.name ? marketCenterToDelete.name : "Market Center"} was deactivated`
       );
-      await refreshMarketCenters;
-      await refreshUsers;
+      if (
+        marketCenterToDelete?.users &&
+        marketCenterToDelete?.users.length > 0
+      ) {
+        await Promise.all(
+          marketCenterToDelete?.users.map(async (user: PrismaUser) => {
+            await handleSendMarketCenterNotifications({
+              trigger: "Market Center Assignment",
+              receivingUser: {
+                id: user?.id,
+                name: user?.name ?? "You",
+                email: user?.email,
+              },
+              data: {
+                marketCenterAssignment: {
+                  userUpdate: "removed",
+                  marketCenterId: marketCenterToDelete?.id,
+                  marketCenterName: marketCenterToDelete?.name,
+                  userName: user?.name ?? user?.email,
+                  editorEmail: currentUser?.email ?? "N/A",
+                  editorName: currentUser?.name ?? "Another user",
+                },
+              },
+            });
+          })
+        );
+      }
       resetAndCloseModal();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Unable to remove market center", error);
       toast.error("Error: Unable to remove market center");
-    } finally {
+    },
+    onSettled: async () => {
+      await refreshMarketCenters;
+      await refreshUsers;
       setDeleting(false);
-    }
-  };
+    },
+  });
 
   return (
     <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
@@ -98,19 +143,15 @@ export default function DeleteMarketCenter({
             Remove {marketCenterToDelete?.name} (
             {marketCenterToDelete?.id.slice(0, 8)}) from Market Centers?
           </DialogTitle>
-          <DialogDescription>
-            {marketCenterToDelete ? (
-              <>
-                <p>
-                  Once removed, {marketCenterToDelete?.users?.length ?? "0"}{" "}
-                  assigned users will lose their market center connection.{" "}
-                  <span className="font-semibold">
-                    This action cannot be undone.
-                  </span>
-                </p>
-              </>
-            ) : null}
-          </DialogDescription>
+          {marketCenterToDelete ? (
+            <DialogDescription>
+              Once removed, {marketCenterToDelete?.users?.length ?? "0"}{" "}
+              assigned users will lose their market center connection.{" "}
+              <span className="font-semibold">
+                This action cannot be undone.
+              </span>
+            </DialogDescription>
+          ) : null}
         </DialogHeader>
 
         <DialogFooter>
@@ -125,7 +166,7 @@ export default function DeleteMarketCenter({
           <Button
             type="button"
             variant="destructive"
-            onClick={confirmDeleteMarketCenter}
+            onClick={() => deleteMarketCenterMutation.mutate()}
             disabled={deleting || !permissions?.canDeactivateUsers}
           >
             {deleting

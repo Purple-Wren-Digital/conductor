@@ -25,6 +25,7 @@ import type {
   MarketCenterForm,
   TicketCategory,
   UsersResponse,
+  MarketCenterNotificationCallback,
 } from "@/lib/types";
 import {
   ArrowLeft,
@@ -45,6 +46,7 @@ import {
 import MarketCenterHistory from "./market-center-history";
 import MarketCenterTicketCategories from "./market-center-ticket-categories";
 import MarketCenterUsers from "./market-center-users";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 interface MarketCenterDetailProps {
   marketCenterId: string;
@@ -97,15 +99,21 @@ export default function MarketCenterDetailView({
   >({
     queryKey: ["market-center-detail-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = clerkUser?.id || "";
+      if (!clerkUser?.id) {
+        throw new Error("Missing auth token");
+      }
       const res = await fetch(`${API_BASE}/users`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${clerkUser.id}`,
+        },
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch users");
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!clerkUser && !!clerkUser?.id,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
@@ -116,6 +124,34 @@ export default function MarketCenterDetailView({
   const invalidateUsers = queryClient.invalidateQueries({
     queryKey: ["market-center-detail-users"],
   });
+
+  const handleSendMarketCenterNotifications = useCallback(
+    async ({
+      trigger,
+      receivingUser,
+      data,
+    }: MarketCenterNotificationCallback) => {
+      try {
+        const response = await createAndSendNotification({
+          authToken: clerkUser?.id,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+        console.log(
+          "handleSendMarketCenterNotifications() - Response:",
+          response
+        );
+      } catch (error) {
+        console.error(
+          "MarketCenterManagement - Unable to generate notifications",
+          error
+        );
+      }
+    },
+    [clerkUser?.id]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 justify-between">
@@ -224,6 +260,9 @@ export default function MarketCenterDetailView({
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
               invalidateMarketCenter={invalidateMarketCenter}
+              handleSendMarketCenterNotifications={
+                handleSendMarketCenterNotifications
+              }
             />
           )}
         </TabsContent>
@@ -248,6 +287,9 @@ export default function MarketCenterDetailView({
         setFormData={setMarketCenterFormData}
         refreshMarketCenters={invalidateMarketCenter}
         refreshUsers={invalidateUsers}
+        handleSendMarketCenterNotifications={
+          handleSendMarketCenterNotifications
+        }
       />
     </div>
   );

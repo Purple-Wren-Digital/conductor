@@ -288,7 +288,25 @@ export const USER_STATUS_ICONS = {
   Active: UserCheck,
   Inactive: UserX,
 };
+
 // MISC
+export function arrayToCommaSeparatedListWithConjunction(
+  conjunction: "and" | "or",
+  array: any[]
+) {
+  if (array.length === 0) {
+    return "";
+  } else if (array.length === 1) {
+    return array[0];
+  } else if (array.length === 2) {
+    return array.join(` ${conjunction} `);
+  } else {
+    const allButLast = array.slice(0, -1).join(", ");
+    const lastElement = array.slice(-1)[0];
+    return `${allButLast}, ${conjunction} ${lastElement}`;
+  }
+}
+
 export async function parseJsonSafe<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") || "";
   if (!res.ok) {

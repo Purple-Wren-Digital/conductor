@@ -17,7 +17,10 @@ export async function sendEmailNotification({
     const emailContent: React.ReactElement | null =
       formatEmailNotification(notification);
 
-    if (!emailContent) throw new Error("Email Content is null");
+    if (!emailContent) {
+      console.error("Email Content is null");
+      return;
+    }
 
     const response: CreateEmailResponse = await resend.emails.send({
       from: "Conductor Ticketing <onboarding@resend.dev>",

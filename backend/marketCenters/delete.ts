@@ -44,9 +44,14 @@ export const deleteMarketCenter = api<
       throw APIError.notFound("Market Center not found");
     }
 
-    await prisma.marketCenter.delete({
-      where: { id: req.id },
-    });
+    await prisma.$transaction([
+      prisma.marketCenterHistory.deleteMany({
+        where: { marketCenterId: req.id },
+      }),
+      prisma.marketCenter.delete({
+        where: { id: req.id },
+      }),
+    ]);
 
     return {
       success: true,

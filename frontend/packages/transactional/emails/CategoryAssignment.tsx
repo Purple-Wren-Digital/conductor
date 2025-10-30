@@ -7,31 +7,35 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { MarketCenterAssignmentProps } from "./types";
+import { CategoryAssignmentProps } from "./types";
 
 const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
-const MarketCenterAssignment = ({
+const CategoryAssignment = ({
+  categoryName,
+  categoryDescription,
   userUpdate,
   userName,
   editorName,
   editorEmail,
   marketCenterName,
   marketCenterId,
-}: MarketCenterAssignmentProps) => {
+}: CategoryAssignmentProps) => {
   return (
     <Html>
       <Head />
       <Preview>
-        You&apos;ve been {userUpdate === "added" ? "added to" : "removed from"}
-        {marketCenterName ? marketCenterName : "a market center"}
+        You&apos;ve been{" "}
+        {userUpdate === "added" ? "assigned to" : "unassigned from"} ticket
+        category
+        {categoryName}
       </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
             <Text style={headerText}>
-              Market Center Assignment: {marketCenterName}
+              Ticket Category Assignment: {categoryName}
             </Text>
           </Section>
 
@@ -41,21 +45,22 @@ const MarketCenterAssignment = ({
             <div style={{ marginBottom: "40px" }}>
               <Text style={subheaderText}>{userName},</Text>
               <Text style={subheaderText}>
-                {editorName}{" "}
-                {userUpdate === "added" ? "added you to" : "removed you from"}
-                their team.
+                You will {userUpdate === "added" ? "now" : "no longer"} be
+                automatically assigned to tickets created under {categoryName}.
               </Text>
             </div>
 
             <Text style={subheaderText}>
-              <b>Market Center Details</b>
-            </Text>
-
-            <Text style={labelText}>
-              Market Center: {marketCenterName ? marketCenterName : "N/A"}
+              <b>Category Details</b>
             </Text>
             <Text style={labelText}>
-              Id: {marketCenterId ? `#${marketCenterId.slice(0, 8)}` : "N/A"}
+              Name: {marketCenterName ? marketCenterName : "N/A"}
+            </Text>
+            <Text style={labelText}>
+              Description: {categoryDescription ?? "No description provided"}
+            </Text>
+            <Text style={labelText}>
+              Name: {marketCenterName ? marketCenterName : "N/A"}
             </Text>
 
             <Text style={datesText}>
@@ -69,7 +74,7 @@ const MarketCenterAssignment = ({
   );
 };
 
-export default MarketCenterAssignment;
+export default CategoryAssignment;
 
 const main = {
   fontFamily:

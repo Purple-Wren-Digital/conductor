@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
+  MarketCenterNotificationCallback,
   OrderBy,
   PrismaUser,
   TicketCategory,
@@ -60,7 +61,8 @@ import {
   orderByOptions,
   sortByUserOptions,
 } from "@/lib/utils";
-import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
+import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 export default function MarketCenterManagement() {
   const router = useRouter();
@@ -174,16 +176,27 @@ export default function MarketCenterManagement() {
   >({
     queryKey: ["market-center-filter-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = clerkUser?.id || "";
-      const res = await fetch(`${API_BASE}/users`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+      if (!clerkUser?.id) throw new Error("Missing auth token");
+      const response = await fetch(`${API_BASE}/users`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${clerkUser.id}`,
+        },
         cache: "no-store",
       });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
+
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to fetch all users"
+        );
+      }
+      const data = await response.json();
       return data;
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!clerkUser && !!clerkUser?.id,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
@@ -252,6 +265,29 @@ export default function MarketCenterManagement() {
     setMarketCenterToDelete(marketCenter);
     setShowDeleteModal(true);
   };
+
+  const handleSendMarketCenterNotifications = useCallback(
+    async ({
+      trigger,
+      receivingUser,
+      data,
+    }: MarketCenterNotificationCallback) => {
+      try {
+        const response = await createAndSendNotification({
+          authToken: clerkUser?.id,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+      } catch (error) {
+        console.error(
+          "MarketCenterManagement - Unable to generate notifications",
+          error
+        );
+      }
+    },
+    [clerkUser?.id]
+  );
 
   return (
     <div className="space-y-6">
@@ -542,6 +578,9 @@ export default function MarketCenterManagement() {
         refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={invalidateUsers}
         unassignedUsers={unassignedUsers}
+        handleSendMarketCenterNotifications={
+          handleSendMarketCenterNotifications
+        }
       />
 
       {/* EDIT MARKET CENTER */}
@@ -556,6 +595,9 @@ export default function MarketCenterManagement() {
         unassignedUsers={unassignedUsers}
         refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={invalidateUsers}
+        handleSendMarketCenterNotifications={
+          handleSendMarketCenterNotifications
+        }
       />
 
       {/* DELETE MARKET CENTER */}
@@ -566,6 +608,9 @@ export default function MarketCenterManagement() {
         setShowDeleteModal={setShowDeleteModal}
         refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={invalidateUsers}
+        handleSendMarketCenterNotifications={
+          handleSendMarketCenterNotifications
+        }
       />
     </div>
   );

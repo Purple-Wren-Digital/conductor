@@ -1,4 +1,4 @@
-import { UserRole } from "../types";
+import { UserRole } from "@/lib/types";
 
 export interface PublicMetaData {
   role: UserRole;
@@ -251,7 +251,7 @@ export interface ClerkUserUpdates {
   clerkId?: string;
   first_name?: string;
   last_name?: string;
-  primary_email?: string;
+  primary_email_id?: string;
   role?: UserRole;
   marketCenterId?: string;
   invited?: boolean;

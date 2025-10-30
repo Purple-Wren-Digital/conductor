@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useCallback, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
   AlertDialog,
@@ -34,7 +34,12 @@ import {
 import { Plus } from "lucide-react";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { MarketCenter, PrismaUser, TicketCategory } from "@/lib/types";
+import type {
+  MarketCenter,
+  MarketCenterNotificationCallback,
+  PrismaUser,
+  TicketCategory,
+} from "@/lib/types";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 
@@ -43,11 +48,17 @@ export default function MarketCenterTicketCategories({
   isLoading,
   setIsLoading,
   invalidateMarketCenter,
+  handleSendMarketCenterNotifications,
 }: {
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
+  handleSendMarketCenterNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: MarketCenterNotificationCallback) => Promise<void>;
 }) {
   const { user: clerkUser } = useUser();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
@@ -69,41 +80,11 @@ export default function MarketCenterTicketCategories({
 
   const teamMembers: PrismaUser[] =
     marketCenter && marketCenter?.users
-      ? marketCenter?.users
+      ? marketCenter.users
       : ([] as PrismaUser[]);
+
   const ticketCategories: TicketCategory[] =
     marketCenter?.ticketCategories ?? ([] as TicketCategory[]);
-
-  // const sendUserUpdateNotification = async (
-  //   data: PrismaUser,
-  //   userUpdate: "added" | "removed"
-  // ) => {
-  //   const body = {
-  //     userUpdate: userUpdate,
-  //     marketCenter: marketCenter,
-  //     userName: data?.name,
-  //     userEmail: data?.email,
-  //     editorName: currentUser?.name,
-  //     editorEmail: currentUser?.email,
-  //   };
-  //   try {
-  //     const response = await fetch("/api/send/marketCenters/addUser", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       cache: "no-store",
-  //       body: JSON.stringify({ body }),
-  //     });
-  //     console.log("response", response);
-  //     if (!response || !response.ok)
-  //       throw new Error(
-  //         response?.statusText
-  //           ? response?.statusText
-  //           : "Failed to send user update email"
-  //       );
-  //   } catch (error) {
-  //     console.error("Failed to send team member update", error);
-  //   }
-  // };
 
   const resetAndCloseForm = () => {
     setOpenCategoryForm(false);
@@ -198,22 +179,66 @@ export default function MarketCenterTicketCategories({
           body: JSON.stringify(body),
         }
       );
-
       if (!response.ok) {
-        console.error("Failed Update Response - ", response);
-        throw new Error("Failed to update ticket category");
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to update ticket category"
+        );
       }
       const data = await response.json();
-      console.log("UPDATE - Ticket Category Mutation", data);
+      if (!data || !data?.category) {
+        throw new Error("Failed to update ticket category");
+      }
+      return data;
     },
-    onSuccess: async (_) => {
-      await invalidateMarketCenter;
-      resetAndCloseForm();
+    onSuccess: async (data: {
+      category: TicketCategory;
+      usersToNotify: {
+        id: string;
+        name: string | null;
+        email?: string;
+        userUpdate: "added" | "removed";
+      }[];
+    }) => {
       toast.success(`${categoryFormData?.name} updated`);
+      if (data?.usersToNotify && data?.usersToNotify.length > 0) {
+        await Promise.all(
+          data.usersToNotify.map(async (user) => {
+            await handleSendMarketCenterNotifications({
+              trigger: "Category Assignment",
+              receivingUser: {
+                id: user?.id,
+                name: user?.name ?? "You",
+                email: user?.email ?? "",
+              },
+              data: {
+                categoryAssignment: {
+                  userUpdate: user?.userUpdate,
+                  userName: user?.name ?? "You",
+                  categoryName: data?.category?.name,
+                  categoryDescription: data?.category?.description ?? undefined,
+                  marketCenterId: data?.category?.marketCenterId,
+                  marketCenterName: data?.category?.marketCenter?.name,
+                  editorName: clerkUser?.fullName ?? "Another user",
+                  editorEmail:
+                    clerkUser?.emailAddresses[0]?.emailAddress ?? "N/A",
+                },
+              },
+            });
+          })
+        );
+      }
+      setIsLoading(false);
+      resetAndCloseForm();
     },
     onError: (error) => {
       console.error("Failed to update category", error);
       toast.error("Failed to update category");
+    },
+    onSettled: async () => {
+      setIsLoading(false);
+      await invalidateMarketCenter;
     },
   });
 
@@ -234,24 +259,56 @@ export default function MarketCenterTicketCategories({
           body: JSON.stringify({
             marketCenterId: marketCenter.id,
             name: categoryFormData?.name ?? "",
-            description: categoryFormData?.defaultAssigneeId ?? null,
+            description: categoryFormData?.description ?? null,
             defaultAssignee: categoryFormData?.defaultAssigneeId ?? null,
           }),
         }
       );
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to create ticket category"
+        );
+      }
 
-      if (!response.ok) throw new Error("Failed to create ticket category");
       const data = await response.json();
-      console.log("CREATE Ticket Category Mutation", data);
+      return data;
     },
-    onSuccess: async (_) => {
+    onSuccess: async (data: TicketCategory) => {
       toast.success(`${categoryFormData?.name} was created`);
-      await invalidateMarketCenter;
+      if (data?.defaultAssigneeId && data?.defaultAssignee) {
+        await handleSendMarketCenterNotifications({
+          trigger: "Category Assignment",
+          receivingUser: {
+            id: data?.defaultAssigneeId,
+            name: data?.defaultAssignee?.name ?? "You",
+            email: data?.defaultAssignee?.email ?? "",
+          },
+          data: {
+            categoryAssignment: {
+              userUpdate: "added",
+              userName: data?.defaultAssignee?.name ?? "You",
+              categoryName: data?.name,
+              categoryDescription: data?.description ?? undefined,
+              marketCenterId: data?.marketCenterId,
+              marketCenterName: marketCenter?.name,
+              editorName: clerkUser?.fullName ?? "Another user",
+              editorEmail: clerkUser?.emailAddresses[0]?.emailAddress ?? "N/A",
+            },
+          },
+        });
+      }
+      setIsLoading(false);
       resetAndCloseForm();
     },
     onError: (error) => {
       console.error(`Failed to create category`, error);
       toast.error(`Failed to create category`);
+    },
+    onSettled: async () => {
+      setIsLoading(false);
+      await invalidateMarketCenter;
     },
   });
 
@@ -273,7 +330,6 @@ export default function MarketCenterTicketCategories({
     } else {
       createTicketCategoryMutation.mutate();
     }
-    setIsLoading(false);
   };
 
   const deleteTicketCategoryMutation = useMutation({
@@ -293,23 +349,51 @@ export default function MarketCenterTicketCategories({
           },
         }
       );
-
-      if (!response.ok) throw new Error("Failed to create ticket category");
-      const data = await response.json();
-      console.log(
-        `${editingTicketCategory && editingTicketCategory?.id ? "UPDATE" : "CREATE"}`,
-        "Ticket Category Mutation",
-        data
-      );
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to delete ticket category"
+        );
+      }
     },
-    onSuccess: async (_) => {
-      toast.success(`Category was deleted`);
-      await invalidateMarketCenter;
+    onSuccess: async () => {
+      toast.success(`${categoryToRemove?.name} was deleted`);
+      setIsLoading(false);
+      if (
+        categoryToRemove?.defaultAssigneeId &&
+        categoryToRemove?.defaultAssignee
+      ) {
+        await handleSendMarketCenterNotifications({
+          trigger: "Category Assignment",
+          receivingUser: {
+            id: categoryToRemove?.defaultAssigneeId,
+            name: categoryToRemove?.defaultAssignee?.name ?? "You",
+            email: categoryToRemove?.defaultAssignee?.email ?? "",
+          },
+          data: {
+            categoryAssignment: {
+              userUpdate: "added",
+              userName: categoryToRemove?.defaultAssignee?.name ?? "You",
+              categoryName: categoryToRemove?.name,
+              categoryDescription: categoryToRemove?.description ?? undefined,
+              marketCenterId: categoryToRemove?.marketCenterId,
+              marketCenterName: marketCenter?.name,
+              editorName: clerkUser?.fullName ?? "Another user",
+              editorEmail: clerkUser?.emailAddresses[0]?.emailAddress ?? "N/A",
+            },
+          },
+        });
+      }
       resetAndCloseForm();
     },
     onError: (error) => {
       console.error(`Failed to delete category`, error);
       toast.error(`Failed to delete category`);
+    },
+    onSettled: async () => {
+      setIsLoading(false);
+      await invalidateMarketCenter;
     },
   });
   const handleRemoveTicketCategory = async (e: React.FormEvent) => {
@@ -350,10 +434,14 @@ export default function MarketCenterTicketCategories({
           {ticketCategories &&
             ticketCategories.length > 0 &&
             ticketCategories.map((category: TicketCategory) => {
+              const deactivatedUser = !category?.defaultAssignee?.isActive;
+              const wrongMarketCenter =
+                category?.defaultAssignee?.marketCenterId !== marketCenter?.id;
+              const assignmentError = deactivatedUser || wrongMarketCenter;
               return (
                 <div
                   key={category?.id}
-                  className="flex flex-col sm:flex-row items-start items-center justify-between border-b p-2 pb-6 last:border-0 last:pb-0 w-full gap-4"
+                  className="flex flex-col sm:flex-row items-center justify-between border-b p-2 pb-6 last:border-0 last:pb-0 w-full gap-4"
                 >
                   <div className="flex-1 min-w-0 space-y-2">
                     <p className="font-medium text-sm leading-5 text-ellipsis">
@@ -362,7 +450,9 @@ export default function MarketCenterTicketCategories({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <p className="text-xs text-muted-foreground mt-0.5 text-ellipsis">
-                          {category?.description ?? "No Description"}
+                          {category?.description
+                            ? category.description
+                            : "No Description"}
                         </p>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -372,15 +462,18 @@ export default function MarketCenterTicketCategories({
 
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                       <span
-                        className={`${category?.defaultAssignee && !category?.defaultAssignee?.isActive && "text-red-800"}`}
+                        className={`${category?.defaultAssignee && assignmentError && "text-red-800"}`}
                       >
                         Default:{" "}
                         {category?.defaultAssignee?.name
                           ? `${category?.defaultAssignee?.name}`
                           : "None"}
                         {category?.defaultAssignee &&
-                          !category?.defaultAssignee?.isActive &&
-                          " (Deactivated)"}
+                          deactivatedUser &&
+                          " (Deactivated)"}{" "}
+                        {category?.defaultAssignee &&
+                          wrongMarketCenter &&
+                          " (Incorrect Market Center)"}
                       </span>
                       <span>Tickets: {category.ticketCount}</span>
                       <span>
@@ -391,7 +484,7 @@ export default function MarketCenterTicketCategories({
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full items-center sm:w-auto sm:justify-end">
+                  <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full sm:w-auto sm:justify-end">
                     <Button
                       variant={"outline"}
                       onClick={() => {

@@ -135,6 +135,7 @@ export function useFetchMarketCenterCategories(marketCenterId?: string) {
           {
             method: "GET",
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${clerkUser.id}`,
             },
           }

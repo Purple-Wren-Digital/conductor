@@ -3,31 +3,29 @@ import { prisma } from "../../../ticket/db";
 import { getUserContext } from "../../../auth/user-context";
 import { defaultNotificationPreferences } from "../../../utils";
 
-export interface ResetNotificationsRequest {
+export interface CreateNotificationsRequest {
   id: string;
 }
 
-export interface ResetNotificationsResponse {
-  reset: boolean;
+export interface CreateNotificationsResponse {
+  created: boolean;
 }
 
-export const resetNotificationPreferences = api<
-  ResetNotificationsRequest,
-  ResetNotificationsResponse
+export const createNotifications = api<
+  CreateNotificationsRequest,
+  CreateNotificationsResponse
 >(
   {
     expose: true,
-    method: "PATCH",
-    path: "/users/:id/settings/notificationPreferences/reset",
+    method: "PUT",
+    path: "/users/:id/settings",
     auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
-    const isEditingSelf = userContext?.userId === req.id;
-
-    if (!isEditingSelf) {
+    if (userContext.role !== "ADMIN") {
       throw APIError.permissionDenied(
-        "Insufficient permissions to update other users' notifications"
+        "You do not have permissions to create notifications"
       );
     }
 
@@ -36,17 +34,20 @@ export const resetNotificationPreferences = api<
       include: { userSettings: { include: { notificationPreferences: true } } },
     });
 
-    if (!existingUser) {
+    if (!existingUser || !existingUser.id) {
       throw APIError.notFound("User not found");
     }
 
     if (
-      !existingUser?.userSettings ||
-      !existingUser?.userSettings?.id ||
-      !existingUser?.userSettings?.notificationPreferences ||
-      !existingUser?.userSettings?.notificationPreferences.length
+      existingUser?.userSettings &&
+      existingUser?.userSettings?.notificationPreferences &&
+      existingUser?.userSettings?.notificationPreferences.length > 0
     ) {
-      const updatedUser = await prisma.user.update({
+      return { created: true };
+    }
+
+    if (!existingUser?.userSettings || !existingUser?.userSettings?.id) {
+      await prisma.user.update({
         where: { id: existingUser.id },
         data: {
           userSettings: {
@@ -65,18 +66,9 @@ export const resetNotificationPreferences = api<
           },
         },
       });
-      return { reset: true };
+      return { created: true };
     }
-
-    await Promise.all(
-      existingUser.userSettings.notificationPreferences.map(
-        async (pref) =>
-          await prisma.notificationPreferences.delete({
-            where: { id: pref.id },
-          })
-      )
-    );
-
+    // if no notificationPreferences, create them
     await prisma.userSettings.update({
       where: { id: existingUser?.userSettings?.id },
       data: {
@@ -86,6 +78,6 @@ export const resetNotificationPreferences = api<
       },
     });
 
-    return { reset: true };
+    return { created: true };
   }
 );

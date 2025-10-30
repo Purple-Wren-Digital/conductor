@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import CreateUser from "./create-user-form";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { ClerkUser, ClerkUserUpdates } from "@/lib/clerk/types";
+import type { ClerkUser, ClerkUserUpdates } from "@/lib/utils/clerk/types";
 import type { OrderBy, UserSortBy } from "@/lib/types";
 import {
   ArrowDown,
@@ -37,11 +37,10 @@ import {
   orderByOptions,
   sortByUserOptions,
 } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
-import { API_BASE } from "@/lib/api/utils";
 import { useUser } from "@clerk/nextjs";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
 const invitationStatusOptions: InvitationStatus[] = [
@@ -52,8 +51,6 @@ const invitationStatusOptions: InvitationStatus[] = [
 ];
 
 export default function UserInvitationManagement() {
-  const router = useRouter();
-
   const [showFilters, setShowFilters] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -180,45 +177,32 @@ export default function UserInvitationManagement() {
         throw new Error("Missing authentication and/or payload");
       }
       setIsSendingInvitation(true);
-      console.log("Sending invite to:", user);
       try {
-        const response = await fetch(
-          `${API_BASE}/notifications/create/${user.id}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${clerkUser.id}`,
-            },
-            body: JSON.stringify({
-              trigger: "Invitation",
-              channel: "EMAIL",
-              category: "ACCOUNT",
-              type: "General",
-              title: "Join Conductor Ticketing",
-              body: `${currentUser?.name || currentUser?.email} invited you to Conductor Ticketing`,
-              data: {
-                invitation: {
-                  newUserName:
-                    user?.first_name && user?.last_name
-                      ? `${user?.first_name} ${user?.last_name}`
-                      : user?.username,
-                  newUserEmail: user.email_addresses[0].email_address,
-                  newUserRole: user?.public_metadata?.role ?? "AGENT",
-                  newUserMarketCenter: null,
-                  inviterName: clerkUser.fullName,
-                  inviterEmail: clerkUser.emailAddresses[0].emailAddress,
-                } as NewUserInvitationProps,
-              },
-            }),
-          }
-        );
-        if (!response.ok) {
-          throw new Error(
-            response?.statusText
-              ? response.statusText
-              : "Failed to send invitation email"
-          );
+        const response = await createAndSendNotification({
+          authToken: clerkUser.id,
+          trigger: "Invitation",
+          receivingUser: {
+            id: user.id,
+            name: `${user?.first_name} ${user?.last_name}`,
+            email: user.email_addresses[0].email_address,
+          },
+          data: {
+            invitation: {
+              newUserName:
+                user?.first_name && user?.last_name
+                  ? `${user?.first_name} ${user?.last_name}`
+                  : user?.username,
+              newUserEmail: user.email_addresses[0].email_address,
+              newUserRole: user?.public_metadata?.role ?? "AGENT",
+              newUserMarketCenter: null,
+              inviterName: clerkUser.fullName,
+              inviterEmail: clerkUser.emailAddresses[0].emailAddress,
+            } as NewUserInvitationProps,
+          },
+        });
+
+        if (!response) {
+          throw new Error("Failed to generate/send invitation");
         }
         const updated = await handleUpdateInClerk({
           clerkId: user.id,
@@ -237,7 +221,7 @@ export default function UserInvitationManagement() {
         await fetchClerkUsers();
       }
     },
-    [fetchClerkUsers, clerkUser, currentUser]
+    [fetchClerkUsers, clerkUser]
   );
 
   const handleMarkUsersAsAccepted = useCallback(async () => {
@@ -248,9 +232,9 @@ export default function UserInvitationManagement() {
 
     try {
       const results = await Promise.allSettled(
-        selectedNewUsers.map((user) =>
+        selectedNewUsers.map((user: ClerkUser) =>
           handleUpdateInClerk({
-            clerkId: user.user_id,
+            clerkId: user.id,
             accepted: true,
             acceptedOn: new Date(),
           })

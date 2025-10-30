@@ -54,6 +54,9 @@ export const createCategory = api<
           createdAt: new Date(),
           updatedAt: new Date(),
         },
+        include: {
+          defaultAssignee: true,
+        },
       });
 
       const marketCenterHistory = await pr.marketCenterHistory.create({

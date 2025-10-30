@@ -13,6 +13,12 @@ export interface UpdateCategoryRequest {
 
 export interface UpdateCategoryResponse {
   category: TicketCategory;
+  usersToNotify: {
+    id: string;
+    name: string | null;
+    email?: string;
+    userUpdate: "added" | "removed";
+  }[];
 }
 
 export const updateCategory = api<
@@ -48,6 +54,12 @@ export const updateCategory = api<
 
     const updateCategoryData: any = {};
     let marketCenterHistory: any = [];
+    let usersToNotify: {
+      id: string;
+      name: string | null;
+      email?: string;
+      userUpdate: "added" | "removed";
+    }[] = [];
 
     // NAME
     if (req?.name && req?.name !== oldTicketCategory.name) {
@@ -83,14 +95,14 @@ export const updateCategory = api<
       req?.defaultAssigneeId &&
       req?.defaultAssigneeId !== oldTicketCategory.defaultAssigneeId
     ) {
-      let newAssignee: any = {};
+      let newDefaultAssignee: any = {};
       if (req.defaultAssigneeId !== "none") {
         const user = await prisma.user.findUnique({
           where: { id: req.defaultAssigneeId },
         });
         if (user) {
-          newAssignee.name = user?.name ?? "N/a";
-          newAssignee.id = user.id;
+          newDefaultAssignee.name = user?.name ?? "N/a";
+          newDefaultAssignee.id = user.id;
         } else {
           throw APIError.notFound("Default assignee user not found");
         }
@@ -103,7 +115,7 @@ export const updateCategory = api<
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
-        field: "category default assignee",
+        field: `${req?.name ? req.name : oldTicketCategory?.name} category default assignee`,
         previousValue:
           oldTicketCategory &&
           oldTicketCategory?.defaultAssignee &&
@@ -115,11 +127,33 @@ export const updateCategory = api<
               })
             : null,
         newValue:
-          newAssignee && newAssignee?.name && newAssignee?.id
-            ? JSON.stringify(newAssignee)
+          newDefaultAssignee &&
+          newDefaultAssignee?.name &&
+          newDefaultAssignee?.id
+            ? JSON.stringify(newDefaultAssignee)
             : null,
         snapshot: JSON.stringify(oldTicketCategory),
       });
+
+      if (oldTicketCategory?.defaultAssigneeId) {
+        usersToNotify.push({
+          id: oldTicketCategory.defaultAssigneeId,
+          name: oldTicketCategory?.defaultAssignee?.name
+            ? oldTicketCategory.defaultAssignee.name
+            : null,
+          email: oldTicketCategory?.defaultAssignee?.email ?? undefined,
+          userUpdate: "removed",
+        });
+      }
+
+      if (newDefaultAssignee?.id) {
+        usersToNotify.push({
+          id: newDefaultAssignee.id,
+          name: newDefaultAssignee?.name ?? null,
+          email: newDefaultAssignee?.email ?? undefined,
+          userUpdate: "added",
+        });
+      }
     }
     // MARKET CENTER ID
     // if (
@@ -168,6 +202,6 @@ export const updateCategory = api<
       };
     });
 
-    return { category: result.ticketCategory };
+    return { category: result.ticketCategory, usersToNotify: usersToNotify };
   }
 );

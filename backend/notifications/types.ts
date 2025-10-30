@@ -1,7 +1,10 @@
 import {
+  AccountInformationProps,
+  AppPermissionsReviewProps,
+  CategoryAssignmentProps,
   CreatedTicketNotificationProps,
   EditedTicketNotificationProps,
-  MarketCenterUserUpdateProps,
+  MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
   QuickEditTicketNotificationProps,
@@ -26,45 +29,35 @@ export type NotificationCategory =
   | "PERMISSIONS"
   | "PRODUCT";
 
-export type NotificationTrigger =
-  // ACCOUNT
-  | "Invitation"
-  | "Welcome"
-  | "PasswordChange"
-  | "UsernameChange"
-  | "EmailChange"
-  // ACTIVITY
-  | "TicketCreated"
-  | "TicketUpdated"
-  | "TicketAssignment"
+export type NotificationTypes =
+  | "App Permissions"
+  | "General" // ACCOUNT, MARKETING, PRODUCT
+  | "Account Information"
+  // ACTIVITY ONLY
+  | "Daily Summary"
+  | "Weekly Report"
+  | "Ticket Created"
+  | "Ticket Updated"
+  | "Ticket Assignment"
   | "Mentions"
-  | "NewComments"
-  | "MarketCenterAssignment"
-  | "CategoryAssignment"
-  | "DailySummary"
-  | "WeeklySummary"
-  // MARKETING/PRODUCT
-  | "MarketingNewsletter"
-  | "ProductUpdate";
+  | "New Comments"
+  | "Market Center Assignment"
+  | "Category Assignment";
 
 export interface Notification {
   id: string;
-
   userId: string;
   user?: User;
-
   channel?: NotificationChannel;
   category: NotificationCategory;
   priority?: Urgency;
   type: string;
   title: string;
   body: string;
-  data?: NotificationData; // Record<string, any>
+  data?: NotificationData;
   read: boolean;
   deliveredAt: Date | null;
   createdAt: Date;
-
-  trigger?: NotificationTrigger;
 }
 
 export interface NotificationData {
@@ -77,9 +70,16 @@ export interface NotificationData {
   categoryId?: string;
 
   // EMAIL
+  appPermissions?: AppPermissionsReviewProps;
+  accountInformation?: AccountInformationProps;
   emails?: string[];
   invitation?: NewUserInvitationProps;
-  marketCenterAssignment?: MarketCenterUserUpdateProps;
+
+  // ACTIVITY: MARKET CENTER
+  marketCenterAssignment?: MarketCenterAssignmentProps;
+  categoryAssignment?: CategoryAssignmentProps;
+
+  // ACTIVITY: TICKETS
   createdTicket?: CreatedTicketNotificationProps;
   editedTicket?: EditedTicketNotificationProps;
   reassignedTicket?: ReassignedTicketNotificationProps;
@@ -87,9 +87,9 @@ export interface NotificationData {
   newComment?: NewCommentNotificationProps;
 }
 
-export interface PushNotificationPayload {
-  token: string;
-  userId: string;
-  title: string;
-  body: string;
-}
+// export interface PushNotificationPayload {
+//   token: string;
+//   userId: string;
+//   title: string;
+//   body: string;
+// }

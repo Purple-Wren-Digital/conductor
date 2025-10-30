@@ -17,10 +17,7 @@ export interface RemoveUsersResponse {
 }
 
 // Removes users from a market center
-export const removeUsers = api<
-  RemoveUsersRequest,
-  RemoveUsersResponse
->(
+export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
   {
     expose: true,
     method: "PATCH",
@@ -79,7 +76,7 @@ export const removeUsers = api<
           changedById: userContext.userId,
           action: "REMOVE",
           field: "team",
-          previousValue: JSON.stringify({id: user.id,name: user.name}),
+          previousValue: JSON.stringify({ id: user.id, name: user.name }),
         };
         return removedUser;
       });
@@ -87,27 +84,6 @@ export const removeUsers = api<
       const marketCenterLog = await pr.marketCenterHistory.createMany({
         data: removedUsersData,
       });
-
-      // const settingsAuditLog = await pr.settingsAuditLog.createMany({
-      //   data: [
-      //     {
-      //       marketCenterId: marketCenter.id,
-      //       action: "REMOVE",
-      //       section: "team",
-      //       previousValue: {
-      //         old: marketCenter?.users
-      //           ? marketCenter.users.map((u) => ({ userId: u.id }))
-      //           : {},
-      //       },
-      //       newValue: {
-      //         new: updatedMarketCenter.users
-      //           ? updatedMarketCenter.users.map((u) => ({ userId: u.id }))
-      //           : {},
-      //       },
-      //       userId: userContext.userId,
-      //     },
-      //   ],
-      // });
 
       return { updatedMarketCenter, marketCenterLog };
     });
@@ -119,6 +95,7 @@ export const removeUsers = api<
         name: user.name ?? "",
       })),
     };
+
     return { marketCenter: formattedMarketCenter };
   }
 );

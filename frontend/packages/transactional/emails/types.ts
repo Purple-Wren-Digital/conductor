@@ -5,6 +5,23 @@ export type Updates = {
 };
 
 // USERS
+export type AppPermissionsReviewProps = {
+  email?: string;
+  name?: string;
+};
+
+export type AccountInformationProps = {
+  changedByName?: string;
+  changedByEmail?: string;
+  updates:
+    | {
+        value: "name" | "email" | "role" | "password";
+        originalValue: string | null;
+        newValue: string | null;
+      }[]
+    | null;
+};
+
 export type NewUserInvitationProps = {
   newUserName: string;
   newUserEmail: string;
@@ -16,8 +33,19 @@ export type NewUserInvitationProps = {
 };
 
 // MARKET CENTERS
-export type MarketCenterUserUpdateProps = {
+export type MarketCenterAssignmentProps = {
   userUpdate: "added" | "removed";
+  marketCenterName?: string;
+  marketCenterId?: string;
+  userName: string;
+  editorName: string;
+  editorEmail: string;
+};
+
+export type CategoryAssignmentProps = {
+  userUpdate: "added" | "removed";
+  categoryName: string;
+  categoryDescription?: string;
   marketCenterName?: string;
   marketCenterId?: string;
   userName: string;

@@ -1,8 +1,11 @@
 import { Dispatch, SetStateAction } from "react";
 import {
+  AccountInformationProps,
+  AppPermissionsReviewProps,
+  CategoryAssignmentProps,
   CreatedTicketNotificationProps,
   EditedTicketNotificationProps,
-  MarketCenterUserUpdateProps,
+  MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
   QuickEditTicketNotificationProps,
@@ -375,6 +378,20 @@ export type NotificationCategory =
   | "MARKETING"
   | "PERMISSIONS"
   | "PRODUCT";
+export type NotificationTypes =
+  | "App Permissions"
+  | "General" // ACCOUNT, MARKETING, PRODUCT
+  | "Account Information"
+  // ACTIVITY ONLY
+  | "Daily Summary"
+  | "Weekly Report"
+  | "Ticket Created"
+  | "Ticket Updated"
+  | "Ticket Assignment"
+  | "Mentions"
+  | "New Comments"
+  | "Market Center Assignment"
+  | "Category Assignment";
 export interface Notification {
   id: string;
   userId: string;
@@ -382,7 +399,7 @@ export interface Notification {
   channel?: NotificationChannel;
   category: NotificationCategory;
   priority: Urgency;
-  type: string;
+  type: NotificationTypes;
   title: string;
   body: string;
   data?: NotificationData;
@@ -400,9 +417,16 @@ export interface NotificationData {
   categoryId?: string;
 
   // EMAIL
+  appPermissions?: AppPermissionsReviewProps;
+  accountInformation?: AccountInformationProps;
   emails?: string[];
   invitation?: NewUserInvitationProps;
-  marketCenterAssignment?: MarketCenterUserUpdateProps;
+
+  // ACTIVITY: MARKET CENTER
+  marketCenterAssignment?: MarketCenterAssignmentProps;
+  categoryAssignment?: CategoryAssignmentProps;
+
+  // ACTIVITY: TICKETS
   createdTicket?: CreatedTicketNotificationProps;
   editedTicket?: EditedTicketNotificationProps;
   reassignedTicket?: ReassignedTicketNotificationProps;
@@ -416,3 +440,56 @@ export interface PushNotificationPayload {
   title: string;
   body: string;
 }
+
+export interface CreateNotificationPayload {
+  authToken?: string;
+  userId: string;
+  // trigger: NotificationTrigger;
+  category: NotificationCategory;
+  type: string;
+  title: string;
+  body: string;
+  data?: NotificationData;
+  priority?: Urgency;
+}
+
+export type MarketCenterNotificationCallback = {
+  trigger: "Market Center Assignment" | "Category Assignment";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: {
+    marketCenterAssignment?: MarketCenterAssignmentProps;
+    categoryAssignment?: CategoryAssignmentProps;
+  };
+};
+
+export type TicketNotificationCallback = {
+  trigger: "Ticket Created" | "Ticket Updated" | "Ticket Assignment";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: {
+    createdTicket?: CreatedTicketNotificationProps;
+    editedTicket?: EditedTicketNotificationProps;
+    reassignedTicket?: ReassignedTicketNotificationProps;
+    quickEditTicket?: QuickEditTicketNotificationProps;
+    newComment?: NewCommentNotificationProps;
+  };
+};
+
+export type CommentNotificationCallback = {
+  trigger: "Mentions" | "New Comments";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: {
+    newComment?: NewCommentNotificationProps;
+  };
+};

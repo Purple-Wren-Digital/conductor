@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,14 @@ import {
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
 import { API_BASE } from "@/lib/api/utils";
-import type { MarketCenterForm, PrismaUser } from "@/lib/types";
+import type {
+  MarketCenterForm,
+  MarketCenterNotificationCallback,
+  PrismaUser,
+} from "@/lib/types";
 import { toast } from "sonner";
 import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
+import { useStore } from "@/context/store-provider";
 
 type CreateMarketCenterProps = {
   showCreateMCForm: boolean;
@@ -25,6 +30,11 @@ type CreateMarketCenterProps = {
   unassignedUsers: PrismaUser[];
   refreshMarketCenters: Promise<void>;
   refreshUsers: Promise<void>;
+  handleSendMarketCenterNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: MarketCenterNotificationCallback) => Promise<void>;
 };
 
 export default function CreateMarketCenter({
@@ -35,11 +45,12 @@ export default function CreateMarketCenter({
   unassignedUsers,
   refreshMarketCenters,
   refreshUsers,
+  handleSendMarketCenterNotifications,
 }: CreateMarketCenterProps) {
   const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { currentUser } = useStore();
 
   const resetAndCloseForm = () => {
     setFormData({
@@ -94,17 +105,54 @@ export default function CreateMarketCenter({
           users: formData.selectedUsers,
         }),
       });
-      if (!response.ok) throw new Error("Failed to fetch market centers");
+      if (!response.ok) {
+        throw new Error(
+          response?.statusText
+            ? response.statusText
+            : "Failed to create market center"
+        );
+      }
       const data = await response.json();
-      console.log("DATA", data);
-      toast.success(`${formData.name.trim()} was created!`);
-      await refreshMarketCenters;
-      await refreshUsers;
+      console.log("DATA - CREATE MARKET CENTER", data);
+      if (
+        data &&
+        data?.marketCenter &&
+        data?.marketCenter?.users &&
+        data?.marketCenter?.users.length > 0
+      ) {
+        await Promise.all(
+          data?.marketCenter?.users.map(async (user: PrismaUser) => {
+            await handleSendMarketCenterNotifications({
+              trigger: "Market Center Assignment",
+              receivingUser: {
+                id: user?.id,
+                name: user?.name ?? "You",
+                email: user?.email,
+              },
+              data: {
+                marketCenterAssignment: {
+                  userUpdate: "added",
+                  marketCenterId: data?.marketCenter?.id,
+                  marketCenterName: data?.marketCenter?.name,
+                  userName: user?.name ?? user?.email,
+                  editorEmail: currentUser?.email ?? "N/A",
+                  editorName: currentUser?.name ?? "Another user",
+                },
+              },
+            });
+          })
+        );
+
+        toast.success(`${data?.name} was created!`);
+      }
+
       resetAndCloseForm();
     } catch (error) {
       console.error("Failed to create new market center", error);
       toast.error(`Error: Unable to create market center`);
     } finally {
+      await refreshMarketCenters;
+      await refreshUsers;
       setIsSubmitting(false);
     }
   };

@@ -72,8 +72,6 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       id: string;
       email: string;
       clerkId: string;
-
-      // auth0Id: string;
       name: string | null;
       role: $Enums.UserRole;
       createdAt: Date;
@@ -115,9 +113,9 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
           userId: newUser.id,
           marketCenterId: newUser?.marketCenterId,
           action: "CREATE",
-          field: "isActive",
-          previousValue: "false",
-          newValue: "true",
+          field: "New User",
+          previousValue: "",
+          newValue: "Activated",
           changedById: userContext.userId,
           snapshot: newUser,
         },

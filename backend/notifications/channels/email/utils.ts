@@ -1,9 +1,11 @@
 import * as React from "react";
 import type { Notification } from "../../types";
 import UserInvitation from "@/emails/UserInvitation";
+import MarketCenterAssignment from "@/emails/MarketCenterUserUpdate";
+import CategoryAssignment from "@/emails/CategoryAssignment";
 import CreatedTicketNotification from "@/emails/CreatedTicketNotification";
 import EditedTicketNotification from "@/emails/EditedTicketNotification";
-import QuickEditTicketNotification from "@/emails/QuickEditTicketNotification"
+import QuickEditTicketNotification from "@/emails/QuickEditTicketNotification";
 
 export const formatEmailNotification = (notification: Notification) => {
   // USERS
@@ -16,6 +18,20 @@ export const formatEmailNotification = (notification: Notification) => {
   }
 
   // MARKET CENTERS
+
+  if (notification?.data?.marketCenterAssignment) {
+    const createdTicket = MarketCenterAssignment(
+      notification.data.marketCenterAssignment
+    ) as React.ReactElement;
+    return createdTicket;
+  }
+
+  if (notification?.data?.categoryAssignment) {
+    const createdTicket = CategoryAssignment(
+      notification.data.categoryAssignment
+    ) as React.ReactElement;
+    return createdTicket;
+  }
 
   // TICKETS
   if (notification?.data?.createdTicket) {

@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { MarketCenter, MarketCenterForm, PrismaUser } from "@/lib/types";
+import type {
+  MarketCenter,
+  MarketCenterForm,
+  MarketCenterNotificationCallback,
+  PrismaUser,
+} from "@/lib/types";
 import { toast } from "sonner";
 
 import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
 // import { arraysEqualById } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
+import { useStore } from "@/context/store-provider";
 
 type EditMarketCenterProps = {
   editingMarketCenter: MarketCenter | null;
@@ -35,6 +41,11 @@ type EditMarketCenterProps = {
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   refreshMarketCenters: Promise<void>;
   refreshUsers: Promise<void>;
+  handleSendMarketCenterNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: MarketCenterNotificationCallback) => Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -48,12 +59,14 @@ export default function EditMarketCenter({
   setFormData,
   refreshMarketCenters,
   refreshUsers,
+  handleSendMarketCenterNotifications,
 }: EditMarketCenterProps) {
   const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { permissions } = useUserRole();
+  const { currentUser } = useStore();
 
   const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
     setFormData({
@@ -72,7 +85,7 @@ export default function EditMarketCenter({
     if (setEditingMarketCenter) setEditingMarketCenter(null);
   };
 
-  // const hasNameChanged: boolean =
+  // const hasNameChanged: boolean = formData.name &&
   //   formData.name.trim() === editingMarketCenter?.name.trim();
   // const haveAssignmentsChanged: boolean =
   //   assignedUsers.length !== formData.selectedUsers.length ||
@@ -94,20 +107,18 @@ export default function EditMarketCenter({
     return Object.keys(errors).length === 0;
   };
 
-
   const updateMarketCenterMutation = useMutation({
     mutationFn: async () => {
-      // if (!userId) throw new Error("Missing editing user ID");
+      if (!clerkUser?.id || !editingMarketCenter?.id)
+        throw new Error("Missing user auth");
 
-      const accessToken = clerkUser?.id || "";
-      //  `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
       const response = await fetch(
         `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${clerkUser.id}`,
           },
           body: JSON.stringify({
             name: formData.name,
@@ -120,18 +131,57 @@ export default function EditMarketCenter({
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to update market center`);
       }
+      const data = await response.json();
+      return data;
     },
-    onSuccess: async () => {
+    onSuccess: async (data: {
+      marketCenter: MarketCenter;
+      usersToNotify: {
+        id: string;
+        name: string;
+        email: string;
+        userUpdate: "added" | "removed";
+      }[];
+    }) => {
       toast.success(
-        `${formData?.name ? formData.name : "Market Center"} was updated`
+        `${data?.marketCenter?.name ? data.marketCenter.name : "Market Center"} was updated`
       );
-      await refreshMarketCenters;
-      await refreshUsers;
+
+      if (data?.usersToNotify && data?.usersToNotify.length > 0) {
+        await Promise.all(
+          data.usersToNotify.map((user) =>
+            handleSendMarketCenterNotifications({
+              trigger: "Market Center Assignment",
+              receivingUser: {
+                id: user.id,
+                name: user.name ?? "You",
+                email: user.email,
+              },
+              data: {
+                marketCenterAssignment: {
+                  userUpdate: user.userUpdate,
+                  marketCenterId: editingMarketCenter?.id,
+                  marketCenterName: data.marketCenter?.name,
+                  userName: user.name ?? user.email,
+                  editorEmail: currentUser?.email ?? "N/A",
+                  editorName: currentUser?.name ?? "Another user",
+                },
+              },
+            })
+          )
+        );
+      }
+      setIsSubmitting(false);
       resetAndCloseForm();
     },
     onError: (error) => {
       console.error("Failed to edit new market center", error);
       toast.error(`Error: Unable to save changes`);
+    },
+    onSettled: async () => {
+      await refreshMarketCenters;
+      await refreshUsers;
+      setIsSubmitting(false);
     },
   });
 
