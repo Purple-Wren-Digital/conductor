@@ -317,6 +317,9 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         }
       );
 
+      console.log("UPDATE TICKET - ALL CHANGES", allChanges);
+      console.log("UPDATE TICKET - USERS TO NOTIFY", usersToNotify);
+
       return {
         ticket: formattedTicket,
         usersToNotify: usersToNotify,

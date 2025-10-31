@@ -12,9 +12,9 @@ export interface CreateNotificationRequest {
   category: NotificationCategory;
   type: string; // NotificationTypes;
   title: string;
-  body: string;
+  body?: string;
   data?: NotificationData;
-  priority?: Urgency;
+  priority?: string; // Urgency
 }
 
 export interface CreateNotificationResponse {
@@ -25,11 +25,15 @@ export const create = api<CreateNotificationRequest>(
   {
     expose: true,
     method: "POST",
-    path: "/notifications/create/:userId",
-    auth: true,
+    path: "/notifications/create",
+    auth: false, // 🔧 temporarily disable
+
+    // auth: false, // ✅ disable Encore auth, we'll trust Clerk manually
   },
   async (req) => {
     console.log("****** START: Create/Send Notifications ******", req);
+    // const userContext = await getUserContext();
+    if (!req.userId) throw APIError.invalidArgument("Missing user id");
 
     const user = await prisma.user.findFirst({
       where: {
@@ -41,7 +45,9 @@ export const create = api<CreateNotificationRequest>(
       },
     });
 
-    if (!user || !user?.id || !user?.clerkId) {
+    console.log("USER TO NOTIFY?", user);
+
+    if (!user || !user?.id) {
       throw APIError.notFound("User not found");
     }
     // const notificationPreference =
@@ -106,22 +112,22 @@ export const create = api<CreateNotificationRequest>(
         {
           userId: user.id,
           channel: "EMAIL",
-          category: req.category,
+          category: req.category as NotificationCategory,
           type: req.type,
           title: req.title,
-          body: req.body,
+          body: req?.body ?? "",
           data: req?.data as Prisma.InputJsonValue,
-          priority: req?.priority ?? "LOW",
+          priority: (req?.priority as Urgency) ?? ("LOW" as Urgency),
         },
         {
           userId: user.id,
           channel: "IN_APP",
-          category: req.category,
+          category: req.category as NotificationCategory,
           type: req.type,
           title: req.title,
-          body: req.body,
+          body: req?.body ?? "",
           data: req?.data as Prisma.InputJsonValue,
-          priority: req?.priority ?? "LOW",
+          priority: (req?.priority as Urgency) ?? ("LOW" as Urgency),
         },
       ],
     });
@@ -141,7 +147,7 @@ export const create = api<CreateNotificationRequest>(
                 notification: {
                   ...notification,
                   type: notification?.type,
-                  priority: notification.priority ?? undefined,
+                  priority: (notification.priority as Urgency) ?? undefined,
                   data: notification?.data as NotificationData,
                 },
               });

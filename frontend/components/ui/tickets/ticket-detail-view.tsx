@@ -150,15 +150,18 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         if (!clerkUser?.id) {
           throw new Error("Missing auth token");
         }
-        await createAndSendNotification({
+        const response = await createAndSendNotification({
           authToken: clerkUser?.id,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
-        // console.log("TicketList - Notifications - Response:", response);
+        console.log("TicketDetailView - Notifications - Response:", response);
       } catch (error) {
-        console.error("TicketList - Unable to generate notifications", error);
+        console.error(
+          "TicketDetailView - Unable to generate notifications",
+          error
+        );
       }
     },
     [clerkUser?.id]
@@ -214,6 +217,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   data: {
                     updatedTicket: notifySomeone
                       ? {
+                          ticketTitle: ticket?.title ?? "Untitled",
                           ticketNumber: ticket.id,
                           createdOn: ticket?.createdAt,
                           updatedOn: ticket?.updatedAt,

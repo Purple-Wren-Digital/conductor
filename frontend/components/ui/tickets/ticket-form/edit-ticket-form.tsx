@@ -7,6 +7,7 @@ import type {
   TicketNotificationCallback,
   TicketTemplate,
   Urgency,
+  UsersToNotify,
 } from "@/lib/types";
 import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
@@ -17,6 +18,8 @@ import {
   ActivityUpdates,
   AssignmentUpdateType,
 } from "@/packages/transactional/emails/types";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type Props = {
   ticket: Ticket | null;
@@ -147,17 +150,15 @@ export function EditTicketForm({
     return Object.keys(next).length === 0;
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate() || !ticket?.id) return;
-    setLoading(true);
-    try {
-      const accessToken = clerkUser?.id || "";
+  const updateTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!clerkUser?.id || !ticket?.id) throw new Error("Missing auth");
+
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${clerkUser.id}`,
         },
         cache: "no-store",
         body: JSON.stringify({
@@ -166,14 +167,27 @@ export function EditTicketForm({
           assigneeId: values.assigneeId ? values.assigneeId : undefined,
         }),
       });
+      console.log("UPDATED TICKET - RESPONSE");
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Failed to edit ticket (${res.status}): ${text}`);
       }
       const data = await res.json();
-      if (data && data?.ticket) {
+      console.log("UPDATED TICKET - DATA", data);
+      return data;
+    },
+    onSuccess: async (data: {
+      ticket: Ticket;
+      usersToNotify: UsersToNotify[];
+      changedDetails: ActivityUpdates[];
+    }) => {
+      const updatedTicket = data ? data?.ticket : null;
+      toast.success(
+        `${updatedTicket?.title ? updatedTicket.title : "Ticket"} was updated`
+      );
+      if (updatedTicket) {
         const ticket = data.ticket as Ticket;
-        const title = ticket?.title ?? "";
+        const title = ticket?.title ?? "Untitled";
         const usersToNotify = data?.usersToNotify ?? [];
         const changedDetails: ActivityUpdates[] = data?.changedDetails ?? [];
 
@@ -192,16 +206,17 @@ export function EditTicketForm({
                 await handleSendTicketNotifications({
                   trigger: notifyAssigneeChanges
                     ? "Ticket Assignment"
-                    : "Ticket Created",
+                    : "Ticket Updated",
                   receivingUser: {
                     id: user?.id,
-                    name: user?.name,
+                    name: user?.name ?? "Name",
                     email: user?.email,
                   },
                   data: {
                     updatedTicket: notifySomeone
                       ? {
                           ticketNumber: ticket.id,
+                          ticketTitle: title,
                           createdOn: ticket?.createdAt,
                           updatedOn: ticket?.updatedAt,
                           editedByName: currentUser?.name ?? "Unknown",
@@ -229,13 +244,23 @@ export function EditTicketForm({
           );
         }
       }
-      onSuccess(data ? data?.ticket : null);
+      onSuccess(updatedTicket);
       onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
+    },
+    onError: (error) => {
+      console.error("Failed to edit ticket", error);
+      toast.error(`Error: Unable to save changes`);
+    },
+    onSettled: async () => {
       setLoading(false);
-    }
+    },
+  });
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate() || !ticket?.id) return;
+    setLoading(true);
+    updateTicketMutation.mutate();
   };
 
   return (

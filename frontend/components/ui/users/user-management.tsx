@@ -210,7 +210,6 @@ export default function UserManagement() {
     orderDir !== "desc" ||
     sortBy !== "updatedAt";
 
-  // DELETE MODAL ACTIONS
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
     setEditUserFormData({

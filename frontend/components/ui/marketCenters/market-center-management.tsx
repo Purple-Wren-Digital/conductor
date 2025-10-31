@@ -279,6 +279,10 @@ export default function MarketCenterManagement() {
           receivingUser: receivingUser,
           data: data,
         });
+        console.log(
+          "MarketCenterManagement - Notifications - Response:",
+          response
+        );
       } catch (error) {
         console.error(
           "MarketCenterManagement - Unable to generate notifications",

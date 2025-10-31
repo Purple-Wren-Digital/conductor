@@ -13,6 +13,7 @@ import { UpdatedTicketProps } from "./types";
 const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const UpdatedTicket = ({
+  ticketTitle,
   ticketNumber,
   createdOn,
   updatedOn,
@@ -23,12 +24,12 @@ const UpdatedTicket = ({
   return (
     <Html>
       <Head />
-      <Preview>Edits Made to Ticket #{ticketNumber}</Preview>
+      <Preview>Ticket Updated: {ticketTitle}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Edits Made to Ticket</Text>
+            <Text style={headerText}>Ticket Updated: {ticketTitle}</Text>
 
             <Text style={datesText}>
               {updatedOn &&

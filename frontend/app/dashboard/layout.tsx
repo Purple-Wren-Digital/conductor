@@ -127,11 +127,12 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!clerkUser?.id) return;
 
+    //   OLD:  const ws = new WebSocket(`ws://localhost:8081?userId=${userId}`); // TODO: Prod = wss://<URL>
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://localhost:8081/?clerkId=${clerkUser.id}`;
-
-    const ws = new WebSocket(wsUrl);
-    console.log(`🔌 Connecting to WebSocket at: ${wsUrl}`);
+    const ws = new WebSocket(
+      `${protocol}://localhost:8081?clerkId=${clerkUser.id}`
+    );
+    console.log(`🔌 Connecting to WebSocket...`);
 
     ws.onopen = () => console.log("✅ WebSocket connected");
     ws.onmessage = async (e) => {

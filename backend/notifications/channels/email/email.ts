@@ -29,7 +29,7 @@ export async function sendEmailNotification({
       react: emailContent,
     });
 
-    if (response.error) {
+    if (response?.error) {
       console.error("Resend email error:", response.error);
       throw new Error(response.error.message);
     }

@@ -25,7 +25,7 @@ export const listInApp = api<
     auth: true,
   },
   async (req) => {
-    console.log("********* START - List In-App Notifications *********");
+    // console.log("********* START - List In-App Notifications *********");
     const userContext = await getUserContext();
     // const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     // const offset = Math.max(Number(req.offset ?? 0), 0);
@@ -57,11 +57,11 @@ export const listInApp = api<
       return { notifications, unReadAmount };
     });
 
-    console.log(
-      "IN APP NOTIFICATIONS",
-      result?.unReadAmount,
-      result?.notifications
-    );
+    // console.log(
+    //   "IN APP NOTIFICATIONS",
+    //   result?.unReadAmount,
+    //   result?.notifications
+    // );
 
     return {
       notifications: result.notifications,

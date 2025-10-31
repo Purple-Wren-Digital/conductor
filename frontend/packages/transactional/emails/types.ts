@@ -2,7 +2,7 @@ export type AssignmentUpdateType =
   | "added"
   | "removed"
   | "created"
-  | "unchanged"
+  | "unchanged";
 
 export type ActivityUpdates = {
   label: string;
@@ -71,6 +71,7 @@ export type CreatedTicketNotificationProps = {
 
 export type UpdatedTicketProps = {
   ticketNumber: string;
+  ticketTitle: string;
   createdOn: Date;
   updatedOn: Date;
   editedByName: string;

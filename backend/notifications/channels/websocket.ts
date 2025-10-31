@@ -49,7 +49,6 @@ async function createWebSocketServer() {
       const base = `http://${req.headers.host}`;
       const url = new URL(reqUrl, base);
       const clerkId = url.searchParams.get("clerkId"); // do with email instead: email
-
       if (!clerkId) {
         ws.close(1008, "Unauthorized: missing token (user id)");
         return;
