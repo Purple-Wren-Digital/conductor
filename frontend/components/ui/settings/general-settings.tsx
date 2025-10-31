@@ -62,7 +62,7 @@ export default function GeneralSettings() {
   );
   const settings = marketCenter?.settings ?? {};
 
-  console.log("MARKET CENTER", marketCenter);
+  // console.log("MARKET CENTER", marketCenter);
 
   const updateSettings = useUpdateMarketCenterSettings(clerkUser?.id);
 

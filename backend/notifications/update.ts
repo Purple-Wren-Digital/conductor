@@ -1,11 +1,10 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { Notification, NotificationData } from "./types";
 import { getUserContext } from "../auth/user-context";
 
 export interface UpdateNotificationRequest {
-  userId: string;
   notificationId: string;
+  email?: string;
 }
 
 export interface UpdateNotificationResponse {
@@ -18,18 +17,26 @@ export const update = api<
 >(
   {
     expose: true,
-    method: "PUT",
-    path: "/notifications/:notificationId/:userId",
+    method: "PATCH",
+    path: "/notifications/:notificationId/:email",
     auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
 
-    if (!req.userId || !req.notificationId) {
-      throw APIError.invalidArgument("Missing notification information");
+    if (
+      !userContext?.email &&
+      !req?.email &&
+      userContext?.email !== req?.email
+    ) {
+      throw APIError.permissionDenied(
+        "You do not have permission to access this user's notifications"
+      );
     }
 
-    console.log("MARK AS READ PARAMS", "Notification ID:", req.notificationId);
+    if (!req.notificationId) {
+      throw APIError.invalidArgument("Missing notification information");
+    }
 
     const existingNotification = await prisma.notification.findUnique({
       where: { id: req.notificationId },

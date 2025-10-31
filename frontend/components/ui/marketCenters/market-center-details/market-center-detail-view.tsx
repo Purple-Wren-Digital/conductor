@@ -132,19 +132,15 @@ export default function MarketCenterDetailView({
       data,
     }: MarketCenterNotificationCallback) => {
       try {
-        const response = await createAndSendNotification({
+        await createAndSendNotification({
           authToken: clerkUser?.id,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
-        console.log(
-          "handleSendMarketCenterNotifications() - Response:",
-          response
-        );
       } catch (error) {
         console.error(
-          "MarketCenterManagement - Unable to generate notifications",
+          "MarketCenterDetailView - Unable to generate notifications",
           error
         );
       }
@@ -249,6 +245,9 @@ export default function MarketCenterDetailView({
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
               invalidateMarketCenter={invalidateMarketCenter}
+              handleSendMarketCenterNotifications={
+                handleSendMarketCenterNotifications
+              }
             />
           )}
         </TabsContent>

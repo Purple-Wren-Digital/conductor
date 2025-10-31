@@ -13,12 +13,10 @@ export const formatEmailNotification = (notification: Notification) => {
     const invite = UserInvitation(
       notification.data.invitation
     ) as React.ReactElement;
-    console.log("INVITE EMAIL?", invite);
     return invite;
   }
 
   // MARKET CENTERS
-
   if (notification?.data?.marketCenterAssignment) {
     const createdTicket = MarketCenterAssignment(
       notification.data.marketCenterAssignment
@@ -55,7 +53,8 @@ export const formatEmailNotification = (notification: Notification) => {
     return createdTicket;
   }
 
-  // COMMENTS
+  // TODO: COMMENTS
+  // TODO: Weekly/Daily Summaries
 
   return null;
 };

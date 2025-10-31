@@ -30,7 +30,6 @@ export const create = api<CreateNotificationRequest>(
   },
   async (req) => {
     console.log("****** START: Create/Send Notifications ******", req);
-    await getUserContext();
 
     const user = await prisma.user.findFirst({
       where: {
@@ -42,7 +41,7 @@ export const create = api<CreateNotificationRequest>(
       },
     });
 
-    if (!user || !user?.id) {
+    if (!user || !user?.id || !user?.clerkId) {
       throw APIError.notFound("User not found");
     }
     // const notificationPreference =
@@ -150,7 +149,7 @@ export const create = api<CreateNotificationRequest>(
             break;
 
           case "IN_APP":
-            await broadcastNotification(user.id, notification);
+            await broadcastNotification(user?.clerkId, notification);
             break;
 
           // case "PUSH":

@@ -1,44 +1,48 @@
-import { getAccessToken } from "@auth0/nextjs-auth0";
 import { API_BASE } from "@/lib/api/utils";
 import type { Notification } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 
 type UserNotificationsProps = {
-  userId?: string;
-};
-
-const getAuth0AccessToken = async () => {
-  if (process.env.NODE_ENV === "development") return "local";
-  return await getAccessToken();
+  isAccountLoaded: boolean;
+  clerkId?: string;
+  email?: string;
 };
 
 export function useFetchAllUserNotifications({
-  userId,
+  isAccountLoaded,
+  clerkId,
+  email,
 }: UserNotificationsProps) {
   return useQuery({
-    queryKey: ["all-user-notifications", userId],
+    queryKey: ["all-user-notifications", email],
     queryFn: async () => {
       try {
-        const accessToken = await getAuth0AccessToken();
-        if (!accessToken) throw new Error("Missing access token");
+        if (!clerkId) throw new Error("Missing auth token");
         const response = await fetch(
-          `${API_BASE}/notifications/in-app/${userId}`,
+          `${API_BASE}/notifications/in-app/${email}`,
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${clerkId}`,
             },
           }
         );
-
+        if (!response.ok) {
+          throw new Error(
+            response?.statusText
+              ? response.statusText
+              : "Unable to fetch all notifications"
+          );
+        }
         const data: { unReadAmount: number; notifications: Notification[] } =
           await response.json();
+        // console.log("Data - USER NOTIFICATIONS", data);
         return data;
       } catch (error) {
         console.error("Failed to fetch user notifications", error);
       }
     },
-    enabled: !!userId,
+    enabled: !!clerkId && isAccountLoaded,
   });
 }
 

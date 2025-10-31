@@ -4,7 +4,7 @@ import { getUserContext } from "../auth/user-context";
 import { Notification, NotificationData } from "./types";
 
 export interface ListInAppNotificationsRequest {
-  userId: string;
+  email: string;
 
   limit?: Query<number>;
   offset?: Query<number>;
@@ -21,24 +21,25 @@ export const listInApp = api<
   {
     expose: true,
     method: "GET",
-    path: "/notifications/in-app/:userId",
+    path: "/notifications/in-app/:email",
     auth: true,
   },
   async (req) => {
+    console.log("********* START - List In-App Notifications *********");
     const userContext = await getUserContext();
-    const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
-    const offset = Math.max(Number(req.offset ?? 0), 0);
+    // const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
+    // const offset = Math.max(Number(req.offset ?? 0), 0);
     if (
-      !userContext?.userId &&
-      !req?.userId &&
-      userContext?.userId !== req?.userId
+      !userContext?.email &&
+      !req?.email &&
+      userContext?.email !== req?.email
     ) {
       throw APIError.permissionDenied(
         "You do not have permission to access this user's notifications"
       );
     }
 
-    let where: any = { userId: req.userId, channel: "IN_APP" };
+    let where: any = { userId: userContext.userId, channel: "IN_APP" };
 
     const result = await prisma.$transaction(async (p) => {
       const notificationsRaw = await p.notification.findMany({
@@ -56,11 +57,11 @@ export const listInApp = api<
       return { notifications, unReadAmount };
     });
 
-    // console.log(
-    //   "IN APP NOTIFICATIONS",
-    //   result?.unReadAmount,
-    //   result?.notifications
-    // );
+    console.log(
+      "IN APP NOTIFICATIONS",
+      result?.unReadAmount,
+      result?.notifications
+    );
 
     return {
       notifications: result.notifications,

@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogPortal,
   DialogTitle,
@@ -18,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useStore } from "@/context/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
 import type { Notification, NotificationData } from "@/lib/types";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UseMutationResult } from "@tanstack/react-query";
 
@@ -39,7 +38,6 @@ export default function AllNotifications({
     },
     Error,
     {
-      userId?: string;
       notificationId?: string;
     },
     unknown
@@ -49,35 +47,24 @@ export default function AllNotifications({
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
-  const [notificationList, setNotificationList] =
-    useState<Notification[]>(allNotifications);
+  // const [notificationList, setNotificationList] =
+  //   useState<Notification[]>(allNotifications);
 
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
 
-  const filterNotifications = (filter: string) => {
-    if (filter === "Read") {
-      const unReadOnly: Notification[] = allNotifications.filter(
-        (n) => n.read === true
-      );
-      setSelectedFilter(filter);
+  const filteredNotifications = useMemo(() => {
+    if (isNotificationsLoading) return [];
 
-      setNotificationList(unReadOnly);
-      return;
+    switch (selectedFilter) {
+      case "Read":
+        return allNotifications.filter((n) => n.read);
+      case "Unread":
+        return allNotifications.filter((n) => !n.read);
+      default:
+        return allNotifications;
     }
-
-    if (filter === "Unread") {
-      const readOnly: Notification[] = allNotifications.filter(
-        (n) => n.read === false
-      );
-      setSelectedFilter(filter);
-
-      setNotificationList(readOnly);
-      return;
-    }
-    setNotificationList(allNotifications);
-    setSelectedFilter("All");
-  };
+  }, [selectedFilter, allNotifications, isNotificationsLoading]);
 
   const formatUrl = (category: string, urlData?: NotificationData) => {
     let url: string | null = null;
@@ -116,8 +103,16 @@ export default function AllNotifications({
       <DialogTrigger asChild className="flex flex-row items-center gap-2">
         <Button variant={"ghost"} disabled={isNotificationsLoading}>
           <div className="relative inline-block">
-            <Bell className="w-6 h-6" />
-            {newNotification || unReadNotificationTotal > 0 ? (
+            {isNotificationsLoading ? (
+              <Loader
+                aria-label={`Loading your notifications`}
+                className={`w-6 h-6 motion-safe:animate-spin text-shadow-gray-500`}
+              />
+            ) : (
+              <Bell className="w-6 h-6" />
+            )}
+            {!isNotificationsLoading &&
+            (newNotification || unReadNotificationTotal > 0) ? (
               <Badge
                 aria-label={`${unReadNotificationTotal} Unread Notifications`}
                 className={`absolute -top-0.25 -right-0.25 p-1 leading-none rounded-full border motion-safe:animate-conductor-ping`}
@@ -143,7 +138,7 @@ export default function AllNotifications({
                     key={selection}
                     className="hover:underline"
                     onClick={() =>
-                      !isNotificationsLoading && filterNotifications(selection)
+                      !isNotificationsLoading && setSelectedFilter(selection)
                     }
                   >
                     <DialogDescription
@@ -165,19 +160,17 @@ export default function AllNotifications({
           <Separator />
 
           <ScrollArea className="flex flex-col gap-4 h-100">
-            {isNotificationsLoading &&
-              (!notificationList || !notificationList.length) && (
-                <p className="text-sm font-medium">Loading...</p>
-              )}
+            {isNotificationsLoading && (
+              <p className="text-sm font-medium">Loading...</p>
+            )}
 
+            {!isNotificationsLoading && filteredNotifications.length === 0 && (
+              <p className="text-sm font-medium">No notifications yet</p>
+            )}
             {!isNotificationsLoading &&
-              (!notificationList || !notificationList.length) && (
-                <p className="text-sm font-medium">No notifications yet</p>
-              )}
-            {!isNotificationsLoading &&
-              notificationList &&
-              notificationList.length > 0 &&
-              notificationList.map((notification, index) => {
+              filteredNotifications &&
+              filteredNotifications.length > 0 &&
+              filteredNotifications.map((notification, index) => {
                 const url = formatUrl(
                   notification.category,
                   notification?.data
@@ -217,9 +210,9 @@ export default function AllNotifications({
                       disabled={notification.read || isNotificationsLoading}
                       className="flex flex-row items-center gap-1 p-1"
                       aria-label="Mark as Read"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
                         markAsReadMutation.mutate({
-                          userId: notification?.userId,
                           notificationId: notification?.id,
                         });
                       }}

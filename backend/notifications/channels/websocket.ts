@@ -1,5 +1,4 @@
 import WebSocket, { WebSocketServer } from "ws";
-import { getUserContext } from "../../auth/user-context";
 import net from "net";
 
 const PORT = 8081;
@@ -49,19 +48,19 @@ async function createWebSocketServer() {
       const reqUrl = req.url || "/";
       const base = `http://${req.headers.host}`;
       const url = new URL(reqUrl, base);
-      const userId = url.searchParams.get("userId");
+      const clerkId = url.searchParams.get("clerkId"); // do with email instead: email
 
-      if (!userId) {
+      if (!clerkId) {
         ws.close(1008, "Unauthorized: missing token (user id)");
         return;
       }
 
-      clients.set(userId, ws);
-      console.log(`👤 Connected: ${userId}`);
+      clients.set(clerkId, ws);
+      console.log(`👤 Connected: ${clerkId}`);
 
       ws.on("close", () => {
-        clients.delete(userId);
-        console.log(`❌ Disconnected: ${userId}`);
+        clients.delete(clerkId);
+        console.log(`❌ Disconnected: ${clerkId}`);
       });
     } catch (err) {
       console.error("WebSocket connection error:", err);
@@ -75,11 +74,14 @@ async function createWebSocketServer() {
 // Run immediately in dev
 createWebSocketServer();
 
-export async function broadcastNotification(userId: string, notification: any) {
-  const client = clients.get(userId);
+export async function broadcastNotification(
+  clerkId: string,
+  notification: any
+) {
+  const client = clients.get(clerkId);
   if (client && client.readyState === WebSocket.OPEN) {
     client.send(JSON.stringify(notification));
   } else {
-    console.warn(`⚠️  User ${userId} not connected. Skipping.`);
+    console.warn(`⚠️  User ${clerkId} not connected. Skipping.`);
   }
 }

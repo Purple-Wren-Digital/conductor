@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../../ticket/db";
-import { getUserContext } from "../../../auth/user-context";
-import { defaultNotificationPreferences } from "../../../utils";
+import { prisma } from "../../ticket/db";
+import { getUserContext } from "../../auth/user-context";
+import { defaultNotificationPreferences } from "../../utils";
 
 export interface CreateNotificationsRequest {
   id: string;

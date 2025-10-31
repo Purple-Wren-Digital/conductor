@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/app/dashboard/app-sidebar";
 import { useUser, UserButton } from "@clerk/nextjs";
 
@@ -20,8 +20,8 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const [newestNotification, setNewestNotification] =
     useState<Notification | null>(null);
-  const { currentUser, setCurrentUser } = useStore();
-  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const { setCurrentUser } = useStore();
+  const { user: clerkUser, isLoaded } = useUser();
 
   const queryClient = useQueryClient();
 
@@ -69,7 +69,9 @@ export default function DashboardLayout({
 
   const { data: notificationsData, isLoading: isNotificationsLoading } =
     useFetchAllUserNotifications({
-      userId: currentUser?.id,
+      isAccountLoaded: isLoaded,
+      clerkId: clerkUser?.id ?? "",
+      email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
     });
 
   const notifications: Notification[] = notificationsData?.notifications ?? [];
@@ -77,26 +79,30 @@ export default function DashboardLayout({
     ? notificationsData?.unReadAmount
     : 0;
 
-  const invalidateFetchAllUserNotifications = queryClient.invalidateQueries({
-    queryKey: ["all-user-notifications", currentUser?.id],
-  });
+  const invalidateFetchAllUserNotifications = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "all-user-notifications",
+        clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
+      ],
+    });
+  }, [queryClient, clerkUser]);
 
   const markAsReadMutation = useMutation<
     { success: boolean },
     Error,
-    { userId?: string; notificationId?: string }
+    { notificationId?: string }
   >({
-    mutationFn: async ({ userId, notificationId }) => {
-      if (!userId || !notificationId) throw new Error("Missing ID");
+    mutationFn: async ({ notificationId }) => {
+      if (!clerkUser?.id || !notificationId) throw new Error("Missing ID");
 
-      const accessToken = currentUser?.clerkId ?? "";
       const response = await fetch(
-        `${API_BASE}/notifications/${notificationId}/${userId}`,
+        `${API_BASE}/notifications/${notificationId}/${clerkUser?.emailAddresses?.[0]?.emailAddress ?? ""}`,
         {
-          method: "PUT",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${clerkUser.id}`,
           },
         }
       );
@@ -114,16 +120,20 @@ export default function DashboardLayout({
       toast.warning("Unable to mark as read");
     },
     onSettled: async () => {
-      await invalidateFetchAllUserNotifications;
+      await invalidateFetchAllUserNotifications();
     },
   });
 
-  const manageWebSocket = async (userId: string) => {
-    console.log("WEBSOCKET USER ID", userId);
-    if (!userId) return;
-    const ws = new WebSocket(`ws://localhost:8081?userId=${userId}`); // TODO: Prod = wss://<URL>
+  useEffect(() => {
+    if (!clerkUser?.id) return;
 
-    ws.onopen = () => console.log("✅ WebSocket connected"); // TODO: happening 2x
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${protocol}://localhost:8081/?clerkId=${clerkUser.id}`;
+
+    const ws = new WebSocket(wsUrl);
+    console.log(`🔌 Connecting to WebSocket at: ${wsUrl}`);
+
+    ws.onopen = () => console.log("✅ WebSocket connected");
     ws.onmessage = async (e) => {
       console.log("✅ Message received!");
       try {
@@ -131,7 +141,7 @@ export default function DashboardLayout({
         console.log("📩 Incoming notification:", notification);
         toast.info(`${notification?.title}`);
         setNewestNotification(notification);
-        await invalidateFetchAllUserNotifications;
+        await invalidateFetchAllUserNotifications();
       } catch (err) {
         console.error("Failed to parse notification", err);
       }
@@ -139,8 +149,10 @@ export default function DashboardLayout({
     ws.onerror = (err) => console.error("WebSocket error:", err);
     ws.onclose = () => console.log("❌ WebSocket closed");
 
-    return () => ws.close();
-  };
+    return () => {
+      ws.close();
+    };
+  }, [clerkUser?.id, invalidateFetchAllUserNotifications]);
 
   return (
     <SidebarProvider>
@@ -170,22 +182,9 @@ export default function DashboardLayout({
                 newNotification={newestNotification ? true : false}
                 markAsReadMutation={markAsReadMutation}
               />
-              {/* {auth0User?.picture && (
-                <img
-                  src={auth0User.picture}
-                  alt={auth0User.name || "User Photo"}
-                  className="w-8 h-8 rounded-full"
-                />
-              )} */}
-              <UserButton />
-
-              {/* <Link
-                href="/auth/logout"
-                onClick={() => setCurrentUser(null)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Logout
-              </Link> */}
+              <div className="w-7 h-7 rounded">
+                <UserButton />
+              </div>
             </div>
           </div>
         </header>

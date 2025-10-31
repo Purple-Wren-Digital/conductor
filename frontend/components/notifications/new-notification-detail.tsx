@@ -1,7 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Dispatch, SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,20 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Bell, CheckCheck, X } from "lucide-react";
+import { SidebarMenuItem } from "@/components/ui/sidebar";
+import { CheckCheck, X } from "lucide-react";
 import type { Notification } from "@/lib/types";
 import { UseMutationResult } from "@tanstack/react-query";
 
 export default function SideBarNewNotification({
-  disabled,
-  unReadNotificationTotal,
   newestNotification,
   setNewestNotification,
   markAsReadMutation,
 }: {
-  disabled: boolean;
-  unReadNotificationTotal: number;
   newestNotification: Notification | null;
   setNewestNotification: Dispatch<SetStateAction<Notification | null>>;
   markAsReadMutation: UseMutationResult<
@@ -53,15 +48,6 @@ export default function SideBarNewNotification({
                 </CardDescription>
               )}
             </div>
-            <Button
-              variant={"ghost"}
-              size={"icon"}
-              className="p-1 mt-[-4]"
-              onClick={() => setNewestNotification(null)}
-              aria-label="Dismiss new notification"
-            >
-              <X className="w-4 h-4" />
-            </Button>
           </CardHeader>
           <CardContent className="p-1 space-y-2">
             {newestNotification?.body && (
@@ -70,17 +56,21 @@ export default function SideBarNewNotification({
               </p>
             )}
 
-            <div className="flex flex-row flex-wrap items-center gap-3">
+            <div className="flex flex-row flex-wrap items-center justify-between gap-1">
               <Button
-                variant={"link"}
+                variant={"outline"}
                 size={"sm"}
                 className="flex flex-row items-center gap-1 p-1"
-                onClick={() => setNewestNotification(null)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setNewestNotification(null);
+                }}
               >
                 <p className="text-xs">Dismiss</p>
+                <X className="w-3 h-3" />
               </Button>
               <Button
-                variant={"link"}
+                variant={"outline"}
                 size={"sm"}
                 className="flex flex-row items-center gap-1 p-1"
                 disabled={newestNotification?.read}

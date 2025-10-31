@@ -113,7 +113,6 @@ export default function CreateMarketCenter({
         );
       }
       const data = await response.json();
-      console.log("DATA - CREATE MARKET CENTER", data);
       if (
         data &&
         data?.marketCenter &&

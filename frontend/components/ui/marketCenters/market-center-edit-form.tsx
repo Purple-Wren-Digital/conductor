@@ -145,25 +145,26 @@ export default function EditMarketCenter({
 
       if (data?.usersToNotify && data?.usersToNotify.length > 0) {
         await Promise.all(
-          data.usersToNotify.map((user) =>
-            handleSendMarketCenterNotifications({
-              trigger: "Market Center Assignment",
-              receivingUser: {
-                id: user.id,
-                name: user.name ?? "You",
-                email: user.email,
-              },
-              data: {
-                marketCenterAssignment: {
-                  userUpdate: user.updateType,
-                  marketCenterId: editingMarketCenter?.id,
-                  marketCenterName: data.marketCenter?.name,
-                  userName: user.name ?? user.email,
-                  editorEmail: currentUser?.email ?? "N/A",
-                  editorName: currentUser?.name ?? "Another user",
+          data.usersToNotify.map(
+            async (user) =>
+              await handleSendMarketCenterNotifications({
+                trigger: "Market Center Assignment",
+                receivingUser: {
+                  id: user.id,
+                  name: user.name ?? "You",
+                  email: user.email,
                 },
-              },
-            })
+                data: {
+                  marketCenterAssignment: {
+                    userUpdate: user.updateType,
+                    marketCenterId: editingMarketCenter?.id,
+                    marketCenterName: data.marketCenter?.name,
+                    userName: user.name ?? user.email,
+                    editorEmail: currentUser?.email ?? "N/A",
+                    editorName: currentUser?.name ?? "Another user",
+                  },
+                },
+              })
           )
         );
       }

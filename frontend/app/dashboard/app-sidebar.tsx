@@ -186,8 +186,6 @@ export function AppSidebar({
             </SidebarMenuItem>
 
             <SideBarNewNotification
-              disabled={isLoading || !currentUser}
-              unReadNotificationTotal={unReadNotificationTotal}
               newestNotification={newestNotification}
               setNewestNotification={setNewestNotification}
               markAsReadMutation={markAsReadMutation}

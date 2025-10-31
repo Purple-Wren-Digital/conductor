@@ -20,13 +20,13 @@ export default function TicketList() {
         if (!clerkUser?.id) {
           throw new Error("Missing auth token");
         }
-        const response = await createAndSendNotification({
+        await createAndSendNotification({
           authToken: clerkUser?.id,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
-        console.log("TicketList - Notifications - Response:", response);
+        // console.log("TicketList - Notifications - Response:", response);
       } catch (error) {
         console.error("TicketList - Unable to generate notifications", error);
       }
@@ -52,7 +52,11 @@ export default function TicketList() {
         />
       );
     case "STAFF":
-      return <StaffTicketList  handleSendTicketNotifications={handleSendTicketNotifications}/>;
+      return (
+        <StaffTicketList
+          handleSendTicketNotifications={handleSendTicketNotifications}
+        />
+      );
     case "AGENT":
       return <AgentTicketList />;
     default:

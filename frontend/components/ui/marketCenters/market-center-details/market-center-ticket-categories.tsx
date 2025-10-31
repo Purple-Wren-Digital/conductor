@@ -110,19 +110,19 @@ export default function MarketCenterTicketCategories({
       categoryFormData?.defaultAssigneeId === "none"
         ? ""
         : categoryFormData?.defaultAssigneeId;
-    console.log(
-      "categoryFormData - AssigneeFormValue",
-      defaultAssigneeFormValue
-    );
+    // console.log(
+    //   "categoryFormData - AssigneeFormValue",
+    //   defaultAssigneeFormValue
+    // );
 
-    console.log(
-      "editingTicketCategory - AssigneeFormValue",
-      editingTicketCategory?.defaultAssigneeId
-    );
-    console.log(
-      "defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId",
-      defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId
-    );
+    // console.log(
+    //   "editingTicketCategory - AssigneeFormValue",
+    //   editingTicketCategory?.defaultAssigneeId
+    // );
+    // console.log(
+    //   "defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId",
+    //   defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId
+    // );
     if (
       editingTicketCategory &&
       categoryFormData?.name === editingTicketCategory?.name &&
