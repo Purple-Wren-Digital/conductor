@@ -30,7 +30,7 @@ export function TicketListItem({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
-  const categoryName = ticket?.category?.name ?? "Category - TBD";
+  const categoryName = ticket?.category?.name ?? "Unknown";
   return (
     <ListItem
       id={ticket.id}

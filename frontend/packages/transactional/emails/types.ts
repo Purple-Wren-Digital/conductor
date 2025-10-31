@@ -1,4 +1,10 @@
-export type Updates = {
+export type AssignmentUpdateType =
+  | "added"
+  | "removed"
+  | "created"
+  | "unchanged"
+
+export type ActivityUpdates = {
   label: string;
   originalValue: string | null;
   newValue: string;
@@ -34,7 +40,7 @@ export type NewUserInvitationProps = {
 
 // MARKET CENTERS
 export type MarketCenterAssignmentProps = {
-  userUpdate: "added" | "removed";
+  userUpdate: AssignmentUpdateType;
   marketCenterName?: string;
   marketCenterId?: string;
   userName: string;
@@ -43,7 +49,7 @@ export type MarketCenterAssignmentProps = {
 };
 
 export type CategoryAssignmentProps = {
-  userUpdate: "added" | "removed";
+  userUpdate: AssignmentUpdateType;
   categoryName: string;
   categoryDescription?: string;
   marketCenterName?: string;
@@ -63,36 +69,37 @@ export type CreatedTicketNotificationProps = {
   dueDate?: Date;
 };
 
-export type EditedTicketNotificationProps = {
+export type UpdatedTicketProps = {
   ticketNumber: string;
   createdOn: Date;
   updatedOn: Date;
   editedByName: string;
   editedById: string;
-  changedDetails: Updates[];
+  changedDetails: ActivityUpdates[];
 };
 
-export type ReassignedTicketNotificationProps = {
+export type AssignedTicketNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
   createdOn: Date;
   updatedOn: Date;
   editedByName: string;
   editedById: string;
+  updateType: AssignmentUpdateType;
   currentAssignment: { name: string; id: string } | null;
   previousAssignment: { name: string; id: string } | null;
 };
 
-export type QuickEditTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedByName: string;
-  editedById: string;
-  field: string; // "urgency" or "status"
-  currentData: string;
-};
+// export type QuickEditTicketNotificationProps = {
+//   ticketNumber: string;
+//   ticketTitle: string;
+//   createdOn: Date;
+//   updatedOn: Date;
+//   editedByName: string;
+//   editedById: string;
+//   field: string; // "urgency" or "status"
+//   currentData: string;
+// };
 
 // COMMENTS
 

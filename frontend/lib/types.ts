@@ -2,14 +2,14 @@ import { Dispatch, SetStateAction } from "react";
 import {
   AccountInformationProps,
   AppPermissionsReviewProps,
+  AssignedTicketNotificationProps,
+  AssignmentUpdateType,
   CategoryAssignmentProps,
   CreatedTicketNotificationProps,
-  EditedTicketNotificationProps,
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
-  QuickEditTicketNotificationProps,
-  ReassignedTicketNotificationProps,
+  UpdatedTicketProps,
 } from "@/packages/transactional/emails/types";
 
 // CONTEXT
@@ -428,9 +428,8 @@ export interface NotificationData {
 
   // ACTIVITY: TICKETS
   createdTicket?: CreatedTicketNotificationProps;
-  editedTicket?: EditedTicketNotificationProps;
-  reassignedTicket?: ReassignedTicketNotificationProps;
-  quickEditTicket?: QuickEditTicketNotificationProps;
+  updatedTicket?: UpdatedTicketProps;
+  ticketAssignment?: AssignedTicketNotificationProps;
   newComment?: NewCommentNotificationProps;
 }
 
@@ -439,6 +438,12 @@ export interface PushNotificationPayload {
   userId: string;
   title: string;
   body: string;
+}
+export interface UsersToNotify {
+  id: string;
+  name: string;
+  email: string;
+  updateType: AssignmentUpdateType;
 }
 
 export interface CreateNotificationPayload {
@@ -475,9 +480,8 @@ export type TicketNotificationCallback = {
   };
   data?: {
     createdTicket?: CreatedTicketNotificationProps;
-    editedTicket?: EditedTicketNotificationProps;
-    reassignedTicket?: ReassignedTicketNotificationProps;
-    quickEditTicket?: QuickEditTicketNotificationProps;
+    updatedTicket?: UpdatedTicketProps;
+    ticketAssignment?: AssignedTicketNotificationProps;
     newComment?: NewCommentNotificationProps;
   };
 };

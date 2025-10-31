@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchOneUser } from "@/hooks/use-users";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type UserDetailViewProps = { id: string };
 
@@ -93,14 +94,16 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData?.firstName.trim()) errors.name = "First name is required";
-    if (!formData?.lastName.trim()) errors.lastName = "Last name is required";
+    if (!formData?.firstName || !formData?.firstName.trim())
+      errors.name = "First name is required";
+    if (!formData?.lastName || !formData?.lastName.trim())
+      errors.lastName = "Last name is required";
 
-    if (!formData?.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
-      errors.email = "Invalid email format";
-    }
+    // if (!formData?.email.trim()) {
+    //   errors.email = "Email is required";
+    // } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
+    //   errors.email = "Invalid email format";
+    // }
 
     if (!formData.role) errors.role = "Role is required";
 
@@ -118,9 +121,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       body.role = formData.role;
     } else {
       body.name = `${formData.firstName} ${formData.lastName}`;
-      body.email = formData.email;
+      // body.email = formData.email;
       body.role = formData.role;
-
       body.marketCenterId = formData?.marketCenterId;
     }
     if (!body) throw new Error("Nothing to update");
@@ -139,66 +141,103 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       return null;
     }
   };
+  const updateUserInClerk = async (clerkId: string) => {
+    if (!clerkId) {
+      throw new Error("Not authorized to update this profile");
+    }
 
-  // const updateUserInClerk = async (clerkId: string) => {
-  //   if (!isCurrentUserProfile || !clerkId) {
-  //     throw new Error("Not authorized to update this profile");
-  //   }
-  //   try {
-  //     const token = "<CLERK_BACKEND_SECRET_TOKEN>"; // process.env.CLERK_BACKEND_SECRET_TOKEN
-  //     if (!token) throw new Error("No token available");
+    try {
+      const response = await fetch(`/api/clerk/update-user`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clerkId: clerkId,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+        }),
+      });
 
-  //     const response = await fetch(
-  //       `https://api.clerk.com/v1/users/${clerkId}`,
-  //       {
-  //         method: "PATCH",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //         body: JSON.stringify({
-  //           // id: clerkId,
-  //           // name: `${formData.firstName} ${formData.lastName}`,
-  //           first_name: formData.firstName,
-  //           last_name: formData.lastName,
-  //           // notify_primary_email_address_changed:
-  //           // primary_email_address_id: formData.email,
-  //         }),
-  //       }
-  //     );
-  //     if (!response || !response.ok) throw new Error("Response not okay");
-  //     const data = await response.json();
-  //     if (!data) throw new Error("No data from auth0");
-  //     return true;
-  //   } catch (error) {
-  //     console.error("AUTH0 - Failed to update user", error);
-  //     return false;
-  //   }
-  // };
+      if (!response || !response.ok) throw new Error("Response not okay");
+      const data = await response.json();
+      if (!data) throw new Error("No data from Clerk");
+      return true;
+    } catch (error) {
+      console.error("CLERK - Failed to update user", error);
+      return false;
+    }
+  };
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
     { userId: string; clerkId: string; quickEdit: boolean }
   >({
     mutationFn: async ({ userId, clerkId, quickEdit }) => {
+      console.log("Called updateUserMutation");
+
       if (!userId || !clerkId) throw new Error("Missing User ID");
 
-      // const clerkResponse = await updateUserInClerk(clerkId);
-      // if (!clerkResponse) {
-      //   throw new Error("Clerk Error");
-      // }
+      const clerkResponse = await updateUserInClerk(clerkId);
+      // TODO: Separate Clerk endpoints for metadata and email
+      if (!clerkResponse) {
+        throw new Error("Clerk Error");
+      }
       const prismaResponse = await updateUserInPrisma(userId, quickEdit);
       if (!prismaResponse) {
         throw new Error("Prisma Error");
       }
       const data = await prismaResponse.json();
-      if (!data || !data?.user)
+      if (!data || !data?.user) {
         throw new Error("Prisma - Updated data was not found");
+      }
+
       return data.user as PrismaUser;
     },
     onSuccess: async (data: PrismaUser) => {
       resetFormAndClose();
       toast.success(`${data?.name || "User"} was updated`);
+      await createAndSendNotification({
+        authToken: clerkUser?.id,
+        trigger: "Account Information",
+        receivingUser: {
+          id: data?.id,
+          name: data?.name ?? data?.email,
+          email: data.email,
+        },
+        data: {
+          accountInformation: {
+            changedByName:
+              currentUser?.id === data?.id
+                ? "You"
+                : currentUser && currentUser?.name
+                  ? currentUser.name
+                  : "Another user",
+            changedByEmail: currentUser?.email,
+            updates: [
+              hasNameChanged && {
+                value: "name",
+                originalValue: user?.name ?? null,
+                newValue: data?.name ?? null,
+              },
+              hasEmailChanged && {
+                value: "email",
+                originalValue: user?.email ?? null,
+                newValue: data?.email ?? null,
+              },
+              hasRoleChanged && {
+                value: "role",
+                originalValue: user?.role ?? null,
+                newValue: data?.role ?? "AGENT",
+              },
+            ].filter(Boolean) as {
+              value: "name" | "email" | "role" | "password";
+              originalValue: string | null;
+              newValue: string | null;
+            }[],
+          },
+        },
+      });
     },
     onError: (error: any) => {
       console.error("Failed to update user", error);
@@ -214,12 +253,15 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Called handleSubmitEditUserForm");
+    console.log("Form Data", formData);
 
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     if (!validateForm()) return;
+    console.log("Form validated");
     setIsSubmitting(true);
     updateUserMutation.mutate({
       userId: user?.id,
@@ -229,17 +271,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   };
 
   const handleRoleChange = async () => {
+    console.log("ROLE CHANGE CALLED");
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
-    setIsSubmitting(true);
-    updateUserMutation.mutate({
-      userId: user?.id,
-      clerkId: user?.clerkId,
-      quickEdit: true,
-    });
-    setIsSubmitting(false);
+    // setIsSubmitting(true);
+    // updateUserMutation.mutate({
+    //   userId: user?.id,
+    //   clerkId: user?.clerkId,
+    //   quickEdit: true,
+    // });
+    // setIsSubmitting(false);
   };
 
   return (
@@ -350,7 +393,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       selectedMarketCenterId={selectedMarketCenterId}
                       setSelectedMarketCenterId={setSelectedMarketCenterId}
                       handleUpdateMarketCenter={handleUpdateMarketCenter}
-                    />  
+                    />
               </div>*/}
           </CardContent>
         </Card>
@@ -378,7 +421,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
-
           <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="firstName" className="text-sm font-medium">
@@ -386,7 +428,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               </label>
               <Input
                 id="firstName"
-                value={formData.firstName}
+                value={formData?.firstName}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
@@ -439,6 +481,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
+                disabled // TODO: CLERK EMAIL API ROUTES
               />
               <p className="text-sm text-destructive">
                 {formErrors?.email && formErrors.email}

@@ -46,6 +46,7 @@ import type {
   TicketStatus,
   Urgency,
   TicketHistory,
+  TicketNotificationCallback,
 } from "@/lib/types";
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
@@ -65,32 +66,16 @@ import {
 import { API_BASE } from "@/lib/api/utils";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import { useQueryClient } from "@tanstack/react-query";
+import { createAndSendNotification } from "@/lib/utils/notifications";
+import {
+  ActivityUpdates,
+  AssignmentUpdateType,
+} from "@/packages/transactional/emails/types";
 
 interface TicketDetailViewProps {
   ticketId: string;
   onClose?: () => void;
 }
-
-export type PossibleChangesProps = {
-  label: string;
-  originalValue: string | null;
-  newValue: string;
-};
-
-type emailNotificationTypes = {
-  updatedTicket: Ticket;
-  quickUpdate?: {
-    field: string;
-    current: string;
-  };
-  reassignmentUpdate?: {
-    currentAssignment: PrismaUser | null;
-    previousAssignment: PrismaUser | null;
-  };
-  fullEdits?: {
-    oldTicket: Ticket;
-  };
-};
 
 export const ticketDetailQueryParams = new URLSearchParams(
   "orderBy=desc&limit=5"
@@ -159,163 +144,25 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
   });
 
-  const findChangedFormValues = ({
-    oldTicket,
-    updatedTicket,
-  }: {
-    oldTicket: Ticket;
-    updatedTicket: Ticket;
-  }) => {
-    let changedValues: PossibleChangesProps[] = [];
-    const dueDateChanged = hasDueDateChanged(
-      oldTicket?.dueDate,
-      updatedTicket?.dueDate
-    );
-    if (dueDateChanged.isChanged !== "unchanged") {
-      changedValues = [
-        ...changedValues,
-        {
-          label: "Due Date",
-          originalValue: oldTicket?.dueDate
-            ? `${new Date(oldTicket.dueDate).toLocaleDateString()}`
-            : "N/a",
-          newValue: updatedTicket?.dueDate
-            ? `${new Date(updatedTicket.dueDate).toLocaleDateString()}`
-            : "N/a",
-        },
-      ];
-    }
-
-    if (oldTicket.urgency !== updatedTicket?.urgency) {
-      changedValues = [
-        ...changedValues,
-        {
-          label: "Urgency",
-          originalValue: oldTicket.urgency,
-          newValue: updatedTicket?.urgency,
-        },
-      ];
-    }
-
-    if (oldTicket.category !== updatedTicket?.category) {
-      changedValues = [
-        ...changedValues,
-        {
-          label: "Category",
-          originalValue: oldTicket?.categoryId ?? null,
-          newValue: updatedTicket?.categoryId ?? "",
-        },
-      ];
-    }
-    if (oldTicket.description !== updatedTicket.description) {
-      changedValues = [
-        ...changedValues,
-        {
-          label: "Description",
-          originalValue: oldTicket.description,
-          newValue: updatedTicket.description ?? "",
-        },
-      ];
-    }
-
-    if (oldTicket.title !== updatedTicket.title) {
-      changedValues = [
-        ...changedValues,
-        {
-          label: "Title",
-          originalValue: oldTicket.title,
-          newValue: updatedTicket.title ?? "",
-        },
-      ];
-    }
-    return changedValues;
-  };
-
-  const sendEmailNotification = async (updates: emailNotificationTypes) => {
-    if (!updates || !updates?.updatedTicket || !updates?.updatedTicket.id) {
-      throw new Error("Ticket was null");
-    }
-    const updatedTicket = updates?.updatedTicket;
-
-    let url: string = "";
-    let body = {};
-
-    if (updates?.quickUpdate) {
-      url = "/api/send/quickChange";
-      body = {
-        ticketNumber: updatedTicket.id,
-        ticketTitle: updatedTicket?.title,
-        createdOn: updatedTicket?.createdAt,
-        updatedOn: updatedTicket?.createdAt,
-        editedBy: currentUser || {
-          id: "",
-          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
-          name: clerkUser?.fullName || "",
-          role: "AGENT",
-        },
-        field: updates?.quickUpdate?.field,
-        currentData: updates?.quickUpdate?.current,
-      };
-    }
-
-    if (updates?.reassignmentUpdate) {
-      url = "/api/send/reassignTicket";
-      body = {
-        ticketNumber: updatedTicket.id,
-        ticketTitle: updatedTicket?.title,
-        createdOn: updatedTicket?.createdAt,
-        updatedOn: updatedTicket?.createdAt,
-        editedBy: currentUser || {
-          id: "",
-          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
-          name: clerkUser?.fullName || "",
-          role: "AGENT",
-        },
-        currentAssignment: updates?.reassignmentUpdate?.currentAssignment,
-        previousAssignment: updates?.reassignmentUpdate?.previousAssignment,
-      };
-    }
-
-    if (updates?.fullEdits && updates?.fullEdits?.oldTicket) {
-      const oldTicket = updates?.fullEdits?.oldTicket;
-      const ticketEdits = findChangedFormValues({ oldTicket, updatedTicket });
-      if (!ticketEdits) {
-        throw new Error("No changes to ticket found");
+  const handleSendTicketNotifications = useCallback(
+    async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
+      try {
+        if (!clerkUser?.id) {
+          throw new Error("Missing auth token");
+        }
+        const response = await createAndSendNotification({
+          authToken: clerkUser?.id,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+        console.log("TicketList - Notifications - Response:", response);
+      } catch (error) {
+        console.error("TicketList - Unable to generate notifications", error);
       }
-      url = "/api/send/editTicket";
-      body = {
-        ticketNumber: updatedTicket.id,
-        ticketTitle: updatedTicket?.title,
-        createdOn: updatedTicket?.createdAt,
-        updatedOn: updatedTicket?.createdAt,
-        editedBy: currentUser || {
-          id: "",
-          email: clerkUser?.primaryEmailAddress?.emailAddress || "",
-          name: clerkUser?.fullName || "",
-          role: "AGENT",
-        },
-        changedDetails: ticketEdits,
-      };
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) {
-        console.error("Failed to send email, status:", response.status);
-      } else {
-        await response.json();
-      }
-    } catch (err) {
-      console.error("Failed to send email", err);
-    }
-  };
+    },
+    [clerkUser?.id]
+  );
 
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
     if (!ticket) return;
@@ -334,13 +181,67 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
       });
-      if (res.ok && ticket) {
-        await sendEmailNotification({
-          updatedTicket: ticket || null,
-          quickUpdate: { field: field, current: value },
-        });
-      }
       await parseJsonSafe(res);
+
+      const data = await res.json();
+      if (data && data?.ticket) {
+        const ticket = data.ticket as Ticket;
+        const title = ticket?.title ?? "";
+        const usersToNotify = data?.usersToNotify ?? [];
+        const changedDetails: ActivityUpdates[] = data?.changedDetails ?? [];
+
+        if (usersToNotify && usersToNotify?.length > 0) {
+          await Promise.all(
+            usersToNotify.map(
+              async (user: {
+                id: string;
+                name: string;
+                email: string;
+                updateType: AssignmentUpdateType;
+              }) => {
+                const notifySomeone = user.updateType === "unchanged";
+                const notifyAssigneeChanges =
+                  user.updateType === "added" || user.updateType === "removed";
+                await handleSendTicketNotifications({
+                  trigger: notifyAssigneeChanges
+                    ? "Ticket Assignment"
+                    : "Ticket Created",
+                  receivingUser: {
+                    id: user?.id,
+                    name: user?.name,
+                    email: user?.email,
+                  },
+                  data: {
+                    updatedTicket: notifySomeone
+                      ? {
+                          ticketNumber: ticket.id,
+                          createdOn: ticket?.createdAt,
+                          updatedOn: ticket?.updatedAt,
+                          editedByName: currentUser?.name ?? "Unknown",
+                          editedById: currentUser!.id,
+                          changedDetails: changedDetails,
+                        }
+                      : undefined,
+                    ticketAssignment: notifyAssigneeChanges
+                      ? {
+                          ticketNumber: ticket.id,
+                          ticketTitle: title,
+                          createdOn: ticket?.createdAt,
+                          updatedOn: ticket?.createdAt,
+                          editedByName: currentUser?.name ?? "Unknown",
+                          editedById: currentUser!.id,
+                          updateType: user.updateType,
+                          currentAssignment: { id: user?.id, name: user?.name },
+                          previousAssignment: null,
+                        }
+                      : undefined,
+                  },
+                });
+              }
+            )
+          );
+        }
+      }
       await invalidateTicketHistory;
       await refreshAllData();
     } catch (error) {
@@ -382,19 +283,54 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         }),
       });
       await parseJsonSafe(res);
-      await refreshAllData();
-      await invalidateTicketHistory;
+      const data = await res.json();
 
-      await sendEmailNotification({
-        updatedTicket: ticket,
-        reassignmentUpdate: {
-          currentAssignment: nextAssignee || null,
-          previousAssignment: prev?.assignee || null,
-        },
-      });
+      if (data && data?.ticket) {
+        const ticket = data.ticket as Ticket;
+        const title = ticket?.title ?? "";
+        const usersToNotify = data?.usersToNotify ?? [];
+
+        if (usersToNotify && usersToNotify?.length > 0) {
+          await Promise.all(
+            usersToNotify.map(
+              async (user: {
+                id: string;
+                name: string;
+                email: string;
+                updateType: AssignmentUpdateType;
+              }) => {
+                await handleSendTicketNotifications({
+                  trigger: "Ticket Assignment",
+                  receivingUser: {
+                    id: user?.id,
+                    name: user?.name,
+                    email: user?.email,
+                  },
+                  data: {
+                    ticketAssignment: {
+                      ticketNumber: ticket.id,
+                      ticketTitle: title,
+                      createdOn: ticket?.createdAt,
+                      updatedOn: ticket?.createdAt,
+                      editedByName: currentUser?.name ?? "Unknown",
+                      editedById: currentUser!.id,
+                      updateType: user.updateType,
+                      currentAssignment: { id: user?.id, name: user?.name },
+                      previousAssignment: null,
+                    },
+                  },
+                });
+              }
+            )
+          );
+        }
+      }
     } catch (error) {
       console.error("Failed to assign ticket", error);
       setTicket(prev);
+    } finally {
+      await refreshAllData();
+      await invalidateTicketHistory;
     }
   };
 
@@ -467,9 +403,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         )}
         <div className="flex items-center gap-2">
           {getStatusIcon(ticket.status)}
-          <h1 className="text-2xl font-bold">
-            #{ticket.id.substring(0, 8)}...
-          </h1>
+          <h1 className="text-2xl font-bold">#{ticket.id.substring(0, 8)}</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="ml-auto">
@@ -779,13 +713,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       <TicketForm
         ticket={ticket ?? undefined}
         isOpen={showEditForm}
+        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setShowEditForm(false)}
         onSuccess={async (updated: Ticket | null) => {
           if (updated) {
-            await sendEmailNotification({
-              updatedTicket: updated,
-              fullEdits: { oldTicket: ticket },
-            });
             setTicket((prev) => (prev ? { ...prev, ...updated } : updated));
           }
           setShowEditForm(false);

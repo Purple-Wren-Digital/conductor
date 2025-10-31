@@ -4,8 +4,8 @@ import UserInvitation from "@/emails/UserInvitation";
 import MarketCenterAssignment from "@/emails/MarketCenterUserUpdate";
 import CategoryAssignment from "@/emails/CategoryAssignment";
 import CreatedTicketNotification from "@/emails/CreatedTicketNotification";
-import EditedTicketNotification from "@/emails/EditedTicketNotification";
-import QuickEditTicketNotification from "@/emails/QuickEditTicketNotification";
+import TicketAssignment from "@/emails/TicketAssignment";
+import UpdatedTicket from "@/emails/EditedTicketNotification";
 
 export const formatEmailNotification = (notification: Notification) => {
   // USERS
@@ -41,10 +41,19 @@ export const formatEmailNotification = (notification: Notification) => {
     return createdTicket;
   }
 
-  // if (notification?.data?.editedTicket) {
-  //   const createdTicket = EditedTicketNotification(notification.data.editedTicket) as React.ReactElement;
-  //   return createdTicket;
-  // }
+  if (notification?.data?.ticketAssignment) {
+    const createdTicket = TicketAssignment(
+      notification.data.ticketAssignment
+    ) as React.ReactElement;
+    return createdTicket;
+  }
+
+  if (notification?.data?.updatedTicket) {
+    const createdTicket = UpdatedTicket(
+      notification.data.updatedTicket
+    ) as React.ReactElement;
+    return createdTicket;
+  }
 
   // COMMENTS
 

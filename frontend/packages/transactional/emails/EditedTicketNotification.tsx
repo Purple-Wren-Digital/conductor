@@ -8,18 +8,18 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { EditedTicketNotificationProps } from "./types";
+import { UpdatedTicketProps } from "./types";
 
 const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
-const EditedTicketNotification = ({
+const UpdatedTicket = ({
   ticketNumber,
   createdOn,
   updatedOn,
   editedByName,
   editedById,
   changedDetails,
-}: EditedTicketNotificationProps) => {
+}: UpdatedTicketProps) => {
   return (
     <Html>
       <Head />
@@ -94,7 +94,7 @@ const EditedTicketNotification = ({
   );
 };
 
-export default EditedTicketNotification;
+export default UpdatedTicket;
 
 const main = {
   fontFamily:

@@ -3,6 +3,7 @@ import { prisma } from "./db";
 import type { Ticket } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canReassignTicket } from "../auth/permissions";
+import { UsersToNotify } from "../notifications/types";
 
 export interface AssignTicketRequest {
   id: string;
@@ -11,6 +12,7 @@ export interface AssignTicketRequest {
 
 export interface AssignTicketResponse {
   ticket: Ticket;
+  usersToNotify: UsersToNotify[];
 }
 
 // Assigns a ticket to a user
@@ -60,7 +62,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
 
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.id },
-      include: { assignee: true },
+      include: { assignee: true, creator: true },
     });
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
@@ -68,13 +70,40 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
 
     try {
       const updateData: any = {};
+      let usersToNotify: UsersToNotify[] = [];
+
       if (unassignTicket && !!oldTicket?.assigneeId) {
         updateData.assigneeId = null;
         updateData.status = "UNASSIGNED";
+        usersToNotify.push({
+          id: oldTicket?.assigneeId,
+          name: oldTicket?.assignee?.name ?? "",
+          email: oldTicket?.assignee?.email ?? "",
+          updateType: "removed",
+        });
       }
-      if (newAssignee && newAssignee?.id !== oldTicket?.assigneeId) {
+      if (
+        newAssignee &&
+        newAssignee?.id &&
+        oldTicket?.assigneeId &&
+        newAssignee?.id !== oldTicket?.assigneeId
+      ) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
+        usersToNotify.push(
+          {
+            id: oldTicket?.assigneeId,
+            name: oldTicket?.assignee?.name ?? "",
+            email: oldTicket?.assignee?.email ?? "",
+            updateType: "removed",
+          },
+          {
+            id: newAssignee?.id,
+            name: newAssignee?.name ?? "",
+            email: newAssignee?.email ?? "",
+            updateType: "added",
+          }
+        );
       }
 
       if (Object.keys(updateData).length === 0) {
@@ -134,7 +163,10 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         commentCount: ticket.comments ? ticket.comments.length : 0,
       };
 
-      return { ticket: ticketWithCommentCount } as AssignTicketResponse;
+      return {
+        ticket: ticketWithCommentCount,
+        usersToNotify: usersToNotify,
+      } as AssignTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("ticket not found");

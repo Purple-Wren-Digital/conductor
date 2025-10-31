@@ -39,6 +39,7 @@ import type {
   MarketCenterNotificationCallback,
   PrismaUser,
   TicketCategory,
+  UsersToNotify,
 } from "@/lib/types";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -194,12 +195,7 @@ export default function MarketCenterTicketCategories({
     },
     onSuccess: async (data: {
       category: TicketCategory;
-      usersToNotify: {
-        id: string;
-        name: string | null;
-        email?: string;
-        userUpdate: "added" | "removed";
-      }[];
+      usersToNotify: UsersToNotify[];
     }) => {
       toast.success(`${categoryFormData?.name} updated`);
       if (data?.usersToNotify && data?.usersToNotify.length > 0) {
@@ -214,7 +210,7 @@ export default function MarketCenterTicketCategories({
               },
               data: {
                 categoryAssignment: {
-                  userUpdate: user?.userUpdate,
+                  userUpdate: user?.updateType,
                   userName: user?.name ?? "You",
                   categoryName: data?.category?.name,
                   categoryDescription: data?.category?.description ?? undefined,

@@ -64,7 +64,6 @@ import { RadioGroup, RadioGroupItem } from "../../radio-group";
 export default function AgentTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role } = useUserRole();
   const { currentUser } = useStore();
 
   const [showFilters, setShowFilters] = useState(false);
@@ -120,7 +119,6 @@ export default function AgentTicketList() {
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
-    role,
     dateFrom,
     dateTo,
     sortBy,
@@ -394,7 +392,10 @@ export default function AgentTicketList() {
                       categories &&
                       categories.length > 0 &&
                       categories.map((category: TicketCategory) => (
-                        <div key={category?.id} className="flex flex-wrap gap-2">
+                        <div
+                          key={category?.id}
+                          className="flex flex-wrap gap-2"
+                        >
                           <RadioGroupItem
                             value={category?.id}
                             id={`category-${category?.id}`}

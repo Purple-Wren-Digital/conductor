@@ -78,42 +78,6 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     }
   };
 
-  const sendNewCommentEmail = async (ticket: Ticket | null) => {
-    if (!ticket || !ticket.id) {
-      throw new Error("Ticket was null");
-    }
-
-    const ticketNewCommentEmailBody = {
-      ticketNumber: ticketId,
-      ticketTitle: ticket?.title,
-      createdOn: ticket?.createdAt,
-      commentedOn: new Date(),
-      commenter: currentUser,
-      comment: content.trim(),
-      isInternal: isInternal,
-      assignee: ticket?.assignee,
-    };
-    try {
-      const accessToken = clerkUser?.id || "";
-      const response = await fetch("/api/send/newComment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify(ticketNewCommentEmailBody),
-      });
-      if (!response.ok) {
-        console.error("Failed to send email, status:", response.status);
-      } else {
-        await response.json();
-      }
-    } catch (err) {
-      console.error("Failed to send email", err);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // if (!currentUser?.id) return;
@@ -134,7 +98,11 @@ export function CommentForm({ ticketId }: CommentFormProps) {
         }
       );
       const ticket = await fetchTicket(ticketId);
-      await sendNewCommentEmail(ticket || null);
+      // if (ticket?.assignee) {
+      //   await sendNewCommentNotifications(ticket || null);
+      // }
+
+      //  [ticket?.assignee, ticket?.creatorId].forEach(async (user)=>{await sendNewCommentNotifications(ticket || null);})
     }
   };
 

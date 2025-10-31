@@ -65,11 +65,11 @@ const EditUserProfile = ({
     const errors: Record<string, string> = {};
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Invalid email format";
-    }
+    // if (!formData.email.trim()) {
+    //   errors.email = "Email is required";
+    // } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    //   errors.email = "Invalid email format";
+    // }
 
     if (
       user &&
@@ -77,8 +77,7 @@ const EditUserProfile = ({
       formData.firstName &&
       formData.firstName.trim() === user?.name.split(" ")[0] &&
       formData.lastName &&
-      formData.lastName.trim() === user?.name.split(" ")[1] &&
-      formData.email === user?.email
+      formData.lastName.trim() === user?.name.split(" ")[1] //&&  formData.email === user?.email
     )
       errors.general = "Please make changes";
     setFormErrors(errors);
@@ -291,7 +290,8 @@ const EditUserProfile = ({
                   }
                   onKeyDown={handleKeyDown}
                   placeholder={"Enter your email"}
-                  disabled={isSubmitting || !isCurrentUserProfile}
+                  disabled // TODO: CLERK EMAIL API ROUTES
+                  // disabled={isSubmitting || !isCurrentUserProfile}
                   className={
                     (formErrors?.email || formErrors?.general) &&
                     "border-destructive"

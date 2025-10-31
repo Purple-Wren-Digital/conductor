@@ -26,7 +26,7 @@ const CategoryAssignment = ({
       <Head />
       <Preview>
         You&apos;ve been{" "}
-        {userUpdate === "added" ? "assigned to" : "unassigned from"} ticket
+        {userUpdate === "added" ? "assigned to" : "unassigned from"} a ticket
         category
         {categoryName}
       </Preview>

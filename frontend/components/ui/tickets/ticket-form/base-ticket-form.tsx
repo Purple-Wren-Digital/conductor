@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +38,6 @@ import {
 import { findMarketCenter, urgencyOptions } from "@/lib/utils";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/context/store-provider";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 
 export type TicketFormValues = {
@@ -96,7 +95,10 @@ export function BaseTicketForm({
   const { role } = useUserRole();
   const { data: marketCentersData } = useFetchAllMarketCenters(role);
 
-  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
+  const marketCenters = useMemo(() => {
+    return marketCentersData?.marketCenters ?? [];
+  }, [marketCentersData]);
+
   const marketCenterTicketCategories: TicketCategory[] =
     selectedMarketCenter && selectedMarketCenter?.ticketCategories
       ? selectedMarketCenter?.ticketCategories
@@ -106,14 +108,15 @@ export function BaseTicketForm({
       ? selectedMarketCenter?.users
       : [];
 
+  const prefillData = useCallback(() => {
+    const marketCenter = findMarketCenter(marketCenters, marketCenterId);
+    setSelectedMarketCenter(marketCenter);
+  }, [marketCenterId, marketCenters]);
+
   useEffect(() => {
     if (!marketCenterId) return;
-    const prefillData = () => {
-      const marketCenter = findMarketCenter(marketCenters, marketCenterId);
-      setSelectedMarketCenter(marketCenter);
-    };
     prefillData();
-  }, [marketCenterId]);
+  }, [marketCenterId, prefillData]);
 
   const templateSection = useMemo(() => {
     if (!showTemplateSelect) return null;
@@ -262,7 +265,7 @@ export function BaseTicketForm({
               <SelectContent>
                 {marketCenters &&
                   marketCenters.length > 0 &&
-                  marketCenters.map((marketCenter) => (
+                  marketCenters.map((marketCenter: MarketCenter) => (
                     <SelectItem key={marketCenter?.id} value={marketCenter?.id}>
                       <div className="flex items-center gap-2">
                         <Building className="w-4 h-4 " />

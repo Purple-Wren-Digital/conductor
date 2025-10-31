@@ -77,10 +77,19 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
+  TicketNotificationCallback,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export default function TicketListStaff() {
+export default function TicketListStaff({
+  handleSendTicketNotifications,
+}: {
+  handleSendTicketNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: TicketNotificationCallback) => Promise<void>;
+}) {
   const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -172,7 +181,6 @@ export default function TicketListStaff() {
     selectedCategory,
     selectedAssignee,
     selectedCreator,
-    role,
     dateFrom,
     dateTo,
     sortBy,
@@ -672,7 +680,7 @@ export default function TicketListStaff() {
                   <span className="text-sm font-medium">Select All</span>
                 </div>
               )}
-              <div className="flex flex-wrap items-center space-x-2 gap-4 items-center w-full sm:w-fit">
+              <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
                 {/* SORT BY */}
                 <div className="space-y-2 w-full sm:w-fit">
                   <Select
@@ -890,6 +898,7 @@ export default function TicketListStaff() {
       <EditTicketForm
         ticket={editingTicket}
         isOpen={isEditOpen}
+        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsEditOpen(false)}
         onSuccess={(updated) => {
           setIsEditOpen(false);
@@ -918,6 +927,7 @@ export default function TicketListStaff() {
       <CreateTicketForm
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+        handleSendTicketNotifications={handleSendTicketNotifications}
         onSuccess={() => {
           setIsCreateOpen(false);
           queryInvalidator();

@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
 import { prisma } from "../../ticket/db";
+import { UsersToNotify } from "../../notifications/types";
 
 export interface UpdateCategoryRequest {
   id: string;
@@ -13,12 +14,7 @@ export interface UpdateCategoryRequest {
 
 export interface UpdateCategoryResponse {
   category: TicketCategory;
-  usersToNotify: {
-    id: string;
-    name: string | null;
-    email?: string;
-    userUpdate: "added" | "removed";
-  }[];
+  usersToNotify: UsersToNotify[];
 }
 
 export const updateCategory = api<
@@ -54,12 +50,7 @@ export const updateCategory = api<
 
     const updateCategoryData: any = {};
     let marketCenterHistory: any = [];
-    let usersToNotify: {
-      id: string;
-      name: string | null;
-      email?: string;
-      userUpdate: "added" | "removed";
-    }[] = [];
+    let usersToNotify: UsersToNotify[] = [];
 
     // NAME
     if (req?.name && req?.name !== oldTicketCategory.name) {
@@ -140,18 +131,18 @@ export const updateCategory = api<
           id: oldTicketCategory.defaultAssigneeId,
           name: oldTicketCategory?.defaultAssignee?.name
             ? oldTicketCategory.defaultAssignee.name
-            : null,
-          email: oldTicketCategory?.defaultAssignee?.email ?? undefined,
-          userUpdate: "removed",
+            : "",
+          email: oldTicketCategory?.defaultAssignee?.email ?? "",
+          updateType: "removed",
         });
       }
 
       if (newDefaultAssignee?.id) {
         usersToNotify.push({
           id: newDefaultAssignee.id,
-          name: newDefaultAssignee?.name ?? null,
-          email: newDefaultAssignee?.email ?? undefined,
-          userUpdate: "added",
+          name: newDefaultAssignee?.name ?? "",
+          email: newDefaultAssignee?.email ?? "",
+          updateType: "added",
         });
       }
     }

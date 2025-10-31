@@ -8,10 +8,10 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { ReassignedTicketNotificationProps } from "./types";
+import { AssignedTicketNotificationProps } from "./types";
 const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
-const ReassignedTicketNotification = ({
+const TicketAssignment = ({
   ticketNumber,
   ticketTitle,
   createdOn,
@@ -20,16 +20,19 @@ const ReassignedTicketNotification = ({
   editedById,
   currentAssignment,
   previousAssignment,
-}: ReassignedTicketNotificationProps) => {
+  updateType,
+}: AssignedTicketNotificationProps) => {
+  const currentUserName = currentAssignment?.name ?? "Hello";
+  const previousUserName = previousAssignment?.name ?? "Hello";
   return (
     <Html>
       <Head />
-      <Preview>Ticket Reassigned</Preview>
+      <Preview>A ticket was {updateType} to your queue</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Ticket Reassigned</Text>
+            <Text style={headerText}>Ticket Assignment</Text>
 
             <Text style={datesText}>
               {updatedOn &&
@@ -44,10 +47,19 @@ const ReassignedTicketNotification = ({
           <div style={divider} />
 
           <Section>
+            <div style={{ marginBottom: "40px" }}>
+              <Text style={subheaderText}>
+                {updateType === "added" ? currentUserName : previousUserName},
+              </Text>
+              <Text style={subheaderText}>
+                The following ticket is{" "}
+                {updateType === "added" ? "now" : "no longer"} in your queue
+              </Text>
+            </div>
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Reassigned By: {editedByName}
+              Assigned By: {editedByName}
               {editedById && ` #${editedById.slice(0, 8)})`}
             </Text>
           </Section>
@@ -60,7 +72,8 @@ const ReassignedTicketNotification = ({
                 <li>
                   <Text style={text}>
                     Current: {currentAssignment?.name}{" "}
-                    {currentAssignment?.id && `(${currentAssignment.id})`}
+                    {currentAssignment?.id &&
+                      `(#${currentAssignment.id.slice(0, 8)})`}
                   </Text>
                 </li>
                 <li>
@@ -69,7 +82,8 @@ const ReassignedTicketNotification = ({
                     {previousAssignment?.name
                       ? previousAssignment.name
                       : "Unassigned"}{" "}
-                    {previousAssignment?.id && `(${previousAssignment.id})`}
+                    {previousAssignment?.id &&
+                      `(#${previousAssignment.id.slice(0, 8)})`}
                   </Text>
                 </li>
               </ul>
@@ -87,7 +101,7 @@ const ReassignedTicketNotification = ({
   );
 };
 
-export default ReassignedTicketNotification;
+export default TicketAssignment;
 
 const main = {
   fontFamily:

@@ -20,6 +20,7 @@ import type {
   MarketCenterForm,
   MarketCenterNotificationCallback,
   PrismaUser,
+  UsersToNotify,
 } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -136,12 +137,7 @@ export default function EditMarketCenter({
     },
     onSuccess: async (data: {
       marketCenter: MarketCenter;
-      usersToNotify: {
-        id: string;
-        name: string;
-        email: string;
-        userUpdate: "added" | "removed";
-      }[];
+      usersToNotify: UsersToNotify[];
     }) => {
       toast.success(
         `${data?.marketCenter?.name ? data.marketCenter.name : "Market Center"} was updated`
@@ -159,7 +155,7 @@ export default function EditMarketCenter({
               },
               data: {
                 marketCenterAssignment: {
-                  userUpdate: user.userUpdate,
+                  userUpdate: user.updateType,
                   marketCenterId: editingMarketCenter?.id,
                   marketCenterName: data.marketCenter?.name,
                   userName: user.name ?? user.email,

@@ -1,7 +1,7 @@
 // import * as React from "react";
 // import { NextRequest } from "next/server";
 // import { Resend } from "resend";
-// import EditedTicketNotification from "../../../../packages/transactional/emails/EditedTicketNotification";
+// import UpdatedTicket from "../../../../packages/transactional/emails/UpdatedTicket";
 
 // const resend = new Resend(process.env.RESEND_API_KEY);
 // const DEV = process.env.NEXT_PUBLIC_VERCEL_ENV;
@@ -17,7 +17,7 @@
 //       from: "Conductor Ticketing <onboarding@resend.dev>",
 //       to: ["delivered@resend.dev"], // TODO: editor, assignee emails
 //       subject: `${DEV && "DEV "}Conductor: Updates for Ticket ${emailData?.ticketNumber}`, // TODO: PROD Subject
-//       react: EditedTicketNotification({
+//       react: UpdatedTicket({
 //         ticketNumber: emailData?.ticketNumber,
 //         createdOn: emailData?.createdOn,
 //         updatedOn: emailData?.updatedOn,

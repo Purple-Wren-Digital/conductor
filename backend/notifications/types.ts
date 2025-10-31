@@ -3,12 +3,13 @@ import {
   AppPermissionsReviewProps,
   CategoryAssignmentProps,
   CreatedTicketNotificationProps,
-  EditedTicketNotificationProps,
+  UpdatedTicketProps,
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
-  QuickEditTicketNotificationProps,
-  ReassignedTicketNotificationProps,
+  // QuickEditTicketNotificationProps,
+  AssignedTicketNotificationProps,
+  AssignmentUpdateType,
 } from "@/emails/types";
 import { Urgency } from "../ticket/types";
 import { User } from "../user/types";
@@ -81,10 +82,17 @@ export interface NotificationData {
 
   // ACTIVITY: TICKETS
   createdTicket?: CreatedTicketNotificationProps;
-  editedTicket?: EditedTicketNotificationProps;
-  reassignedTicket?: ReassignedTicketNotificationProps;
-  quickEditTicket?: QuickEditTicketNotificationProps;
+  updatedTicket?: UpdatedTicketProps;
+  ticketAssignment?: AssignedTicketNotificationProps;
+  // quickEditTicket?: QuickEditTicketNotificationProps;
   newComment?: NewCommentNotificationProps;
+}
+
+export interface UsersToNotify {
+  id: string;
+  name: string;
+  email: string;
+  updateType: AssignmentUpdateType;
 }
 
 // export interface PushNotificationPayload {

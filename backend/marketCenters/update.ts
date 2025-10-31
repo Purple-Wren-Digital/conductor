@@ -4,6 +4,8 @@ import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageMarketCenters } from "../auth/permissions";
+import { UsersToNotify } from "../notifications/types";
+import { AssignmentUpdateType } from "@/emails/types";
 
 export interface UpdateMarketCenterRequest {
   id: string;
@@ -14,12 +16,7 @@ export interface UpdateMarketCenterRequest {
 
 export interface UpdateMarketCenterResponse {
   marketCenter: MarketCenter;
-  usersToNotify: {
-    id: string;
-    name: string | null;
-    email: string;
-    userUpdate: "added" | "removed";
-  }[];
+  usersToNotify: UsersToNotify[];
 }
 
 // Creates a new market center
@@ -140,18 +137,18 @@ export const update = api<
       };
     });
 
-    const usersToNotify = [
+    const usersToNotify: UsersToNotify[] = [
       ...addedUsers.map((user: User) => ({
         id: user.id,
-        name: user?.name,
-        email: user?.email,
-        userUpdate: "added" as const,
+        name: user?.name ? user.name : "",
+        email: user?.email ? user.email : "",
+        updateType: "added" as AssignmentUpdateType,
       })),
       ...removedUsers.map((user: User) => ({
         id: user.id,
-        name: user?.name,
-        email: user?.email,
-        userUpdate: "removed" as const,
+        name: user?.name ? user?.name : "",
+        email: user?.email ? user?.email : "",
+        updateType: "removed" as AssignmentUpdateType,
       })),
     ];
 

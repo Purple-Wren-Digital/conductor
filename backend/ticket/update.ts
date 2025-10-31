@@ -3,7 +3,9 @@ import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket } from "../auth/permissions";
-import { mapHistorySnapshot, mapUser } from "../utils";
+import { ActivityUpdates } from "@/emails/types";
+import { TicketHistory } from "@prisma/client";
+import { UsersToNotify } from "../notifications/types";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -18,6 +20,8 @@ export interface UpdateTicketRequest {
 
 export interface UpdateTicketResponse {
   ticket: Ticket;
+  usersToNotify: UsersToNotify[];
+  changedDetails: ActivityUpdates[];
 }
 
 export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
@@ -39,7 +43,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
-      include: { assignee: true, category: true },
+      include: { creator: true, assignee: true, category: true },
     });
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
@@ -74,6 +78,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     const updateData: any = {};
     let ticketHistoryData: any = [];
+    let usersToNotify: UsersToNotify[] = [];
 
     if (req.title && req.title !== oldTicket.title) {
       updateData.title = req.title;
@@ -171,17 +176,43 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         updateData.resolvedAt = new Date();
       }
     }
+
+    // ASSIGNMENT CHANGES
     const previousAssignee = oldTicket?.assignee ?? null;
     const previousAssigneeName =
       previousAssignee && previousAssignee?.name
         ? previousAssignee.name
         : previousAssignee && !previousAssignee?.name
-        ? "No name listed"
-        : "Unassigned";
+          ? "No name listed"
+          : "Unassigned";
+
+    if (oldTicket?.assigneeId && newAssignee?.id === oldTicket?.assigneeId) {
+      usersToNotify.push({
+        id: previousAssignee?.id!!,
+        name: previousAssigneeName,
+        email: previousAssignee?.email ?? "N/a",
+        updateType: "unchanged",
+      });
+    }
+
+    if (!oldTicket?.assigneeId && newAssignee?.id === oldTicket?.assigneeId) {
+      usersToNotify.push({
+        id: oldTicket?.creatorId,
+        name: oldTicket?.creator?.name ?? "",
+        email: oldTicket?.creator?.email ?? "N/a",
+        updateType: "unchanged",
+      });
+    }
 
     if (req.assigneeId === "Unassigned" && !!oldTicket?.assigneeId) {
       updateData.assigneeId = null;
       updateData.status = "UNASSIGNED";
+      usersToNotify.push({
+        id: oldTicket?.assigneeId,
+        name: previousAssigneeName,
+        email: previousAssignee?.email ?? "N/a",
+        updateType: "removed",
+      });
 
       ticketHistoryData.push(
         {
@@ -208,6 +239,20 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     } else if (newAssignee && newAssignee?.id !== oldTicket?.assigneeId) {
       updateData.assigneeId = req.assigneeId;
       updateData.status = "ASSIGNED";
+      usersToNotify.push(
+        {
+          id: previousAssignee?.id!!,
+          name: previousAssigneeName,
+          email: previousAssignee?.email ?? "N/a",
+          updateType: "removed",
+        },
+        {
+          id: newAssignee?.id!!,
+          name: newAssignee?.name ?? "No name listed",
+          email: newAssignee?.email ?? "N/a",
+          updateType: "added",
+        }
+      );
 
       ticketHistoryData.push(
         {
@@ -242,33 +287,41 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         prisma.ticket.update({
           where: { id: req.ticketId },
           data: updateData,
-          include: {
-            creator: {
-              include: {
-                ticketHistory: true,
-              },
-            },
-            assignee: {
-              include: {
-                ticketHistory: true,
-              },
-            },
-            ticketHistory: true,
-          },
         }),
         prisma.ticketHistory.createMany({
           data: ticketHistoryData,
         }),
       ]);
 
-      const safeTicket = {
+      const formattedTicket: Ticket = {
         ...ticket,
-        creator: mapUser(ticket.creator),
-        assignee: mapUser(ticket.assignee),
-        ticketHistory: mapHistorySnapshot(ticket.ticketHistory),
+        status: ticket?.status
+          ? ticket.status
+          : oldTicket?.status
+            ? oldTicket.status
+            : "UNASSIGNED",
+        urgency: ticket?.urgency
+          ? ticket.urgency
+          : oldTicket?.urgency
+            ? oldTicket.urgency
+            : "MEDIUM",
       };
 
-      return { ticket: safeTicket } as UpdateTicketResponse;
+      const allChanges: ActivityUpdates[] = ticketHistoryData.map(
+        (history: TicketHistory) => {
+          return {
+            label: history.field,
+            originalValue: history.previousValue,
+            newValue: history.newValue,
+          };
+        }
+      );
+
+      return {
+        ticket: formattedTicket,
+        usersToNotify: usersToNotify,
+        changedDetails: allChanges,
+      };
     } catch (error: any) {
       if (error.code === "P2025") {
         throw APIError.notFound("Ticket not found");

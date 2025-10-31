@@ -1,22 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { FormErrors, Ticket, TicketTemplate, Urgency } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type {
+  FormErrors,
+  Ticket,
+  TicketNotificationCallback,
+  TicketTemplate,
+  Urgency,
+} from "@/lib/types";
 import { useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import {
-  BaseTicketForm,
-  type TicketFormValues,
-  // type TicketFormErrors,
-} from "./base-ticket-form";
+import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
+import {
+  ActivityUpdates,
+  AssignmentUpdateType,
+} from "@/packages/transactional/emails/types";
 
 type Props = {
   ticket: Ticket | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (updated: Ticket | null) => void;
+  onSuccess: (
+    updated: Ticket | null,
+    users?: {
+      id: string;
+      name: string;
+      email: string;
+      updateType: "creator" | "assignee";
+    }[]
+  ) => void;
+  handleSendTicketNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: TicketNotificationCallback) => Promise<void>;
 };
 
 const emptyValues: TicketFormValues = {
@@ -28,7 +47,13 @@ const emptyValues: TicketFormValues = {
   assigneeId: undefined,
 };
 
-export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
+export function EditTicketForm({
+  ticket,
+  isOpen,
+  onClose,
+  onSuccess,
+  handleSendTicketNotifications,
+}: Props) {
   const { user: clerkUser } = useUser();
   const [values, setValues] = useState<TicketFormValues>(emptyValues);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -86,7 +111,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket, clerkUser]);
+  }, [isOpen, ticket, clerkUser, role, currentUser]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -116,6 +141,7 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
     if (!values.title.trim()) next.title = "Title is required";
     if (!values.description.trim())
       next.description = "Description is required";
+    // if (!marketCenterId) next.marketCenter = "Market Center is required";
     if (!values.categoryId.trim()) next.category = "Category is required";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -141,10 +167,68 @@ export function EditTicketForm({ ticket, isOpen, onClose, onSuccess }: Props) {
         }),
       });
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
+        const text = await res.text();
         throw new Error(`Failed to edit ticket (${res.status}): ${text}`);
       }
       const data = await res.json();
+      if (data && data?.ticket) {
+        const ticket = data.ticket as Ticket;
+        const title = ticket?.title ?? "";
+        const usersToNotify = data?.usersToNotify ?? [];
+        const changedDetails: ActivityUpdates[] = data?.changedDetails ?? [];
+
+        if (usersToNotify && usersToNotify?.length > 0) {
+          await Promise.all(
+            usersToNotify.map(
+              async (user: {
+                id: string;
+                name: string;
+                email: string;
+                updateType: AssignmentUpdateType;
+              }) => {
+                const notifySomeone = user.updateType === "unchanged";
+                const notifyAssigneeChanges =
+                  user.updateType === "added" || user.updateType === "removed";
+                await handleSendTicketNotifications({
+                  trigger: notifyAssigneeChanges
+                    ? "Ticket Assignment"
+                    : "Ticket Created",
+                  receivingUser: {
+                    id: user?.id,
+                    name: user?.name,
+                    email: user?.email,
+                  },
+                  data: {
+                    updatedTicket: notifySomeone
+                      ? {
+                          ticketNumber: ticket.id,
+                          createdOn: ticket?.createdAt,
+                          updatedOn: ticket?.updatedAt,
+                          editedByName: currentUser?.name ?? "Unknown",
+                          editedById: currentUser!.id,
+                          changedDetails: changedDetails,
+                        }
+                      : undefined,
+                    ticketAssignment: notifyAssigneeChanges
+                      ? {
+                          ticketNumber: ticket.id,
+                          ticketTitle: title,
+                          createdOn: ticket?.createdAt,
+                          updatedOn: ticket?.createdAt,
+                          editedByName: currentUser?.name ?? "Unknown",
+                          editedById: currentUser!.id,
+                          updateType: user.updateType,
+                          currentAssignment: { id: user?.id, name: user?.name },
+                          previousAssignment: null,
+                        }
+                      : undefined,
+                  },
+                });
+              }
+            )
+          );
+        }
+      }
       onSuccess(data ? data?.ticket : null);
       onClose();
     } catch (err) {

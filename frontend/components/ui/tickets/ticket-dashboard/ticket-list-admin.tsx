@@ -73,6 +73,7 @@ import type {
   TicketWithUpdatedAt,
   UsersResponse,
   TicketCategory,
+  TicketNotificationCallback,
 } from "@/lib/types";
 import {
   useQuery,
@@ -81,7 +82,15 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-export default function AdminTicketList() {
+export default function AdminTicketList({
+  handleSendTicketNotifications,
+}: {
+  handleSendTicketNotifications: ({
+    trigger,
+    receivingUser,
+    data,
+  }: TicketNotificationCallback) => Promise<void>;
+}) {
   const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -164,7 +173,6 @@ export default function AdminTicketList() {
     selectedAssignee,
     selectedCreator,
     selectedMarketCenterId,
-    role,
     dateFrom,
     dateTo,
     sortBy,
@@ -661,7 +669,7 @@ export default function AdminTicketList() {
                   <span className="text-sm font-medium">Select All</span>
                 </div>
               )}
-              <div className="flex flex-wrap items-center space-x-2 gap-4 items-center w-full sm:w-fit">
+              <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
                 {/* SORT BY */}
                 <div className="space-y-2 w-full sm:w-fit">
                   <Select
@@ -908,10 +916,9 @@ export default function AdminTicketList() {
       <EditTicketForm
         ticket={editingTicket}
         isOpen={isEditOpen}
+        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsEditOpen(false)}
-        onSuccess={(updated) => {
-          setIsEditOpen(false);
-          setEditingTicket(null);
+        onSuccess={async (updated) => {
           if (updated) {
             // optimistic local update of current page
             queryClient.setQueryData<TicketsResponse>(
@@ -928,17 +935,20 @@ export default function AdminTicketList() {
               }
             );
           }
-          queryInvalidator();
+          setIsEditOpen(false);
+          setEditingTicket(null);
+          await queryInvalidator();
         }}
       />
 
       {/* Create Ticket Modal */}
       <CreateTicketForm
         isOpen={isCreateOpen}
+        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => {
+        onSuccess={async (created) => {
           setIsCreateOpen(false);
-          queryInvalidator();
+          await queryInvalidator();
         }}
       />
     </>
