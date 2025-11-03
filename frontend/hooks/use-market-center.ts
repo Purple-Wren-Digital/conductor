@@ -1,11 +1,12 @@
 import { API_BASE } from "@/lib/api/utils";
 import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 // GET ALL MARKET CENTERS
 export function useFetchAllMarketCenters(role: UserRole | undefined) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["all-market-centers"],
@@ -16,11 +17,15 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
         );
       }
       if (!clerkUser?.id) throw new Error("Not authenticated");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       const response = await fetch(`${API_BASE}/marketCenters/search`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) return { marketCenters: [] };
@@ -48,6 +53,7 @@ export function useSearchMarketCenters({
   marketCentersQueryKey,
 }: SearchMarketCentersType) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   //pass in role and do not fetch if not admin!
   return useQuery({
@@ -59,13 +65,17 @@ export function useSearchMarketCenters({
         );
       }
       if (!clerkUser?.id) throw new Error("Not authenticated");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       const response = await fetch(
         `${API_BASE}/marketCenters/search?${queryParams.toString()}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser.id}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -88,6 +98,7 @@ export function useFetchMarketCenter(
   marketCenterId?: string
 ) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["get-market-center", marketCenterId],
@@ -99,13 +110,17 @@ export function useFetchMarketCenter(
         throw new Error("No Market Center ID");
       }
       if (!clerkUser?.id) throw new Error("Not authenticated");
+
       try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const response = await fetch(
           `${API_BASE}/marketCenters/${marketCenterId}`,
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -124,19 +139,24 @@ export function useFetchMarketCenter(
 
 export function useFetchMarketCenterCategories(marketCenterId?: string) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["get-market-center-categories", marketCenterId],
     queryFn: async () => {
       if (!clerkUser?.id) throw new Error("Not authenticated");
+
       try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const response = await fetch(
           `${API_BASE}/marketCenters/ticketCategories${marketCenterId ? `?marketCenterId=${marketCenterId}` : ""}`,
           {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -166,6 +186,7 @@ export function useFetchMarketCenterTickets({
   marketCenterId,
 }: MarketCenterSearchTickets) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["market-center-tickets", marketCenterId, queryParams],
@@ -175,11 +196,14 @@ export function useFetchMarketCenterTickets({
       }
 
       try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const response = await fetch(
           `${API_BASE}/tickets/search?marketCenterId=${marketCenterId}&${queryParams}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -211,6 +235,7 @@ export function useUpdateMarketCenter({
   users,
 }: UpdateMarketCenterProps) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["get-market-center", marketCenterId],
@@ -224,13 +249,17 @@ export function useUpdateMarketCenter({
         throw new Error("Missing data");
       }
       if (!clerkUser?.id) throw new Error("Not authenticated");
+
       try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const response = await fetch(
           `${API_BASE}/marketCenters/${marketCenterId}`,
           {
             method: "PATCH",
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               name: name,

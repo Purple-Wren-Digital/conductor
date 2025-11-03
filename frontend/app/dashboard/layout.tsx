@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/app/dashboard/app-sidebar";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser, UserButton, useAuth } from "@clerk/nextjs";
 
 import AllNotifications from "@/components/notifications/notifications-list";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,7 @@ export default function DashboardLayout({
     useState<Notification | null>(null);
   const { setCurrentUser } = useStore();
   const { user: clerkUser, isLoaded } = useUser();
+  const { getToken } = useAuth();
 
   const queryClient = useQueryClient();
 
@@ -42,12 +43,18 @@ export default function DashboardLayout({
       }
 
       try {
+        // Get Clerk JWT token
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
         // Call /users/me which will auto-create the user if they don't exist
         const response = await fetch(`${API_BASE}/users/me`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
+            Authorization: `Bearer ${token}`,
           },
           cache: "no-store",
         });
@@ -72,6 +79,7 @@ export default function DashboardLayout({
       isAccountLoaded: isLoaded,
       clerkId: clerkUser?.id ?? "",
       email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
+      getToken,
     });
 
   const notifications: Notification[] = notificationsData?.notifications ?? [];
@@ -96,13 +104,18 @@ export default function DashboardLayout({
     mutationFn: async ({ notificationId }) => {
       if (!clerkUser?.id || !notificationId) throw new Error("Missing ID");
 
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
       const response = await fetch(
         `${API_BASE}/notifications/${notificationId}/${clerkUser?.emailAddresses?.[0]?.emailAddress ?? ""}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser.id}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

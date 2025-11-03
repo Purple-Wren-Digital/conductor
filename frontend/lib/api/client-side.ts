@@ -1,5 +1,5 @@
 import { clientSideEnv } from "@/lib/env/client-side";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import Client, { Environment, Local, PreviewEnv } from "./encore-client";
 
 // Get the correct encore environment
@@ -21,24 +21,26 @@ if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
  * Meant to be used to use on the client side.
  */
 export function useApiClient() {
-  const { user } = useUser();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
 
   return new Client(environment, {
     auth: async () => {
-      // In development, always use "local" token
-      if (process.env.NODE_ENV === "development") {
-        return {
-          authorization: `Bearer local`,
-        };
+      if (!isLoaded) {
+        throw new Error("Clerk not loaded yet");
       }
 
-      if (!user?.id) {
+      if (!isSignedIn) {
         throw new Error("User not authenticated");
       }
 
-      // Use Clerk user ID as the auth token
+      // Get the Clerk session token (JWT)
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token from Clerk");
+      }
+
       return {
-        authorization: `Bearer ${user.id}`,
+        authorization: `Bearer ${token}`,
       };
     },
   });

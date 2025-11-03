@@ -1,6 +1,7 @@
 import { API_BASE } from "@/lib/api/utils";
 import { PrismaUser, UserRole, UserWithStats } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/nextjs";
 
 // GET ALL USERS
 type SearchUsersQuery = {
@@ -17,18 +18,24 @@ export function useFetchAllUsers({
   role,
   clerkId,
 }: SearchUsersQuery) {
+  const { getToken } = useAuth();
+
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: async () => {
       if (role !== "ADMIN")
         throw new Error("Must be an admin to view all users");
       if (!clerkId) throw new Error("Not authenticated");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       try {
         const response = await fetch(
           `${API_BASE}/users/search?${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkId}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -65,18 +72,24 @@ export function useFetchUsersWithinMarketCenter({
   marketCenterId,
   clerkId,
 }: SearchUsersQuery) {
+  const { getToken } = useAuth();
+
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: async () => {
       if (!clerkId) throw new Error("Not authenticated");
       if (role === "AGENT" || !marketCenterId)
         throw new Error("Must be an admin or staff to view team members");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       try {
         const response = await fetch(
           `${API_BASE}/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkId}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -111,14 +124,19 @@ export function useFetchOneUser({
   id?: string;
   clerkId?: string;
 }) {
+  const { getToken } = useAuth();
+
   return useQuery({
     queryKey: ["user-profile", id],
     queryFn: async () => {
       if (!clerkId) throw new Error("Not authenticated");
 
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       const response = await fetch(`${API_BASE}/users/${id}`, {
         headers: {
-          Authorization: `Bearer ${clerkId}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch user");
@@ -136,14 +154,19 @@ export function useFetchOneUserByEmail({
   email?: string;
   clerkId?: string;
 }) {
+  const { getToken } = useAuth();
+
   return useQuery({
     queryKey: ["user-profile", email],
     queryFn: async () => {
       if (!clerkId) throw new Error("Not authenticated");
 
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       const response = await fetch(`${API_BASE}/users/email/${email}`, {
         headers: {
-          Authorization: `Bearer ${clerkId}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch user");
@@ -163,14 +186,20 @@ export function useFetchUserSettings({
   clerkId?: string;
   notificationsQueryKey: (string | undefined)[];
 }) {
+  const { getToken } = useAuth();
+
   return useQuery({
     queryKey: notificationsQueryKey,
     queryFn: async () => {
       if (!clerkId || !id) throw new Error("Not authenticated");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       try {
         const response = await fetch(`${API_BASE}/users/${id}/settings`, {
           headers: {
-            Authorization: `Bearer ${clerkId}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         if (!response.ok) throw new Error("Failed to fetch user settings");

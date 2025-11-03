@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUser, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { useUser, SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -22,6 +22,7 @@ export function Header() {
   const router = useRouter();
 
   const { user: clerkUser, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const { currentUser, setCurrentUser } = useStore();
 
   useEffect(() => {
@@ -38,12 +39,18 @@ export function Header() {
       }
 
       try {
+        // Get Clerk JWT token
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
         // Call /users/me which will auto-create the user via getUserContext() if they don't exist
         const response = await fetch(`${API_BASE}/users/me`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser.id}`, // Clerk user ID as token for now
+            Authorization: `Bearer ${token}`,
           },
           cache: "no-store",
         });

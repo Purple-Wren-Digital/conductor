@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import type { PrismaUser } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 
@@ -92,6 +92,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
 
 export function useUserRole() {
   const { user: clerkUser, isLoaded } = useUser();
+  const { getToken } = useAuth();
 
   const {
     data: PrismaUser,
@@ -104,9 +105,14 @@ export function useUserRole() {
         throw new Error("Not authenticated");
       }
 
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
       const response = await fetch(`${API_BASE}/users/me`, {
         headers: {
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
       });

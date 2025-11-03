@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { TicketsResponse, UserRole } from "@/lib/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ export function useFetchAgentTickets({
   userId,
 }: AgentSearchTicketsQuery) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: agentTicketsQueryKey,
@@ -23,11 +24,16 @@ export function useFetchAgentTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
         const response = await fetch(
           `${API_BASE}/tickets/search?assigneeId=${userId}${queryParams ? `&${queryParams.toString()}` : ""}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -59,6 +65,7 @@ export function useFetchStaffTickets({
   staffTicketsQueryKey,
 }: StaffSearchTicketsQuery) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: staffTicketsQueryKey,
@@ -66,11 +73,17 @@ export function useFetchStaffTickets({
       try {
         if (!marketCenterId || !userId || !clerkUser?.id)
           return { tickets: [], total: 0 } as TicketsResponse;
+
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
         const response = await fetch(
           `${API_BASE}/tickets/search?${marketCenterId ? `marketCenterId=${marketCenterId}&` : ""}${queryParams.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${clerkUser.id}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -101,6 +114,7 @@ export function useFetchAdminTickets({
   queryParams,
 }: AdminSearchTicketsQuery) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: adminTicketsQueryKey,
@@ -109,10 +123,15 @@ export function useFetchAdminTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
         const res = await fetch(
           `${API_BASE}/tickets/search?${queryParams.toString()}`,
           {
-            headers: { Authorization: `Bearer ${clerkUser.id}` },
+            headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
           }
         );

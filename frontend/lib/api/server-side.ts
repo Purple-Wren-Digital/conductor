@@ -21,20 +21,16 @@ if (serverSideEnv.VERCEL_ENV === "production") {
 export async function getApiClient() {
   return new Client(environment, {
     auth: async () => {
-      // In development, always use "local" token
-      if (process.env.NODE_ENV === "development") {
-        return {
-          authorization: `Bearer local`,
-        };
-      }
+      const { getToken } = await auth();
 
-      const { userId } = await auth();
-      if (!userId) {
-        throw new Error("User not authenticated");
+      // Get the Clerk session token (JWT)
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
       }
 
       return {
-        authorization: `Bearer ${userId}`,
+        authorization: `Bearer ${token}`,
       };
     },
   });

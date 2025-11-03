@@ -6,24 +6,30 @@ type UserNotificationsProps = {
   isAccountLoaded: boolean;
   clerkId?: string;
   email?: string;
+  getToken: () => Promise<string | null>;
 };
 
 export function useFetchAllUserNotifications({
   isAccountLoaded,
   clerkId,
   email,
+  getToken,
 }: UserNotificationsProps) {
   return useQuery({
     queryKey: ["all-user-notifications", email],
     queryFn: async () => {
       try {
-        if (!clerkId) throw new Error("Missing auth token");
+        if (!clerkId) throw new Error("Missing clerk ID");
+
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const response = await fetch(
           `${API_BASE}/notifications/in-app/${email}`,
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${clerkId}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
