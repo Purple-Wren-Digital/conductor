@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Suspense } from "react";
 import AccountLayout from "@/components/account/account-layout";
 
 export default function AccountPage() {
@@ -10,7 +11,9 @@ export default function AccountPage() {
           Update your profile information and notification settings
         </p>
       </div>
-      <AccountLayout />
+      <Suspense fallback={<div>Loading...</div>}>
+        <AccountLayout />
+      </Suspense>
     </div>
   );
 }

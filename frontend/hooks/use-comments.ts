@@ -140,8 +140,9 @@ export function useCreateComment() {
           createdAt: new Date(),
           isActive: true,
           updatedAt: new Date(),
-          auth0Id: "",
           marketCenterId: null,
+          clerkId: clerkUser?.id || "",
+          comments: [],
         },
       };
 

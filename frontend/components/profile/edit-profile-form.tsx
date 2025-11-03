@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";

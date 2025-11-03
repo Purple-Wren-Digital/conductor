@@ -2,7 +2,7 @@ export type AssignmentUpdateType =
   | "added"
   | "removed"
   | "created"
-  | "unchanged"
+  | "unchanged";
 
 export type ActivityUpdates = {
   label: string;
@@ -90,16 +90,16 @@ export type AssignedTicketNotificationProps = {
   previousAssignment: { name: string; id: string } | null;
 };
 
-// export type QuickEditTicketNotificationProps = {
-//   ticketNumber: string;
-//   ticketTitle: string;
-//   createdOn: Date;
-//   updatedOn: Date;
-//   editedByName: string;
-//   editedById: string;
-//   field: string; // "urgency" or "status"
-//   currentData: string;
-// };
+export type QuickEditTicketNotificationProps = {
+  ticketNumber: string;
+  ticketTitle: string;
+  createdOn: Date;
+  updatedOn: Date;
+  editedByName: string;
+  editedById: string;
+  field: string; // "urgency" or "status"
+  currentData: string;
+};
 
 // COMMENTS
 

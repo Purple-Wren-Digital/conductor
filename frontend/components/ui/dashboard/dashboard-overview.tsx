@@ -1,11 +1,22 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { API_BASE } from "@/lib/api/utils"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Plus, Ticket, Clock, AlertTriangle, Users, TrendingUp } from "lucide-react"
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { API_BASE } from "@/lib/api/utils";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  Plus,
+  Ticket,
+  Clock,
+  AlertTriangle,
+  Users,
+  TrendingUp,
+} from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -16,43 +27,56 @@ import {
   XAxis,
   YAxis,
   LabelList,
-} from "recharts"
-import type { DashboardMetrics } from "@/lib/types"
-import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form"
+} from "recharts";
+import type { DashboardMetrics, TicketNotificationCallback } from "@/lib/types";
+import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
+import { createAndSendNotification } from "@/lib/utils/notifications";
+import { useClerk } from "@clerk/nextjs";
 
-const STATUS_ORDER = ["ASSIGNED", "AWAITING_RESPONSE", "IN_PROGRESS", "RESOLVED"] as const
-type StatusKey = typeof STATUS_ORDER[number]
+const STATUS_ORDER = [
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+] as const;
+type StatusKey = (typeof STATUS_ORDER)[number];
 const STATUS_LABELS: Record<StatusKey, string> = {
   ASSIGNED: "Assigned",
   AWAITING_RESPONSE: "Awaiting Response",
   IN_PROGRESS: "In Progress",
   RESOLVED: "Resolved",
-}
+};
 const STATUS_COLORS: Record<StatusKey, string> = {
   ASSIGNED: "#6B7280",
   AWAITING_RESPONSE: "#9CA3AF",
   IN_PROGRESS: "#FACC15",
   RESOLVED: "#22C55E",
-}
+};
 
-const URGENCY_ORDER = ["HIGH", "MEDIUM", "LOW"] as const
-type UrgencyKey = typeof URGENCY_ORDER[number]
+const URGENCY_ORDER = ["HIGH", "MEDIUM", "LOW"] as const;
+type UrgencyKey = (typeof URGENCY_ORDER)[number];
 const URGENCY_LABELS: Record<UrgencyKey, string> = {
   HIGH: "High",
   MEDIUM: "Medium",
   LOW: "Low",
-}
-const URGENCY_COLORS: Record<UrgencyKey, string> = { 
+};
+const URGENCY_COLORS: Record<UrgencyKey, string> = {
   HIGH: "#EF4444",
   MEDIUM: "#F97316",
   LOW: "#FACC15",
-}
+};
 
 const chartConfig = {
   status: {
     ASSIGNED: { label: STATUS_LABELS.ASSIGNED, color: STATUS_COLORS.ASSIGNED },
-    AWAITING_RESPONSE: { label: STATUS_LABELS.AWAITING_RESPONSE, color: STATUS_COLORS.AWAITING_RESPONSE },
-    IN_PROGRESS: { label: STATUS_LABELS.IN_PROGRESS, color: STATUS_COLORS.IN_PROGRESS },
+    AWAITING_RESPONSE: {
+      label: STATUS_LABELS.AWAITING_RESPONSE,
+      color: STATUS_COLORS.AWAITING_RESPONSE,
+    },
+    IN_PROGRESS: {
+      label: STATUS_LABELS.IN_PROGRESS,
+      color: STATUS_COLORS.IN_PROGRESS,
+    },
     RESOLVED: { label: STATUS_LABELS.RESOLVED, color: STATUS_COLORS.RESOLVED },
   },
   urgency: {
@@ -60,48 +84,69 @@ const chartConfig = {
     MEDIUM: { label: URGENCY_LABELS.MEDIUM, color: URGENCY_COLORS.MEDIUM },
     LOW: { label: URGENCY_LABELS.LOW, color: URGENCY_COLORS.LOW },
   },
-}
+};
 
 export function DashboardOverview() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { user: clerkUser } = useClerk();
+
+  const handleSendTicketNotifications = useCallback(
+    async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
+      try {
+        if (!clerkUser?.id) {
+          throw new Error("Missing auth token");
+        }
+        await createAndSendNotification({
+          authToken: clerkUser?.id,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+        // console.log("TicketList - Notifications - Response:", response);
+      } catch (error) {
+        console.error("TicketList - Unable to generate notifications", error);
+      }
+    },
+    [clerkUser?.id]
+  );
 
   const fetchMetrics = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/dashboard/metrics`)
-      if (!response.ok) throw new Error("Failed to fetch dashboard metrics")
-      const data = await response.json()
-      setMetrics(data.metrics)
+      const response = await fetch(`${API_BASE}/dashboard/metrics`);
+      if (!response.ok) throw new Error("Failed to fetch dashboard metrics");
+      const data = await response.json();
+      setMetrics(data.metrics);
     } catch (error) {
-      console.error(error)
+      console.error(error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchMetrics()
-  }, [fetchMetrics])
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   const statusChartData = useMemo(() => {
-    if (!metrics) return []
+    if (!metrics) return [];
     return STATUS_ORDER.map((key) => ({
       status: key,
       count: metrics.ticketsByStatus[key] ?? 0,
       fill: STATUS_COLORS[key],
-    }))
-  }, [metrics])
+    }));
+  }, [metrics]);
 
   const urgencyChartData = useMemo(() => {
-    if (!metrics) return []
+    if (!metrics) return [];
     return URGENCY_ORDER.map((key) => ({
       urgency: key,
       count: metrics.ticketsByUrgency[key] ?? 0,
       fill: URGENCY_COLORS[key],
-    }))
-  }, [metrics])
+    }));
+  }, [metrics]);
 
   if (loading || !metrics) {
     return (
@@ -137,7 +182,7 @@ export function DashboardOverview() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -179,7 +224,9 @@ export function DashboardOverview() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{metrics.overdueTickets}</div>
+            <div className="text-2xl font-bold text-destructive">
+              {metrics.overdueTickets}
+            </div>
             <p className="text-xs text-muted-foreground">Past due date</p>
           </CardContent>
         </Card>
@@ -203,22 +250,42 @@ export function DashboardOverview() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig.status} className="h-[220px] w-full">
+            <ChartContainer
+              config={chartConfig.status}
+              className="h-[220px] w-full"
+            >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={statusChartData} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
+                <BarChart
+                  data={statusChartData}
+                  margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+                >
                   <XAxis
                     dataKey="status"
                     tick={{ fontSize: 12 }}
                     interval={0}
-                    tickFormatter={(value: StatusKey) => STATUS_LABELS[value] || value}
+                    tickFormatter={(value: StatusKey) =>
+                      STATUS_LABELS[value] || value
+                    }
                   />
                   <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v} />
-                  <Bar dataKey="count" isAnimationActive={false} radius={[4, 4, 0, 0]}>
+                  <ChartTooltip
+                    content={<ChartTooltipContent />}
+                    labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v}
+                  />
+                  <Bar
+                    dataKey="count"
+                    isAnimationActive={false}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {statusChartData.map((entry, i) => (
                       <Cell key={`status-cell-${i}`} fill={entry.fill} />
                     ))}
-                    <LabelList dataKey="count" position="top" formatter={(v: number) => (v ?? 0).toString()} className="fill-foreground" />
+                    <LabelList
+                      dataKey="count"
+                      position="top"
+                      formatter={(v: number) => (v ?? 0).toString()}
+                      className="fill-foreground"
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -227,7 +294,10 @@ export function DashboardOverview() {
             <div className="flex flex-wrap gap-3 mt-4 justify-center">
               {STATUS_ORDER.map((key) => (
                 <div key={key} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATUS_COLORS[key] }} />
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: STATUS_COLORS[key] }}
+                  />
                   <span className="text-sm">
                     <span className="font-semibold">{STATUS_LABELS[key]}:</span>{" "}
                     {metrics.ticketsByStatus[key] ?? 0}
@@ -244,7 +314,10 @@ export function DashboardOverview() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig.urgency} className="h-[220px] w-full">
+            <ChartContainer
+              config={chartConfig.urgency}
+              className="h-[220px] w-full"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -265,7 +338,9 @@ export function DashboardOverview() {
                   </Pie>
                   <ChartTooltip
                     content={<ChartTooltipContent />}
-                    labelFormatter={(value: UrgencyKey) => URGENCY_LABELS[value] || value}
+                    labelFormatter={(value: UrgencyKey) =>
+                      URGENCY_LABELS[value] || value
+                    }
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -275,9 +350,14 @@ export function DashboardOverview() {
             <div className="flex flex-wrap gap-3 mt-4 justify-center">
               {URGENCY_ORDER.map((key) => (
                 <div key={key} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: URGENCY_COLORS[key] }} />
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: URGENCY_COLORS[key] }}
+                  />
                   <span className="text-sm">
-                    <span className="font-semibold">{URGENCY_LABELS[key]}:</span>{" "}
+                    <span className="font-semibold">
+                      {URGENCY_LABELS[key]}:
+                    </span>{" "}
                     {metrics.ticketsByUrgency[key] ?? 0}
                   </span>
                 </div>
@@ -291,7 +371,8 @@ export function DashboardOverview() {
         isOpen={showCreateForm}
         onClose={() => setShowCreateForm(false)}
         onSuccess={fetchMetrics}
+        handleSendTicketNotifications={handleSendTicketNotifications}
       />
     </div>
-  )
+  );
 }

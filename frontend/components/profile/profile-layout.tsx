@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useStore } from "@/app/store-provider";
+import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,9 +55,10 @@ export default function UserProfileLayout() {
   const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
 
-  const { data: userData, isLoading: userLoading } = useFetchOneUser(
-    currentUser?.id
-  );
+  const { data: userData, isLoading: userLoading } = useFetchOneUser({
+    id: currentUser?.id,
+    clerkId: clerkUser?.id,
+  });
   const user: PrismaUser = userData ?? ({} as PrismaUser);
   const marketCenter: MarketCenter = userData?.marketCenter ?? {};
 
