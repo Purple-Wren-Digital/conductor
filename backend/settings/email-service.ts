@@ -103,11 +103,22 @@ class EmailService {
   }
 }
 
-// Create EmailService singleton at module level (reused for all requests)
-const emailService = new EmailService({
-  apiKey: RESEND_API_KEY(),
-  fromAddress: EMAIL_FROM_ADDRESS,
-  fromName: EMAIL_FROM_NAME,
-});
+// Lazy initialization - only create when needed
+let emailService: EmailService | null = null;
 
-export { emailService };
+function getEmailService(): EmailService {
+  if (!emailService) {
+    const apiKey = RESEND_API_KEY();
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY secret not configured");
+    }
+    emailService = new EmailService({
+      apiKey,
+      fromAddress: EMAIL_FROM_ADDRESS,
+      fromName: EMAIL_FROM_NAME,
+    });
+  }
+  return emailService;
+}
+
+export { getEmailService };

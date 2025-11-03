@@ -1,10 +1,25 @@
 import * as React from "react";
 import { Resend } from "resend";
 import type { CreateEmailResponse } from "resend";
+import { secret } from "encore.dev/config";
 import type { Notification } from "../../types";
 import { formatEmailNotification } from "./utils";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const RESEND_API_KEY = secret("RESEND_API_KEY");
+
+// Lazy initialization - only create when needed
+let resend: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resend) {
+    const apiKey = RESEND_API_KEY();
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY secret not configured");
+    }
+    resend = new Resend(apiKey);
+  }
+  return resend;
+}
 
 type SendEmailNotification = { userEmail: string; notification: Notification };
 
@@ -22,7 +37,8 @@ export async function sendEmailNotification({
       return;
     }
 
-    const response: CreateEmailResponse = await resend.emails.send({
+    const resendClient = getResendClient();
+    const response: CreateEmailResponse = await resendClient.emails.send({
       from: "Conductor Ticketing <onboarding@resend.dev>",
       to: [userEmail],
       subject: `Conductor: ${notification.title}`,

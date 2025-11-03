@@ -1,5 +1,5 @@
 import { getPrisma } from "./db";
-import { emailService } from "./email-service";
+import { getEmailService } from "./email-service";
 
 export async function notifySettingsChange(
   marketCenterId: string,
@@ -64,6 +64,7 @@ export async function notifySettingsChange(
     }
 
     // Send the notification
+    const emailService = getEmailService();
     await emailService.sendSettingsChangeNotification(
       adminEmails,
       changedByName,
