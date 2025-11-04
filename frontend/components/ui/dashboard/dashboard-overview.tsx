@@ -90,28 +90,6 @@ export function DashboardOverview() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { getToken } = useAuth();
-
-  const handleSendTicketNotifications = useCallback(
-    async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Failed to get authentication token");
-        }
-        const response = await createAndSendNotification({
-          authToken: token,
-          trigger: trigger,
-          receivingUser: receivingUser,
-          data: data,
-        });
-        console.log("TicketList - Notifications - Response:", response);
-      } catch (error) {
-        console.error("TicketList - Unable to generate notifications", error);
-      }
-    },
-    [getToken]
-  );
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -372,7 +350,6 @@ export function DashboardOverview() {
         isOpen={showCreateForm}
         onClose={() => setShowCreateForm(false)}
         onSuccess={fetchMetrics}
-        handleSendTicketNotifications={handleSendTicketNotifications}
       />
     </div>
   );

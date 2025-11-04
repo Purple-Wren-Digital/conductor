@@ -80,7 +80,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     let ticketHistoryData: any = [];
     let usersToNotify: UsersToNotify[] = [];
 
-    if (req.title && req.title !== oldTicket.title) {
+    if (req?.title && req.title !== oldTicket.title) {
       updateData.title = req.title;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -93,7 +93,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.description && req.description !== oldTicket.description) {
+    if (req?.description && req.description !== oldTicket.description) {
       updateData.description = req.description;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -106,7 +106,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.urgency && req.urgency !== oldTicket.urgency) {
+    if (req?.urgency && req.urgency !== oldTicket.urgency) {
       updateData.urgency = req.urgency;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -119,7 +119,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.categoryId && req.categoryId !== oldTicket.categoryId) {
+    if (req?.categoryId && req.categoryId !== oldTicket.categoryId) {
       const newCategory = await prisma.ticketCategory.findUnique({
         where: { id: req.categoryId },
       });
@@ -135,7 +135,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
     }
-    if (req.dueDate) {
+    if (req?.dueDate) {
       const oldTime = oldTicket.dueDate ? oldTicket.dueDate.getTime() : null;
       const newTime = req.dueDate ? req.dueDate.getTime() : null;
       if (oldTime !== newTime) {
@@ -157,7 +157,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
 
     if (
-      req.status &&
+      req?.status &&
       req.status !== oldTicket.status &&
       req.assigneeId !== "Unassigned"
     ) {
@@ -178,6 +178,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
 
     // ASSIGNMENT CHANGES
+    const reassignTicket =
+      newAssignee && newAssignee?.id !== oldTicket?.assigneeId;
     const previousAssignee = oldTicket?.assignee ?? null;
     const previousAssigneeName =
       previousAssignee && previousAssignee?.name
@@ -186,29 +188,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           ? "No name listed"
           : "Unassigned";
 
-    if (oldTicket?.assigneeId && newAssignee?.id === oldTicket?.assigneeId) {
-      usersToNotify.push({
-        id: previousAssignee?.id!!,
-        name: previousAssigneeName,
-        email: previousAssignee?.email ?? "N/a",
-        updateType: "unchanged",
-      });
-    }
-
-    if (!oldTicket?.assigneeId && newAssignee?.id === oldTicket?.assigneeId) {
-      usersToNotify.push({
-        id: oldTicket?.creatorId,
-        name: oldTicket?.creator?.name ?? "",
-        email: oldTicket?.creator?.email ?? "N/a",
-        updateType: "unchanged",
-      });
-    }
-
-    if (req.assigneeId === "Unassigned" && !!oldTicket?.assigneeId) {
+    if (unassignTicket && !!oldTicket?.assigneeId) {
       updateData.assigneeId = null;
       updateData.status = "UNASSIGNED";
       usersToNotify.push({
-        id: oldTicket?.assigneeId,
+        id: oldTicket.assigneeId,
         name: previousAssigneeName,
         email: previousAssignee?.email ?? "N/a",
         updateType: "removed",
@@ -236,7 +220,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
-    } else if (newAssignee && newAssignee?.id !== oldTicket?.assigneeId) {
+    } else if (reassignTicket) {
       updateData.assigneeId = req.assigneeId;
       updateData.status = "ASSIGNED";
       usersToNotify.push(
@@ -276,6 +260,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
+    } else {
+      usersToNotify.push({
+        id: oldTicket?.creatorId,
+        name: oldTicket?.creator?.name ?? "No name listed",
+        email: oldTicket?.creator?.email ?? "N/a",
+        updateType: "unchanged",
+      });
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -172,8 +172,8 @@ export default function UserInvitationManagement() {
   };
 
   const handleSendInvitation = useCallback(
-    async (user: ClerkUser) => {
-      if (!user || !user?.id || !currentUser) {
+    async (newUser: ClerkUser) => {
+      if (!newUser || !newUser?.id || !currentUser) {
         throw new Error("Missing payload");
       }
       setIsSendingInvitation(true);
@@ -187,18 +187,18 @@ export default function UserInvitationManagement() {
           authToken: token,
           trigger: "Invitation",
           receivingUser: {
-            id: user.id, // new clerk user id
-            name: `${user?.first_name} ${user?.last_name}`,
-            email: user.email_addresses[0].email_address,
+            id: newUser.id, // new clerk user id
+            name: `${newUser?.first_name} ${newUser?.last_name}`,
+            email: newUser.email_addresses[0].email_address,
           },
           data: {
             invitation: {
               newUserName:
-                user?.first_name && user?.last_name
-                  ? `${user?.first_name} ${user?.last_name}`
-                  : user?.username,
-              newUserEmail: user.email_addresses[0].email_address,
-              newUserRole: user?.public_metadata?.role ?? "AGENT",
+                newUser?.first_name && newUser?.last_name
+                  ? `${newUser?.first_name} ${newUser?.last_name}`
+                  : newUser?.username,
+              newUserEmail: newUser.email_addresses[0].email_address,
+              newUserRole: newUser?.public_metadata?.role ?? "AGENT",
               newUserMarketCenter: null,
               inviterName: currentUser?.name,
               inviterEmail: currentUser?.email,
@@ -210,7 +210,7 @@ export default function UserInvitationManagement() {
           throw new Error("Failed to generate/send invitation");
         }
         const updated = await handleUpdateInClerk({
-          clerkId: user.id,
+          clerkId: newUser.id,
           invited: true,
           invitedOn: new Date(),
         });

@@ -18,6 +18,8 @@ const CreatedTicketNotification = ({
   creatorId,
   createdOn,
   dueDate,
+  assigneeId,
+  assigneeName,
 }: CreatedTicketNotificationProps) => {
   return (
     <Html>
@@ -45,6 +47,11 @@ const CreatedTicketNotification = ({
             {dueDate && (
               <Text style={labelText}>
                 Due: {new Date(dueDate).toLocaleDateString()}
+              </Text>
+            )}
+            {assigneeId && (
+              <Text style={labelText}>
+                Assignment: {assigneeName} (#{assigneeId.slice(0, 8)})
               </Text>
             )}
             <Text style={labelText}>

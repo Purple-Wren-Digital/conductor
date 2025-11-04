@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
   MarketCenter,
   PrismaUser,
   UserEditFormData,
+  UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
 import {
@@ -171,6 +172,29 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     }
   };
 
+  const handleSendUserNotifications = useCallback(
+    async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await createAndSendNotification({
+          authToken: token,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+        console.log("UserDetailView - Notifications - Response:", response);
+      } catch (error) {
+        console.error(
+          "UserDetailView - Unable to generate notifications",
+          error
+        );
+      }
+    },
+    [getToken]
+  );
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
@@ -204,8 +228,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      await createAndSendNotification({
-        authToken: token,
+      await handleSendUserNotifications({
         trigger: "Account Information",
         receivingUser: {
           id: data?.id,

@@ -486,6 +486,19 @@ export type TicketNotificationCallback = {
   };
 };
 
+export type UserNotificationCallback = {
+  trigger: "Invitation" | "Account Information";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: {
+    accountInformation?: AccountInformationProps;
+    invitation?: NewUserInvitationProps;
+  };
+};
+
 export type CommentNotificationCallback = {
   trigger: "Mentions" | "New Comments";
   receivingUser: {

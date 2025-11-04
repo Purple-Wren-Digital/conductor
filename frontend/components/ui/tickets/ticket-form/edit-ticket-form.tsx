@@ -1,41 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
 import type {
   FormErrors,
   Ticket,
-  TicketNotificationCallback,
   TicketTemplate,
   Urgency,
+  UsersToNotify,
 } from "@/lib/types";
-import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
-import {
-  ActivityUpdates,
-  AssignmentUpdateType,
-} from "@/packages/transactional/emails/types";
+import { ActivityUpdates } from "@/packages/transactional/emails/types";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
-type Props = {
+type EditTicketFormProps = {
   ticket: Ticket | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (
-    updated: Ticket | null,
-    users?: {
-      id: string;
-      name: string;
-      email: string;
-      updateType: "creator" | "assignee";
-    }[]
-  ) => void;
-  handleSendTicketNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: TicketNotificationCallback) => Promise<void>;
+  onSuccess: (updated: Ticket | null) => void;
 };
 
 const emptyValues: TicketFormValues = {
@@ -52,8 +37,7 @@ export function EditTicketForm({
   isOpen,
   onClose,
   onSuccess,
-  handleSendTicketNotifications,
-}: Props) {
+}: EditTicketFormProps) {
   const { user: clerkUser } = useUser();
   const [values, setValues] = useState<TicketFormValues>(emptyValues);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -151,6 +135,74 @@ export function EditTicketForm({
     return Object.keys(next).length === 0;
   };
 
+  const handleSendTicketNotifications = async ({
+    ticket,
+    userToNotify,
+    changedDetails,
+  }: {
+    ticket: Ticket;
+    userToNotify: UsersToNotify;
+    changedDetails: ActivityUpdates[] | null;
+  }) => {
+    const title = ticket?.title ?? "";
+    const notifySomeone = userToNotify.updateType === "unchanged";
+    const notifyAssigneeChanges =
+      userToNotify.updateType === "added" ||
+      userToNotify.updateType === "removed";
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const response = await createAndSendNotification({
+        authToken: token,
+        trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          updatedTicket:
+            notifySomeone && changedDetails
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketName: ticket?.title ?? "No title provided",
+                  createdOn: ticket?.createdAt,
+                  updatedOn: ticket?.updatedAt,
+                  editedByName: currentUser?.name ?? "Unknown",
+                  editedById: currentUser?.id ?? "",
+                  changedDetails: changedDetails,
+                }
+              : undefined,
+          ticketAssignment: notifyAssigneeChanges
+            ? {
+                ticketNumber: ticket.id,
+                ticketTitle: title,
+                createdOn: ticket?.createdAt,
+                updatedOn: ticket?.createdAt,
+                editedByName: currentUser?.name ?? "Unknown",
+                editedById: currentUser?.id ?? "",
+                updateType: userToNotify.updateType,
+                currentAssignment: {
+                  id: userToNotify?.id,
+                  name: userToNotify?.name,
+                },
+                previousAssignment: null,
+              }
+            : undefined,
+        },
+      });
+      console.log("TicketDetailView - Notifications - Response:", response);
+    } catch (error) {
+      console.error(
+        "TicketDetailView - Unable to generate notifications",
+        error
+      );
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate() || !ticket?.id) return;
@@ -178,64 +230,23 @@ export function EditTicketForm({
         throw new Error(`Failed to edit ticket (${res.status}): ${text}`);
       }
       const data = await res.json();
-      if (data && data?.ticket) {
-        const ticket = data.ticket as Ticket;
-        const title = ticket?.title ?? "";
-        const usersToNotify = data?.usersToNotify ?? [];
-        const changedDetails: ActivityUpdates[] = data?.changedDetails ?? [];
-
-        if (usersToNotify && usersToNotify?.length > 0) {
-          await Promise.all(
-            usersToNotify.map(
-              async (user: {
-                id: string;
-                name: string;
-                email: string;
-                updateType: AssignmentUpdateType;
-              }) => {
-                const notifySomeone = user.updateType === "unchanged";
-                const notifyAssigneeChanges =
-                  user.updateType === "added" || user.updateType === "removed";
-                await handleSendTicketNotifications({
-                  trigger: notifyAssigneeChanges
-                    ? "Ticket Assignment"
-                    : "Ticket Created",
-                  receivingUser: {
-                    id: user?.id,
-                    name: user?.name,
-                    email: user?.email,
-                  },
-                  data: {
-                    updatedTicket: notifySomeone
-                      ? {
-                          ticketNumber: ticket.id,
-                          createdOn: ticket?.createdAt,
-                          updatedOn: ticket?.updatedAt,
-                          editedByName: currentUser?.name ?? "Unknown",
-                          editedById: currentUser!.id,
-                          changedDetails: changedDetails,
-                        }
-                      : undefined,
-                    ticketAssignment: notifyAssigneeChanges
-                      ? {
-                          ticketNumber: ticket.id,
-                          ticketTitle: title,
-                          createdOn: ticket?.createdAt,
-                          updatedOn: ticket?.createdAt,
-                          editedByName: currentUser?.name ?? "Unknown",
-                          editedById: currentUser!.id,
-                          updateType: user.updateType,
-                          currentAssignment: { id: user?.id, name: user?.name },
-                          previousAssignment: null,
-                        }
-                      : undefined,
-                  },
-                });
-              }
-            )
-          );
-        }
+      if (
+        data &&
+        data?.ticket &&
+        data?.usersToNotify &&
+        data?.usersToNotify?.length > 0
+      ) {
+        await Promise.all(
+          data.usersToNotify.map(async (user: UsersToNotify) => {
+            await handleSendTicketNotifications({
+              ticket: data.ticket as Ticket,
+              userToNotify: user,
+              changedDetails: data?.changedDetails ?? [],
+            });
+          })
+        );
       }
+
       onSuccess(data ? data?.ticket : null);
       onClose();
     } catch (err) {

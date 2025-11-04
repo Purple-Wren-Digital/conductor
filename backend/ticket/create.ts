@@ -5,6 +5,7 @@ import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";
+import { UsersToNotify } from "../notifications/types";
 
 export interface CreateTicketRequest {
   title: string;
@@ -17,6 +18,7 @@ export interface CreateTicketRequest {
 
 export interface CreateTicketResponse {
   ticket: Ticket;
+  usersToNotify: UsersToNotify[];
 }
 
 export const create = api<CreateTicketRequest, CreateTicketResponse>(
@@ -86,6 +88,22 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         return { ticket, history };
       });
 
+      const usersToNotify: UsersToNotify[] = [
+        {
+          id: userContext?.userId,
+          name: result.ticket.creator.name ?? "No name",
+          email: userContext.email,
+          updateType: "created",
+        },
+      ];
+      if (result?.ticket?.assigneeId && result?.ticket?.assignee) {
+        usersToNotify.push({
+          id: result.ticket.assigneeId,
+          name: result.ticket.assignee.name ?? "No name",
+          email: result.ticket.assignee.email,
+          updateType: "added",
+        });
+      }
       return {
         ticket: {
           ...result.ticket,
@@ -103,6 +121,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
               }
             : null,
         },
+        usersToNotify: usersToNotify,
       } as CreateTicketResponse;
     } catch (error) {
       console.error("Failed to create ticket", error);

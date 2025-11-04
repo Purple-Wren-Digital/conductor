@@ -278,12 +278,17 @@ export default function MarketCenterManagement() {
       data,
     }: MarketCenterNotificationCallback) => {
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
         const response = await createAndSendNotification({
-          authToken: clerkUser?.id,
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
+        console.log('MarketCenterManagement - Notification - Response', response)
       } catch (error) {
         console.error(
           "MarketCenterManagement - Unable to generate notifications",
@@ -291,7 +296,7 @@ export default function MarketCenterManagement() {
         );
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   return (

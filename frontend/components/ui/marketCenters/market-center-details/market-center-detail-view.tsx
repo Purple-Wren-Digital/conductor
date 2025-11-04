@@ -135,20 +135,25 @@ export default function MarketCenterDetailView({
       data,
     }: MarketCenterNotificationCallback) => {
       try {
-        await createAndSendNotification({
-          authToken: clerkUser?.id,
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await createAndSendNotification({
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
+        console.log("MarketCenterDetail - Notification - Response", response);
       } catch (error) {
         console.error(
-          "MarketCenterDetailView - Unable to generate notifications",
+          "MarketCenterDetail - Unable to generate notifications",
           error
         );
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   return (

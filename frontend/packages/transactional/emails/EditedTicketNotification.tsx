@@ -14,6 +14,7 @@ const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
 const UpdatedTicket = ({
   ticketNumber,
+  ticketName,
   createdOn,
   updatedOn,
   editedByName,
@@ -28,7 +29,7 @@ const UpdatedTicket = ({
         <Container style={container}>
           <Section>
             <Text style={conductorText}>Conductor Ticketing</Text>
-            <Text style={headerText}>Edits Made to Ticket</Text>
+            <Text style={headerText}>Edits Made to {ticketName}</Text>
 
             <Text style={datesText}>
               {updatedOn &&
