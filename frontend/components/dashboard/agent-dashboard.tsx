@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
@@ -17,25 +17,28 @@ import { Button } from "@/components/ui/button";
 import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 
 export function AgentDashboard() {
-  const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
+  const { getToken } = useAuth();
 
   const { data: ticketsData, isLoading } = useQuery({
     queryKey: ["agent-tickets", currentUser?.id],
     queryFn: async () => {
-      if (!clerkUser?.id) throw new Error("Not authenticated");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/tickets/search?assigneeId=${currentUser?.id}`,
         {
           headers: {
-            Authorization: `Bearer ${clerkUser.id}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       if (!response.ok) throw new Error("Failed to fetch tickets");
       return response.json();
     },
-    enabled: !!currentUser?.id && !!clerkUser?.id,
+    enabled: !!currentUser,
   });
 
   const tickets = ticketsData?.tickets || [];

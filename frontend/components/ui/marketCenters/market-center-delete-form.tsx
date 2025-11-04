@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,7 +49,7 @@ export default function DeleteMarketCenter({
   handleSendMarketCenterNotifications,
 }: DeleteMarketCenterProps) {
   const [deleting, setDeleting] = useState(false);
-  const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
@@ -70,14 +70,17 @@ export default function DeleteMarketCenter({
         return;
       }
       setDeleting(true);
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/${marketCenterToDelete.id}`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ id: marketCenterToDelete.id }),
         }

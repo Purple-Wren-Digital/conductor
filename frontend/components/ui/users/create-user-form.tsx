@@ -22,7 +22,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Building, User } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
@@ -59,7 +59,7 @@ export default function CreateUser({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   const { role, permissions } = useUserRole();
 
@@ -123,12 +123,15 @@ export default function CreateUser({
     }
 
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({

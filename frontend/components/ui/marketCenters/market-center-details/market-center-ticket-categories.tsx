@@ -1,7 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -76,7 +76,7 @@ export default function MarketCenterTicketCategories({
     description: "",
     defaultAssigneeId: "none",
   });
-
+  const { getToken } = useAuth();
   const { permissions } = useUserRole();
 
   const teamMembers: PrismaUser[] =
@@ -168,14 +168,17 @@ export default function MarketCenterTicketCategories({
         setFormErrors({ general: "To submit, please make edits" });
         return;
       }
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories/${editingTicketCategory?.id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(body),
         }
@@ -243,14 +246,17 @@ export default function MarketCenterTicketCategories({
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             marketCenterId: marketCenter.id,
@@ -334,14 +340,17 @@ export default function MarketCenterTicketCategories({
         throw new Error("Missing ID");
       }
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/ticketCategories/${categoryToRemove.id}`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

@@ -29,7 +29,7 @@ import { UseMutationResult } from "@tanstack/react-query";
 
 type AppSidebarProps = {
   props: React.ComponentProps<typeof Sidebar>;
-  unReadNotificationTotal: number;
+  // unReadNotificationTotal: number;
   newestNotification: Notification | null;
   setNewestNotification: Dispatch<SetStateAction<Notification | null>>;
   markAsReadMutation: UseMutationResult<
@@ -47,7 +47,6 @@ type AppSidebarProps = {
 
 export function AppSidebar({
   props,
-  unReadNotificationTotal,
   newestNotification,
   setNewestNotification,
   markAsReadMutation,

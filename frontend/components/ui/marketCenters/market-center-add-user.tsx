@@ -1,7 +1,7 @@
 "use client";
 
 import { JSX, useCallback, useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,25 +49,25 @@ export default function AddTeamMember({
   const [selectedUser, setSelectedUser] = useState<PrismaUser | null>(null);
   const [formError, setFormError] = useState<string>("");
 
+  const { getToken } = useAuth();
   const { permissions } = useUserRole();
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-
 
   const fetchActiveUsers = useCallback(async () => {
     setIsLoading(true);
     const params = !permissions?.canCreateUsers ? `?role=AGENT` : "";
 
     try {
-      const accessToken = clerkUser?.id || "";
-      if (!accessToken) {
-        throw new Error("No token fetched");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
       }
       const response = await fetch(`${API_BASE}/users${params}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -83,12 +83,12 @@ export default function AddTeamMember({
     } finally {
       setIsLoading(false);
     }
-  }, [permissions, clerkUser]);
+  }, [permissions, getToken]);
 
   useEffect(() => {
     if (!showInviteDialog) return;
     fetchActiveUsers();
-  }, [showInviteDialog]);
+  }, [fetchActiveUsers, showInviteDialog]);
 
   const handleSelectUser = (value: string) => {
     const user = unassignedUsers.find((u) => u?.id === value);
@@ -99,14 +99,17 @@ export default function AddTeamMember({
     mutationFn: async (user: PrismaUser) => {
       if (!marketCenter?.id) throw new Error("Missing Market Center ID");
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/${marketCenter.id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             users: [...(marketCenter.users || []), user],

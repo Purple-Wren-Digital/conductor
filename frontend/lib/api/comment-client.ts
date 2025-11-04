@@ -113,7 +113,7 @@ class CommentApiClient {
   }
 }
 
-// Hook to use the comment API client
-export function useCommentApi(authToken: string): CommentApiClient {
+// Function to use the comment API client
+export function createCommentApi(authToken: string): CommentApiClient {
   return new CommentApiClient(authToken);
 }

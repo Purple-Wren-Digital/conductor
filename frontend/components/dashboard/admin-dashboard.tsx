@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import {
   AlertCircle,
@@ -35,13 +35,15 @@ export function AdminDashboard() {
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
 
+  const { getToken } = useAuth();
+
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
     }
     return params;
-  }, [selectedMarketCenterId, role]);
+  }, [selectedMarketCenterId]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -63,16 +65,19 @@ export function AdminDashboard() {
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
-      if (!clerkUser?.id) throw new Error("Not authenticated");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users`, {
         headers: {
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
       return response.json();
     },
-    enabled: !!clerkUser?.id,
+    enabled: !!clerkUser,
   });
 
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
@@ -141,7 +146,7 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-          <div className="space-y-2 w-50 w-full sm:w-fit">
+          <div className="space-y-2 w-fit">
             <TeamSwitcher
               selectedMarketCenterId={selectedMarketCenterId}
               setSelectedMarketCenterId={setSelectedMarketCenterId}

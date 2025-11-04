@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,12 +62,12 @@ export default function EditMarketCenter({
   refreshUsers,
   handleSendMarketCenterNotifications,
 }: EditMarketCenterProps) {
-  const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
+  const { getToken } = useAuth();
 
   const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
     setFormData({
@@ -110,16 +110,18 @@ export default function EditMarketCenter({
 
   const updateMarketCenterMutation = useMutation({
     mutationFn: async () => {
-      if (!clerkUser?.id || !editingMarketCenter?.id)
-        throw new Error("Missing user auth");
-
+      if (!editingMarketCenter?.id) throw new Error("Missing user auth");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser.id}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             name: formData.name,

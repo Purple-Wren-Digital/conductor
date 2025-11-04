@@ -39,7 +39,7 @@ import {
 } from "@/lib/utils";
 import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
@@ -74,7 +74,7 @@ export default function UserInvitationManagement() {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const { currentUser } = useStore();
-  const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   const { permissions } = useUserRole();
 
@@ -173,16 +173,21 @@ export default function UserInvitationManagement() {
 
   const handleSendInvitation = useCallback(
     async (user: ClerkUser) => {
-      if (!user || !user?.id || !clerkUser || !clerkUser?.id) {
-        throw new Error("Missing authentication and/or payload");
+      if (!user || !user?.id || !currentUser) {
+        throw new Error("Missing payload");
       }
       setIsSendingInvitation(true);
+
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
         const response = await createAndSendNotification({
-          authToken: clerkUser.id,
+          authToken: token,
           trigger: "Invitation",
           receivingUser: {
-            id: user.id,
+            id: user.id, // new clerk user id
             name: `${user?.first_name} ${user?.last_name}`,
             email: user.email_addresses[0].email_address,
           },
@@ -195,8 +200,8 @@ export default function UserInvitationManagement() {
               newUserEmail: user.email_addresses[0].email_address,
               newUserRole: user?.public_metadata?.role ?? "AGENT",
               newUserMarketCenter: null,
-              inviterName: clerkUser.fullName,
-              inviterEmail: clerkUser.emailAddresses[0].emailAddress,
+              inviterName: currentUser?.name,
+              inviterEmail: currentUser?.email,
             } as NewUserInvitationProps,
           },
         });
@@ -221,7 +226,7 @@ export default function UserInvitationManagement() {
         await fetchClerkUsers();
       }
     },
-    [fetchClerkUsers, clerkUser]
+    [currentUser, fetchClerkUsers, getToken]
   );
 
   const handleMarkUsersAsAccepted = useCallback(async () => {

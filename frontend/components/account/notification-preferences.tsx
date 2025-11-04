@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   Accordion,
   AccordionContent,
@@ -33,17 +33,13 @@ export default function NotificationPreferences({
   invalidateUserQuery: Promise<void>;
 }) {
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
 
-  const notificationsQueryKey = [
-    "user-account-settings",
-    userId,
-    clerkUser?.id,
-  ];
+  const notificationsQueryKey = ["user-account-settings", userId];
   const { data: userSettingsData, isLoading: isLoadingSettings } =
     useFetchUserSettings({
       id: userId,
-      clerkId: clerkUser?.id,
       notificationsQueryKey: notificationsQueryKey,
     });
 
@@ -142,13 +138,17 @@ export default function NotificationPreferences({
     }
 
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/users/${userId}/update/settings/notifications`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser?.id}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             notificationPreferences: hasNotificationPreferenceUpdates,
@@ -236,13 +236,17 @@ export default function NotificationPreferences({
 
   const resetAllNotificationPreferences = async () => {
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       await fetch(
         `${API_BASE}/users/${userId}/settings/notificationPreferences/reset`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser?.id}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             type: "reset",

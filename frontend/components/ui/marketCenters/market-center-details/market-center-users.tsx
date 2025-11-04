@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction, useState } from "react";
 import { useStore } from "@/context/store-provider";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -43,10 +43,10 @@ export default function MarketCenterUsers({
   }: MarketCenterNotificationCallback) => Promise<void>;
 }) {
   const router = useRouter();
-  const { user: clerkUser } = useUser();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<PrismaUser | null>(null);
 
+  const { getToken } = useAuth();
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
 
@@ -63,14 +63,17 @@ export default function MarketCenterUsers({
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/marketCenters/users/${marketCenter.id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             users: [user],

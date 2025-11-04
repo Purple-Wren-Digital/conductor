@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUser, SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
+import {
+  useUser,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useAuth,
+} from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -32,14 +38,7 @@ export function Header() {
       return;
     }
     const fetchOrCreateUser = async () => {
-      if (!clerkUser?.id) {
-        console.error("No Clerk user ID");
-        setCurrentUser(null);
-        return;
-      }
-
       try {
-        // Get Clerk JWT token
         const token = await getToken();
         if (!token) {
           throw new Error("Failed to get authentication token");
@@ -71,7 +70,7 @@ export function Header() {
       }
     };
     fetchOrCreateUser();
-  }, [clerkUser, isLoaded, setCurrentUser]);
+  }, [clerkUser, isLoaded, setCurrentUser, getToken]);
 
   return (
     <header className="border-b">

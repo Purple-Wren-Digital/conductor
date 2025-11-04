@@ -51,7 +51,7 @@ import type {
 import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "./ticket-comments-section";
 import { hasDueDateChanged } from "./utils";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
@@ -85,7 +85,6 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
 ) as Record<string, string>;
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
-  const { user: clerkUser } = useUser();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +92,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
+  const { getToken } = useAuth();
   const { currentUser } = useStore();
   const { permissions, role } = useUserRole();
   const queryClient = useQueryClient();
@@ -101,10 +101,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
       };
 
       const [ticketRes, usersRes] = await Promise.all([
@@ -126,7 +129,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [ticketId, clerkUser]);
+  }, [ticketId, getToken]);
 
   useEffect(() => {
     refreshAllData();
@@ -147,21 +150,22 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const handleSendTicketNotifications = useCallback(
     async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
       try {
-        if (!clerkUser?.id) {
-          throw new Error("Missing auth token");
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
         }
-        await createAndSendNotification({
-          authToken: clerkUser?.id,
+        const response = await createAndSendNotification({
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
-        // console.log("TicketList - Notifications - Response:", response);
+        console.log("TicketList - Notifications - Response:", response);
       } catch (error) {
         console.error("TicketList - Unable to generate notifications", error);
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
@@ -171,12 +175,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     setTicket({ ...ticket, [field]: value });
 
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
@@ -270,12 +277,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     });
 
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({

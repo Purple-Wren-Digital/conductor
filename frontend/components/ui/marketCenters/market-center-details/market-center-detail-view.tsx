@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -82,6 +82,8 @@ export default function MarketCenterDetailView({
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { getToken } = useAuth();
+
   const invalidateMarketCenter = queryClient.invalidateQueries({
     queryKey: ["get-market-center", marketCenterId],
   });
@@ -99,13 +101,14 @@ export default function MarketCenterDetailView({
   >({
     queryKey: ["market-center-detail-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      if (!clerkUser?.id) {
-        throw new Error("Missing auth token");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
       }
       const res = await fetch(`${API_BASE}/users`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
       });
@@ -113,7 +116,7 @@ export default function MarketCenterDetailView({
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!clerkUser && !!clerkUser?.id,
+    enabled: !!clerkUser,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];

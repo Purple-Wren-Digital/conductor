@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,10 +47,11 @@ export default function CreateMarketCenter({
   refreshUsers,
   handleSendMarketCenterNotifications,
 }: CreateMarketCenterProps) {
-  const { user: clerkUser } = useUser();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentUser } = useStore();
+
+  const { getToken } = useAuth();
 
   const resetAndCloseForm = () => {
     setFormData({
@@ -90,15 +91,15 @@ export default function CreateMarketCenter({
     }
 
     try {
-      const accessToken = clerkUser?.id || "";
-      if (!accessToken) {
-        throw new Error("No token fetched");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
       }
       const response = await fetch(`${API_BASE}/marketCenters`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: formData.name.trim(),
