@@ -28,6 +28,7 @@ function isPortTaken(port: number): Promise<boolean> {
 }
 
 async function createWebSocketServer() {
+  console.log("⚠️ Creating WSS...");
   if (globalForWS._wss) return globalForWS._wss;
 
   const taken = await isPortTaken(PORT);

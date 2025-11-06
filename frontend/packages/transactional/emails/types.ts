@@ -67,10 +67,13 @@ export type CreatedTicketNotificationProps = {
   creatorId: string;
   createdOn: Date;
   dueDate?: Date;
+  assigneeId?: string;
+  assigneeName?: string;
 };
 
 export type UpdatedTicketProps = {
   ticketNumber: string;
+  ticketTitle: string;
   createdOn: Date;
   updatedOn: Date;
   editedByName: string;

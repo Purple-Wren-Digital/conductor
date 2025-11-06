@@ -65,7 +65,7 @@ export default function UserMultiSelectDropdown({
       />
       <ul
         className={`${isDropdownExpanded && "z-150"}
-          absolute top-9 left-0 w-full max-h-85 w-full overflow-scroll px-2 py-1.5 bg-white text-primary border shadow-md rounded-md opacity-0 peer-checked:opacity-100 peer-checked:pointer-events-auto transition-opacity duration-450 ease-in-out`}
+          absolute top-9 left-0 w-full max-h-85 overflow-scroll px-2 py-1.5 bg-white text-primary border shadow-md rounded-md opacity-0 peer-checked:opacity-100 peer-checked:pointer-events-auto transition-opacity duration-450 ease-in-out`}
       >
         {isDropdownExpanded &&
           options.map((option, index) => {

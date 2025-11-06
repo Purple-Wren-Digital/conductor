@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import { Badge } from "@/components/ui/badge";
@@ -52,12 +52,10 @@ import { useFetchOneUser } from "@/hooks/use-users";
 
 export default function UserProfileLayout() {
   const queryClient = useQueryClient();
-  const { user: clerkUser } = useUser();
   const { currentUser } = useStore();
 
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: currentUser?.id,
-    clerkId: clerkUser?.id,
   });
   const user: PrismaUser = userData ?? ({} as PrismaUser);
   const marketCenter: MarketCenter = userData?.marketCenter ?? {};
@@ -73,11 +71,7 @@ export default function UserProfileLayout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { permissions } = useUserRole();
-
-  const getClerkToken = useCallback(() => {
-    if (!clerkUser?.id) throw new Error("Not authenticated");
-    return clerkUser.id;
-  }, [clerkUser]);
+  const { getToken } = useAuth();
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
@@ -120,7 +114,10 @@ export default function UserProfileLayout() {
     mutationFn: async (userId?: string) => {
       if (!userId) throw new Error("Missing editing user ID");
 
-      const token = getClerkToken();
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {

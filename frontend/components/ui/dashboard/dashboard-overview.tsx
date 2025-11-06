@@ -28,10 +28,8 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import type { DashboardMetrics, TicketNotificationCallback } from "@/lib/types";
+import type { DashboardMetrics } from "@/lib/types";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
-import { createAndSendNotification } from "@/lib/utils/notifications";
-import { useClerk } from "@clerk/nextjs";
 
 const STATUS_ORDER = [
   "ASSIGNED",
@@ -90,27 +88,6 @@ export function DashboardOverview() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user: clerkUser } = useClerk();
-
-  const handleSendTicketNotifications = useCallback(
-    async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
-      try {
-        if (!clerkUser?.id) {
-          throw new Error("Missing auth token");
-        }
-        await createAndSendNotification({
-          authToken: clerkUser?.id,
-          trigger: trigger,
-          receivingUser: receivingUser,
-          data: data,
-        });
-        // console.log("TicketList - Notifications - Response:", response);
-      } catch (error) {
-        console.error("TicketList - Unable to generate notifications", error);
-      }
-    },
-    [clerkUser?.id]
-  );
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -371,7 +348,6 @@ export function DashboardOverview() {
         isOpen={showCreateForm}
         onClose={() => setShowCreateForm(false)}
         onSuccess={fetchMetrics}
-        handleSendTicketNotifications={handleSendTicketNotifications}
       />
     </div>
   );

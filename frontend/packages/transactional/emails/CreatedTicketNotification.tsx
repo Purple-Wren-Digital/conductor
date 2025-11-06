@@ -18,6 +18,8 @@ const CreatedTicketNotification = ({
   creatorId,
   createdOn,
   dueDate,
+  assigneeId,
+  assigneeName,
 }: CreatedTicketNotificationProps) => {
   return (
     <Html>
@@ -47,6 +49,11 @@ const CreatedTicketNotification = ({
                 Due: {new Date(dueDate).toLocaleDateString()}
               </Text>
             )}
+            {assigneeId && (
+              <Text style={labelText}>
+                Assigned To: {assigneeName} (#{assigneeId.slice(0, 8)})
+              </Text>
+            )}
             <Text style={labelText}>
               Created By: {creatorName && creatorName}
               {creatorId && `(${creatorId})`}
@@ -56,7 +63,7 @@ const CreatedTicketNotification = ({
               You may view and manage your ticket by clicking the link below.
             </Text>
             <Button
-              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
               View Ticket

@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useCallback, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
   MarketCenter,
   PrismaUser,
   UserEditFormData,
+  UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
 import {
@@ -51,11 +52,10 @@ type UserDetailViewProps = { id: string };
 export default function UserDetailView({ id }: UserDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
 
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: id,
-    clerkId: clerkUser?.id,
   });
   const user: PrismaUser = userData ?? {};
   const marketCenter: MarketCenter = user?.marketCenter ?? ({} as MarketCenter);
@@ -115,7 +115,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   };
 
   const updateUserInPrisma = async (userId: string, quickEdit: boolean) => {
-    if (!clerkUser?.id) throw new Error("Missing auth token");
     let body: any = {};
     if (quickEdit) {
       body.role = formData.role;
@@ -127,11 +126,15 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     }
     if (!body) throw new Error("Nothing to update");
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
@@ -168,6 +171,30 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       return false;
     }
   };
+
+  const handleSendUserNotifications = useCallback(
+    async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await createAndSendNotification({
+          authToken: token,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+        console.log("UserDetailView - Notifications - Response:", response);
+      } catch (error) {
+        console.error(
+          "UserDetailView - Unable to generate notifications",
+          error
+        );
+      }
+    },
+    [getToken]
+  );
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
@@ -197,8 +224,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     onSuccess: async (data: PrismaUser) => {
       resetFormAndClose();
       toast.success(`${data?.name || "User"} was updated`);
-      await createAndSendNotification({
-        authToken: clerkUser?.id,
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      await handleSendUserNotifications({
         trigger: "Account Information",
         receivingUser: {
           id: data?.id,

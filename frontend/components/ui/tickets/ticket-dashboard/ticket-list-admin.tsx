@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,7 +73,6 @@ import type {
   TicketWithUpdatedAt,
   UsersResponse,
   TicketCategory,
-  TicketNotificationCallback,
 } from "@/lib/types";
 import {
   useQuery,
@@ -82,16 +81,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-export default function AdminTicketList({
-  handleSendTicketNotifications,
-}: {
-  handleSendTicketNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: TicketNotificationCallback) => Promise<void>;
-}) {
-  const { user: clerkUser } = useUser();
+export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
@@ -135,6 +125,8 @@ export default function AdminTicketList({
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false);
   const [bulkAssigneeId, setBulkAssigneeId] = useState<string>("");
   const [bulkStatus, setBulkStatus] = useState<TicketStatus | "">("");
+
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -211,9 +203,12 @@ export default function AdminTicketList({
   >({
     queryKey: ["users"],
     queryFn: async (): Promise<UsersResponse> => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/users`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to fetch users");
@@ -237,12 +232,15 @@ export default function AdminTicketList({
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -261,12 +259,15 @@ export default function AdminTicketList({
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -289,12 +290,15 @@ export default function AdminTicketList({
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
@@ -916,7 +920,6 @@ export default function AdminTicketList({
       <EditTicketForm
         ticket={editingTicket}
         isOpen={isEditOpen}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsEditOpen(false)}
         onSuccess={async (updated) => {
           if (updated) {
@@ -944,7 +947,6 @@ export default function AdminTicketList({
       {/* Create Ticket Modal */}
       <CreateTicketForm
         isOpen={isCreateOpen}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={async (created) => {
           setIsCreateOpen(false);

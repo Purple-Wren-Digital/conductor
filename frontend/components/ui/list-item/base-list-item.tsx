@@ -170,7 +170,7 @@ export function ListItem({
       </div>
 
       {currentUser?.role !== "AGENT" && (
-        <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full items-center sm:w-auto sm:justify-end">
+        <div className="flex flex-wrap flex-row gap-1 flex-shrink-0 w-full items-center sm:w-auto sm:justify-end">
           {actions &&
             actions.map((a, i) => (
               <Button

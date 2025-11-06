@@ -39,7 +39,7 @@ import {
 } from "@/lib/utils";
 import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
@@ -74,9 +74,8 @@ export default function UserInvitationManagement() {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const { currentUser } = useStore();
-  const { user: clerkUser } = useUser();
-
   const { permissions } = useUserRole();
+  const { getToken } = useAuth();
 
   // TODO: QUERY THE CLERK USERS FETCH
   const queryParams = useMemo(() => {
@@ -172,31 +171,35 @@ export default function UserInvitationManagement() {
   };
 
   const handleSendInvitation = useCallback(
-    async (user: ClerkUser) => {
-      if (!user || !user?.id || !clerkUser || !clerkUser?.id) {
-        throw new Error("Missing authentication and/or payload");
+    async (newUser: ClerkUser) => {
+      if (!newUser || !newUser?.id || !currentUser) {
+        throw new Error("Missing payload");
       }
       setIsSendingInvitation(true);
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
         const response = await createAndSendNotification({
-          authToken: clerkUser.id,
+          authToken: token,
           trigger: "Invitation",
           receivingUser: {
-            id: user.id,
-            name: `${user?.first_name} ${user?.last_name}`,
-            email: user.email_addresses[0].email_address,
+            id: newUser.id, // new clerk user id
+            name: `${newUser?.first_name} ${newUser?.last_name}`,
+            email: newUser.email_addresses[0].email_address,
           },
           data: {
             invitation: {
               newUserName:
-                user?.first_name && user?.last_name
-                  ? `${user?.first_name} ${user?.last_name}`
-                  : user?.username,
-              newUserEmail: user.email_addresses[0].email_address,
-              newUserRole: user?.public_metadata?.role ?? "AGENT",
+                newUser?.first_name && newUser?.last_name
+                  ? `${newUser?.first_name} ${newUser?.last_name}`
+                  : newUser?.username,
+              newUserEmail: newUser.email_addresses[0].email_address,
+              newUserRole: newUser?.public_metadata?.role ?? "AGENT",
               newUserMarketCenter: null,
-              inviterName: clerkUser.fullName,
-              inviterEmail: clerkUser.emailAddresses[0].emailAddress,
+              inviterName: currentUser?.name,
+              inviterEmail: currentUser?.email,
             } as NewUserInvitationProps,
           },
         });
@@ -205,7 +208,7 @@ export default function UserInvitationManagement() {
           throw new Error("Failed to generate/send invitation");
         }
         const updated = await handleUpdateInClerk({
-          clerkId: user.id,
+          clerkId: newUser.id,
           invited: true,
           invitedOn: new Date(),
         });
@@ -221,7 +224,7 @@ export default function UserInvitationManagement() {
         await fetchClerkUsers();
       }
     },
-    [fetchClerkUsers, clerkUser]
+    [fetchClerkUsers, getToken, currentUser]
   );
 
   const handleMarkUsersAsAccepted = useCallback(async () => {

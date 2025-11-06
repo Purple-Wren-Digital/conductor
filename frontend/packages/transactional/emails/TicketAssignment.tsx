@@ -89,7 +89,7 @@ const TicketAssignment = ({
               </ul>
             </div>
             <Button
-              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
+              href={`${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
             >
               View Ticket

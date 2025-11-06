@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { useUserRole } from "@/hooks/use-user-role";
 import { useFetchAgentTickets } from "@/hooks/use-tickets";
 import {
   calculateTotalPages,

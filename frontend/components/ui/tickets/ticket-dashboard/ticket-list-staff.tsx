@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
@@ -77,23 +77,13 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
-  TicketNotificationCallback,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export default function TicketListStaff({
-  handleSendTicketNotifications,
-}: {
-  handleSendTicketNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: TicketNotificationCallback) => Promise<void>;
-}) {
-  const { user: clerkUser } = useUser();
+export default function TicketListStaff() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { permissions, role } = useUserRole();
+  const { permissions } = useUserRole();
   const { currentUser } = useStore();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
@@ -138,6 +128,8 @@ export default function TicketListStaff({
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false);
   const [bulkAssigneeId, setBulkAssigneeId] = useState<string>("");
   const [bulkStatus, setBulkStatus] = useState<TicketStatus | "">("");
+
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -226,12 +218,15 @@ export default function TicketListStaff({
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -250,12 +245,15 @@ export default function TicketListStaff({
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -278,12 +276,15 @@ export default function TicketListStaff({
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
@@ -898,7 +899,6 @@ export default function TicketListStaff({
       <EditTicketForm
         ticket={editingTicket}
         isOpen={isEditOpen}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsEditOpen(false)}
         onSuccess={(updated) => {
           setIsEditOpen(false);
@@ -927,7 +927,6 @@ export default function TicketListStaff({
       <CreateTicketForm
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onSuccess={() => {
           setIsCreateOpen(false);
           queryInvalidator();

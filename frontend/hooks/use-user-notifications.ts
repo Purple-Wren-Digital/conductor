@@ -4,14 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 
 type UserNotificationsProps = {
   isAccountLoaded: boolean;
-  clerkId?: string;
   email?: string;
   getToken: () => Promise<string | null>;
 };
 
 export function useFetchAllUserNotifications({
   isAccountLoaded,
-  clerkId,
   email,
   getToken,
 }: UserNotificationsProps) {
@@ -19,8 +17,6 @@ export function useFetchAllUserNotifications({
     queryKey: ["all-user-notifications", email],
     queryFn: async () => {
       try {
-        if (!clerkId) throw new Error("Missing clerk ID");
-
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
 
@@ -48,7 +44,7 @@ export function useFetchAllUserNotifications({
         console.error("Failed to fetch user notifications", error);
       }
     },
-    enabled: !!clerkId && isAccountLoaded,
+    enabled: isAccountLoaded,
   });
 }
 

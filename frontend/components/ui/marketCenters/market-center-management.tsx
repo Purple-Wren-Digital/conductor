@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +106,8 @@ export default function MarketCenterManagement() {
   const [sortBy, setSortBy] = useState<string>("updatedAt");
   const [orderDir, setOrderDir] = useState<OrderBy>("desc");
 
+  const { getToken } = useAuth();
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -176,11 +178,14 @@ export default function MarketCenterManagement() {
   >({
     queryKey: ["market-center-filter-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      if (!clerkUser?.id) throw new Error("Missing auth token");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
       });
@@ -196,7 +201,7 @@ export default function MarketCenterManagement() {
       return data;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!clerkUser && !!clerkUser?.id,
+    enabled: !!clerkUser,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
@@ -273,12 +278,20 @@ export default function MarketCenterManagement() {
       data,
     }: MarketCenterNotificationCallback) => {
       try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
         const response = await createAndSendNotification({
-          authToken: clerkUser?.id,
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
+        console.log(
+          "MarketCenterManagement - Notification - Response",
+          response
+        );
       } catch (error) {
         console.error(
           "MarketCenterManagement - Unable to generate notifications",
@@ -286,7 +299,7 @@ export default function MarketCenterManagement() {
         );
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   return (

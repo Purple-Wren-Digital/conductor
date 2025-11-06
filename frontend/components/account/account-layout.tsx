@@ -27,7 +27,6 @@ export default function AccountLayout() {
 
   const { data: userData, isLoading: userLoading } = useFetchOneUserByEmail({
     email: currentUser?.email,
-    clerkId: clerkUser?.id,
   });
   const user: PrismaUser = userData ?? {};
 

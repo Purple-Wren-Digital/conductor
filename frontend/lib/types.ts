@@ -497,3 +497,16 @@ export type CommentNotificationCallback = {
     newComment?: NewCommentNotificationProps;
   };
 };
+
+export type UserNotificationCallback = {
+  trigger: "Invitation" | "Account Information";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: {
+    accountInformation?: AccountInformationProps;
+    invitation?: NewUserInvitationProps;
+  };
+};

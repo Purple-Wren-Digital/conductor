@@ -32,7 +32,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
   }
   if (content.trigger === "App Permissions") {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "PERMISSIONS",
       type: content.trigger,
@@ -50,7 +49,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
 
   if (content.trigger === "Invitation" && content?.data?.invitation) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "PERMISSIONS",
       type: "General",
@@ -70,7 +68,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
       return update.value;
     });
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACCOUNT",
       type: content.trigger,
@@ -86,14 +83,16 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.marketCenterAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
       body: `${content.data.marketCenterAssignment?.editorName} ${content.data.marketCenterAssignment.userUpdate === "added" ? "added you to" : "removed you from"} ${content.data.marketCenterAssignment?.marketCenterName}`,
       priority: "HIGH",
-      data: { marketCenterAssignment: content.data.marketCenterAssignment },
+      data: {
+        marketCenterId: content?.data?.marketCenterAssignment?.marketCenterId,
+        marketCenterAssignment: content.data.marketCenterAssignment,
+      },
     };
   }
 
@@ -102,28 +101,30 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.categoryAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
       body: `You will ${content.data.categoryAssignment.userUpdate === "added" ? "now" : "no longer"} be
-                automatically assigned to tickets created under ${content.data.categoryAssignment.categoryName}. Edited by: ${content.data.marketCenterAssignment?.editorName}`,
+                automatically assigned to tickets created under ${content.data.categoryAssignment.categoryName}. Edited by: ${content.data.categoryAssignment?.editorName}`,
       priority: "HIGH",
-      data: { marketCenterAssignment: content.data.marketCenterAssignment },
+      data: { categoryAssignment: content.data.categoryAssignment },
     };
   }
 
   if (content.trigger === "Ticket Created" && content?.data?.createdTicket) {
+    const assigneeId = content.data.createdTicket?.assigneeId;
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
-      body: `"${content.data.createdTicket?.ticketTitle}" was created`,
-      priority: "HIGH",
-      data: { createdTicket: content.data.createdTicket },
+      body: `"${content.data.createdTicket?.ticketTitle}" was created${assigneeId ? ` and assigned.` : `. Currently, this ticket is not assigned.`}`,
+      priority: assigneeId ? "HIGH" : "MEDIUM",
+      data: {
+        ticketId: content.data.createdTicket?.ticketNumber,
+        createdTicket: content.data.createdTicket,
+      },
     };
   }
 
@@ -132,30 +133,54 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.ticketAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
       body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
       priority: "HIGH",
-      data: { ticketAssignment: content.data.ticketAssignment },
+      data: {
+        ticketId: content.data.ticketAssignment?.ticketNumber,
+        userId: content.data.ticketAssignment?.editedById,
+        ticketAssignment: content.data.ticketAssignment,
+      },
+    };
+  }
+  if (
+    content.trigger === "Ticket Updated" &&
+    content?.data?.updatedTicket &&
+    content?.data?.updatedTicket?.changedDetails
+  ) {
+    const updates = content.data.updatedTicket.changedDetails.map((update) => {
+      return update.label;
+    });
+    formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: content.trigger,
+      body: `The following for "${content.data.updatedTicket?.ticketTitle}" was updated: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
+      priority: "MEDIUM",
+      data: { updatedTicket: content.data.updatedTicket },
     };
   }
 
-    if (
-    content.trigger === "Ticket Updated" &&
+  if (
+    content.trigger === "Ticket Assignment" &&
     content?.data?.ticketAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
       body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
       priority: "HIGH",
-      data: { ticketAssignment: content.data.ticketAssignment },
+      data: {
+        ticketId: content.data.ticketAssignment?.ticketNumber,
+        userId: content.data.ticketAssignment?.editedById,
+        ticketAssignment: content.data.ticketAssignment,
+      },
     };
   }
   console.log("Formatted Notification Content", formattedNotification);
@@ -165,7 +190,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
 export async function createAndSendNotification(
   content: NotificationContent
 ): Promise<boolean> {
-  console.log("START - createAndSendNotification()");
   if (!content) {
     throw new Error("Unable to format - Missing notification content");
   }
@@ -179,14 +203,11 @@ export async function createAndSendNotification(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(payload?.authToken
-            ? { Authorization: `Bearer ${payload?.authToken}` }
-            : {}),
+          Authorization: `Bearer ${content?.authToken}`,
         },
         body: JSON.stringify(payload),
       }
     );
-    console.log("Response - createAndSendNotification", response);
     if (!response.ok) {
       throw new Error(
         response?.statusText
@@ -199,7 +220,5 @@ export async function createAndSendNotification(
   } catch (error) {
     console.error("Unable to generate notification:", error);
     return false;
-  } finally {
-    console.log("END - createAndSendNotification()");
   }
 }
