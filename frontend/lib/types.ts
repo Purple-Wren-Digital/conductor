@@ -46,9 +46,25 @@ export interface Ticket {
   assignee?: PrismaUser | null;
   category?: TicketCategory | null;
   commentCount?: number | null;
+  attachmentCount?: number | null;
+  attachments?: Attachment[];
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory: TicketHistory[];
+}
+
+export interface Attachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  bucketKey?: string;
+  ticketId: string;
+  uploadedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  uploader?: PrismaUser;
+  uploaderName?: string;
 }
 export interface TicketCategory {
   id: string;

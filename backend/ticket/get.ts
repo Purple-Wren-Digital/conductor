@@ -27,9 +27,24 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
         category: true,
         creator: true,
         assignee: true,
+        attachments: {
+          include: {
+            uploader: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         _count: {
           select: {
             comments: true,
+            attachments: true,
           },
         },
       },
@@ -64,6 +79,16 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
           }
         : null,
       commentCount: ticket._count.comments,
+      attachmentCount: ticket._count?.attachments || 0,
+      attachments: ticket.attachments?.map(attachment => ({
+        id: attachment.id,
+        fileName: attachment.fileName,
+        fileSize: attachment.fileSize,
+        mimeType: attachment.mimeType,
+        uploadedBy: attachment.uploadedBy,
+        createdAt: attachment.createdAt,
+        uploaderName: attachment.uploader?.name || attachment.uploader?.email || '',
+      })) || [],
     };
 
     return {

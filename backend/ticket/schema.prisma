@@ -41,6 +41,7 @@ model User {
   userHistory          UserHistory[]         @relation("UpdatedUser")
   userSettings         UserSettings?         @relation("UserToUserSettings")
   comments             Comment[]
+  attachments          Attachment[]
   defaultForCategories TicketCategory[]
   assignedTickets      Ticket[]              @relation("TicketAssignee")
   createdTickets       Ticket[]              @relation("TicketCreator")
@@ -66,6 +67,7 @@ model Ticket {
   categoryId    String?         @map("category_id")
   ticketHistory TicketHistory[]
   comments      Comment[]
+  attachments   Attachment[]
   assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
   category      TicketCategory? @relation(fields: [categoryId], references: [id])
   creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
@@ -93,6 +95,24 @@ model Comment {
   @@index([ticketId])
   @@index([createdAt])
   @@map("comments")
+}
+
+model Attachment {
+  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  fileName    String   @map("file_name")
+  fileSize    Int      @map("file_size")
+  mimeType    String   @map("mime_type")
+  bucketKey   String   @map("bucket_key") @unique
+  ticketId    String   @map("ticket_id")
+  uploadedBy  String   @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+
+  @@index([ticketId])
+  @@index([uploadedBy])
+  @@map("attachments")
 }
 
 model TicketCategory {
@@ -224,11 +244,6 @@ model Notification {
   deliveredAt DateTime?
   createdAt   DateTime             @default(now())
   user        User                 @relation(fields: [userId], references: [id])
-}
-
-model schema_migrations {
-  version BigInt  @id
-  dirty   Boolean
 }
 
 enum NotificationCategory {

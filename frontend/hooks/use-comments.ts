@@ -28,8 +28,10 @@ interface DeleteCommentParams {
   commentId: string;
 }
 
+// ------------------- useComments -------------------
+
 export function useComments(ticketId: string) {
-  const { isLoaded } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
@@ -43,7 +45,6 @@ export function useComments(ticketId: string) {
           if (event.comment) {
             queryClient.setQueryData<Comment[]>(queryKey, (oldComments) => {
               if (!oldComments) return [event.comment];
-              // Avoid duplicates by checking if comment already exists
               const exists = oldComments.some((c) => c.id === event.comment.id);
               return exists ? oldComments : [...oldComments, event.comment];
             });
@@ -74,11 +75,19 @@ export function useComments(ticketId: string) {
     [queryClient, ticketId]
   );
 
-  // Subscribe to real-time events
+  // Set auth token for real-time service and subscribe to events
   useEffect(() => {
+    const setupRealTime = async () => {
+      const token = await getToken();
+      if (token) {
+        realTimeService.setAuthToken(token);
+      }
+    };
+
+    setupRealTime();
     const unsubscribe = realTimeService.subscribe(ticketId, handleCommentEvent);
     return unsubscribe;
-  }, [ticketId, handleCommentEvent]);
+  }, [ticketId, handleCommentEvent, getToken]);
 
   const query = useQuery({
     queryKey: ["comments", ticketId],
@@ -99,6 +108,8 @@ export function useComments(ticketId: string) {
   });
   return query;
 }
+
+// ------------------- useCreateComment -------------------
 
 export function useCreateComment() {
   const { user: clerkUser } = useUser();
@@ -129,13 +140,11 @@ export function useCreateComment() {
       // Cancel outgoing refetch to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: ["comments", ticketId] });
 
-      // Snapshot of previous value
       const previousComments = queryClient.getQueryData<Comment[]>([
         "comments",
         ticketId,
       ]);
 
-      // Optimistically update with new comment
       const optimisticComment: Comment = {
         id: `temp-${Date.now()}-${Math.random()}`,
         content,
@@ -164,7 +173,6 @@ export function useCreateComment() {
       return { previousComments, optimisticComment };
     },
     onError: (error: any, variables, context) => {
-      // Revert optimistic update on error
       if (context?.previousComments) {
         queryClient.setQueryData(
           ["comments", variables.ticketId],
@@ -172,10 +180,8 @@ export function useCreateComment() {
         );
       }
       toast.error(error.message || "Failed to add comment");
-      console.error("Failed to create comment", error);
     },
     onSuccess: (newComment, { ticketId }, context) => {
-      // Replace optimistic update with real data
       queryClient.setQueryData<Comment[]>(["comments", ticketId], (old) => {
         if (!old) return [newComment];
         return old.map((comment) =>
@@ -183,7 +189,6 @@ export function useCreateComment() {
         );
       });
 
-      // Simulate real-time event for other clients
       realTimeService.simulateEvent({
         type: "comment.created",
         ticketId,
@@ -193,7 +198,6 @@ export function useCreateComment() {
       toast.success("Comment added successfully");
     },
     onSettled: async (data, error, { ticketId }) => {
-      // Always refetch to ensure we have the latest data
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
       await queryClient.invalidateQueries({
         queryKey: [
@@ -205,6 +209,8 @@ export function useCreateComment() {
     },
   });
 }
+
+// ------------------- useUpdateComment -------------------
 
 export function useUpdateComment() {
   const { user: clerkUser } = useUser();
@@ -257,11 +263,9 @@ export function useUpdateComment() {
           context.previousComments
         );
       }
-      console.error("Failed to update comment", error);
       toast.error(error.message || "Failed to update comment");
     },
     onSuccess: (updatedComment, { ticketId }) => {
-      // Simulate real-time event for other clients
       realTimeService.simulateEvent({
         type: "comment.updated",
         ticketId,
@@ -282,6 +286,8 @@ export function useUpdateComment() {
     },
   });
 }
+
+// ------------------- useDeleteComment -------------------
 
 export function useDeleteComment() {
   const { user: clerkUser } = useUser();
@@ -328,7 +334,6 @@ export function useDeleteComment() {
       toast.error(error.message || "Failed to delete comment");
     },
     onSuccess: (result, { ticketId, commentId }) => {
-      // Simulate real-time event for other clients
       realTimeService.simulateEvent({
         type: "comment.deleted",
         ticketId,
@@ -338,9 +343,6 @@ export function useDeleteComment() {
       toast.success("Comment deleted successfully");
     },
     onSettled: async (data, error, { ticketId }) => {
-      if (error) {
-        console.error("Failed to delete comment", error);
-      }
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
       await queryClient.invalidateQueries({
         queryKey: [
@@ -353,9 +355,8 @@ export function useDeleteComment() {
   });
 }
 
-/**
- * Hook to get comment count for real-time updates
- */
+// ------------------- useCommentCount -------------------
+
 export function useCommentCount(ticketId: string) {
   const { data: comments } = useComments(ticketId);
   return comments?.length ?? 0;

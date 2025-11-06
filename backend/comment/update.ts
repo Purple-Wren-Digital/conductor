@@ -3,6 +3,7 @@ import { prisma } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { processCommentContent } from "./sanitize";
 import { getUserContext } from "../auth/user-context";
+import { CommentEventPublisher } from "./publisher";
 
 export interface UpdateCommentRequest {
   userId: string;
@@ -91,6 +92,9 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
         name: result.updatedComment.user.name ?? "",
       },
     };
+
+    // Publish comment updated event for real-time updates
+    await CommentEventPublisher.publishCommentUpdated(safeUpdatedComment);
 
     return { comment: safeUpdatedComment };
   }

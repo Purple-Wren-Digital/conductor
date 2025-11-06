@@ -20,6 +20,7 @@ export const seedData = api<void, SeedResponse>(
 
     // Clean up in correct order
     await prisma.comment.deleteMany({});
+    await prisma.attachment.deleteMany({});
     await prisma.ticket.deleteMany({});
     await prisma.ticketCategory.deleteMany({});
     // await prisma.teamInvitation.deleteMany({});
@@ -450,11 +451,48 @@ export const seedData = api<void, SeedResponse>(
 
     await prisma.comment.createMany({ data: comments });
 
+    // Create attachments for some tickets
+    const attachments: Prisma.AttachmentCreateManyInput[] = [];
+
+    // Add attachments to the first 5 tickets
+    const ticketsWithAttachments = tickets.slice(0, 5);
+    for (const ticket of ticketsWithAttachments) {
+      // Add 1-3 attachments per ticket
+      const numAttachments = Math.floor(Math.random() * 3) + 1;
+
+      for (let i = 0; i < numAttachments; i++) {
+        const fileTypes = [
+          { name: 'contract.pdf', mimeType: 'application/pdf', size: 1024 * 256 },
+          { name: 'property-photo.jpg', mimeType: 'image/jpeg', size: 1024 * 1024 * 2 },
+          { name: 'inspection-report.pdf', mimeType: 'application/pdf', size: 1024 * 512 },
+          { name: 'floorplan.png', mimeType: 'image/png', size: 1024 * 800 },
+          { name: 'disclosure.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024 * 128 },
+          { name: 'hoa-bylaws.pdf', mimeType: 'application/pdf', size: 1024 * 384 },
+          { name: 'budget.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 1024 * 96 },
+        ];
+
+        const fileInfo = rand(fileTypes);
+        const timestamp = Date.now() + Math.floor(Math.random() * 1000);
+
+        attachments.push({
+          fileName: fileInfo.name,
+          fileSize: fileInfo.size,
+          mimeType: fileInfo.mimeType,
+          bucketKey: `${ticket.id}/${timestamp}_${fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
+          ticketId: ticket.id,
+          uploadedBy: rand([...staff, ...agents]).id,
+          createdAt: new Date(ticket.createdAt.getTime() + Math.random() * 86400000), // Random time after ticket creation
+        });
+      }
+    }
+
+    await prisma.attachment.createMany({ data: attachments });
+
     console.log("Seed completed.");
 
     return {
       message:
-        "🌲 Seeded multiple market centers, users, tickets, categories and comments.",
+        "🌲 Seeded multiple market centers, users, tickets, categories, comments and attachments.",
     };
   }
 );

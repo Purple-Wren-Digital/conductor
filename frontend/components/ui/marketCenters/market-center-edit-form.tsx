@@ -58,6 +58,7 @@ export default function EditMarketCenter({
   refreshUsers,
 }: EditMarketCenterProps) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { getToken } = useAuth();

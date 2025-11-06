@@ -7,10 +7,14 @@ let environment = Local;
 if (serverSideEnv.VERCEL_ENV === "production") {
   environment = Environment("staging");
 } else if (serverSideEnv.VERCEL_ENV === "preview") {
-  if (!serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID) {
-    throw new Error(" is not set");
+  // For PR previews, use the PR-specific environment
+  if (serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID) {
+    environment = PreviewEnv(serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID);
+  } else {
+    // For branch previews (no PR), use staging or local
+    // You can adjust this based on your needs
+    environment = Environment("staging");
   }
-  environment = PreviewEnv(serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID);
 }
 
 /**

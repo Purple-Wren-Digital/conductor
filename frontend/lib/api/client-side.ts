@@ -45,3 +45,15 @@ export function useApiClient() {
     },
   });
 }
+
+/**
+ * Get an Encore client with a specific auth token.
+ * Used for streaming connections and non-hook contexts.
+ */
+export function getEncoreClient(token: string) {
+  return new Client(environment, {
+    auth: () => ({
+      authorization: `Bearer ${token}`,
+    }),
+  });
+}

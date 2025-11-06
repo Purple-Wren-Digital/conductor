@@ -124,6 +124,7 @@ export default function NotificationPreferences({
     if (!userId) {
       throw new Error("Missing user's id");
     }
+
     setIsSubmitting(true);
     // const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
 
@@ -234,6 +235,12 @@ export default function NotificationPreferences({
   };
 
   const resetAllNotificationPreferences = async () => {
+    const authToken = await getToken();
+    if (!authToken) {
+      toast.error("Failed to get authentication token");
+      return;
+    }
+
     try {
       const token = await getToken();
       if (!token) {
@@ -327,7 +334,9 @@ export default function NotificationPreferences({
                 className="flex items-center justify-between px-1 sm:px-4"
               >
                 <Label
-                  className={`text-sm capitalize ${!isChecked && "text-muted-foreground"}`}
+                  className={`text-sm capitalize ${
+                    !isChecked && "text-muted-foreground"
+                  }`}
                 >
                   {channel} Allowed
                 </Label>
