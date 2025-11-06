@@ -10,7 +10,7 @@ import type {
   UserSortBy,
   UserWithStats,
 } from "@/lib/types";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -116,6 +116,8 @@ export default function UserManagement() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithStats | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -267,12 +269,15 @@ export default function UserManagement() {
     mutationFn: async (userId?: string) => {
       if (!userId) throw new Error("Missing editing user ID");
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(editUserFormData),
       });
@@ -322,12 +327,15 @@ export default function UserManagement() {
       )
         return;
 
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/users/${userToDelete.id}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({ isActive: false }),
@@ -358,10 +366,13 @@ export default function UserManagement() {
   //       !userToDelete?.id
   //     )
   //       return;
-  //     const accessToken = clerkUser?.id || "";
+  //         const token = await getToken();
+  // if (!token) {
+  //   throw new Error("Failed to get authentication token");
+  // }
   //     const response = await fetch(`/api/users/${userToDelete.id}`, {
   //       method: "DELETE",
-  //       headers: { Authorization: `Bearer ${accessToken}` },
+  //       headers: { Authorization: `Bearer ${token}` },
   //       body: JSON.stringify({ id: userToDelete.id }),
   //     });
   //     if (!response.ok) {

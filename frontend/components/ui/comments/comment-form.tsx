@@ -7,8 +7,8 @@ import { Textarea } from "../textarea";
 import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send } from "lucide-react";
-import { Ticket } from "../../../lib/types";
-import { useUser } from "@clerk/nextjs";
+import type { Ticket } from "@/lib/types";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
@@ -31,6 +31,7 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   const { permissions } = useUserRole();
 
   const createMutation = useCreateComment();
+  const { getToken } = useAuth();
 
   // Load draft from localStorage on mount
   useEffect(() => {
@@ -59,10 +60,13 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   const fetchTicket = async (ticketId: string) => {
     if (!ticketId) return;
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
       };
 
       const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {

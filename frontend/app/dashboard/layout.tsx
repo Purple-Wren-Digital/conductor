@@ -43,7 +43,6 @@ export default function DashboardLayout({
       }
 
       try {
-        // Get Clerk JWT token
         const token = await getToken();
         if (!token) {
           throw new Error("Failed to get authentication token");
@@ -67,17 +66,18 @@ export default function DashboardLayout({
           throw new Error("User not found");
         }
       } catch (error) {
+        isLoaded;
         console.error("Error fetching user:", error);
         setCurrentUser(null);
       }
     };
     persistUserContext();
-  }, [clerkUser, isLoaded, setCurrentUser]);
+  }, [clerkUser, isLoaded, setCurrentUser, getToken]);
 
   const { data: notificationsData, isLoading: isNotificationsLoading } =
     useFetchAllUserNotifications({
       isAccountLoaded: isLoaded,
-      clerkId: clerkUser?.id ?? "",
+
       email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
       getToken,
     });
@@ -102,7 +102,8 @@ export default function DashboardLayout({
     { notificationId?: string }
   >({
     mutationFn: async ({ notificationId }) => {
-      if (!clerkUser?.id || !notificationId) throw new Error("Missing ID");
+      if (!clerkUser?.emailAddresses?.[0]?.emailAddress || !notificationId)
+        throw new Error("Missing data");
 
       const token = await getToken();
       if (!token) {
@@ -171,7 +172,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar
         props={{ collapsible: "offcanvas" }}
-        unReadNotificationTotal={unReadNotificationTotal}
+        // unReadNotificationTotal={unReadNotificationTotal}
         newestNotification={newestNotification}
         setNewestNotification={setNewestNotification}
         markAsReadMutation={markAsReadMutation}

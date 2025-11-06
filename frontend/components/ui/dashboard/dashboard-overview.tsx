@@ -31,7 +31,7 @@ import {
 import type { DashboardMetrics, TicketNotificationCallback } from "@/lib/types";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { createAndSendNotification } from "@/lib/utils/notifications";
-import { useClerk } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 
 const STATUS_ORDER = [
   "ASSIGNED",
@@ -90,16 +90,17 @@ export function DashboardOverview() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user: clerkUser } = useClerk();
+  const { getToken } = useAuth();
 
   const handleSendTicketNotifications = useCallback(
     async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
       try {
-        if (!clerkUser?.id) {
-          throw new Error("Missing auth token");
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
         }
         await createAndSendNotification({
-          authToken: clerkUser?.id,
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
@@ -109,7 +110,7 @@ export function DashboardOverview() {
         console.error("TicketList - Unable to generate notifications", error);
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   const fetchMetrics = useCallback(async () => {

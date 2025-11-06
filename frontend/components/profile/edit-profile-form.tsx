@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/context/store-provider";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ const EditUserProfile = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const lastFetchedUpdatedAtRef = useRef<string | null>(null);
+  const { getToken } = useAuth();
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -59,14 +60,17 @@ const EditUserProfile = () => {
     // }
 
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/users/${currentUser?.id}/update`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           // cache: "no-store",
           body: JSON.stringify({
@@ -137,8 +141,8 @@ const EditUserProfile = () => {
             {isFormLoading
               ? "Refreshing..."
               : isFormLoading
-              ? "Saving..."
-              : "Save Profile"}
+                ? "Saving..."
+                : "Save Profile"}
           </Button>
         </div>
       </div>

@@ -32,7 +32,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
   }
   if (content.trigger === "App Permissions") {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "PERMISSIONS",
       type: content.trigger,
@@ -50,7 +49,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
 
   if (content.trigger === "Invitation" && content?.data?.invitation) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "PERMISSIONS",
       type: "General",
@@ -70,7 +68,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
       return update.value;
     });
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACCOUNT",
       type: content.trigger,
@@ -86,7 +83,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.marketCenterAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
@@ -102,21 +98,19 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.categoryAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
       body: `You will ${content.data.categoryAssignment.userUpdate === "added" ? "now" : "no longer"} be
-                automatically assigned to tickets created under ${content.data.categoryAssignment.categoryName}. Edited by: ${content.data.marketCenterAssignment?.editorName}`,
+                automatically assigned to tickets created under ${content.data.categoryAssignment.categoryName}. Edited by: ${content.data.categoryAssignment?.editorName}`,
       priority: "HIGH",
-      data: { marketCenterAssignment: content.data.marketCenterAssignment },
+      data: { categoryAssignment: content.data.categoryAssignment },
     };
   }
 
   if (content.trigger === "Ticket Created" && content?.data?.createdTicket) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
@@ -132,7 +126,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
     content?.data?.ticketAssignment
   ) {
     formattedNotification = {
-      authToken: content?.authToken,
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
@@ -142,22 +135,23 @@ export const formatNotificationContent = (content: NotificationContent) => {
       data: { ticketAssignment: content.data.ticketAssignment },
     };
   }
+  // TODO:updatedTicket ticket title
+  // if (content.trigger === "Ticket Updated" && content?.data?.updatedTicket) {
+  //       const updates = content.data.accountInformation.updates.map((update) => {
+  //   return update.value;
+  // });
+  //   formattedNotification = {
+  //     userId: content?.receivingUser?.id,
+  //     category: "ACTIVITY",
+  //     type: content.trigger,
+  //     title: content.trigger,
+  //     body: `The following for "${content.data.updatedTicket?.ticketTitle}" was updated: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
 
-    if (
-    content.trigger === "Ticket Updated" &&
-    content?.data?.ticketAssignment
-  ) {
-    formattedNotification = {
-      authToken: content?.authToken,
-      userId: content?.receivingUser?.id,
-      category: "ACTIVITY",
-      type: content.trigger,
-      title: content.trigger,
-      body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
-      priority: "HIGH",
-      data: { ticketAssignment: content.data.ticketAssignment },
-    };
-  }
+  //     priority: "HIGH",
+  //     data: { updatedTicket: content.data.updatedTicket },
+  //   };
+  // }
+
   console.log("Formatted Notification Content", formattedNotification);
   return formattedNotification;
 };
@@ -179,9 +173,7 @@ export async function createAndSendNotification(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(payload?.authToken
-            ? { Authorization: `Bearer ${payload?.authToken}` }
-            : {}),
+          Authorization: `Bearer ${content?.authToken}`,
         },
         body: JSON.stringify(payload),
       }

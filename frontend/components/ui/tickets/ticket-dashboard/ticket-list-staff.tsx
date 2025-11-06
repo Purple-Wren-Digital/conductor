@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
@@ -139,6 +139,8 @@ export default function TicketListStaff({
   const [bulkAssigneeId, setBulkAssigneeId] = useState<string>("");
   const [bulkStatus, setBulkStatus] = useState<TicketStatus | "">("");
 
+  const { getToken } = useAuth();
+
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -226,12 +228,15 @@ export default function TicketListStaff({
       ticketIds: string[];
       assigneeId: string;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -250,12 +255,15 @@ export default function TicketListStaff({
       ticketIds: string[];
       status: TicketStatus;
     }) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/bulk-update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -278,12 +286,15 @@ export default function TicketListStaff({
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),

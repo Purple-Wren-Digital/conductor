@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Card, CardHeader } from "@/components/ui/card";
 import AdminTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-admin";
@@ -12,16 +12,17 @@ import { useCallback } from "react";
 
 export default function TicketList() {
   const { role, isLoading } = useUserRole();
-  const { user: clerkUser } = useClerk();
+  const { getToken } = useAuth();
 
   const handleSendTicketNotifications = useCallback(
     async ({ trigger, receivingUser, data }: TicketNotificationCallback) => {
       try {
-        if (!clerkUser?.id) {
+        const token = await getToken();
+        if (!token) {
           throw new Error("Missing auth token");
         }
         await createAndSendNotification({
-          authToken: clerkUser?.id,
+          authToken: token,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
@@ -31,7 +32,7 @@ export default function TicketList() {
         console.error("TicketList - Unable to generate notifications", error);
       }
     },
-    [clerkUser?.id]
+    [getToken]
   );
 
   if (isLoading) {

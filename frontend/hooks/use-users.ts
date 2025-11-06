@@ -9,14 +9,12 @@ type SearchUsersQuery = {
   queryParams: URLSearchParams;
   role?: UserRole;
   marketCenterId?: string;
-  clerkId?: string;
 };
 
 export function useFetchAllUsers({
   usersQueryKey,
   queryParams,
   role,
-  clerkId,
 }: SearchUsersQuery) {
   const { getToken } = useAuth();
 
@@ -25,7 +23,6 @@ export function useFetchAllUsers({
     queryFn: async () => {
       if (role !== "ADMIN")
         throw new Error("Must be an admin to view all users");
-      if (!clerkId) throw new Error("Not authenticated");
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
@@ -60,7 +57,7 @@ export function useFetchAllUsers({
         return { users: [] as UserWithStats[] };
       }
     },
-    enabled: !!clerkId && role === "ADMIN",
+    enabled: role === "ADMIN",
   });
 }
 
@@ -70,14 +67,12 @@ export function useFetchUsersWithinMarketCenter({
   queryParams,
   role,
   marketCenterId,
-  clerkId,
 }: SearchUsersQuery) {
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: async () => {
-      if (!clerkId) throw new Error("Not authenticated");
       if (role === "AGENT" || !marketCenterId)
         throw new Error("Must be an admin or staff to view team members");
 
@@ -112,7 +107,7 @@ export function useFetchUsersWithinMarketCenter({
         return { users: [] as UserWithStats[] };
       }
     },
-    enabled: !!clerkId && !!marketCenterId && role !== "AGENT",
+    enabled: !!marketCenterId && role !== "AGENT",
   });
 }
 
@@ -147,20 +142,12 @@ export function useFetchOneUser({
   });
 }
 
-export function useFetchOneUserByEmail({
-  email,
-  clerkId,
-}: {
-  email?: string;
-  clerkId?: string;
-}) {
+export function useFetchOneUserByEmail({ email }: { email?: string }) {
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["user-profile", email],
     queryFn: async () => {
-      if (!clerkId) throw new Error("Not authenticated");
-
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
 
@@ -173,17 +160,15 @@ export function useFetchOneUserByEmail({
       const data = await response.json();
       return data?.user;
     },
-    enabled: !!email && !!clerkId,
+    enabled: !!email,
   });
 }
 
 export function useFetchUserSettings({
   id,
-  clerkId,
   notificationsQueryKey,
 }: {
   id?: string;
-  clerkId?: string;
   notificationsQueryKey: (string | undefined)[];
 }) {
   const { getToken } = useAuth();
@@ -191,7 +176,7 @@ export function useFetchUserSettings({
   return useQuery({
     queryKey: notificationsQueryKey,
     queryFn: async () => {
-      if (!clerkId || !id) throw new Error("Not authenticated");
+      if (!id) throw new Error("Missing user id");
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
@@ -211,6 +196,6 @@ export function useFetchUserSettings({
         return {};
       }
     },
-    enabled: !!id && !!clerkId,
+    enabled: !!id,
   });
 }

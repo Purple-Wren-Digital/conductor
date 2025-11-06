@@ -502,15 +502,18 @@ const SidebarMenuButton = React.forwardRef<
       tooltip?: string | React.ComponentProps<typeof TooltipContent>;
     }
 >(
-  ({
-    asChild = false,
-    isActive = false,
-    variant = "default",
-    size = "default",
-    tooltip,
-    className,
-    ...props
-  }) => {
+  (
+    {
+      asChild = false,
+      isActive = false,
+      variant = "default",
+      size = "default",
+      tooltip,
+      className,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
     const { isMobile, state } = useSidebar();
 

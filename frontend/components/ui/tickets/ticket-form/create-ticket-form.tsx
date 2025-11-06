@@ -10,11 +10,12 @@ import type {
   Urgency,
   UsersToNotify,
 } from "@/lib/types";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
+import { get } from "http";
 
 type Props = {
   isOpen: boolean;
@@ -62,14 +63,18 @@ export function CreateTicketForm({
 
   const { role } = useUserRole();
   const { currentUser } = useStore();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const fetchTemplates = async () => {
-      if (!isLoaded || !clerkUser?.id) return;
+      if (!isLoaded) return;
 
       try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
         const res = await fetch(`${API_BASE}/ticket-templates`, {
-          headers: { Authorization: `Bearer ${clerkUser.id}` },
+          headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch templates");
@@ -98,7 +103,7 @@ export function CreateTicketForm({
         : null;
 
     setMarketCenterId(userMarketCenterId);
-  }, [isOpen, isLoaded, clerkUser, role, currentUser]);
+  }, [isOpen, isLoaded, clerkUser, role, getToken, currentUser]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);

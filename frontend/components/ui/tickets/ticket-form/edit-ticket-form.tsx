@@ -8,7 +8,7 @@ import type {
   TicketTemplate,
   Urgency,
 } from "@/lib/types";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -66,13 +66,15 @@ export function EditTicketForm({
 
   const { role } = useUserRole();
   const { currentUser } = useStore();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const accessToken = clerkUser?.id || "";
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
         const res = await fetch(`${API_BASE}/ticket-templates`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch templates");
@@ -111,7 +113,7 @@ export function EditTicketForm({
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket, clerkUser, role, currentUser]);
+  }, [isOpen, ticket, clerkUser, role, currentUser, getToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -152,12 +154,15 @@ export function EditTicketForm({
     if (!validate() || !ticket?.id) return;
     setLoading(true);
     try {
-      const accessToken = clerkUser?.id || "";
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify({
