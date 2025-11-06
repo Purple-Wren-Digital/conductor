@@ -236,6 +236,9 @@ export function AdminDashboard() {
                 marketCenters?.length > 0 &&
                 marketCenters?.map((mc: any) => {
                   const isViewingStats = selectedMarketCenterId === mc?.id;
+                  const categoriesTotal = mc?.ticketCategories
+                    ? mc?.ticketCategories.length
+                    : 0;
                   return (
                     <div
                       key={mc?.id}
@@ -258,7 +261,7 @@ export function AdminDashboard() {
                           Users: {mc?.users ? mc?.users.length : 0}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Categories: {mc?.ticketCategories ? mc?.length : 0}
+                          Categories: {categoriesTotal}
                         </p>
                       </div>
                     </div>

@@ -120,9 +120,7 @@ export default function DashboardLayout({
           },
         }
       );
-      console.log("Mark as Read Response", response);
       const data = await response.json();
-      console.log("Mark as Read Data");
       return data?.success ?? false;
     },
 

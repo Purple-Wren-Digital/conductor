@@ -1,11 +1,10 @@
 import { API_BASE } from "@/lib/api/utils";
 import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
-import { useUser, useAuth } from "@clerk/nextjs";
+import {  useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 // GET ALL MARKET CENTERS
 export function useFetchAllMarketCenters(role: UserRole | undefined) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -16,7 +15,6 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
           "Only Admin and Staff users can view all market centers"
         );
       }
-      if (!clerkUser?.id) throw new Error("Not authenticated");
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
@@ -33,7 +31,7 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
       const data = await response.json();
       return { marketCenters: data?.marketCenters };
     },
-    enabled: !!role && role !== "AGENT" && !!clerkUser?.id,
+    enabled: !!role && role !== "AGENT",
   });
 }
 
@@ -52,7 +50,6 @@ export function useSearchMarketCenters({
   queryParams,
   marketCentersQueryKey,
 }: SearchMarketCentersType) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   //pass in role and do not fetch if not admin!
@@ -64,7 +61,6 @@ export function useSearchMarketCenters({
           "Only Admin and Staff users can view all market centers"
         );
       }
-      if (!clerkUser?.id) throw new Error("Not authenticated");
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
@@ -88,7 +84,7 @@ export function useSearchMarketCenters({
         total: data?.total,
       };
     },
-    enabled: role && role === "ADMIN" && !!clerkUser?.id,
+    enabled: role && role === "ADMIN",
   });
 }
 
@@ -97,7 +93,6 @@ export function useFetchMarketCenter(
   role: UserRole | undefined,
   marketCenterId?: string
 ) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -109,7 +104,6 @@ export function useFetchMarketCenter(
       if (!marketCenterId) {
         throw new Error("No Market Center ID");
       }
-      if (!clerkUser?.id) throw new Error("Not authenticated");
 
       try {
         const token = await getToken();
@@ -133,19 +127,16 @@ export function useFetchMarketCenter(
         return null;
       }
     },
-    enabled: !!marketCenterId && role && role !== "AGENT" && !!clerkUser?.id,
+    enabled: !!marketCenterId && role && role !== "AGENT",
   });
 }
 
 export function useFetchMarketCenterCategories(marketCenterId?: string) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["get-market-center-categories", marketCenterId],
     queryFn: async () => {
-      if (!clerkUser?.id) throw new Error("Not authenticated");
-
       try {
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
@@ -171,7 +162,7 @@ export function useFetchMarketCenterCategories(marketCenterId?: string) {
         return null;
       }
     },
-    enabled: !!marketCenterId && !!clerkUser?.id,
+    enabled: !!marketCenterId,
   });
 }
 
@@ -185,13 +176,12 @@ export function useFetchMarketCenterTickets({
   queryParams,
   marketCenterId,
 }: MarketCenterSearchTickets) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["market-center-tickets", marketCenterId, queryParams],
     queryFn: async () => {
-      if (!marketCenterId || !clerkUser?.id) {
+      if (!marketCenterId) {
         return [];
       }
 
@@ -216,7 +206,7 @@ export function useFetchMarketCenterTickets({
         return [];
       }
     },
-    enabled: !!marketCenterId && !!clerkUser?.id,
+    enabled: !!marketCenterId,
   });
 }
 
@@ -234,7 +224,6 @@ export function useUpdateMarketCenter({
   name,
   users,
 }: UpdateMarketCenterProps) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -248,7 +237,6 @@ export function useUpdateMarketCenter({
       if (!marketCenterId || !users || !name) {
         throw new Error("Missing data");
       }
-      if (!clerkUser?.id) throw new Error("Not authenticated");
 
       try {
         const token = await getToken();
@@ -276,6 +264,6 @@ export function useUpdateMarketCenter({
         return null;
       }
     },
-    enabled: !!marketCenterId && role && role !== "AGENT" && !!clerkUser?.id,
+    enabled: !!marketCenterId && role && role !== "AGENT",
   });
 }

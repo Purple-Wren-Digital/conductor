@@ -141,7 +141,9 @@ export default function CreateMarketCenter({
           })
         );
 
-        toast.success(`${data?.name} was created!`);
+        toast.success(
+          `${data?.marketCenter?.name ?? "Market center"} was created!`
+        );
       }
 
       resetAndCloseForm();

@@ -77,9 +77,8 @@ export default function MarketCenterDetailView({
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [marketCenterFormData, setMarketCenterFormData] =
     useState<MarketCenterForm>({
-      name: marketCenter?.name ?? ("" as string),
-      selectedUsers: marketCenter?.users as PrismaUser[],
-      ticketCategories: marketCenter?.ticketCategories as TicketCategory[],
+      name: "",
+      selectedUsers: [],
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,13 +99,14 @@ export default function MarketCenterDetailView({
   >({
     queryKey: ["market-center-detail-users"],
     queryFn: async (): Promise<UsersResponse> => {
-      if (!clerkUser?.id) {
-        throw new Error("Missing auth token");
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
       }
       const res = await fetch(`${API_BASE}/users`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
       });
@@ -114,7 +114,7 @@ export default function MarketCenterDetailView({
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!clerkUser && !!clerkUser?.id,
+    enabled: !!clerkUser,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
@@ -162,12 +162,17 @@ export default function MarketCenterDetailView({
         </Button>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            onClick={() => setShowEditMCForm(true)}
+            onClick={() => {
+              setShowEditMCForm(true);
+              setMarketCenterFormData({
+                name: marketCenter?.name ?? "",
+                selectedUsers: marketCenter?.users ?? [],
+              });
+            }}
             className="gap-2"
           >
             <Edit2 className="h-4 w-4" />
-            Edit Market center
+            Edit Market Center
           </Button>
         </div>
       </div>
@@ -292,9 +297,6 @@ export default function MarketCenterDetailView({
         setFormData={setMarketCenterFormData}
         refreshMarketCenters={invalidateMarketCenter}
         refreshUsers={invalidateUsers}
-        handleSendMarketCenterNotifications={
-          handleSendMarketCenterNotifications
-        }
       />
     </div>
   );

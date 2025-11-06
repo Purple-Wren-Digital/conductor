@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 type FetchHistoryType = {
@@ -14,7 +14,6 @@ export function useFetchUserHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -24,7 +23,6 @@ export function useFetchUserHistory({
         if (!id) {
           throw new Error("Missing user id");
         }
-        if (!clerkUser?.id) throw new Error("Not authenticated");
 
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
@@ -45,7 +43,7 @@ export function useFetchUserHistory({
         throw error;
       }
     },
-    enabled: !!id && !!clerkUser?.id,
+    enabled: !!id,
   });
 }
 
@@ -55,7 +53,6 @@ export function useFetchUserTicketHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -65,8 +62,6 @@ export function useFetchUserTicketHistory({
         if (!id) {
           throw new Error("Missing user id");
         }
-        if (!clerkUser?.id) throw new Error("Not authenticated");
-
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
 
@@ -87,7 +82,7 @@ export function useFetchUserTicketHistory({
         throw error;
       }
     },
-    enabled: !!id && !!clerkUser?.id,
+    enabled: !!id,
   });
 }
 
@@ -97,7 +92,6 @@ export function useFetchTicketHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -107,7 +101,6 @@ export function useFetchTicketHistory({
         if (!id) {
           throw new Error("Missing ticket id");
         }
-        if (!clerkUser?.id) throw new Error("Not authenticated");
 
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
@@ -128,7 +121,7 @@ export function useFetchTicketHistory({
         throw error;
       }
     },
-    enabled: !!id && !!clerkUser?.id,
+    enabled: !!id,
   });
 }
 
@@ -138,7 +131,6 @@ export function useFetchMarketCenterHistory({
   queryKey,
   queryParams,
 }: FetchHistoryType) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery({
@@ -148,8 +140,6 @@ export function useFetchMarketCenterHistory({
         if (!id) {
           throw new Error("Missing market center id");
         }
-        if (!clerkUser?.id) throw new Error("Not authenticated");
-
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
 
@@ -171,6 +161,6 @@ export function useFetchMarketCenterHistory({
         throw error;
       }
     },
-    enabled: !!id && !!clerkUser?.id,
+    enabled: !!id,
   });
 }
