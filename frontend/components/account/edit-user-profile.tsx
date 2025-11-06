@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/context/store-provider";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +41,7 @@ const EditUserProfile = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { getToken } = useAuth();
   const { setCurrentUser } = useStore();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -86,11 +88,17 @@ const EditUserProfile = ({
 
   const updateUserInPrisma = async (userId: string) => {
     try {
+      const token = await getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return null;
+      }
+
       const response = await fetch(`${API_BASE}/users/${userId}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.clerkId}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: `${formData.firstName} ${formData.lastName}`,

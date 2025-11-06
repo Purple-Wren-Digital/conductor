@@ -31,8 +31,8 @@ import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export function AdminDashboard() {
   const { user: clerkUser } = useUser();
-  const { role } = useUserRole();
   const { getToken } = useAuth();
+  const { role } = useUserRole();
 
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
@@ -65,10 +65,9 @@ export function AdminDashboard() {
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
+      if (!clerkUser?.id) throw new Error("Not authenticated");
       const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
+      if (!token) throw new Error("No authentication token");
       const response = await fetch(`${API_BASE}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -240,7 +239,9 @@ export function AdminDashboard() {
                     <div
                       key={mc?.id}
                       onClick={() => setSelectedMarketCenterId(mc?.id)}
-                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
+                      className={`flex flex-col p-2 rounded hover:bg-muted ${
+                        isViewingStats && "bg-muted"
+                      }`}
                     >
                       <div className="flex flex-1 justify-between">
                         <Link
@@ -351,17 +352,17 @@ export function AdminDashboard() {
                     stats.resolutionRate <= 59.9
                       ? "orange"
                       : stats.resolutionRate === 60 ||
-                          stats.resolutionRate <= 79.9
-                        ? "warning"
-                        : "success"
+                        stats.resolutionRate <= 79.9
+                      ? "warning"
+                      : "success"
                   }
                 >
                   {stats.resolutionRate <= 59.9
                     ? "Poor"
                     : stats.resolutionRate === 60 ||
-                        stats.resolutionRate <= 79.9
-                      ? "Fair"
-                      : "Excellent"}
+                      stats.resolutionRate <= 79.9
+                    ? "Fair"
+                    : "Excellent"}
                 </Badge>
               </div>
             </div>

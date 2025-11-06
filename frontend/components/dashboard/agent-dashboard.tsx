@@ -18,14 +18,15 @@ import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
-  const { currentUser } = useStore();
   const { getToken } = useAuth();
+  const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading } = useQuery({
     queryKey: ["agent-tickets", currentUser?.id],
     queryFn: async () => {
+      if (!clerkUser?.id) throw new Error("Not authenticated");
       const token = await getToken();
-      if (!token) throw new Error("Failed to get authentication token");
+      if (!token) throw new Error("No authentication token");
       const response = await fetch(
         `${API_BASE}/tickets/search?assigneeId=${currentUser?.id}`,
         {
