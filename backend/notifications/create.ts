@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../ticket/db";
-import { broadcastNotification } from "./channels/websocket";
+import { broadcastNotification } from "./stream";
 import { sendEmailNotification } from "./channels/email/email";
 import type { NotificationCategory, NotificationData } from "./types";
 import { getUserContext } from "../auth/user-context";

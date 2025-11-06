@@ -14,6 +14,7 @@ import type { Notification, PrismaUser } from "@/lib/types";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getEncoreClient } from "@/lib/api/client-side";
 
 export default function DashboardLayout({
   children,
@@ -140,32 +141,53 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!clerkUser?.id) return;
-    console.log("🔌 Connecting to WebSocket...");
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://localhost:8081/?clerkId=${clerkUser.id}`;
+    let stream: any = null;
+    let isConnecting = false;
 
-    const ws = new WebSocket(wsUrl);
+    const connectToStream = async () => {
+      if (isConnecting) return;
+      isConnecting = true;
 
-    ws.onopen = () => console.log("✅ WebSocket connected");
-    ws.onmessage = async (e) => {
-      console.log("✅ Message received!");
       try {
-        const notification: Notification = JSON.parse(e.data);
-        toast.info(`${notification?.title}`);
-        setNewestNotification(notification);
-        await invalidateFetchAllUserNotifications();
+        console.log("📡 Connecting to notification stream...");
+
+        const token = await getToken();
+        if (!token) {
+          console.error("Failed to get authentication token");
+          return;
+        }
+
+        const client = getEncoreClient(token);
+
+        // Connect to the notification stream
+        stream = await client.notifications.notificationStream();
+        console.log("✅ Notification stream connected");
+
+        // Listen for notifications
+        for await (const notification of stream) {
+          console.log("✅ Notification received!", notification);
+          toast.info(`${notification?.title}`);
+          setNewestNotification(notification);
+          await invalidateFetchAllUserNotifications();
+        }
       } catch (err) {
-        console.error("Failed to parse notification", err);
+        console.error("❌ Notification stream error:", err);
+      } finally {
+        isConnecting = false;
+        console.log("❌ Notification stream closed");
       }
     };
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    ws.onclose = () => console.log("❌ WebSocket closed");
+
+    // Handle stream errors and reconnection
+    connectToStream();
 
     return () => {
-      ws.close();
+      if (stream) {
+        stream.close();
+      }
     };
-  }, [clerkUser?.id, invalidateFetchAllUserNotifications]);
+  }, [clerkUser?.id, invalidateFetchAllUserNotifications, getToken]);
 
   return (
     <SidebarProvider>

@@ -1,7 +1,10 @@
 /**
  * Real-time connection service for comment updates
- * Uses Server-Sent Events (SSE) to receive real-time updates from the backend
+ * Uses Encore's Streaming API to receive real-time updates from the backend
  */
+
+import { getEncoreClient } from "@/lib/api/client-side";
+import type { comment } from "@/lib/api/encore-client";
 
 export interface CommentEvent {
   type: "comment.created" | "comment.updated" | "comment.deleted";
@@ -13,54 +16,73 @@ export interface CommentEvent {
 export type CommentEventHandler = (event: CommentEvent) => void;
 
 class RealTimeCommentService {
-  private eventSource: EventSource | null = null;
+  private streams: Map<string, any> = new Map(); // Map of ticketId to stream
   private handlers: Map<string, Set<CommentEventHandler>> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private isConnected = false;
+  private authToken: string | null = null;
 
   /**
-   * Connect to the real-time comment stream
+   * Set authentication token for Encore client
    */
-  connect() {
-    if (this.eventSource?.readyState === EventSource.OPEN) {
+  setAuthToken(token: string) {
+    this.authToken = token;
+  }
+
+  /**
+   * Connect to the comment stream for a specific ticket
+   */
+  private async connectToTicketStream(ticketId: string) {
+    // Don't reconnect if stream already exists
+    if (this.streams.has(ticketId)) {
       return;
     }
 
-    this.disconnect();
+    if (!this.authToken) {
+      console.warn("No auth token available for comment stream");
+      return;
+    }
 
     try {
-      // For now, we'll use polling as a fallback since the backend doesn't have SSE yet
-      // In a real implementation, this would connect to an SSE endpoint
-      this.startPolling();
-      this.isConnected = true;
+      const client = getEncoreClient(this.authToken);
+      const stream = await client.comment.commentStream(ticketId);
+
+      this.streams.set(ticketId, stream);
+      console.log(`💬 Connected to comment stream for ticket ${ticketId}`);
+
+      // Process incoming events
+      this.processStream(ticketId, stream);
     } catch (error) {
-      console.error("Failed to connect to real-time service:", error);
-      this.scheduleReconnect();
+      console.error(`Failed to connect to comment stream for ticket ${ticketId}:`, error);
+      this.scheduleReconnect(ticketId);
     }
   }
 
   /**
-   * Start polling for updates as a fallback for real-time
-   * This simulates real-time updates until SSE is implemented
+   * Process incoming stream events
    */
-  private startPolling() {
-    // For now, we rely on React Query's polling mechanism
-    // In a full implementation, this would establish SSE connection
-    console.log("Real-time service initialized with polling fallback");
-  }
+  private async processStream(ticketId: string, stream: any) {
+    try {
+      for await (const message of stream) {
+        // Extract the event from the message wrapper
+        const event = message.event;
+        if (event && event.ticketId === ticketId) {
+          this.emit(event);
+        }
+      }
+    } catch (error) {
+      console.error(`Comment stream error for ticket ${ticketId}:`, error);
+    } finally {
+      // Stream closed, clean up
+      this.streams.delete(ticketId);
+      console.log(`❌ Comment stream closed for ticket ${ticketId}`);
 
-  /**
-   * Disconnect from the real-time service
-   */
-  disconnect() {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+      // If we still have handlers for this ticket, try to reconnect
+      if (this.handlers.has(ticketId) && this.handlers.get(ticketId)!.size > 0) {
+        this.scheduleReconnect(ticketId);
+      }
     }
-    this.isConnected = false;
-    this.reconnectAttempts = 0;
   }
 
   /**
@@ -72,10 +94,8 @@ class RealTimeCommentService {
     }
     this.handlers.get(ticketId)!.add(handler);
 
-    // Ensure connection is active
-    if (!this.isConnected) {
-      this.connect();
-    }
+    // Connect to the stream for this ticket
+    this.connectToTicketStream(ticketId);
 
     // Return unsubscribe function
     return () => {
@@ -84,6 +104,12 @@ class RealTimeCommentService {
         handlers.delete(handler);
         if (handlers.size === 0) {
           this.handlers.delete(ticketId);
+          // Close the stream for this ticket
+          const stream = this.streams.get(ticketId);
+          if (stream) {
+            stream.close();
+            this.streams.delete(ticketId);
+          }
         }
       }
     };
@@ -106,31 +132,41 @@ class RealTimeCommentService {
   }
 
   /**
-   * Schedule a reconnection attempt
+   * Schedule a reconnection attempt for a specific ticket
    */
-  private scheduleReconnect() {
+  private scheduleReconnect(ticketId: string) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("Max reconnection attempts reached");
+      console.error(`Max reconnection attempts reached for ticket ${ticketId}`);
       return;
     }
 
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
     setTimeout(() => {
       this.reconnectAttempts++;
-      this.connect();
+      this.connectToTicketStream(ticketId);
     }, delay);
   }
 
   /**
-   * Get connection status
+   * Disconnect all streams
    */
-  get connected() {
-    return this.isConnected;
+  disconnect() {
+    for (const [ticketId, stream] of this.streams.entries()) {
+      stream.close();
+    }
+    this.streams.clear();
+    this.reconnectAttempts = 0;
   }
 
   /**
-   * Simulate receiving a real-time event (for testing)
-   * In production, this would be called by the SSE message handler
+   * Get connection status for a ticket
+   */
+  isConnected(ticketId: string): boolean {
+    return this.streams.has(ticketId);
+  }
+
+  /**
+   * Simulate receiving a real-time event (for testing and optimistic updates)
    */
   simulateEvent(event: CommentEvent) {
     this.emit(event);
@@ -140,7 +176,5 @@ class RealTimeCommentService {
 // Global instance
 export const realTimeService = new RealTimeCommentService();
 
-// Auto-connect on module load
-if (typeof window !== "undefined") {
-  realTimeService.connect();
-}
+// Note: Auth token needs to be set when the user logs in
+// This can be done in the useComments hook or a global auth provider

@@ -8,6 +8,7 @@ import {
   canAccessTicket,
   canCreateInternalComments,
 } from "../auth/permissions";
+import { CommentEventPublisher } from "./publisher";
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -105,8 +106,10 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
                     : "New comment on"
                 } ticket: "${ticket?.title}"`,
                 body: comment?.content,
-                ticketId: ticket?.id,
-                commentId: comment?.id,
+                data: {
+                  ticketId: ticket?.id,
+                  commentId: comment?.id,
+                },
               };
             })
           : [];
@@ -126,6 +129,9 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         name: result.comment.user.name ?? "",
       },
     };
+
+    // Publish comment created event for real-time updates
+    await CommentEventPublisher.publishCommentCreated(safeComment);
 
     return { comment: safeComment };
   }

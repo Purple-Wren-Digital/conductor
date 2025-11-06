@@ -242,13 +242,37 @@ const useCreateTicket = () => {
 
 ### 12. Real-time Updates
 
+**Encore Streaming API Implementation:**
+
 ```typescript
-// WebSocket or polling for ticket updates
+// Notification Streaming (backend/notifications/stream.ts)
+export const notificationStream = api.streamOut<Notification>({
+  expose: true,
+  auth: true,
+  path: "/notifications/stream",
+  method: "GET",
+})
+
+// Comment Event Streaming (backend/comment/stream.ts)
+export const commentStream = api.streamOut<CommentStreamHandshake, CommentStreamMessage>({
+  expose: true,
+  auth: true,
+  path: "/comments/stream/:ticketId",
+  method: "GET",
+})
+
+// Frontend usage with Encore client
+const stream = await client.notifications.notificationStream();
+for await (const notification of stream) {
+  // Handle real-time notifications
+}
+
+// Fallback polling for reliability
 useEffect(() => {
   const interval = setInterval(() => {
     refetchTicket();
-  }, 30000); // Poll every 30 seconds
-  
+  }, 30000); // Poll every 30 seconds as fallback
+
   return () => clearInterval(interval);
 }, [ticketId]);
 ```
@@ -346,3 +370,8 @@ conductor/
 - Follow Clerk authentication patterns (@clerk/backend for user validation)
 - Test endpoints with `/health` for connectivity
 - User database records use `clerkId` field to link to Clerk users
+- Real-time features use Encore's Streaming API (not WebSocket)
+  - Notifications stream: `/notifications/stream`
+  - Comment events stream: `/comments/stream/:ticketId`
+  - Frontend uses generated Encore client for streaming
+  - Polling remains as fallback mechanism (30 second intervals)

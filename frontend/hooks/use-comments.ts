@@ -75,11 +75,19 @@ export function useComments(ticketId: string) {
     [queryClient, ticketId]
   );
 
-  // Subscribe to real-time events
+  // Set auth token for real-time service and subscribe to events
   useEffect(() => {
+    const setupRealTime = async () => {
+      const token = await getToken();
+      if (token) {
+        realTimeService.setAuthToken(token);
+      }
+    };
+
+    setupRealTime();
     const unsubscribe = realTimeService.subscribe(ticketId, handleCommentEvent);
     return unsubscribe;
-  }, [ticketId, handleCommentEvent]);
+  }, [ticketId, handleCommentEvent, getToken]);
 
   const query = useQuery({
     queryKey: ["comments", ticketId],
