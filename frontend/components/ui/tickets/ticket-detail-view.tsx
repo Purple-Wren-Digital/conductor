@@ -51,8 +51,11 @@ import type {
 
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
-// import { hasDueDateChanged } from "@/components/ui/tickets/utils";
-import { useAuth } from "@clerk/nextjs";
+// import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
+import { AttachmentsList } from "./attachments-list";
+import { FileUpload } from "./file-upload";
+// import { hasDueDateChanged } from "./utils";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
@@ -82,6 +85,7 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
 ) as Record<string, string>;
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
+  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [users, setUsers] = useState<PrismaUser[]>([]);
@@ -512,6 +516,29 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           </Card>
 
           <TicketCommentsSection ticketId={ticket.id} />
+
+          {/* Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Attachments</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AttachmentsList
+                ticketId={ticket.id}
+                attachments={ticket.attachments}
+                canDelete={
+                  role === "ADMIN" ||
+                  role === "STAFF" ||
+                  (role === "AGENT" && ticket.assigneeId === currentUser?.id)
+                }
+                onAttachmentDeleted={() => refreshAllData()}
+              />
+              <FileUpload
+                ticketId={ticket.id}
+                onUploadComplete={() => refreshAllData()}
+              />
+            </CardContent>
+          </Card>
         </div>
         <div className="lg:col-span-1 space-y-6">
           <div className="space-y-6">
@@ -663,7 +690,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                               getActionIcon(log?.action)
                             )}
                             <p
-                              className={`text-sm font-medium ${log?.field === "comment" && "truncate max-w-[100px] xs:max-w-[350px] lg:max-w-[175px]"}`}
+                              className={`text-sm font-medium ${
+                                log?.field === "comment" &&
+                                "truncate max-w-[100px] xs:max-w-[350px] lg:max-w-[175px]"
+                              }`}
                             >
                               {log?.newValue}
                             </p>

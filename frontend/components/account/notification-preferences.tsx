@@ -126,9 +126,15 @@ export default function NotificationPreferences({
       : null;
 
   const handleSaveNotificationPreferences = async () => {
-    if (!clerkUser?.id || !userId) {
-      throw new Error("Missing user's auth");
+    if (!userId) {
+      throw new Error("Missing user ID");
     }
+
+    const authToken = await getToken();
+    if (!authToken) {
+      throw new Error("Failed to get authentication token");
+    }
+
     setIsSubmitting(true);
     // const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
 
@@ -148,7 +154,7 @@ export default function NotificationPreferences({
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${clerkUser?.id}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             notificationPreferences: hasNotificationPreferenceUpdates,
@@ -235,6 +241,12 @@ export default function NotificationPreferences({
   };
 
   const resetAllNotificationPreferences = async () => {
+    const authToken = await getToken();
+    if (!authToken) {
+      toast.error("Failed to get authentication token");
+      return;
+    }
+
     try {
       const token = await getToken();
       if (!token) {
@@ -328,7 +340,9 @@ export default function NotificationPreferences({
                 className="flex items-center justify-between px-1 sm:px-4"
               >
                 <Label
-                  className={`text-sm capitalize ${!isChecked && "text-muted-foreground"}`}
+                  className={`text-sm capitalize ${
+                    !isChecked && "text-muted-foreground"
+                  }`}
                 >
                   {channel} Allowed
                 </Label>

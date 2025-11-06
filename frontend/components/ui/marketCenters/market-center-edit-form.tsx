@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,7 @@ export default function EditMarketCenter({
   handleSendMarketCenterNotifications,
 }: EditMarketCenterProps) {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 

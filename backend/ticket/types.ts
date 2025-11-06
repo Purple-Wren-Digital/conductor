@@ -29,6 +29,20 @@ export type UserFields =
   | "ticketAssignment"
   | "ticketCreation";
 
+export interface Attachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  bucketKey: string;
+  ticketId: string;
+  uploadedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  uploader?: User;
+  uploaderName?: string;
+}
+
 export interface Ticket {
   id: string;
   title: string | null; // Prisma: title String?  => allow null (or keep string if you always normalize)
@@ -46,6 +60,8 @@ export interface Ticket {
   assignee?: User | null;
   category?: TicketCategory | null;
   commentCount?: number | null;
+  attachmentCount?: number | null;
+  attachments?: Attachment[];
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory?: TicketHistory[];
