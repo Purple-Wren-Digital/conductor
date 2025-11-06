@@ -11,6 +11,12 @@ export async function PATCH(req: NextRequest) {
     first_name?: string;
     last_name?: string;
     primary_email_address_id?: string;
+    invited?: boolean;
+    invitedOn?: Date | string;
+    accepted?: boolean;
+    acceptedOn?: Date | string;
+    role?: string;
+    marketCenterId?: string;
   } = await req.json();
   if (!requestData || !requestData?.clerkId) {
     throw new Error("Missing payload and/or user id");
@@ -24,6 +30,16 @@ export async function PATCH(req: NextRequest) {
     body.last_name = requestData.last_name;
   } else if (requestData?.primary_email_address_id) {
     body.primary_email_address_id = requestData.primary_email_address_id;
+  } else if (requestData?.invited && requestData?.invitedOn) {
+    body.public_metadata.invited = requestData.invited;
+    body.public_metadata.invitedOn = requestData.invitedOn;
+  } else if (requestData?.accepted && requestData?.acceptedOn) {
+    body.public_metadata.accepted = requestData.accepted;
+    body.public_metadata.accepted = requestData.acceptedOn;
+  } else if (requestData?.role) {
+    body.public_metadata.marketCenterId = requestData.role;
+  } else if (requestData?.marketCenterId) {
+    body.public_metadata.marketCenterId = requestData.marketCenterId;
   } else {
     throw new Error("Nothing to update");
   }

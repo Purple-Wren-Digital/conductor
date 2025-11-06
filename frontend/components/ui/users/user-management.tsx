@@ -183,7 +183,6 @@ export default function UserManagement() {
     usersQueryKey,
     queryParams,
     role,
-    clerkId: clerkUser?.id,
   });
 
   const userQueryInvalidator = () =>

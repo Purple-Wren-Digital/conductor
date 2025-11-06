@@ -54,7 +54,7 @@ export default function UserTicketHistoryTable({
   );
   const userHistoryQueryKey = useMemo(
     () => ["profile-user-history-tickets", userId, queryKeyParams] as const,
-    [queryKeyParams]
+    [queryKeyParams, userId]
   );
 
   const { data: userTicketHistoryData, isLoading } = useFetchUserTicketHistory({

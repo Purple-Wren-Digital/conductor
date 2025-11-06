@@ -49,7 +49,7 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
   );
   const userHistoryQueryKey = useMemo(
     () => ["profile-user-history", userId, queryKeyParams] as const,
-    [queryKeyParams]
+    [userId, queryKeyParams]
   );
   const { data: userHistoryData, isLoading } = useFetchUserHistory({
     id: userId,

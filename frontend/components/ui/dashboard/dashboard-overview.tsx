@@ -28,10 +28,8 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import type { DashboardMetrics, TicketNotificationCallback } from "@/lib/types";
+import type { DashboardMetrics } from "@/lib/types";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
-import { createAndSendNotification } from "@/lib/utils/notifications";
-import { useAuth } from "@clerk/nextjs";
 
 const STATUS_ORDER = [
   "ASSIGNED",
