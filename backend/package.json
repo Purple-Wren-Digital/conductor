@@ -17,7 +17,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "~22.13.9",
     "@types/ws": "^8.18.1",
-    "prisma": "^6.15.0",
+    "prisma": "^6.19.0",
     "tsx": "^4.20.3",
     "typescript": "~5.2.2",
     "vite": "~6.2.0",
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^2.19.0",
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "^6.19.0",
     "@prisma/extension-accelerate": "^2.0.2",
     "@react-email/components": "^0.5.7",
     "@react-email/render": "^1.4.0",

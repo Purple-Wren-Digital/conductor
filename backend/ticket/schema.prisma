@@ -69,6 +69,8 @@ model Ticket {
   assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
   category      TicketCategory? @relation(fields: [categoryId], references: [id])
   creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
+  files         File[]          @relation("TicketFiles")
+
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -94,6 +96,24 @@ model Comment {
   @@index([createdAt])
   @@map("comments")
 }
+
+model File {
+  id            String   @id @default(cuid())
+  filename      String
+  url           String
+  uploadedAt    DateTime @default(now())
+  uploaderId    String
+  uploaderName  String?
+  ticketId      String
+  ticket        Ticket   @relation("TicketFiles", fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([id])
+  @@index([ticketId])
+  @@index([uploaderId])
+  @@index([uploadedAt])
+  @@map("files")
+}
+
 
 model TicketCategory {
   id                String       @id @default(dbgenerated("(gen_random_uuid())::text"))

@@ -31,6 +31,7 @@ import {
   Clipboard,
   Clock,
   Edit,
+  File,
   History,
   Mailbox,
   MessageSquare,
@@ -507,6 +508,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       </span>
                     </div>
                   )}
+
+                  <div className="flex items-center gap-2 text-sm">
+                    <File className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Files:</span>
+                    <span className="font-medium">
+                      {/* {format(new Date(ticket.dueDate), "PPP")} */}
+                      example.pdf
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
