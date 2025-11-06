@@ -185,7 +185,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           receivingUser: receivingUser,
           data: data,
         });
-        console.log("UserDetailView - Notifications - Response:", response);
       } catch (error) {
         console.error(
           "UserDetailView - Unable to generate notifications",

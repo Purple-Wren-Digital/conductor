@@ -195,7 +195,6 @@ export function EditTicketForm({
             : undefined,
         },
       });
-      console.log("TicketDetailView - Notifications - Response:", response);
     } catch (error) {
       console.error(
         "TicketDetailView - Unable to generate notifications",
