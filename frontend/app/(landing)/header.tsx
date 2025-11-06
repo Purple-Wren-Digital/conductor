@@ -98,8 +98,8 @@ export function Header() {
 
                   <li>
                     <NavigationMenuLink asChild>
-                      <a href="https://auth0.com">
-                        <p className="font-medium leading-none">Auth0</p>
+                      <a href="https://clerk.com">
+                        <p className="font-medium leading-none">Clerk</p>
                         <p className="text-sm text-muted-foreground leading-snug">
                           Auth is already setup
                         </p>
