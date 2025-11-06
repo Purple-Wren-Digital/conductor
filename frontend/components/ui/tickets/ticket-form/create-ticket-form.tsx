@@ -1,39 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
 import type {
   FormErrors,
   PrismaUser,
   Ticket,
-  TicketNotificationCallback,
   TicketTemplate,
   Urgency,
   UsersToNotify,
 } from "@/lib/types";
-import { useAuth, useUser } from "@clerk/nextjs";
-import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
+import {
+  BaseTicketForm,
+  type TicketFormValues,
+} from "@/components/ui/tickets/ticket-form/base-ticket-form";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
-import { get } from "http";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
-type Props = {
+type CreateTicketFormProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (
-    created: Ticket | null,
-    usersToNotify?: {
-      id: string;
-      name: string;
-      email: string;
-      updateType: "creator" | "assignee";
-    }[]
-  ) => void;
-  handleSendTicketNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: TicketNotificationCallback) => Promise<void>;
+  onSuccess: (created: Ticket | null) => void;
 };
 
 const initialValues: TicketFormValues = {
@@ -49,8 +38,7 @@ export function CreateTicketForm({
   isOpen,
   onClose,
   onSuccess,
-  handleSendTicketNotifications,
-}: Props) {
+}: CreateTicketFormProps) {
   const { user: clerkUser, isLoaded } = useUser();
   const [values, setValues] = useState<TicketFormValues>(initialValues);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -71,8 +59,9 @@ export function CreateTicketForm({
 
       try {
         const token = await getToken();
-        if (!token) throw new Error("Failed to get authentication token");
-
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
         const res = await fetch(`${API_BASE}/ticket-templates`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
@@ -103,7 +92,7 @@ export function CreateTicketForm({
         : null;
 
     setMarketCenterId(userMarketCenterId);
-  }, [isOpen, isLoaded, clerkUser, role, getToken, currentUser]);
+  }, [isOpen, isLoaded, clerkUser, role, currentUser, getToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -141,22 +130,91 @@ export function CreateTicketForm({
     return Object.keys(errors).length === 0;
   };
 
+  const handleSendTicketNotifications = async ({
+    ticket,
+    userToNotify,
+  }: {
+    ticket: Ticket;
+    userToNotify: UsersToNotify;
+  }) => {
+    const title = ticket?.title ?? "";
+    const dueDate = ticket?.dueDate ? ticket.dueDate : undefined;
+    const creator = ticket?.creator as PrismaUser;
+    const notifyCreator = userToNotify.updateType === "created";
+    const notifyAssignee = userToNotify.updateType === "added";
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const response = await createAndSendNotification({
+        authToken: token,
+        trigger: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          createdTicket: notifyCreator
+            ? {
+                ticketNumber: ticket.id,
+                ticketTitle: title,
+                creatorName: creator?.name ?? "Unknown",
+                creatorId: creator?.id,
+                createdOn: ticket?.createdAt,
+                dueDate: dueDate,
+                assigneeId: ticket?.assigneeId ? ticket.assigneeId : undefined,
+                assigneeName:
+                  ticket?.assignee && ticket?.assignee?.name
+                    ? ticket.assignee.name
+                    : undefined,
+              }
+            : undefined,
+          ticketAssignment: notifyAssignee
+            ? {
+                ticketNumber: ticket.id,
+                ticketTitle: title,
+                createdOn: ticket?.createdAt,
+                updatedOn: ticket?.createdAt,
+                editedByName: creator?.name ?? "Unknown",
+                editedById: creator?.id,
+                updateType: userToNotify.updateType,
+                currentAssignment: {
+                  id: userToNotify?.id,
+                  name: userToNotify?.name,
+                },
+                previousAssignment: null,
+              }
+            : undefined,
+        },
+      });
+      console.log("CreateTicketForm - Notifications - Response:", response);
+    } catch (error) {
+      console.error("CreateTicketForm - Notifications - Response:", error);
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    if (!isLoaded || !clerkUser?.id) {
+    if (!isLoaded) {
       console.error("User not loaded yet");
       return;
     }
 
     setLoading(true);
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const res = await fetch(`${API_BASE}/tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${clerkUser.id}`,
+          Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
         body: JSON.stringify(values),
@@ -164,69 +222,15 @@ export function CreateTicketForm({
       if (!res.ok) throw new Error("Failed to create ticket");
       const data = await res.json();
       if (data && data?.ticket) {
-        const ticket = data.ticket as Ticket;
-        const title = ticket?.title ?? "";
-        const dueDate = ticket?.dueDate ? ticket.dueDate : undefined;
-        const creator = ticket?.creator as PrismaUser;
-        const assignee = ticket?.assignee as PrismaUser;
-
-        let usersToNotify: UsersToNotify[] = [];
-        if (creator) {
-          usersToNotify.push({
-            id: creator.id,
-            name: creator?.name ?? "No name",
-            email: creator.email,
-            updateType: "created",
-          });
-        }
-        if (ticket?.assigneeId && assignee) {
-          usersToNotify.push({
-            id: ticket.assigneeId,
-            name: assignee.name ?? "No name",
-            email: assignee.email,
-            updateType: "added",
-          });
-        }
+        const ticket: Ticket = data.ticket;
+        const usersToNotify: UsersToNotify[] = data?.usersToNotify;
 
         if (usersToNotify && usersToNotify?.length > 0) {
           await Promise.all(
-            usersToNotify.map(async (user) => {
-              const notifyCreator = user.updateType === "created";
-              const notifyAssignee = user.updateType === "added";
+            usersToNotify.map(async (user: UsersToNotify) => {
               await handleSendTicketNotifications({
-                trigger: notifyAssignee
-                  ? "Ticket Assignment"
-                  : "Ticket Created",
-                receivingUser: {
-                  id: user?.id,
-                  name: user?.name,
-                  email: user?.email,
-                },
-                data: {
-                  createdTicket: notifyCreator
-                    ? {
-                        ticketNumber: ticket.id,
-                        ticketTitle: title,
-                        creatorName: creator?.name ?? "Unknown",
-                        creatorId: creator!.id,
-                        createdOn: ticket?.createdAt,
-                        dueDate: dueDate,
-                      }
-                    : undefined,
-                  ticketAssignment: notifyAssignee
-                    ? {
-                        ticketNumber: ticket.id,
-                        ticketTitle: title,
-                        createdOn: ticket?.createdAt,
-                        updatedOn: ticket?.createdAt,
-                        editedByName: creator?.name ?? "Unknown",
-                        editedById: creator!.id,
-                        updateType: user.updateType,
-                        currentAssignment: { id: user?.id, name: user?.name },
-                        previousAssignment: null,
-                      }
-                    : undefined,
-                },
+                ticket: ticket,
+                userToNotify: user,
               });
             })
           );

@@ -89,7 +89,10 @@ export const formatNotificationContent = (content: NotificationContent) => {
       title: content.trigger,
       body: `${content.data.marketCenterAssignment?.editorName} ${content.data.marketCenterAssignment.userUpdate === "added" ? "added you to" : "removed you from"} ${content.data.marketCenterAssignment?.marketCenterName}`,
       priority: "HIGH",
-      data: { marketCenterAssignment: content.data.marketCenterAssignment },
+      data: {
+        marketCenterId: content?.data?.marketCenterAssignment?.marketCenterId,
+        marketCenterAssignment: content.data.marketCenterAssignment,
+      },
     };
   }
 
@@ -110,14 +113,18 @@ export const formatNotificationContent = (content: NotificationContent) => {
   }
 
   if (content.trigger === "Ticket Created" && content?.data?.createdTicket) {
+    const assigneeId = content.data.createdTicket?.assigneeId;
     formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: content.trigger,
-      body: `"${content.data.createdTicket?.ticketTitle}" was created`,
-      priority: "HIGH",
-      data: { createdTicket: content.data.createdTicket },
+      body: `"${content.data.createdTicket?.ticketTitle}" was created${assigneeId ? ` and assigned.` : `. Currently, this ticket is not assigned.`}`,
+      priority: assigneeId ? "HIGH" : "MEDIUM",
+      data: {
+        ticketId: content.data.createdTicket?.ticketNumber,
+        createdTicket: content.data.createdTicket,
+      },
     };
   }
 
@@ -132,26 +139,50 @@ export const formatNotificationContent = (content: NotificationContent) => {
       title: content.trigger,
       body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
       priority: "HIGH",
-      data: { ticketAssignment: content.data.ticketAssignment },
+      data: {
+        ticketId: content.data.ticketAssignment?.ticketNumber,
+        userId: content.data.ticketAssignment?.editedById,
+        ticketAssignment: content.data.ticketAssignment,
+      },
     };
   }
-  // TODO:updatedTicket ticket title
-  // if (content.trigger === "Ticket Updated" && content?.data?.updatedTicket) {
-  //       const updates = content.data.accountInformation.updates.map((update) => {
-  //   return update.value;
-  // });
-  //   formattedNotification = {
-  //     userId: content?.receivingUser?.id,
-  //     category: "ACTIVITY",
-  //     type: content.trigger,
-  //     title: content.trigger,
-  //     body: `The following for "${content.data.updatedTicket?.ticketTitle}" was updated: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
+  if (
+    content.trigger === "Ticket Updated" &&
+    content?.data?.updatedTicket &&
+    content?.data?.updatedTicket?.changedDetails
+  ) {
+    const updates = content.data.updatedTicket.changedDetails.map((update) => {
+      return update.label;
+    });
+    formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: content.trigger,
+      body: `The following for "${content.data.updatedTicket?.ticketTitle}" was updated: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
+      priority: "MEDIUM",
+      data: { updatedTicket: content.data.updatedTicket },
+    };
+  }
 
-  //     priority: "HIGH",
-  //     data: { updatedTicket: content.data.updatedTicket },
-  //   };
-  // }
-
+  if (
+    content.trigger === "Ticket Assignment" &&
+    content?.data?.ticketAssignment
+  ) {
+    formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: content.trigger,
+      body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
+      priority: "HIGH",
+      data: {
+        ticketId: content.data.ticketAssignment?.ticketNumber,
+        userId: content.data.ticketAssignment?.editedById,
+        ticketAssignment: content.data.ticketAssignment,
+      },
+    };
+  }
   console.log("Formatted Notification Content", formattedNotification);
   return formattedNotification;
 };
@@ -159,7 +190,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
 export async function createAndSendNotification(
   content: NotificationContent
 ): Promise<boolean> {
-  console.log("START - createAndSendNotification()");
   if (!content) {
     throw new Error("Unable to format - Missing notification content");
   }
@@ -178,7 +208,6 @@ export async function createAndSendNotification(
         body: JSON.stringify(payload),
       }
     );
-    console.log("Response - createAndSendNotification", response);
     if (!response.ok) {
       throw new Error(
         response?.statusText
@@ -191,7 +220,5 @@ export async function createAndSendNotification(
   } catch (error) {
     console.error("Unable to generate notification:", error);
     return false;
-  } finally {
-    console.log("END - createAndSendNotification()");
   }
 }

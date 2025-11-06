@@ -140,19 +140,18 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!clerkUser?.id) return;
+    console.log("🔌 Connecting to WebSocket...");
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsUrl = `${protocol}://localhost:8081/?clerkId=${clerkUser.id}`;
 
     const ws = new WebSocket(wsUrl);
-    console.log(`🔌 Connecting to WebSocket at: ${wsUrl}`);
 
     ws.onopen = () => console.log("✅ WebSocket connected");
     ws.onmessage = async (e) => {
       console.log("✅ Message received!");
       try {
         const notification: Notification = JSON.parse(e.data);
-        console.log("📩 Incoming notification:", notification);
         toast.info(`${notification?.title}`);
         setNewestNotification(notification);
         await invalidateFetchAllUserNotifications();
@@ -172,7 +171,6 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar
         props={{ collapsible: "offcanvas" }}
-        // unReadNotificationTotal={unReadNotificationTotal}
         newestNotification={newestNotification}
         setNewestNotification={setNewestNotification}
         markAsReadMutation={markAsReadMutation}

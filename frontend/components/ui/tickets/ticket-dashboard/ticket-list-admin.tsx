@@ -73,7 +73,6 @@ import type {
   TicketWithUpdatedAt,
   UsersResponse,
   TicketCategory,
-  TicketNotificationCallback,
 } from "@/lib/types";
 import {
   useQuery,
@@ -82,16 +81,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-export default function AdminTicketList({
-  handleSendTicketNotifications,
-}: {
-  handleSendTicketNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: TicketNotificationCallback) => Promise<void>;
-}) {
-  const { user: clerkUser } = useUser();
+export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions, role } = useUserRole();
@@ -930,7 +920,6 @@ export default function AdminTicketList({
       <EditTicketForm
         ticket={editingTicket}
         isOpen={isEditOpen}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsEditOpen(false)}
         onSuccess={async (updated) => {
           if (updated) {
@@ -958,7 +947,6 @@ export default function AdminTicketList({
       {/* Create Ticket Modal */}
       <CreateTicketForm
         isOpen={isCreateOpen}
-        handleSendTicketNotifications={handleSendTicketNotifications}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={async (created) => {
           setIsCreateOpen(false);

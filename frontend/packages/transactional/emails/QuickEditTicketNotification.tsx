@@ -68,7 +68,7 @@ const QuickEditTicketNotification = ({
               </ul>
             </div>
             <Button
-              href={`http://${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`}
+              href={`${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`}
               style={button}
             >
               View Ticket
