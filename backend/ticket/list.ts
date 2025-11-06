@@ -87,7 +87,10 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
           assignee: true,
           ticketHistory: true,
           _count: {
-            select: { comments: true },
+            select: {
+              comments: true,
+              attachments: true
+            },
           },
         },
         orderBy: { createdAt: "desc" },
@@ -122,6 +125,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         ? { ...ticket.assignee, name: ticket.assignee.name ?? "" }
         : null,
       commentCount: ticket._count.comments,
+      attachmentCount: ticket._count.attachments,
       ticketHistory: mapHistorySnapshot(ticket.ticketHistory),
     }));
 

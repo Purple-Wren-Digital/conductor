@@ -85,6 +85,20 @@ export async function canModifyTicket(
   return false;
 }
 
+export async function canViewTicket(
+  userContext: UserContext,
+  ticketId: string
+): Promise<boolean> {
+  return canAccessTicket(userContext, ticketId);
+}
+
+export async function canUpdateTicket(
+  userContext: UserContext,
+  ticketId: string
+): Promise<boolean> {
+  return canModifyTicket(userContext, ticketId);
+}
+
 export async function canCreateTicket(
   userContext: UserContext
 ): Promise<boolean> {
