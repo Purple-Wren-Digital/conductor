@@ -235,6 +235,12 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           name: newAssignee?.name ?? "No name listed",
           email: newAssignee?.email ?? "N/a",
           updateType: "added",
+        },
+        {
+          id: newAssignee?.id!!,
+          name: newAssignee?.name ?? "No name listed",
+          email: newAssignee?.email ?? "N/a",
+          updateType: "unchanged",
         }
       );
 
