@@ -93,7 +93,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
           updateType: "removed",
         });
       }
-      if (assignTicket && !!oldTicket?.assigneeId) {
+      if (assignTicket && !!oldTicket?.assigneeId && !!newAssignee?.id) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
         usersToNotify.push(
@@ -104,7 +104,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
             updateType: "removed",
           },
           {
-            id: newAssignee?.id!!,
+            id: newAssignee.id,
             name: newAssignee?.name ?? "No name listed",
             email: newAssignee?.email ?? "N/a",
             updateType: "added",
@@ -112,11 +112,11 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         );
       }
 
-      if (assignTicket && !oldTicket?.assigneeId) {
+      if (assignTicket && !oldTicket?.assigneeId && !!newAssignee?.id) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
         usersToNotify.push({
-          id: newAssignee?.id!!,
+          id: newAssignee.id!!,
           name: newAssignee?.name ?? "No name listed",
           email: newAssignee?.email ?? "N/a",
           updateType: "added",

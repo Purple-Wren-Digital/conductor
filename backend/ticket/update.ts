@@ -220,7 +220,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
-    } else if (reassignTicket) {
+    }
+    if (reassignTicket && !!newAssignee?.id) {
       updateData.assigneeId = req.assigneeId;
       updateData.status = "ASSIGNED";
       usersToNotify.push(
@@ -231,7 +232,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           updateType: "removed",
         },
         {
-          id: newAssignee?.id!!,
+          id: newAssignee?.id,
           name: newAssignee?.name ?? "No name listed",
           email: newAssignee?.email ?? "N/a",
           updateType: "added",
