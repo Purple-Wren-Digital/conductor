@@ -33,14 +33,9 @@ export default function NotificationPreferences({
   invalidateUserQuery: Promise<void>;
 }) {
   const queryClient = useQueryClient();
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
-  const notificationsQueryKey = [
-    "user-account-settings",
-    userId,
-    clerkUser?.id,
-  ];
+  const notificationsQueryKey = ["user-account-settings", userId];
   const { data: userSettingsData, isLoading: isLoadingSettings } =
     useFetchUserSettings({
       id: userId,
@@ -127,12 +122,7 @@ export default function NotificationPreferences({
 
   const handleSaveNotificationPreferences = async () => {
     if (!userId) {
-      throw new Error("Missing user ID");
-    }
-
-    const authToken = await getToken();
-    if (!authToken) {
-      throw new Error("Failed to get authentication token");
+      throw new Error("Missing user's id");
     }
 
     setIsSubmitting(true);
@@ -148,13 +138,17 @@ export default function NotificationPreferences({
     }
 
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
       const response = await fetch(
         `${API_BASE}/users/${userId}/update/settings/notifications`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             notificationPreferences: hasNotificationPreferenceUpdates,

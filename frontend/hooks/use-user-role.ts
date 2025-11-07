@@ -91,7 +91,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
 }
 
 export function useUserRole() {
-  const { user: clerkUser, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const { getToken } = useAuth();
 
   const {
@@ -101,10 +101,6 @@ export function useUserRole() {
   } = useQuery<PrismaUser>({
     queryKey: ["CurrentUser"],
     queryFn: async () => {
-      if (!clerkUser?.id) {
-        throw new Error("Not authenticated");
-      }
-
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
@@ -127,7 +123,7 @@ export function useUserRole() {
       }
       return data as PrismaUser;
     },
-    enabled: isLoaded && !!clerkUser?.id,
+    enabled: isLoaded,
     staleTime: 5 * 60 * 1000,
   });
   const role = PrismaUser?.role as UserRole | undefined;

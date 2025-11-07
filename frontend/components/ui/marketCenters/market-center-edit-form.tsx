@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,7 @@ import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown"
 // import { arraysEqualById } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useStore } from "@/context/store-provider";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type EditMarketCenterProps = {
   editingMarketCenter: MarketCenter | null;
@@ -42,11 +43,6 @@ type EditMarketCenterProps = {
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   refreshMarketCenters: Promise<void>;
   refreshUsers: Promise<void>;
-  handleSendMarketCenterNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: MarketCenterNotificationCallback) => Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -60,11 +56,11 @@ export default function EditMarketCenter({
   setFormData,
   refreshMarketCenters,
   refreshUsers,
-  handleSendMarketCenterNotifications,
 }: EditMarketCenterProps) {
   const { getToken } = useAuth();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { getToken } = useAuth();
 
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
@@ -108,13 +104,36 @@ export default function EditMarketCenter({
     return Object.keys(errors).length === 0;
   };
 
-  const updateMarketCenterMutation = useMutation({
-    mutationFn: async () => {
-      if (!editingMarketCenter?.id) throw new Error("Missing user auth");
+  const handleSendMarketCenterNotifications = async ({
+    trigger,
+    receivingUser,
+    data,
+  }: MarketCenterNotificationCallback) => {
+    try {
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
+      const response = await createAndSendNotification({
+        authToken: token,
+        trigger: trigger,
+        receivingUser: receivingUser,
+        data: data,
+      });
+      console.log("MarketCenterManagement - Notification - Response", response);
+    } catch (error) {
+      console.error(
+        "MarketCenterManagement - Unable to generate notifications",
+        error
+      );
+    }
+  };
+
+  const updateMarketCenterMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingMarketCenter?.id) throw new Error("Missing market center id");
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
       const response = await fetch(
         `${API_BASE}/marketCenters/${editingMarketCenter?.id}`,
         {
@@ -201,7 +220,6 @@ export default function EditMarketCenter({
       return;
     }
     updateMarketCenterMutation.mutate();
-    setIsSubmitting(false);
   };
 
   return (

@@ -70,6 +70,7 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import Link from "next/link";
 interface TicketDetailViewProps {
   ticketId: string;
@@ -210,7 +211,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             : undefined,
         },
       });
-      // console.log("TicketDetailView - Notifications - Response:", response);
     } catch (error) {
       console.error(
         "TicketDetailView - Unable to generate notifications",
@@ -299,7 +299,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         },
         cache: "no-store",
         body: JSON.stringify({
-          assigneeId: newAssigneeId === "unassigned" ? null : newAssigneeId,
+          assigneeId: newAssigneeId,
         }),
       });
       const data = await res.json();
@@ -322,6 +322,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       }
     } catch (error) {
       console.error("Failed to assign ticket", error);
+      toast.error("Error: Failed to update ticket");
       setTicket(prev);
     } finally {
       await refreshAllData();

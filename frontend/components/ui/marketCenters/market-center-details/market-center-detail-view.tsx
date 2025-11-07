@@ -77,9 +77,8 @@ export default function MarketCenterDetailView({
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [marketCenterFormData, setMarketCenterFormData] =
     useState<MarketCenterForm>({
-      name: marketCenter?.name ?? ("" as string),
-      selectedUsers: marketCenter?.users as PrismaUser[],
-      ticketCategories: marketCenter?.ticketCategories as TicketCategory[],
+      name: "",
+      selectedUsers: [],
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -163,12 +162,17 @@ export default function MarketCenterDetailView({
         </Button>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            onClick={() => setShowEditMCForm(true)}
+            onClick={() => {
+              setShowEditMCForm(true);
+              setMarketCenterFormData({
+                name: marketCenter?.name ?? "",
+                selectedUsers: marketCenter?.users ?? [],
+              });
+            }}
             className="gap-2"
           >
             <Edit2 className="h-4 w-4" />
-            Edit Market center
+            Edit Market Center
           </Button>
         </div>
       </div>
@@ -290,9 +294,6 @@ export default function MarketCenterDetailView({
         setFormData={setMarketCenterFormData}
         refreshMarketCenters={invalidateMarketCenter}
         refreshUsers={invalidateUsers}
-        handleSendMarketCenterNotifications={
-          handleSendMarketCenterNotifications
-        }
       />
     </div>
   );

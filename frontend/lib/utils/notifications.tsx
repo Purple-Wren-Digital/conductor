@@ -183,7 +183,6 @@ export const formatNotificationContent = (content: NotificationContent) => {
       },
     };
   }
-  console.log("Formatted Notification Content", formattedNotification);
   return formattedNotification;
 };
 
@@ -195,7 +194,6 @@ export async function createAndSendNotification(
   }
   const payload = formatNotificationContent(content);
   if (!payload) throw new Error("Payload not formatted correctly");
-  console.log("Payload", payload);
   try {
     const response = await fetch(
       `${API_BASE}/notifications/create/${payload.userId}`,

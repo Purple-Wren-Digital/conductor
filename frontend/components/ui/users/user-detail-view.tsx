@@ -63,9 +63,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   // EDIT USER STATES
   const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [formData, setFormData] = useState<UserEditFormData>({
-    firstName: user && user?.name ? user?.name.split(" ")?.[0] : "",
-    lastName: user && user?.name ? user?.name.split(" ")?.[1] : "",
-    email: user?.email ?? "",
+    firstName: "",
+    lastName: "",
+    email: "",
     role: user?.role ?? "AGENT",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -185,7 +185,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           receivingUser: receivingUser,
           data: data,
         });
-        console.log("UserDetailView - Notifications - Response:", response);
       } catch (error) {
         console.error(
           "UserDetailView - Unable to generate notifications",
@@ -201,12 +200,10 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     { userId: string; clerkId: string; quickEdit: boolean }
   >({
     mutationFn: async ({ userId, clerkId, quickEdit }) => {
-      console.log("Called updateUserMutation");
-
       if (!userId || !clerkId) throw new Error("Missing User ID");
 
+      // TODO: Separate Clerk endpoints for email updates
       const clerkResponse = await updateUserInClerk(clerkId);
-      // TODO: Separate Clerk endpoints for metadata and email
       if (!clerkResponse) {
         throw new Error("Clerk Error");
       }
@@ -222,7 +219,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       return data.user as PrismaUser;
     },
     onSuccess: async (data: PrismaUser) => {
-      resetFormAndClose();
       toast.success(`${data?.name || "User"} was updated`);
       const token = await getToken();
       if (!token) {
@@ -268,6 +264,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           },
         },
       });
+      resetFormAndClose();
     },
     onError: (error: any) => {
       console.error("Failed to update user", error);
@@ -283,15 +280,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Called handleSubmitEditUserForm");
-    console.log("Form Data", formData);
 
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     if (!validateForm()) return;
-    console.log("Form validated");
     setIsSubmitting(true);
     updateUserMutation.mutate({
       userId: user?.id,
@@ -301,18 +295,15 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   };
 
   const handleRoleChange = async () => {
-    console.log("ROLE CHANGE CALLED");
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
-    // setIsSubmitting(true);
-    // updateUserMutation.mutate({
-    //   userId: user?.id,
-    //   clerkId: user?.clerkId,
-    //   quickEdit: true,
-    // });
-    // setIsSubmitting(false);
+    updateUserMutation.mutate({
+      userId: user?.id,
+      clerkId: user?.clerkId,
+      quickEdit: true,
+    });
   };
 
   return (
@@ -324,7 +315,15 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
         </Button>
         <Button
           variant="outline"
-          onClick={() => setShowEditUserForm(true)}
+          onClick={() => {
+            setShowEditUserForm(true);
+            setFormData({
+              firstName: user && user?.name ? user?.name.split(" ")?.[0] : "",
+              lastName: user && user?.name ? user?.name.split(" ")?.[1] : "",
+              email: user?.email ?? "",
+              role: user?.role ?? "AGENT",
+            });
+          }}
           className="gap-2"
         >
           <Edit2 className="h-4 w-4" /> Edit User
@@ -391,7 +390,14 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               <Select
                 value={user?.role}
                 onValueChange={(value: UserRole) => {
-                  setFormData({ ...formData, role: value });
+                  setFormData({
+                    firstName:
+                      user && user?.name ? user?.name.split(" ")?.[0] : "",
+                    lastName:
+                      user && user?.name ? user?.name.split(" ")?.[1] : "",
+                    email: user?.email ?? "",
+                    role: value,
+                  });
                   handleRoleChange();
                 }}
                 disabled={
