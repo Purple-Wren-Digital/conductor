@@ -189,7 +189,6 @@ export function CreateTicketForm({
             : undefined,
         },
       });
-      console.log("CreateTicketForm - Notifications - Response:", response);
     } catch (error) {
       console.error("CreateTicketForm - Notifications - Response:", error);
     }

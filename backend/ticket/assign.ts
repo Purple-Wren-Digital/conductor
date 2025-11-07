@@ -68,6 +68,17 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    const assignTicket =
+      newAssignee && newAssignee?.id !== oldTicket?.assigneeId;
+    const newAssigneeName = newAssignee?.name ?? "No name listed";
+    const previousAssignee = oldTicket?.assignee ?? null;
+    const previousAssigneeName =
+      previousAssignee && previousAssignee?.name
+        ? previousAssignee.name
+        : previousAssignee && !previousAssignee?.name
+          ? "No name listed"
+          : "Unassigned";
+
     try {
       const updateData: any = {};
       let usersToNotify: UsersToNotify[] = [];
@@ -76,49 +87,45 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         updateData.assigneeId = null;
         updateData.status = "UNASSIGNED";
         usersToNotify.push({
-          id: oldTicket?.assigneeId,
-          name: oldTicket?.assignee?.name ?? "",
-          email: oldTicket?.assignee?.email ?? "",
+          id: oldTicket.assigneeId,
+          name: previousAssigneeName,
+          email: previousAssignee?.email ?? "N/a",
           updateType: "removed",
         });
       }
-      if (
-        newAssignee &&
-        newAssignee?.id &&
-        oldTicket?.assigneeId &&
-        newAssignee?.id !== oldTicket?.assigneeId
-      ) {
+      if (assignTicket && !!oldTicket?.assigneeId && !!newAssignee?.id) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
         usersToNotify.push(
           {
             id: oldTicket?.assigneeId,
-            name: oldTicket?.assignee?.name ?? "",
-            email: oldTicket?.assignee?.email ?? "",
+            name: previousAssigneeName,
+            email: previousAssignee?.email ?? "N/a",
             updateType: "removed",
           },
           {
-            id: newAssignee?.id,
-            name: newAssignee?.name ?? "",
-            email: newAssignee?.email ?? "",
+            id: newAssignee.id,
+            name: newAssignee?.name ?? "No name listed",
+            email: newAssignee?.email ?? "N/a",
             updateType: "added",
           }
         );
       }
 
+      if (assignTicket && !oldTicket?.assigneeId && !!newAssignee?.id) {
+        updateData.assigneeId = req.assigneeId;
+        updateData.status = "ASSIGNED";
+        usersToNotify.push({
+          id: newAssignee.id!!,
+          name: newAssignee?.name ?? "No name listed",
+          email: newAssignee?.email ?? "N/a",
+          updateType: "added",
+        });
+      }
+
       if (Object.keys(updateData).length === 0) {
         throw APIError.invalidArgument("No fields to update");
       }
-
-      const previousAssignee = oldTicket?.assignee ?? null;
-      const previousAssigneeName =
-        previousAssignee && previousAssignee?.name
-          ? previousAssignee.name
-          : previousAssignee && !previousAssignee?.name
-          ? "No name listed"
-          : "Unassigned";
-
-      const newAssigneeName = newAssignee?.name ?? "No name listed";
 
       const [ticket] = await prisma.$transaction([
         prisma.ticket.update({

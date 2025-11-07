@@ -164,16 +164,7 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {/* REPORTS */}
-            {permissions?.canAccessReports && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/reports">
-                    <FileText /> Reports
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+
             {/* ACCOUNT */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>

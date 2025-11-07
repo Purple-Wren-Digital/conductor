@@ -32,7 +32,7 @@ export default async function SubscriptionPage(
     redirect("/sign-in");
   }
 
-  const apiClient = await getApiClient();
+  // const apiClient = await getApiClient();
 
   // Get the current subscription there is one
   // let currentSubscription: subscription.GetSubscriptionsResponse | undefined;

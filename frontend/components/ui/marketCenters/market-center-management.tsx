@@ -608,9 +608,6 @@ export default function MarketCenterManagement() {
         unassignedUsers={unassignedUsers}
         refreshMarketCenters={invalidateMarketCenters}
         refreshUsers={invalidateUsers}
-        handleSendMarketCenterNotifications={
-          handleSendMarketCenterNotifications
-        }
       />
 
       {/* DELETE MARKET CENTER */}

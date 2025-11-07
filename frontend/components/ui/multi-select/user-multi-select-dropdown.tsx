@@ -105,8 +105,15 @@ export default function UserMultiSelectDropdown({
                   />
                   <div className="px-2 py-1.5  gap-1">
                     <p className={"text-sm font-medium"}>{option.name}</p>
-                    <p className={"text-xs font-medium text-muted-foreground"}>
-                      {option?.marketCenter?.name ?? "Unassigned"}
+                    <p
+                      className={
+                        "text-xs font-medium text-muted-foreground capitalize"
+                      }
+                    >
+                      {option?.role.toLowerCase()} •{" "}
+                      {option?.marketCenterId
+                        ? `#${option?.marketCenterId.slice(0, 8)}`
+                        : "Unassigned"}
                     </p>
                   </div>
                 </label>
