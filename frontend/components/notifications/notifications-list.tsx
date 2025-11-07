@@ -47,8 +47,6 @@ export default function AllNotifications({
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
-  // const [notificationList, setNotificationList] =
-  //   useState<Notification[]>(allNotifications);
 
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
@@ -161,7 +159,7 @@ export default function AllNotifications({
 
           <ScrollArea className="flex flex-col gap-4 h-100">
             {isNotificationsLoading && (
-              <p className="text-sm font-medium">Loading...</p>
+              <p className="text-sm font-medium">Loading notifications...</p>
             )}
 
             {!isNotificationsLoading && filteredNotifications.length === 0 && (
@@ -211,10 +209,11 @@ export default function AllNotifications({
                       className="flex flex-row items-center gap-1 p-1"
                       aria-label="Mark as Read"
                       onClick={(e) => {
-                        e.preventDefault();
+                        e.stopPropagation();
                         markAsReadMutation.mutate({
                           notificationId: notification?.id,
                         });
+                        // setIsOpen(true);
                       }}
                     >
                       <p

@@ -260,6 +260,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
+    } else if (!unassignTicket && !reassignTicket && !!oldTicket?.assigneeId) {
+      usersToNotify.push({
+        id: oldTicket?.assigneeId,
+        name: oldTicket?.assignee?.name ?? "No name listed",
+        email: oldTicket?.assignee?.email ?? "N/a",
+        updateType: "unchanged",
+      });
     } else {
       usersToNotify.push({
         id: oldTicket?.creatorId,
