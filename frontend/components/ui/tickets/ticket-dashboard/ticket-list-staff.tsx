@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -79,8 +79,11 @@ import type {
   TicketCategory,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-export default function TicketListStaff() {
+export default function TicketListStaff({
+  currentUserId,
+}: {
+  currentUserId: string;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions } = useUserRole();
@@ -103,13 +106,12 @@ export default function TicketListStaff() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
-  const [currentUserId] = useState(currentUser?.id ?? "");
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUserId
   );
   const [selectedCreator, setSelectedCreator] = useState<string>(
-    marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUserId
   );
 
   const [dateFrom, setDateFrom] = useState<Date>();
@@ -142,7 +144,7 @@ export default function TicketListStaff() {
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
 
-  const teamMembers =
+  const teamMembers: PrismaUser[] =
     marketCenter?.users && marketCenter?.users.length > 0
       ? marketCenter?.users
       : [];
@@ -201,6 +203,7 @@ export default function TicketListStaff() {
   );
 
   const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
+  console.log("STAFF TICKETS DASHBOARD:", ticketsData);
 
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = calculateTotalPages({

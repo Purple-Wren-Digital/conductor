@@ -60,7 +60,11 @@ import PagesAndItemsCount from "../../pagination/page-and-items-count";
 import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
 import { RadioGroup, RadioGroupItem } from "../../radio-group";
 
-export default function AgentTicketList() {
+export default function AgentTicketList({
+  currentUserId,
+}: {
+  currentUserId: string;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
@@ -141,7 +145,7 @@ export default function AgentTicketList() {
   }: UseQueryResult<TicketsResponse, Error> = useFetchAgentTickets({
     queryParams,
     agentTicketsQueryKey,
-    userId: currentUser?.id,
+    userId: currentUserId,
   });
 
   const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];

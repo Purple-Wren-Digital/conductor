@@ -14,13 +14,12 @@ export function useFetchAgentTickets({
   agentTicketsQueryKey,
   userId,
 }: AgentSearchTicketsQuery) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: agentTicketsQueryKey,
     queryFn: async () => {
-      if (!userId || !clerkUser?.id) {
+      if (!userId) {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
@@ -45,7 +44,7 @@ export function useFetchAgentTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: !!userId && !!clerkUser?.id,
+    enabled: !!userId,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
@@ -64,15 +63,13 @@ export function useFetchStaffTickets({
   queryParams,
   staffTicketsQueryKey,
 }: StaffSearchTicketsQuery) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: staffTicketsQueryKey,
     queryFn: async () => {
       try {
-        if (!marketCenterId || !userId || !clerkUser?.id)
-          return { tickets: [], total: 0 } as TicketsResponse;
+        if (!userId) return { tickets: [], total: 0 } as TicketsResponse;
 
         const token = await getToken();
         if (!token) {
@@ -80,7 +77,7 @@ export function useFetchStaffTickets({
         }
 
         const response = await fetch(
-          `${API_BASE}/tickets/search?${marketCenterId ? `marketCenterId=${marketCenterId}&` : ""}${queryParams.toString()}`,
+          `${API_BASE}/tickets/search?${marketCenterId ? `&marketCenterId=${marketCenterId}` : ""}${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -90,13 +87,14 @@ export function useFetchStaffTickets({
         if (!response || !response.ok)
           throw new Error("Failed to fetch tickets");
         const data = await response.json();
+
         return data;
       } catch (error) {
         console.error("StaffDashboard - Failed to fetch team tickets", error);
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: (!!marketCenterId || !!userId) && !!clerkUser?.id,
+    enabled: !!marketCenterId,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
