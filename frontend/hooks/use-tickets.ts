@@ -20,7 +20,6 @@ export function useFetchAgentTickets({
     queryKey: agentTicketsQueryKey,
     queryFn: async () => {
       if (!userId) {
-      if (!userId) {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
       try {
@@ -95,6 +94,7 @@ export function useFetchStaffTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
