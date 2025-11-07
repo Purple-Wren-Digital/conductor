@@ -270,9 +270,6 @@ export default function MarketCenterDetailView({
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
               invalidateMarketCenter={invalidateMarketCenter}
-              handleSendMarketCenterNotifications={
-                handleSendMarketCenterNotifications
-              }
             />
           )}
         </TabsContent>

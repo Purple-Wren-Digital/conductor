@@ -58,6 +58,88 @@ export function FileUpload({
     e.stopPropagation();
   }, []);
 
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  }, []);
+
+  const handleFiles = useCallback(
+    async (files: File[]) => {
+      const authToken = await getToken();
+      if (!authToken) {
+        toast.error("You must be logged in to upload files");
+        return;
+      }
+
+      for (const file of files) {
+        // Validate file size
+        if (file.size > maxFileSize * 1024 * 1024) {
+          toast.error(`${file.name} exceeds ${maxFileSize}MB size limit`);
+          continue;
+        }
+
+        // Start upload
+        const uploadId = `${file.name}-${Date.now()}`;
+        setUploadingFiles((prev) => new Map(prev).set(uploadId, 0));
+
+        try {
+          // Convert file to base64
+          const base64 = await fileToBase64(file);
+
+          const response = await fetch(`${API_BASE}/attachments/upload`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              ticketId: ticketId,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type || "application/octet-stream",
+              content: base64.split(",")[1], // Remove data:type/subtype;base64, prefix
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Upload failed");
+          }
+
+          const data = await response.json();
+
+          // Remove from uploading list
+          setUploadingFiles((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(uploadId);
+            return newMap;
+          });
+
+          toast.success(`${file.name} uploaded successfully`);
+
+          // Call callback if provided
+          if (onUploadComplete) {
+            onUploadComplete(data.attachment);
+          }
+        } catch (error) {
+          console.error("Upload error:", error);
+          toast.error(`Failed to upload ${file.name}`);
+
+          // Remove from uploading list
+          setUploadingFiles((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(uploadId);
+            return newMap;
+          });
+        }
+      }
+    },
+    [getToken, fileToBase64, maxFileSize, ticketId, onUploadComplete]
+  );
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -67,7 +149,7 @@ export function FileUpload({
       const files = Array.from(e.dataTransfer.files);
       handleFiles(files);
     },
-    [ticketId]
+    [handleFiles]
   );
 
   const handleFileSelect = useCallback(
@@ -75,87 +157,10 @@ export function FileUpload({
       const files = Array.from(e.target.files || []);
       handleFiles(files);
     },
-    [ticketId]
+    [handleFiles]
   );
 
-  const handleFiles = async (files: File[]) => {
-    const authToken = await getToken();
-    if (!authToken) {
-      toast.error("You must be logged in to upload files");
-      return;
-    }
-
-    for (const file of files) {
-      // Validate file size
-      if (file.size > maxFileSize * 1024 * 1024) {
-        toast.error(`${file.name} exceeds ${maxFileSize}MB size limit`);
-        continue;
-      }
-
-      // Start upload
-      const uploadId = `${file.name}-${Date.now()}`;
-      setUploadingFiles((prev) => new Map(prev).set(uploadId, 0));
-
-      try {
-        // Convert file to base64
-        const base64 = await fileToBase64(file);
-
-        const response = await fetch(`${API_BASE}/attachments/upload`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            ticketId,
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type || "application/octet-stream",
-            content: base64.split(",")[1], // Remove data:type/subtype;base64, prefix
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Upload failed");
-        }
-
-        const data = await response.json();
-
-        // Remove from uploading list
-        setUploadingFiles((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(uploadId);
-          return newMap;
-        });
-
-        toast.success(`${file.name} uploaded successfully`);
-
-        // Call callback if provided
-        if (onUploadComplete) {
-          onUploadComplete(data.attachment);
-        }
-      } catch (error) {
-        console.error("Upload error:", error);
-        toast.error(`Failed to upload ${file.name}`);
-
-        // Remove from uploading list
-        setUploadingFiles((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(uploadId);
-          return newMap;
-        });
-      }
-    }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
+  const handleSendFileAttachmentNotification = useCallback(() => {}, []);
 
   return (
     <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import {
   AlertDialog,
@@ -43,23 +43,18 @@ import type {
 } from "@/lib/types";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 export default function MarketCenterTicketCategories({
   marketCenter,
   isLoading,
   setIsLoading,
   invalidateMarketCenter,
-  handleSendMarketCenterNotifications,
 }: {
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
-  handleSendMarketCenterNotifications: ({
-    trigger,
-    receivingUser,
-    data,
-  }: MarketCenterNotificationCallback) => Promise<void>;
 }) {
   const { user: clerkUser } = useUser();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
@@ -111,19 +106,6 @@ export default function MarketCenterTicketCategories({
       categoryFormData?.defaultAssigneeId === "none"
         ? ""
         : categoryFormData?.defaultAssigneeId;
-    // console.log(
-    //   "categoryFormData - AssigneeFormValue",
-    //   defaultAssigneeFormValue
-    // );
-
-    // console.log(
-    //   "editingTicketCategory - AssigneeFormValue",
-    //   editingTicketCategory?.defaultAssigneeId
-    // );
-    // console.log(
-    //   "defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId",
-    //   defaultAssigneeFormValue === categoryFormData?.defaultAssigneeId
-    // );
     if (
       editingTicketCategory &&
       categoryFormData?.name === editingTicketCategory?.name &&
@@ -157,6 +139,33 @@ export default function MarketCenterTicketCategories({
     }
     return formattedBody;
   };
+
+  const handleSendMarketCenterNotifications = useCallback(
+    async ({
+      trigger,
+      receivingUser,
+      data,
+    }: MarketCenterNotificationCallback) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await createAndSendNotification({
+          authToken: token,
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+      } catch (error) {
+        console.error(
+          "MarketCenterTicketCategories - Unable to generate notifications",
+          error
+        );
+      }
+    },
+    [getToken]
+  );
 
   const updateTicketCategoryMutation = useMutation({
     mutationFn: async () => {
@@ -263,7 +272,7 @@ export default function MarketCenterTicketCategories({
             marketCenterId: marketCenter.id,
             name: categoryFormData?.name ?? "",
             description: categoryFormData?.description ?? null,
-            defaultAssignee: categoryFormData?.defaultAssigneeId ?? null,
+            defaultAssigneeId: categoryFormData?.defaultAssigneeId ?? null,
           }),
         }
       );
@@ -276,7 +285,10 @@ export default function MarketCenterTicketCategories({
       }
 
       const data = await response.json();
-      return data;
+      if (!data || !data?.category) {
+        throw new Error("Failed to create ticket category");
+      }
+      return data.category;
     },
     onSuccess: async (data: TicketCategory) => {
       toast.success(`${categoryFormData?.name} was created`);
@@ -379,7 +391,7 @@ export default function MarketCenterTicketCategories({
           },
           data: {
             categoryAssignment: {
-              userUpdate: "added",
+              userUpdate: "removed",
               userName: categoryToRemove?.defaultAssignee?.name ?? "You",
               categoryName: categoryToRemove?.name,
               categoryDescription: categoryToRemove?.description ?? undefined,

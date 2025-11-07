@@ -43,7 +43,6 @@ export default function MarketCenterUsers({
   }: MarketCenterNotificationCallback) => Promise<void>;
 }) {
   const router = useRouter();
-  const { user: clerkUser } = useUser();
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<PrismaUser | null>(null);
 
@@ -64,10 +63,11 @@ export default function MarketCenterUsers({
       if (!marketCenter || !marketCenter?.id)
         throw new Error("Missing Market Center ID");
 
-     const token = await getToken();
+      const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
-      }      const response = await fetch(
+      }
+      const response = await fetch(
         `${API_BASE}/marketCenters/users/${marketCenter.id}`,
         {
           method: "PATCH",

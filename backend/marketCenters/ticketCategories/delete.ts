@@ -1,6 +1,5 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
-import { TicketCategory } from "../types";
 import { prisma } from "../../ticket/db";
 
 export interface DeleteCategoryRequest {
@@ -8,7 +7,7 @@ export interface DeleteCategoryRequest {
 }
 
 export interface DeleteCategoryResponse {
-  category: TicketCategory;
+  deleted: boolean;
 }
 
 export const deleteCategory = api<
@@ -36,6 +35,7 @@ export const deleteCategory = api<
 
     const ticketCategoryToDelete = await prisma.ticketCategory.findUnique({
       where: { id: req.id },
+      include: { defaultAssignee: true },
     });
 
     if (!ticketCategoryToDelete) {
@@ -66,6 +66,6 @@ export const deleteCategory = api<
       };
     });
 
-    return { category: result.ticketCategory };
+    return { deleted: true };
   }
 );

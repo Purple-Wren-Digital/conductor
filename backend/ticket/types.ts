@@ -39,7 +39,13 @@ export interface Attachment {
   uploadedBy: string;
   createdAt: Date;
   updatedAt: Date;
-  uploader?: User;
+  uploader?:
+    | User
+    | {
+        id: string;
+        name: string;
+        email: string;
+      };
   uploaderName?: string;
 }
 

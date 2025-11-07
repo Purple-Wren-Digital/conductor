@@ -51,10 +51,8 @@ import type {
 
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
-// import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { AttachmentsList } from "./attachments-list";
 import { FileUpload } from "./file-upload";
-// import { hasDueDateChanged } from "./utils";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
@@ -73,6 +71,7 @@ import { useFetchTicketHistory } from "@/hooks/use-history";
 import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import Link from "next/link";
 interface TicketDetailViewProps {
   ticketId: string;
   onClose?: () => void;
@@ -86,9 +85,10 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
 ) as Record<string, string>;
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [attachmentTotal, setAttachmentTotal] = useState(0);
+  const [commentTotal, setCommentTotal] = useState(0);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -120,8 +120,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
-      const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
       const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
+      const ticketData = await ticketRes.json();
+      setAttachmentTotal(ticketData?.attachmentCount || 0);
+      setCommentTotal(ticketData?.commentCount || 0);
 
       setTicket(ticketData.ticket);
       setUsers(usersData?.users ?? []);
@@ -158,6 +160,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     userToNotify: UsersToNotify;
     changedDetails: ActivityUpdates[] | null;
   }) => {
+    console.log("SENDING NOTIFICATIONS....");
     const title = ticket?.title ?? "";
     const notifySomeone = userToNotify.updateType === "unchanged";
     const notifyAssigneeChanges =
@@ -243,6 +246,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
+        console.log("Notifying users....", data?.usersToNotify);
+
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({
@@ -424,7 +429,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* TICKET HISTORY */}
         {showHistoryModal && (
-          <div className="lg:col-span-3 space-y-6">
+          <div
+            className="lg:col-span-3 space-y-6"
+            id={`ticket-history-modal-${ticket.id}`}
+          >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Ticket History</CardTitle>
@@ -448,7 +456,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
                     <Badge variant={getStatusColor(ticket.status)}>
                       {ticket.status.replace("_", " ")}
                     </Badge>
@@ -471,11 +479,25 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Description</h4>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Description</h4>
+
                   <p className="text-muted-foreground leading-relaxed">
                     {ticket.description}
                   </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground hover:underline">
+                      <Link href={`#comments-section-${ticketId}`}>
+                        Comments: {commentTotal}
+                      </Link>
+                    </p>
+                    <p className="text-sm text-muted-foreground"> • </p>
+                    <p className="text-sm text-muted-foreground hover:underline">
+                      <Link href={`#attachments-section-${ticketId}`}>
+                        Attachments: {attachmentTotal}
+                      </Link>
+                    </p>
+                  </div>
                 </div>
                 <Separator />
                 <div className="grid gap-4 md:grid-cols-2">
@@ -519,7 +541,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           <TicketCommentsSection ticketId={ticket.id} />
 
           {/* Attachments Section */}
-          <Card>
+          <Card id={`attachments-section-${ticket.id}`}>
             <CardHeader>
               <CardTitle>Attachments</CardTitle>
             </CardHeader>

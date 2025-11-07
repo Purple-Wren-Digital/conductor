@@ -94,10 +94,3 @@ export interface UsersToNotify {
   email: string;
   updateType: AssignmentUpdateType;
 }
-
-// export interface PushNotificationPayload {
-//   token: string;
-//   userId: string;
-//   title: string;
-//   body: string;
-// }

@@ -9,6 +9,8 @@ export interface GetTicketRequest {
 
 export interface GetTicketResponse {
   ticket: Ticket;
+  commentCount: number;
+  attachmentCount: number;
 }
 
 export const get = api<GetTicketRequest, GetTicketResponse>(
@@ -72,27 +74,31 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
         name: ticket.creator.name ?? "",
       },
 
-      assignee: ticket.assignee
+      assignee: ticket?.assignee
         ? {
             ...ticket.assignee,
             name: ticket.assignee.name ?? "",
           }
         : null,
-      commentCount: ticket._count.comments,
-      attachmentCount: ticket._count?.attachments || 0,
-      attachments: ticket.attachments?.map(attachment => ({
-        id: attachment.id,
-        fileName: attachment.fileName,
-        fileSize: attachment.fileSize,
-        mimeType: attachment.mimeType,
-        uploadedBy: attachment.uploadedBy,
-        createdAt: attachment.createdAt,
-        uploaderName: attachment.uploader?.name || attachment.uploader?.email || '',
-      })) || [],
+
+      attachments:
+        ticket?.attachments && ticket?.attachments.length > 0
+          ? ticket.attachments.map((attachment) => ({
+              ...attachment,
+              uploader: attachment?.uploader
+                ? {
+                    ...attachment.uploader,
+                    name: attachment.uploader.name ?? "Unknown",
+                  }
+                : undefined,
+            }))
+          : [],
     };
 
     return {
       ticket: formattedTicket,
+      commentCount: ticket?._count.comments,
+      attachmentCount: ticket?._count.attachments || 0,
     };
   }
 );

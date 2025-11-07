@@ -15,7 +15,7 @@ export function TicketCommentsSection({
   const commentCount = useCommentCount(ticketId); // Fallback to 2 for demo
 
   return (
-    <Card>
+    <Card id={`comments-section-${ticketId}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />

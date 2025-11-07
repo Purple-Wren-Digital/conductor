@@ -59,8 +59,8 @@ export const createCategory = api<
         },
       });
 
-      const marketCenterHistory = await pr.marketCenterHistory.create({
-        data: {
+      const marketCenterHistoryItems = [
+        {
           marketCenterId: marketCenter.id,
           action: "CREATE",
           field: "category",
@@ -69,12 +69,50 @@ export const createCategory = api<
           changedAt: new Date(),
           changedById: userContext.userId,
         },
+      ];
+
+      const userHistoryItems = [
+        {
+          userId: userContext.userId,
+          marketCenterId: marketCenter.id,
+          action: "CREATE",
+          field: "category",
+          newValue: req.name,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        },
+      ];
+
+      if (req?.defaultAssigneeId) {
+        userHistoryItems.push({
+          userId: req.defaultAssigneeId,
+          marketCenterId: marketCenter.id,
+          action: "ASSIGNMENT",
+          field: "category",
+          newValue: req.name,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        });
+        marketCenterHistoryItems.push({
+          marketCenterId: marketCenter.id,
+          action: "ASSIGNMENT",
+          field: "category",
+          newValue: req.name,
+          snapshot: ticketCategory,
+          changedAt: new Date(),
+          changedById: userContext.userId,
+        });
+      }
+
+      await pr.marketCenterHistory.createMany({
+        data: marketCenterHistoryItems,
       });
 
-      return {
-        ticketCategory,
-        marketCenterHistory,
-      };
+      await pr.userHistory.createMany({
+        data: userHistoryItems,
+      });
+
+      return { ticketCategory };
     });
 
     return { category: result.ticketCategory };
