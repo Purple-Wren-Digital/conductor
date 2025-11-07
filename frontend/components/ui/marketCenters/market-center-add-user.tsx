@@ -42,7 +42,6 @@ export default function AddTeamMember({
   sendUserUpdateNotification,
 }: AddTeamMemberProps) {
   const queryClient = useQueryClient();
-  const { user: clerkUser } = useUser();
 
   const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);

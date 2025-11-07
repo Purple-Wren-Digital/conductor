@@ -146,6 +146,16 @@ export const updateCategory = api<
         });
       }
     }
+    if (oldTicketCategory?.defaultAssigneeId) {
+      usersToNotify.push({
+        id: oldTicketCategory.defaultAssigneeId,
+        name: oldTicketCategory?.defaultAssignee?.name
+          ? oldTicketCategory.defaultAssignee.name
+          : "",
+        email: oldTicketCategory?.defaultAssignee?.email ?? "",
+        updateType: "removed",
+      });
+    }
     // MARKET CENTER ID
     // if (
     //   userContext?.role === "ADMIN" &&

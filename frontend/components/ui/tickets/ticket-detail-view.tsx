@@ -51,10 +51,8 @@ import type {
 
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
-// import { EditTicketForm as TicketForm } from "./ticket-form/edit-ticket-form";
 import { AttachmentsList } from "./attachments-list";
 import { FileUpload } from "./file-upload";
-// import { hasDueDateChanged } from "./utils";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
@@ -72,6 +70,7 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 interface TicketDetailViewProps {
   ticketId: string;
   onClose?: () => void;
@@ -120,10 +119,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
-      // const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
       const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
       const ticketData = await ticketRes.json();
-      console.log("TicketDetailView - Fetched Ticket Data:", ticketData);
       setAttachmentTotal(ticketData?.attachmentCount || 0);
       setCommentTotal(ticketData?.commentCount || 0);
 
@@ -428,7 +425,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* TICKET HISTORY */}
         {showHistoryModal && (
-          <div className="lg:col-span-3 space-y-6">
+          <div
+            className="lg:col-span-3 space-y-6"
+            id={`ticket-history-modal-${ticket.id}`}
+          >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Ticket History</CardTitle>
@@ -452,7 +452,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
                     <Badge variant={getStatusColor(ticket.status)}>
                       {ticket.status.replace("_", " ")}
                     </Badge>
@@ -470,24 +470,30 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       {ticket?.category?.name ?? "Missing Category"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm text-muted-foreground">
-                      Attachments: {attachmentTotal}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Comments: {commentTotal}
-                    </p>
-                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Description</h4>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Description</h4>
+
                   <p className="text-muted-foreground leading-relaxed">
                     {ticket.description}
                   </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground hover:underline">
+                      <Link href={`#comments-section-${ticketId}`}>
+                        Comments: {commentTotal}
+                      </Link>
+                    </p>
+                    <p className="text-sm text-muted-foreground"> • </p>
+                    <p className="text-sm text-muted-foreground hover:underline">
+                      <Link href={`#attachments-section-${ticketId}`}>
+                        Attachments: {attachmentTotal}
+                      </Link>
+                    </p>
+                  </div>
                 </div>
                 <Separator />
                 <div className="grid gap-4 md:grid-cols-2">
@@ -531,7 +537,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           <TicketCommentsSection ticketId={ticket.id} />
 
           {/* Attachments Section */}
-          <Card>
+          <Card id={`attachments-section-${ticket.id}`}>
             <CardHeader>
               <CardTitle>Attachments</CardTitle>
             </CardHeader>

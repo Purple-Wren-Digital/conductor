@@ -150,7 +150,7 @@ export function AppSidebar({
               </SidebarMenuItem>
             )}
             {/* STAFF - MARKET CENTER MANAGEMENT */}
-            {role === "STAFF" && (
+            {role === "STAFF" && currentUser?.marketCenterId && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
@@ -164,16 +164,7 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {/* REPORTS */}
-            {permissions?.canAccessReports && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/reports">
-                    <FileText /> Reports
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+
             {/* ACCOUNT */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
@@ -188,23 +179,6 @@ export function AppSidebar({
               setNewestNotification={setNewestNotification}
               markAsReadMutation={markAsReadMutation}
             />
-
-            {/* <SidebarMenuItem>
-              <SidebarMenuButton asChild disabled={isLoading}>
-                <Link href={`/dashboard/profile`}>
-                  <CircleUserRound /> Profile
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem> */}
-
-            {/* <SidebarMenuItem>
-              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
-                <Link href={`/dashboard/account`}>
-                  <CircleUserRound /> Manage Account
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu> */}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
