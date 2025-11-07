@@ -5,6 +5,6 @@ export default async function DashboardTicketDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params; 
+  const { id } = await params;
   return <TicketDetailView ticketId={id} />;
 }

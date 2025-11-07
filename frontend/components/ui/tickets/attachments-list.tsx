@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import {
-  FileIcon,
   Download,
   Trash2,
-  Image,
+  ImageIcon,
   FileText,
   File,
   Loader2,
@@ -43,7 +42,8 @@ export function AttachmentsList({
   onAttachmentDeleted,
   onAttachmentAdded,
 }: AttachmentsListProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
+  const [attachments, setAttachments] =
+    useState<Attachment[]>(initialAttachments);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -158,7 +158,7 @@ export function AttachmentsList({
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) {
-      return <Image className="h-4 w-4" />;
+      return <ImageIcon className="h-4 w-4" />;
     }
     if (mimeType.includes("pdf")) {
       return <FileText className="h-4 w-4" />;
@@ -178,7 +178,7 @@ export function AttachmentsList({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   if (loading) {

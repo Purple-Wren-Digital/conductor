@@ -85,9 +85,10 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
 ) as Record<string, string>;
 
 export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [attachmentTotal, setAttachmentTotal] = useState(0);
+  const [commentTotal, setCommentTotal] = useState(0);
   const [users, setUsers] = useState<PrismaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -119,8 +120,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
-      const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
+      // const ticketData = await parseJsonSafe<{ ticket: Ticket }>(ticketRes);
       const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
+      const ticketData = await ticketRes.json();
+      console.log("TicketDetailView - Fetched Ticket Data:", ticketData);
+      setAttachmentTotal(ticketData?.attachmentCount || 0);
+      setCommentTotal(ticketData?.commentCount || 0);
 
       setTicket(ticketData.ticket);
       setUsers(usersData?.users ?? []);
@@ -464,6 +469,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     >
                       {ticket?.category?.name ?? "Missing Category"}
                     </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm text-muted-foreground">
+                      Attachments: {attachmentTotal}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Comments: {commentTotal}
+                    </p>
                   </div>
                 </div>
               </div>
