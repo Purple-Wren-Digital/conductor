@@ -13,9 +13,12 @@ module.exports = {
   theme: {
     extend: {
       boxShadow: {
-        focus: "0 0 0 2px #573ba3",
+        focus: "0 0 0 2px #6D1C24",
       },
       colors: {
+        conductorDarker: "#4B1D22",
+        conductor: "#6D1C24",
+        conductorLight: "#8C464D",
         red: "#de2454",
         purple: "#573ba3",
         purpleDarker: "#43206F",
@@ -35,11 +38,11 @@ module.exports = {
         white: "white",
         paper: "#fcf7ee",
 
-        primary_900: "#2b0f42",
-        primary_700: "#461c8c",
-        primary_500: "#7f48d9",
-        primary_300: "#E9E1FE",
-        primary_100: "#F0E5FF",
+        primary_900: "#6D1C24",
+        primary_700: "#7B2F37",
+        primary_500: "#8C464D",
+        primary_300: "#A2646A",
+        primary_100: "#B39194",
 
         structure: {
           dark: "#2c293b",

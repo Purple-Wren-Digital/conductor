@@ -1,10 +1,11 @@
-export default function FeaturesPage() {
+export default function PrivacyPage() {
   return (
     <main className="container">
       <div className="flex flex-col items-center py-12">
-        <h1 className="text-4xl font-bold mb-4">About us</h1>
+        <h1 className="text-4xl font-bold mb-4">Privacy</h1>
         <p className="font-bold text-muted-foreground">
-          Get to know us better and learn more about our mission and values.
+          Learn about our privacy practices and how we protect your personal
+          information.
         </p>
       </div>
     </main>

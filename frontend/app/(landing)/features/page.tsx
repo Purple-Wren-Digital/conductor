@@ -2,9 +2,10 @@ export default function FeaturesPage() {
   return (
     <main className="container">
       <div className="flex flex-col items-center py-12">
-        <h1 className="text-4xl font-bold mb-4">About us</h1>
+        <h1 className="text-4xl font-bold mb-4">Features</h1>
         <p className="font-bold text-muted-foreground">
-          Get to know us better and learn more about our mission and values.
+          Discover the powerful features that make Conductor Ticketing the
+          ultimate solution for your needs.
         </p>
       </div>
     </main>
