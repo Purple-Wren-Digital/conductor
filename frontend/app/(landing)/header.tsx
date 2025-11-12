@@ -71,10 +71,10 @@ export function Header() {
             LOGO
           </div>
           <div className="hidden md:flex flex-col leading-tight">
-            <h1 className="text-sm font-bold sm:text-xl text-[#faf8f9]">
+            <h1 className="text-sm font-bold sm:text-xl text-muted">
               Conductor
             </h1>
-            <p className="text-xs font-medium sm:text-sm text-[#faf8f9]">
+            <p className="text-xs font-medium sm:text-sm text-muted">
               Agent Support System
             </p>
           </div>

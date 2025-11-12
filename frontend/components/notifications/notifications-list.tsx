@@ -99,12 +99,17 @@ export default function AllNotifications({
   return (
     <Dialog open={isOpen} onOpenChange={() => setIsOpen(!isOpen)}>
       <DialogTrigger asChild className="flex flex-row items-center gap-2">
-        <Button variant={"ghost"} disabled={isNotificationsLoading}>
+        <Button
+          variant={"ghost"}
+          disabled={isNotificationsLoading}
+          className="text-muted hover:text-[#A2646A] hover:bg-transparent "
+          aria-label="View Notifications"
+        >
           <div className="relative inline-block">
             {isNotificationsLoading ? (
               <Loader
                 aria-label={`Loading your notifications`}
-                className={`w-6 h-6 motion-safe:animate-spin text-shadow-gray-500`}
+                className={`w-6 h-6 motion-safe:animate-spin text-["#A2646A"]`}
               />
             ) : (
               <Bell className="w-6 h-6" />
@@ -113,7 +118,11 @@ export default function AllNotifications({
             (newNotification || unReadNotificationTotal > 0) ? (
               <Badge
                 aria-label={`${unReadNotificationTotal} Unread Notifications`}
-                className={`absolute -top-0.25 -right-0.25 p-1 leading-none rounded-full border motion-safe:animate-conductor-ping`}
+                className={`
+                  absolute -top-0.25 -right-0.25 p-1 leading-none rounded-full
+                  motion-safe:animate-conductor-ping
+                  border-[var(--conductor)] bg-[#de2454] shadow-[0_0_3px_#A2646A]
+                `}
               />
             ) : null}
           </div>

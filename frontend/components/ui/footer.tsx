@@ -96,7 +96,7 @@ export function Footer() {
 
   return (
     // h-20
-    <footer className="fixed bottom-0  w-full px-5 sm:px-10 flex flex-wrap items-center justify-center sm:justify-between p-2 bg-primary-foreground">
+    <footer className="fixed bottom-0 h-1/12 w-full px-5 sm:px-10 z-[50] flex flex-wrap items-center justify-center sm:justify-between p-2 bg-background">
       <Link
         href="/"
         className="hidden sm:visible sm:flex sm:items-center sm:gap-3"
