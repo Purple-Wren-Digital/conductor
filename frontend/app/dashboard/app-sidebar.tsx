@@ -16,13 +16,13 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { cn } from "@/lib/cn";
 import type { Notification } from "@/lib/types";
 import {
-  LayoutDashboard,
+  HomeIcon,
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
-  FileText,
   Building2,
   Building,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -111,13 +111,13 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
+        <SidebarMenu>
+          <SidebarGroup>
             {/* DASHBOARD */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
-                  <LayoutDashboard /> Dashboard
+                  <HomeIcon className="text-muted-foreground" /> Dashboard
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -125,7 +125,7 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard/tickets">
-                  <Ticket /> Tickets
+                  <Ticket className="text-muted-foreground" /> Tickets
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -134,7 +134,8 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/users?tab=users">
-                    <UsersIcon /> User Management
+                    <UsersIcon className="text-muted-foreground" /> User
+                    Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -144,7 +145,8 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/marketCenters">
-                    <Building2 /> Market Center Management
+                    <Building2 className="text-muted-foreground" /> Market
+                    Centers
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -159,28 +161,41 @@ export function AppSidebar({
                   <Link
                     href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
                   >
-                    <Building /> Market Center Management
+                    <Building className="text-muted-foreground" /> Market Center
+                    Team
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
+          </SidebarGroup>
+
+          <SideBarNewNotification
+            newestNotification={newestNotification}
+            setNewestNotification={setNewestNotification}
+            markAsReadMutation={markAsReadMutation}
+          />
+
+          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15">
+            {/* SUPPORT/HELP */}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+                <Link href={`/help`}>
+                  <Info className="text-muted-foreground" /> Support
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
             {/* ACCOUNT */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
                 <Link href={`/dashboard/account`}>
-                  <CircleUserRound /> Manage Account
+                  <CircleUserRound className="text-muted-foreground" /> Manage
+                  Account
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            <SideBarNewNotification
-              newestNotification={newestNotification}
-              setNewestNotification={setNewestNotification}
-              markAsReadMutation={markAsReadMutation}
-            />
-          </SidebarMenu>
-        </SidebarGroup>
+          </SidebarGroup>
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   );
