@@ -8,7 +8,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { UpdatedTicketProps } from "./types";
+import { ActivityUpdates, UpdatedTicketProps } from "./types";
 
 const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
 
@@ -21,6 +21,8 @@ const UpdatedTicket = ({
   editorId,
   changedDetails,
 }: UpdatedTicketProps) => {
+  const changes: ActivityUpdates[] =
+    (changedDetails as ActivityUpdates[]) || [];
   return (
     <Html>
       <Head />
@@ -53,11 +55,11 @@ const UpdatedTicket = ({
 
           <Section>
             <Text style={subheaderText}>
-              Updates ({changedDetails ? changedDetails.length : "0"})
+              Updates ({changes ? changes.length : "0"})
             </Text>
-            {changedDetails &&
-              changedDetails.length &&
-              changedDetails.map((detail, index) => {
+            {changes &&
+              changes.length &&
+              changes.map((detail, index) => {
                 return (
                   <div key={index} style={{ marginLeft: 10 }}>
                     <Text style={labelText}>
