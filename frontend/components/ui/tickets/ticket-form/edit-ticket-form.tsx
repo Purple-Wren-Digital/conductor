@@ -178,8 +178,8 @@ export function EditTicketForm({
                   ticketTitle: ticket?.title ?? "No title provided",
                   createdOn: ticket?.createdAt,
                   updatedOn: ticket?.updatedAt,
-                  editedByName: currentUser?.name ?? "Unknown",
-                  editedById: currentUser?.id ?? "",
+                  editorName: currentUser?.name ?? "Unknown",
+                  editorId: currentUser?.id ?? "",
                   changedDetails: changedDetails,
                 }
               : undefined,
@@ -189,8 +189,8 @@ export function EditTicketForm({
                 ticketTitle: title,
                 createdOn: ticket?.createdAt,
                 updatedOn: ticket?.createdAt,
-                editedByName: currentUser?.name ?? "Unknown",
-                editedById: currentUser?.id ?? "",
+                editorName: currentUser?.name ?? "Unknown",
+                editorId: currentUser?.id ?? "",
                 updateType: userToNotify.updateType,
                 currentAssignment: {
                   id: userToNotify?.id,

@@ -42,20 +42,33 @@ export type NotificationContent = {
 };
 
 type NotificationContext = {
+  assigneeId?: string;
+  assigneeName?: string;
   categoryName?: string;
   categoryDescription?: string;
-
+  changedDetails?: string;
+  comment?: string;
+  commenterId?: string;
+  commenterName?: string;
+  currentAssignment?: string;
+  creatorId?: string;
+  creatorName?: string;
+  createdOn?: string;
+  dueDate?: string;
   editorEmail?: string;
   editorName?: string;
-
+  editorId?: string;
+  isInternal?: string;
   marketCenterId?: string;
   marketCenterName?: string;
-
+  previousAssignment?: string;
+  ticketNumber?: string;
+  ticketTitle?: string;
+  updatedOn?: string;
+  updateType?: string;
   userEmail?: string;
   userName?: string;
   userUpdate?: string;
-
-  // ticketTitle?: string;
   [key: string]: string | undefined; // fallback for any new ones
 };
 
@@ -328,8 +341,8 @@ export const formatNotificationContent = async (
       updatedOn: content.data.ticketAssignment?.updatedOn
         ? new Date(content.data.ticketAssignment?.updatedOn).toISOString()
         : undefined,
-      editedByName: content.data.ticketAssignment?.editedByName,
-      editedById: content.data.ticketAssignment?.editedById,
+      editorName: content.data.ticketAssignment?.editorName,
+      editorId: content.data.ticketAssignment?.editorId,
       updateType: content.data.ticketAssignment?.updateType,
       currentAssignment: content.data.ticketAssignment?.currentAssignment
         ? content.data.ticketAssignment?.currentAssignment?.name
@@ -355,7 +368,7 @@ export const formatNotificationContent = async (
       priority: "HIGH",
       data: {
         ticketId: content.data.ticketAssignment?.ticketNumber,
-        userId: content.data.ticketAssignment?.editedById,
+        userId: content.data.ticketAssignment?.editorId,
         ticketAssignment: content.data.ticketAssignment,
       },
     });
@@ -392,8 +405,8 @@ export const formatNotificationContent = async (
       updatedOn: content.data.updatedTicket?.updatedOn
         ? new Date(content.data.updatedTicket?.updatedOn).toISOString()
         : undefined,
-      editedByName: content.data.updatedTicket?.editedByName,
-      editedById: content.data.updatedTicket?.editedById,
+      editorName: content.data.updatedTicket?.editorName,
+      editorId: content.data.updatedTicket?.editorId,
       changedDetails: arrayToCommaSeparatedListWithConjunction("and", updates),
     };
     const subject = renderTemplate({
@@ -436,9 +449,6 @@ export const formatNotificationContent = async (
         : undefined,
       comment: content.data.newComment?.comment,
       isInternal: content.data.newComment?.isInternal ? "Internal" : "External",
-      assignee: content.data.newComment?.assignee
-        ? content.data.newComment?.assignee?.name
-        : undefined,
     };
     const subject = renderTemplate({
       templateContent: newCommentTemplate.subject,

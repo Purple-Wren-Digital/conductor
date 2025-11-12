@@ -17,8 +17,8 @@ const UpdatedTicket = ({
   ticketTitle,
   createdOn,
   updatedOn,
-  editedByName,
-  editedById,
+  editorName,
+  editorId,
   changedDetails,
 }: UpdatedTicketProps) => {
   return (
@@ -46,8 +46,8 @@ const UpdatedTicket = ({
           <Section>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Edited by: {editedByName ?? "N/A"}
-              {editedById && ` (#${editedById.slice(0, 8)})`}
+              Edited by: {editorName ?? "N/A"}
+              {editorId && ` (#${editorId.slice(0, 8)})`}
             </Text>
           </Section>
 

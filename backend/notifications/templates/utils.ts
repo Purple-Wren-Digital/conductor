@@ -1,12 +1,9 @@
 import {
-  AccountInformationProps,
-  AppPermissionsReviewProps,
   AssignedTicketNotificationProps,
   CategoryAssignmentProps,
   CreatedTicketNotificationProps,
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
-  NewUserInvitationProps,
   UpdatedTicketProps,
 } from "@/emails/types";
 import type { NotificationCategory, NotificationChannel } from "../types";
@@ -18,7 +15,6 @@ type VariablePlaceholders<T> = {
 };
 
 export const NotificationTemplateVariables = {
-  // 🏢 MARKET CENTERS
   MarketCenterAssignmentProps: {
     userUpdate: "{{userUpdate}}",
     marketCenterName: "{{marketCenterName}}",
@@ -37,8 +33,6 @@ export const NotificationTemplateVariables = {
     editorName: "{{editorName}}",
     editorEmail: "{{editorEmail}}",
   } satisfies VariablePlaceholders<CategoryAssignmentProps>,
-
-  // 🎫 TICKETS
   CreatedTicketNotificationProps: {
     ticketNumber: "{{ticketNumber}}",
     ticketTitle: "{{ticketTitle}}",
@@ -54,8 +48,8 @@ export const NotificationTemplateVariables = {
     ticketTitle: "{{ticketTitle}}",
     createdOn: "{{createdOn}}",
     updatedOn: "{{updatedOn}}",
-    editedByName: "{{editedByName}}",
-    editedById: "{{editedById}}",
+    editorName: "{{editorName}}",
+    editorId: "{{editorId}}",
     updateType: "{{updateType}}",
     currentAssignment: "{{currentAssignment}}", // rendered as list
     previousAssignment: "{{previousAssignment}}", // rendered as list
@@ -65,11 +59,10 @@ export const NotificationTemplateVariables = {
     ticketTitle: "{{ticketTitle}}",
     createdOn: "{{createdOn}}",
     updatedOn: "{{updatedOn}}",
-    editedByName: "{{editedByName}}",
-    editedById: "{{editedById}}",
+    editorName: "{{editorName}}",
+    editorId: "{{editorId}}",
     changedDetails: "{{changedDetails}}", // rendered as list
   } satisfies VariablePlaceholders<UpdatedTicketProps>,
-  // 💬 COMMENTS
   NewCommentNotificationProps: {
     ticketNumber: "{{ticketNumber}}",
     ticketTitle: "{{ticketTitle}}",
@@ -78,26 +71,7 @@ export const NotificationTemplateVariables = {
     commenterId: "{{commenterId}}",
     comment: "{{comment}}",
     isInternal: "{{isInternal}}",
-    assignee: "{{assignee}}",
   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
-  // 👤 USERS
-  //   AppPermissionsReviewProps: {
-  //     email: "{{email}}",
-  //     name: "{{name}}",
-  //   } satisfies VariablePlaceholders<AppPermissionsReviewProps>,
-  // AccountInformationProps: {
-  //   changedByName: "{{changedByName}}",
-  //   changedByEmail: "{{changedByEmail}}",
-  //   updates: "{{updates}}", // rendered as list
-  // } satisfies VariablePlaceholders<AccountInformationProps>,
-  // NewUserInvitationProps: {
-  //   newUserName: "{{newUserName}}",
-  //   newUserEmail: "{{newUserEmail}}",
-  //   newUserRole: "{{newUserRole}}",
-  //   newUserMarketCenter: "{{newUserMarketCenter}}",
-  //   inviterName: "{{inviterName}}",
-  //   inviterEmail: "{{inviterEmail}}",
-  // } satisfies VariablePlaceholders<NewUserInvitationProps>,
 } as const;
 
 export const notificationTemplatesDefault = [

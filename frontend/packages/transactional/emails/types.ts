@@ -76,8 +76,8 @@ export type UpdatedTicketProps = {
   ticketTitle: string;
   createdOn: Date | string;
   updatedOn: Date | string;
-  editedByName: string;
-  editedById: string;
+  editorName: string;
+  editorId: string;
   changedDetails: ActivityUpdates[] | string;
 };
 
@@ -86,8 +86,8 @@ export type AssignedTicketNotificationProps = {
   ticketTitle: string;
   createdOn: Date | string;
   updatedOn: Date | string;
-  editedByName: string;
-  editedById: string;
+  editorName: string;
+  editorId: string;
   updateType: AssignmentUpdateType;
   currentAssignment: { name: string; id: string } | null;
   previousAssignment: { name: string; id: string } | null;
@@ -103,5 +103,4 @@ export type NewCommentNotificationProps = {
   commenterId: string;
   comment: string;
   isInternal: boolean;
-  assignee: { name: string; id: string } | null;
 };

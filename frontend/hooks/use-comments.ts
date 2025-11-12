@@ -219,7 +219,6 @@ export function useCreateComment() {
                   ticketTitle: ticketTitle || "Untitled Ticket",
                   createdOn: newComment.createdAt,
                   isInternal: newComment.internal,
-                  assignee: null,
                   commenterId: newComment.userId,
                   commenterName: newComment.user?.name || "",
                   comment: newComment.content,

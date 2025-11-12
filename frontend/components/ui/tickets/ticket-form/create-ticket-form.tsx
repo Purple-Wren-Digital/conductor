@@ -176,8 +176,8 @@ export function CreateTicketForm({
                 ticketTitle: title,
                 createdOn: ticket?.createdAt,
                 updatedOn: ticket?.createdAt,
-                editedByName: creator?.name ?? "Unknown",
-                editedById: creator?.id,
+                editorName: creator?.name ?? "Unknown",
+                editorId: creator?.id,
                 updateType: userToNotify.updateType,
                 currentAssignment: {
                   id: userToNotify?.id,
