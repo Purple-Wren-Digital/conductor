@@ -117,7 +117,6 @@ export default function EditMarketCenter({
         receivingUser: receivingUser,
         data: data,
       });
-      console.log("MarketCenterManagement - Notification - Response", response);
     } catch (error) {
       console.error(
         "MarketCenterManagement - Unable to generate notifications",

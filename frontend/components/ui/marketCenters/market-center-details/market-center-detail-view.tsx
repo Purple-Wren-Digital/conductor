@@ -141,7 +141,6 @@ export default function MarketCenterDetailView({
           receivingUser: receivingUser,
           data: data,
         });
-        console.log("MarketCenterDetail - Notification - Response", response);
       } catch (error) {
         console.error(
           "MarketCenterDetailPage - Unable to generate notifications",

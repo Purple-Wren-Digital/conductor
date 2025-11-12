@@ -203,7 +203,6 @@ export default function TicketListStaff({
   );
 
   const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
-  console.log("STAFF TICKETS DASHBOARD:", ticketsData);
 
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = calculateTotalPages({

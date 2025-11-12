@@ -160,7 +160,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     userToNotify: UsersToNotify;
     changedDetails: ActivityUpdates[] | null;
   }) => {
-    console.log("SENDING NOTIFICATIONS....");
     const title = ticket?.title ?? "";
     const notifySomeone = userToNotify.updateType === "unchanged";
     const notifyAssigneeChanges =
@@ -248,8 +247,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
-        console.log("Notifying users....", data?.usersToNotify);
-
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({

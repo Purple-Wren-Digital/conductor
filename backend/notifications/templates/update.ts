@@ -59,7 +59,6 @@ export const updateNotificationTemplate = api<
         isDefault: false,
       },
     });
-    console.log("Updated Template:", updatedTemplate);
 
     return { success: true };
   }

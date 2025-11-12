@@ -73,7 +73,6 @@ function renderTemplate({
 }
 
 const fetchTemplate = async (templateName: string, getToken?: GetToken) => {
-  console.log("Fetching template:", templateName);
   if (!getToken) {
     console.error("No auth token provided for fetching template");
     return null;
@@ -93,7 +92,6 @@ const fetchTemplate = async (templateName: string, getToken?: GetToken) => {
         },
       }
     );
-    console.log("Fetch template response:", response);
     if (!response.ok) {
       throw new Error(
         response?.statusText
@@ -102,7 +100,6 @@ const fetchTemplate = async (templateName: string, getToken?: GetToken) => {
       );
     }
     const data = await response.json();
-    console.log("Fetched notification template data:", data);
     if (!data || !data?.notificationTemplate) {
       throw new Error("No parsed template data");
     }

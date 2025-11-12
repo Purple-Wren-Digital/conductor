@@ -11,6 +11,7 @@ export interface TextAreaVariablesProps {
   isEditing: boolean;
   value: string;
   onChange: (value: string) => void;
+  disabled: boolean;
 }
 
 const NotificationEditor = ({
@@ -20,6 +21,7 @@ const NotificationEditor = ({
   isEditing,
   value,
   onChange,
+  disabled,
 }: TextAreaVariablesProps) => {
   function insertVariable(varName: string) {
     const textarea = document.getElementById(id) as HTMLTextAreaElement | null;
@@ -53,7 +55,7 @@ const NotificationEditor = ({
         className={`w-full p-2 border rounded bg-transparent overflow-y-auto disabled:text-black disabled:opacity-100 ${
           isEditing ? "cursor-text" : "max-h-[20px]"
         }`}
-        disabled={!isEditing}
+        disabled={!isEditing || disabled}
       />
       {isEditing && (
         <div className="flex gap-2 flex-wrap bg-muted p-2 rounded-b-md border-t">
@@ -67,7 +69,7 @@ const NotificationEditor = ({
                   variant={"outline"}
                   size={"sm"}
                   onClick={() => insertVariable(variable)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || disabled}
                 >
                   {variable}
                 </Button>
