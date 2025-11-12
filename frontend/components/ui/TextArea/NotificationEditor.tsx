@@ -62,7 +62,11 @@ const NotificationEditor = ({
           {templateVariables &&
             templateVariables.length > 0 &&
             templateVariables.map((variable, index) => {
-              if (variable === "{{updateType}}") return null;
+              if (
+                variable === "{{updateType}}" ||
+                variable === "{{userUpdate}}"
+              )
+                return null;
               return (
                 <Button
                   key={`${index}-${variable}`}

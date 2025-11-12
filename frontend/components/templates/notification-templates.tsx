@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/api/utils";
 import type {
@@ -13,7 +14,6 @@ import { Edit, Save, X } from "lucide-react";
 import NotificationEditor from "@/components/ui/TextArea/NotificationEditor";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader } from "../ui/card";
 
 export default function NotificationTemplates({
   notificationTemplates,
