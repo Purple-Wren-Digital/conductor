@@ -143,12 +143,9 @@ export function CreateTicketForm({
     const notifyCreator = userToNotify.updateType === "created";
     const notifyAssignee = userToNotify.updateType === "added";
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
         trigger: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
         receivingUser: {
           id: userToNotify?.id,

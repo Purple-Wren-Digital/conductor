@@ -157,7 +157,10 @@ export function EditTicketForm({
         throw new Error("Failed to get authentication token");
       }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName: notifyAssigneeChanges
+          ? "Ticket Assignment"
+          : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,

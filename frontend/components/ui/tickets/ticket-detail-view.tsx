@@ -168,12 +168,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       userToNotify.updateType === "removed";
 
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName: notifyAssigneeChanges
+          ? "Ticket Assignment"
+          : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,

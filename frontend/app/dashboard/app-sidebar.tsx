@@ -20,9 +20,9 @@ import {
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
-  FileText,
   Building2,
   Building,
+  Folder,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -160,6 +160,16 @@ export function AppSidebar({
                     href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
                   >
                     <Building /> Market Center Management
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {permissions?.canManageAllUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/notification-templates">
+                    <Folder /> Notification Templates
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

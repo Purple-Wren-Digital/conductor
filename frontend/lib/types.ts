@@ -463,7 +463,6 @@ export interface UsersToNotify {
 }
 
 export interface CreateNotificationPayload {
-  authToken?: string;
   userId: string;
   templateName?: string;
   category: NotificationCategory;
@@ -475,6 +474,11 @@ export interface CreateNotificationPayload {
 }
 
 export type MarketCenterNotificationCallback = {
+  templateName:
+    | "Market Center User Removed"
+    | "Market Center User Added"
+    | "Category Assignment - Added"
+    | "Category Assignment - Removed";
   trigger: "Market Center Assignment" | "Category Assignment";
   receivingUser: {
     id: string;
