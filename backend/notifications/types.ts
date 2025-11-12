@@ -94,3 +94,22 @@ export interface UsersToNotify {
   email: string;
   updateType: AssignmentUpdateType;
 }
+
+export interface NotificationTemplate {
+  id: string;
+  templateName: string;
+  templateDescription: string;
+  category: NotificationCategory;
+  channel: NotificationChannel;
+  type: string;
+  subject: string;
+  body: string;
+  isDefault: boolean;
+  createdAt: Date;
+  variables: any;
+}
+
+export interface NotificationTemplateFormData {
+  subject: string;
+  body: string;
+}
