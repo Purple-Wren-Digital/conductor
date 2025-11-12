@@ -5,7 +5,10 @@ import {
   NotificationTemplate,
 } from "@/lib/types";
 import { arrayToCommaSeparatedListWithConjunction } from "../utils";
-import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
+import {
+  ActivityUpdates,
+  NewUserInvitationProps,
+} from "@/packages/transactional/emails/types";
 
 type GetTokenOptions = {
   template?: string | undefined;
@@ -164,66 +167,10 @@ export const formatNotificationContent = async (
       userId: content?.receivingUser?.id,
       category: "ACCOUNT",
       type: content.trigger,
-      title: "Account Details Updated",
+      title: "Account Information Updated",
       body: `${content.data.accountInformation?.changedByName} updated your following information: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
       priority: "HIGH",
       data: { accountInformation: content.data.accountInformation },
-    });
-  }
-
-  if (
-    content.trigger === "Ticket Assignment" &&
-    content?.data?.ticketAssignment
-  ) {
-    return (formattedNotification = {
-      userId: content?.receivingUser?.id,
-      category: "ACTIVITY",
-      type: content.trigger,
-      title: content.trigger,
-      body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
-      priority: "HIGH",
-      data: {
-        ticketId: content.data.ticketAssignment?.ticketNumber,
-        userId: content.data.ticketAssignment?.editedById,
-        ticketAssignment: content.data.ticketAssignment,
-      },
-    });
-  }
-  if (
-    content.trigger === "Ticket Updated" &&
-    content?.data?.updatedTicket &&
-    content?.data?.updatedTicket?.changedDetails
-  ) {
-    const updates = content.data.updatedTicket.changedDetails.map((update) => {
-      return update.label;
-    });
-    return (formattedNotification = {
-      userId: content?.receivingUser?.id,
-      category: "ACTIVITY",
-      type: content.trigger,
-      title: content.trigger,
-      body: `The following for "${content.data.updatedTicket?.ticketTitle}" was updated: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
-      priority: "MEDIUM",
-      data: { updatedTicket: content.data.updatedTicket },
-    });
-  }
-
-  if (
-    content.trigger === "Ticket Assignment" &&
-    content?.data?.ticketAssignment
-  ) {
-    return (formattedNotification = {
-      userId: content?.receivingUser?.id,
-      category: "ACTIVITY",
-      type: content.trigger,
-      title: content.trigger,
-      body: `"${content.data.ticketAssignment?.ticketTitle}" is ${content?.data?.ticketAssignment?.updateType === "added" ? "now" : "no longer"} in your queue`,
-      priority: "HIGH",
-      data: {
-        ticketId: content.data.ticketAssignment?.ticketNumber,
-        userId: content.data.ticketAssignment?.editedById,
-        ticketAssignment: content.data.ticketAssignment,
-      },
     });
   }
 
@@ -315,11 +262,11 @@ export const formatNotificationContent = async (
   }
 
   if (content.trigger === "Ticket Created" && content?.data?.createdTicket) {
-    const ticketTemplate = await fetchTemplate(
+    const ticketCreatedTemplate = await fetchTemplate(
       content.templateName,
       content.getToken
     );
-    if (!ticketTemplate) {
+    if (!ticketCreatedTemplate) {
       console.error(
         "Unable to format Ticket Created notification - Missing template"
       );
@@ -339,11 +286,11 @@ export const formatNotificationContent = async (
         : undefined,
     };
     const subject = renderTemplate({
-      templateContent: ticketTemplate.subject,
+      templateContent: ticketCreatedTemplate.subject,
       context: context,
     });
     const body = renderTemplate({
-      templateContent: ticketTemplate.body,
+      templateContent: ticketCreatedTemplate.body,
       context: context,
     });
     const assigneeId = content.data.createdTicket?.assigneeId;
@@ -358,6 +305,114 @@ export const formatNotificationContent = async (
         ticketId: content.data.createdTicket?.ticketNumber,
         createdTicket: content.data.createdTicket,
       },
+    });
+  }
+
+  if (
+    content.trigger === "Ticket Assignment" &&
+    content?.data?.ticketAssignment
+  ) {
+    const ticketAssignmentTemplate = await fetchTemplate(
+      content.templateName,
+      content.getToken
+    );
+    if (!ticketAssignmentTemplate) {
+      console.error(
+        "Unable to format Ticket Assignment notification - Missing template"
+      );
+      return formattedNotification;
+    }
+    const context: NotificationContext = {
+      ticketTitle: content.data.ticketAssignment?.ticketTitle,
+      ticketNumber: content.data.ticketAssignment?.ticketNumber,
+      createdOn: content.data.ticketAssignment?.createdOn
+        ? new Date(content.data.ticketAssignment?.createdOn).toISOString()
+        : undefined,
+      updatedOn: content.data.ticketAssignment?.updatedOn
+        ? new Date(content.data.ticketAssignment?.updatedOn).toISOString()
+        : undefined,
+      editedByName: content.data.ticketAssignment?.editedByName,
+      editedById: content.data.ticketAssignment?.editedById,
+      updateType: content.data.ticketAssignment?.updateType,
+      currentAssignment: content.data.ticketAssignment?.currentAssignment
+        ? content.data.ticketAssignment?.currentAssignment?.name
+        : undefined,
+      previousAssignment: content.data.ticketAssignment?.previousAssignment
+        ? content.data.ticketAssignment?.previousAssignment?.name
+        : undefined,
+    };
+    const subject = renderTemplate({
+      templateContent: ticketAssignmentTemplate.subject,
+      context: context,
+    });
+    const body = renderTemplate({
+      templateContent: ticketAssignmentTemplate.body,
+      context: context,
+    });
+    return (formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: subject,
+      body: body,
+      priority: "HIGH",
+      data: {
+        ticketId: content.data.ticketAssignment?.ticketNumber,
+        userId: content.data.ticketAssignment?.editedById,
+        ticketAssignment: content.data.ticketAssignment,
+      },
+    });
+  }
+
+  if (
+    content.trigger === "Ticket Updated" &&
+    content?.data?.updatedTicket &&
+    content?.data?.updatedTicket?.changedDetails
+  ) {
+    const template = await fetchTemplate(
+      content.templateName,
+      content.getToken
+    );
+    if (!template) {
+      console.error("Unable to format notification - Missing template");
+      return formattedNotification;
+    }
+    const updates: string[] = [];
+    const rawUpdates = content.data.updatedTicket
+      .changedDetails as ActivityUpdates[];
+    rawUpdates.forEach((update: ActivityUpdates) => {
+      updates.push(update.label);
+    });
+
+    const context: NotificationContext = {
+      ticketNumber: content.data.updatedTicket?.ticketNumber,
+      ticketTitle: content.data.updatedTicket?.ticketTitle,
+      createdOn: content.data.updatedTicket?.createdOn
+        ? new Date(content.data.updatedTicket?.createdOn).toISOString()
+        : undefined,
+      updatedOn: content.data.updatedTicket?.updatedOn
+        ? new Date(content.data.updatedTicket?.updatedOn).toISOString()
+        : undefined,
+      editedByName: content.data.updatedTicket?.editedByName,
+      editedById: content.data.updatedTicket?.editedById,
+      changedDetails: arrayToCommaSeparatedListWithConjunction("and", updates),
+    };
+    const subject = renderTemplate({
+      templateContent: template.subject,
+      context: context,
+    });
+    const body = renderTemplate({
+      templateContent: template.body,
+      context: context,
+    });
+    return (formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: subject,
+      body: body,
+      priority: "MEDIUM",
+      data: { updatedTicket: content.data.updatedTicket },
     });
   }
 
@@ -376,7 +431,6 @@ export async function createAndSendNotification(
     throw new Error("Payload not formatted correctly");
   try {
     const token = await content.getToken();
-    console.log("Creating notification with token:", token);
     if (!token) {
       throw new Error("Failed to get authentication token");
     }

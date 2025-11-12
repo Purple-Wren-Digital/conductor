@@ -23,7 +23,6 @@ const NotificationEditor = ({
 }: TextAreaVariablesProps) => {
   function insertVariable(varName: string) {
     const textarea = document.getElementById(id) as HTMLTextAreaElement | null;
-    console.log("Inserting variable:", varName, "into textarea:", textarea);
     if (!textarea) return;
 
     const start = textarea.selectionStart;
@@ -61,6 +60,7 @@ const NotificationEditor = ({
           {templateVariables &&
             templateVariables.length > 0 &&
             templateVariables.map((variable, index) => {
+              if (variable === "{{updateType}}") return null;
               return (
                 <Button
                   key={`${index}-${variable}`}

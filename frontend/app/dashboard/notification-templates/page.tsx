@@ -46,7 +46,6 @@ export default function NotificationTemplatesPage() {
       }
       const data = await response.json();
       if (data?.templates) {
-        console.log("Fetched templates:", data.templates);
         setNotificationTemplates(data.templates);
       }
     } catch (error) {
@@ -76,12 +75,12 @@ export default function NotificationTemplatesPage() {
         }
       );
       console.log("Reset response:", response);
-      // if (response.ok) {
-      //   // Refresh the list of templates after resetting
-      //   await fetchAllNotificationTemplates();
-      // } else {
-      //   console.error("Failed to reset notification templates");
-      // }
+      if (response.ok) {
+        // Refresh the list of templates after resetting
+        await fetchAllNotificationTemplates();
+      } else {
+        console.error("Failed to reset notification templates");
+      }
     } catch (error) {
       console.error("Error resetting notification templates:", error);
     }

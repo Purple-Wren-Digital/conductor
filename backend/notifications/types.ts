@@ -7,7 +7,6 @@ import {
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
-  QuickEditTicketNotificationProps,
   AssignedTicketNotificationProps,
   AssignmentUpdateType,
 } from "@/emails/types";
@@ -84,7 +83,6 @@ export interface NotificationData {
   createdTicket?: CreatedTicketNotificationProps;
   updatedTicket?: UpdatedTicketProps;
   ticketAssignment?: AssignedTicketNotificationProps;
-  quickEditTicket?: QuickEditTicketNotificationProps;
   newComment?: NewCommentNotificationProps;
 }
 

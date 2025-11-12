@@ -170,9 +170,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: notifyAssigneeChanges
-          ? "Ticket Assignment"
-          : "Ticket Updated",
+        templateName:
+          notifyAssigneeChanges && userToNotify.updateType === "added"
+            ? "Ticket Assignment - Added"
+            : notifyAssigneeChanges && userToNotify.updateType === "removed"
+              ? "Ticket Assignment - Removed"
+              : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,

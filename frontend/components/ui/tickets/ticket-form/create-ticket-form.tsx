@@ -145,7 +145,9 @@ export function CreateTicketForm({
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
+        templateName: notifyAssignee
+          ? "Ticket Assignment - Added"
+          : "Ticket Created",
         trigger: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
         receivingUser: {
           id: userToNotify?.id,

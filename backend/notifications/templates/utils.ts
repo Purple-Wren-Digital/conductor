@@ -37,25 +37,7 @@ export const NotificationTemplateVariables = {
     editorName: "{{editorName}}",
     editorEmail: "{{editorEmail}}",
   } satisfies VariablePlaceholders<CategoryAssignmentProps>,
-  // 👤 USERS
-  //   AppPermissionsReviewProps: {
-  //     email: "{{email}}",
-  //     name: "{{name}}",
-  //   } satisfies VariablePlaceholders<AppPermissionsReviewProps>,
-  // AccountInformationProps: {
-  //   changedByName: "{{changedByName}}",
-  //   changedByEmail: "{{changedByEmail}}",
-  //   updates: "{{updates}}", // rendered as list
-  // } satisfies VariablePlaceholders<AccountInformationProps>,
 
-  NewUserInvitationProps: {
-    newUserName: "{{newUserName}}",
-    newUserEmail: "{{newUserEmail}}",
-    newUserRole: "{{newUserRole}}",
-    newUserMarketCenter: "{{newUserMarketCenter}}",
-    inviterName: "{{inviterName}}",
-    inviterEmail: "{{inviterEmail}}",
-  } satisfies VariablePlaceholders<NewUserInvitationProps>,
   // 🎫 TICKETS
   CreatedTicketNotificationProps: {
     ticketNumber: "{{ticketNumber}}",
@@ -67,6 +49,55 @@ export const NotificationTemplateVariables = {
     assigneeId: "{{assigneeId}}",
     assigneeName: "{{assigneeName}}",
   } satisfies VariablePlaceholders<CreatedTicketNotificationProps>,
+  AssignedTicketNotificationProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    createdOn: "{{createdOn}}",
+    updatedOn: "{{updatedOn}}",
+    editedByName: "{{editedByName}}",
+    editedById: "{{editedById}}",
+    updateType: "{{updateType}}",
+    currentAssignment: "{{currentAssignment}}", // rendered as list
+    previousAssignment: "{{previousAssignment}}", // rendered as list
+  } satisfies VariablePlaceholders<AssignedTicketNotificationProps>,
+  UpdatedTicketProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    createdOn: "{{createdOn}}",
+    updatedOn: "{{updatedOn}}",
+    editedByName: "{{editedByName}}",
+    editedById: "{{editedById}}",
+    changedDetails: "{{changedDetails}}", // rendered as list
+  } satisfies VariablePlaceholders<UpdatedTicketProps>,
+  // 💬 COMMENTS
+  //   NewCommentNotificationProps: {
+  //     ticketNumber: "{{ticketNumber}}",
+  //     ticketTitle: "{{ticketTitle}}",
+  //     createdOn: "{{createdOn}}",
+  //     commenterName: "{{commenterName}}",
+  //     commenterId: "{{commenterId}}",
+  //     comment: "{{comment}}",
+  //     isInternal: "{{isInternal}}",
+  //     assignee: "{{assignee}}",
+  //   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
+  // 👤 USERS
+  //   AppPermissionsReviewProps: {
+  //     email: "{{email}}",
+  //     name: "{{name}}",
+  //   } satisfies VariablePlaceholders<AppPermissionsReviewProps>,
+  // AccountInformationProps: {
+  //   changedByName: "{{changedByName}}",
+  //   changedByEmail: "{{changedByEmail}}",
+  //   updates: "{{updates}}", // rendered as list
+  // } satisfies VariablePlaceholders<AccountInformationProps>,
+  // NewUserInvitationProps: {
+  //   newUserName: "{{newUserName}}",
+  //   newUserEmail: "{{newUserEmail}}",
+  //   newUserRole: "{{newUserRole}}",
+  //   newUserMarketCenter: "{{newUserMarketCenter}}",
+  //   inviterName: "{{inviterName}}",
+  //   inviterEmail: "{{inviterEmail}}",
+  // } satisfies VariablePlaceholders<NewUserInvitationProps>,
 } as const;
 
 export const notificationTemplatesDefault = [
@@ -125,99 +156,37 @@ export const notificationTemplatesDefault = [
     isDefault: true,
     variables: NotificationTemplateVariables.CreatedTicketNotificationProps,
   },
-  // {
-  //   templateName: "Category Assignment - Added",
-  //   templateDescription: "Sent when a user is added to a Ticket Category",
-  //   category: "ACTIVITY" as NotificationCategory,
-  //   channel: "IN_APP" as NotificationChannel,
-  //   type: "Category Assignment",
-  //   subject: "Category Assignment",
-  //   body: `You will now be automatically assigned to tickets created with {{categoryName}}`,
-  //   isDefault: true,
-  //   variables: NotificationTemplateVariables.CategoryAssignmentProps,
-  // },
-  // {
-  //   templateName: "Category Assignment - Removed",
-  //   templateDescription: "Sent when a user is removed from a Ticket Category",
-  //   category: "ACTIVITY" as NotificationCategory,
-  //   channel: "IN_APP" as NotificationChannel,
-  //   type: "Category Assignment",
-  //   subject: "Category Assignment",
-  //   body: `You will no longer be automatically assigned to tickets created with {{categoryName}}`,
-  //   isDefault: true,
-  //   variables: NotificationTemplateVariables.CategoryAssignmentProps,
-  // },
+  {
+    templateName: "Ticket Assignment - Added",
+    templateDescription: "Sent when a user is assigned to a Ticket",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Assignment",
+    subject: "Ticket Assignment",
+    body: `{{ticketTitle}} is now in your queue`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.AssignedTicketNotificationProps,
+  },
+  {
+    templateName: "Ticket Assignment - Removed",
+    templateDescription: "Sent when a user is removed from a Ticket",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Assignment",
+    subject: "Ticket Assignment",
+    body: `{{ticketTitle}} is no longer in your queue`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.AssignedTicketNotificationProps,
+  },
+  {
+    templateName: "Ticket Updated",
+    templateDescription: "Sent when a user updates a Ticket",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Updated",
+    subject: "Ticket Updated",
+    body: `The following for "{{ticketTitle}}" has been updated: {{changedDetails}}`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.UpdatedTicketProps,
+  },
 ];
-// "{{}}"
-// 🎫 TICKETS
-//   CreatedTicketNotificationProps: {
-//     ticketNumber: "{{ticketNumber}}",
-//     ticketTitle: "{{ticketTitle}}",
-//     creatorName: "{{creatorName}}",
-//     creatorId: "{{creatorId}}",
-//     createdOn: "{{createdOn}}",
-//     dueDate: "{{dueDate}}",
-//     assigneeId: "{{assigneeId}}",
-//     assigneeName: "{{assigneeName}}",
-//   }  satisfies VariablePlaceholders<CreatedTicketNotificationProps>,
-//   UpdatedTicketProps: {
-//     ticketNumber: "{{ticketNumber}}",
-//     ticketTitle: "{{ticketTitle}}",
-//     createdOn: "{{createdOn}}",
-//     updatedOn: "{{updatedOn}}",
-//     editedByName: "{{editedByName}}",
-//     editedById: "{{editedById}}",
-//     changedDetails: "{{changedDetails}}", // rendered as list
-//   }  satisfies VariablePlaceholders<UpdatedTicketProps>,
-
-//   AssignedTicketNotificationProps: {
-//     ticketNumber: "{{ticketNumber}}",
-//     ticketTitle: "{{ticketTitle}}",
-//     createdOn: "{{createdOn}}",
-//     updatedOn: "{{updatedOn}}",
-//     editedByName: "{{editedByName}}",
-//     editedById: "{{editedById}}",
-//     updateType: "{{updateType}}",
-//     currentAssignment: "{{currentAssignment}}", // rendered as list
-//     previousAssignment: "{{previousAssignment}}", // rendered as list
-//         } satisfies VariablePlaceholders<AssignedTicketNotificationProps>,
-//   QuickEditTicketNotificationProps: {
-//     ticketNumber: "{{ticketNumber}}",
-//     ticketTitle: "{{ticketTitle}}",
-//     createdOn: "{{createdOn}}",
-//     updatedOn: "{{updatedOn}}",
-//     editedByName: "{{editedByName}}",
-//     editedById: "{{editedById}}",
-//     field: "{{field}}",
-//     currentData: "{{currentData}}",
-//   },
-
-// 💬 COMMENTS
-//   NewCommentNotificationProps: {
-//     ticketNumber: "{{ticketNumber}}",
-//     ticketTitle: "{{ticketTitle}}",
-//     createdOn: "{{createdOn}}",
-//     commenterName: "{{commenterName}}",
-//     commenterId: "{{commenterId}}",
-//     comment: "{{comment}}",
-//     isInternal: "{{isInternal}}",
-//     assignee: "{{assignee}}",
-//   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
-// 👤 USERS
-//   AppPermissionsReviewProps: {
-//     email: "{{email}}",
-//     name: "{{name}}",
-//   } satisfies VariablePlaceholders<AppPermissionsReviewProps>,
-//   AccountInformationProps: {
-//     changedByName: "{{changedByName}}",
-//     changedByEmail: "{{changedByEmail}}",
-//     updates: "{{updates}}", // rendered as list
-//   } satisfies VariablePlaceholders<AccountInformationProps>,
-//   NewUserInvitationProps: {
-//     newUserName: "{{newUserName}}",
-//     newUserEmail: "{{newUserEmail}}",
-//     newUserRole: "{{newUserRole}}",
-//     newUserMarketCenter: "{{newUserMarketCenter}}",
-//     inviterName: "{{inviterName}}",
-//     inviterEmail: "{{inviterEmail}}",
-//   } satisfies VariablePlaceholders<NewUserInvitationProps>,

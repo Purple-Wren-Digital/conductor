@@ -74,34 +74,23 @@ export type CreatedTicketNotificationProps = {
 export type UpdatedTicketProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
+  createdOn: Date | string;
+  updatedOn: Date | string;
   editedByName: string;
   editedById: string;
-  changedDetails: ActivityUpdates[];
+  changedDetails: ActivityUpdates[] | string;
 };
 
 export type AssignedTicketNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
+  createdOn: Date | string;
+  updatedOn: Date | string;
   editedByName: string;
   editedById: string;
   updateType: AssignmentUpdateType;
   currentAssignment: { name: string; id: string } | null;
   previousAssignment: { name: string; id: string } | null;
-};
-
-export type QuickEditTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedByName: string;
-  editedById: string;
-  field: string; // "urgency" or "status"
-  currentData: string;
 };
 
 // COMMENTS
