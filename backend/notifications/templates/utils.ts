@@ -70,16 +70,16 @@ export const NotificationTemplateVariables = {
     changedDetails: "{{changedDetails}}", // rendered as list
   } satisfies VariablePlaceholders<UpdatedTicketProps>,
   // 💬 COMMENTS
-  //   NewCommentNotificationProps: {
-  //     ticketNumber: "{{ticketNumber}}",
-  //     ticketTitle: "{{ticketTitle}}",
-  //     createdOn: "{{createdOn}}",
-  //     commenterName: "{{commenterName}}",
-  //     commenterId: "{{commenterId}}",
-  //     comment: "{{comment}}",
-  //     isInternal: "{{isInternal}}",
-  //     assignee: "{{assignee}}",
-  //   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
+  NewCommentNotificationProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    createdOn: "{{createdOn}}",
+    commenterName: "{{commenterName}}",
+    commenterId: "{{commenterId}}",
+    comment: "{{comment}}",
+    isInternal: "{{isInternal}}",
+    assignee: "{{assignee}}",
+  } satisfies VariablePlaceholders<NewCommentNotificationProps>,
   // 👤 USERS
   //   AppPermissionsReviewProps: {
   //     email: "{{email}}",
@@ -188,5 +188,16 @@ export const notificationTemplatesDefault = [
     body: `The following for "{{ticketTitle}}" has been updated: {{changedDetails}}`,
     isDefault: true,
     variables: NotificationTemplateVariables.UpdatedTicketProps,
+  },
+  {
+    templateName: "New Comments on Ticket",
+    templateDescription: "Sent when a new comment is added to a Ticket",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "New Comments",
+    subject: "New Comment for {{ticketTitle}}",
+    body: `{{commenterName}} added a new comment to "{{ticketTitle}}": {{comment}}`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.NewCommentNotificationProps,
   },
 ];

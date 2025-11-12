@@ -98,7 +98,7 @@ export type AssignedTicketNotificationProps = {
 export type NewCommentNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
+  createdOn: Date | string;
   commenterName: string;
   commenterId: string;
   comment: string;

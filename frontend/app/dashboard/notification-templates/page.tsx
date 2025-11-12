@@ -26,7 +26,6 @@ export default function NotificationTemplatesPage() {
   const { getToken } = useAuth();
 
   const fetchAllNotificationTemplates = useCallback(async () => {
-    console.log("TODO: Fetch all notification templates");
     try {
       const token = await getToken();
       if (!token) {
@@ -40,7 +39,6 @@ export default function NotificationTemplatesPage() {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log("Fetch response:", response);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
@@ -74,9 +72,7 @@ export default function NotificationTemplatesPage() {
           },
         }
       );
-      console.log("Reset response:", response);
       if (response.ok) {
-        // Refresh the list of templates after resetting
         await fetchAllNotificationTemplates();
       } else {
         console.error("Failed to reset notification templates");

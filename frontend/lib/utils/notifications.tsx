@@ -374,7 +374,9 @@ export const formatNotificationContent = async (
       content.getToken
     );
     if (!template) {
-      console.error("Unable to format notification - Missing template");
+      console.error(
+        "Unable to format Ticket Updated notification - Missing template"
+      );
       return formattedNotification;
     }
     const updates: string[] = [];
@@ -413,6 +415,54 @@ export const formatNotificationContent = async (
       body: body,
       priority: "MEDIUM",
       data: { updatedTicket: content.data.updatedTicket },
+    });
+  }
+  if (content.trigger === "New Comments" && content?.data?.newComment) {
+    const newCommentTemplate = await fetchTemplate(
+      content.templateName,
+      content.getToken
+    );
+    if (!newCommentTemplate) {
+      console.error(
+        "Unable to format New Comments notification - Missing template"
+      );
+      return formattedNotification;
+    }
+
+    const context: NotificationContext = {
+      ticketNumber: content.data.newComment?.ticketNumber,
+      ticketTitle: content.data.newComment?.ticketTitle,
+      creatorName: content.data.newComment?.commenterName,
+      creatorId: content.data.newComment?.commenterId,
+      createdOn: content.data.newComment?.createdOn
+        ? new Date(content.data.newComment?.createdOn).toISOString()
+        : undefined,
+      comment: content.data.newComment?.comment,
+      isInternal: content.data.newComment?.isInternal ? "Internal" : "External",
+      assignee: content.data.newComment?.assignee
+        ? content.data.newComment?.assignee?.name
+        : undefined,
+    };
+    const subject = renderTemplate({
+      templateContent: newCommentTemplate.subject,
+      context: context,
+    });
+    const body = renderTemplate({
+      templateContent: newCommentTemplate.body,
+      context: context,
+    });
+    const assigneeId = content.data.createdTicket?.assigneeId;
+    return (formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: subject,
+      body: body,
+      priority: assigneeId ? "HIGH" : "MEDIUM",
+      data: {
+        ticketId: content.data.createdTicket?.ticketNumber,
+        createdTicket: content.data.createdTicket,
+      },
     });
   }
 

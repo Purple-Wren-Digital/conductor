@@ -2,12 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createCommentApi } from "@/lib/api/comment-client";
-import { Comment } from "@/lib/types";
+import type { Comment, UsersToNotify } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 import { ticketDetailQueryKeyParams } from "@/components/ui/tickets/ticket-detail-view";
 import { useAuth, useUser } from "@clerk/nextjs";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 interface CreateCommentParams {
   userId: string;
@@ -31,7 +32,7 @@ interface DeleteCommentParams {
 // ------------------- useComments -------------------
 
 export function useComments(ticketId: string) {
-  const { user: clerkUser, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
@@ -134,7 +135,7 @@ export function useCreateComment() {
         content,
         internal: internal || false,
       });
-      return response.comment;
+      return response;
     },
     onMutate: async ({ userId, ticketId, content, internal }) => {
       // Cancel outgoing refetch to avoid overwriting optimistic update
@@ -181,7 +182,10 @@ export function useCreateComment() {
       }
       toast.error(error.message || "Failed to add comment");
     },
-    onSuccess: (newComment, { ticketId }, context) => {
+    onSuccess: async (response, { ticketId }, context) => {
+      const newComment = response.comment;
+      const usersToNotify: UsersToNotify[] = response.usersToNotify ?? [];
+      const ticketTitle: string | undefined = response?.ticketTitle;
       queryClient.setQueryData<Comment[]>(["comments", ticketId], (old) => {
         if (!old) return [newComment];
         return old.map((comment) =>
@@ -196,6 +200,35 @@ export function useCreateComment() {
       });
 
       toast.success("Comment added successfully");
+      if (usersToNotify && usersToNotify.length > 0) {
+        await Promise.all(
+          usersToNotify.map(async (user: UsersToNotify) => {
+            await createAndSendNotification({
+              getToken: getToken,
+              trigger: "New Comments",
+              templateName: "New Comments on Ticket",
+              receivingUser: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+              },
+              data: {
+                ticketId: newComment.ticketId,
+                newComment: {
+                  ticketNumber: newComment.ticketId,
+                  ticketTitle: ticketTitle || "Untitled Ticket",
+                  createdOn: newComment.createdAt,
+                  isInternal: newComment.internal,
+                  assignee: null,
+                  commenterId: newComment.userId,
+                  commenterName: newComment.user?.name || "",
+                  comment: newComment.content,
+                },
+              },
+            });
+          })
+        );
+      }
     },
     onSettled: async (data, error, { ticketId }) => {
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });
