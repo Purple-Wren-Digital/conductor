@@ -11,7 +11,6 @@ import {
 } from "@/emails/types";
 import type { NotificationCategory, NotificationChannel } from "../types";
 
-
 type VariablePlaceholders<T> = {
   [K in keyof T]: T[K] extends object
     ? VariablePlaceholders<T[K]> // recursive for nested structures
@@ -38,6 +37,36 @@ export const NotificationTemplateVariables = {
     editorName: "{{editorName}}",
     editorEmail: "{{editorEmail}}",
   } satisfies VariablePlaceholders<CategoryAssignmentProps>,
+  // 👤 USERS
+  //   AppPermissionsReviewProps: {
+  //     email: "{{email}}",
+  //     name: "{{name}}",
+  //   } satisfies VariablePlaceholders<AppPermissionsReviewProps>,
+  // AccountInformationProps: {
+  //   changedByName: "{{changedByName}}",
+  //   changedByEmail: "{{changedByEmail}}",
+  //   updates: "{{updates}}", // rendered as list
+  // } satisfies VariablePlaceholders<AccountInformationProps>,
+
+  NewUserInvitationProps: {
+    newUserName: "{{newUserName}}",
+    newUserEmail: "{{newUserEmail}}",
+    newUserRole: "{{newUserRole}}",
+    newUserMarketCenter: "{{newUserMarketCenter}}",
+    inviterName: "{{inviterName}}",
+    inviterEmail: "{{inviterEmail}}",
+  } satisfies VariablePlaceholders<NewUserInvitationProps>,
+  // 🎫 TICKETS
+  CreatedTicketNotificationProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    creatorName: "{{creatorName}}",
+    creatorId: "{{creatorId}}",
+    createdOn: "{{createdOn}}",
+    dueDate: "{{dueDate}}",
+    assigneeId: "{{assigneeId}}",
+    assigneeName: "{{assigneeName}}",
+  } satisfies VariablePlaceholders<CreatedTicketNotificationProps>,
 } as const;
 
 export const notificationTemplatesDefault = [
@@ -63,6 +92,61 @@ export const notificationTemplatesDefault = [
     isDefault: true,
     variables: NotificationTemplateVariables.MarketCenterAssignmentProps,
   },
+  {
+    templateName: "Category Assignment - Added",
+    templateDescription: "Sent when a user is added to a Ticket Category",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Category Assignment",
+    subject: "Category Assignment",
+    body: `You will now be automatically assigned to tickets created with {{categoryName}}`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.CategoryAssignmentProps,
+  },
+  {
+    templateName: "Category Assignment - Removed",
+    templateDescription: "Sent when a user is removed from a Ticket Category",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Category Assignment",
+    subject: "Category Assignment",
+    body: `You will no longer be automatically assigned to tickets created with {{categoryName}}`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.CategoryAssignmentProps,
+  },
+  {
+    templateName: "Ticket Created",
+    templateDescription: "Sent when a user creates a Ticket",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Created",
+    subject: "Ticket Created",
+    body: `{{ticketTitle}} was created}`,
+    isDefault: true,
+    variables: NotificationTemplateVariables.CreatedTicketNotificationProps,
+  },
+  // {
+  //   templateName: "Category Assignment - Added",
+  //   templateDescription: "Sent when a user is added to a Ticket Category",
+  //   category: "ACTIVITY" as NotificationCategory,
+  //   channel: "IN_APP" as NotificationChannel,
+  //   type: "Category Assignment",
+  //   subject: "Category Assignment",
+  //   body: `You will now be automatically assigned to tickets created with {{categoryName}}`,
+  //   isDefault: true,
+  //   variables: NotificationTemplateVariables.CategoryAssignmentProps,
+  // },
+  // {
+  //   templateName: "Category Assignment - Removed",
+  //   templateDescription: "Sent when a user is removed from a Ticket Category",
+  //   category: "ACTIVITY" as NotificationCategory,
+  //   channel: "IN_APP" as NotificationChannel,
+  //   type: "Category Assignment",
+  //   subject: "Category Assignment",
+  //   body: `You will no longer be automatically assigned to tickets created with {{categoryName}}`,
+  //   isDefault: true,
+  //   variables: NotificationTemplateVariables.CategoryAssignmentProps,
+  // },
 ];
 // "{{}}"
 // 🎫 TICKETS

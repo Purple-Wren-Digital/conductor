@@ -52,7 +52,7 @@ export const defaultNotificationPreferences = [
     category: NotificationCategory.ACCOUNT,
     type: "General",
     email: true,
-    inApp: true,
+    inApp: false,
     push: false,
     sms: false,
   },
