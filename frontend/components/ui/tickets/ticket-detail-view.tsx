@@ -217,7 +217,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   };
 
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
-    if (!ticket) return;
+    if (!ticket) throw new Error("No ticket loaded");
+    if (ticket && ticket.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
 
     const prev = ticket;
     setTicket({ ...ticket, [field]: value });
@@ -266,7 +270,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   const handleAssigneeChange = async (newAssigneeId: string) => {
     if (!ticket) return;
-
+    if (ticket && ticket.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
     const prev = ticket;
     const nextAssignee =
       newAssigneeId === "unassigned"
@@ -324,17 +331,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       await refreshAllData();
       await invalidateTicketHistory;
-    }
-  };
-
-  const getStatusIcon = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return <CheckCircle className="h-4 w-4" />;
-      case "IN_PROGRESS":
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <AlertTriangle className="h-4 w-4" />;
     }
   };
 
@@ -407,18 +403,20 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <History className="h-4 w-4" /> View History
             </Button>
           </div>
-          {(permissions?.canReassignTicket ||
-            (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
-            <div className="ml-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowEditForm(true)}
-                className="gap-2"
-              >
-                <Edit className="h-4 w-4" /> Edit Ticket
-              </Button>
-            </div>
-          )}
+          {ticket.status !== "RESOLVED" ||
+            permissions?.canReassignTicket ||
+            (role === "AGENT" && ticket.assigneeId === currentUser?.id && (
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditForm(true)}
+                  className="gap-2"
+                  disabled={ticket.status === "RESOLVED"}
+                >
+                  <Edit className="h-4 w-4" /> Edit Ticket
+                </Button>
+              </div>
+            ))}
         </div>
       </div>
 

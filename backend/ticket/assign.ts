@@ -68,6 +68,12 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    if (oldTicket && oldTicket.status === "RESOLVED") {
+      throw APIError.invalidArgument(
+        "Resolved tickets cannot be modified further"
+      );
+    }
+
     const assignTicket =
       newAssignee && newAssignee?.id !== oldTicket?.assigneeId;
     const newAssigneeName = newAssignee?.name ?? "No name listed";

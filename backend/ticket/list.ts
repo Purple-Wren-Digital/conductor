@@ -49,17 +49,17 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         OR: [
           {
             category: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
           {
             creator: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
           {
             assignee: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
         ],

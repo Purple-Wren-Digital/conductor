@@ -259,6 +259,7 @@ export function CreateTicketForm({
       selectedTemplateId={selectedTemplateId}
       onChangeTemplateId={handleTemplateChange}
       marketCenterId={marketCenterId}
+      disabled={false}
     />
   );
 }

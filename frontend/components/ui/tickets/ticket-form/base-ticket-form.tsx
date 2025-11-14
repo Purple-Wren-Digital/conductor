@@ -73,6 +73,7 @@ export type BaseTicketFormProps = {
   selectedTemplateId?: string;
   onChangeTemplateId?: (id: string) => void;
   marketCenterId: string | null;
+  disabled: boolean;
 };
 
 export function BaseTicketForm({
@@ -89,6 +90,7 @@ export function BaseTicketForm({
   selectedTemplateId,
   onChangeTemplateId,
   marketCenterId,
+  disabled,
 }: BaseTicketFormProps) {
   const [selectedMarketCenter, setSelectedMarketCenter] =
     useState<MarketCenter>({} as MarketCenter);
@@ -124,8 +126,12 @@ export function BaseTicketForm({
     return (
       <div className="space-y-2">
         <Label>Template (Optional)</Label>
-        <Select value={selectedTemplateId} onValueChange={onChangeTemplateId!}>
-          <SelectTrigger>
+        <Select
+          value={selectedTemplateId}
+          onValueChange={onChangeTemplateId!}
+          disabled={disabled}
+        >
+          <SelectTrigger disabled={disabled}>
             <SelectValue placeholder="Choose a template to get started" />
           </SelectTrigger>
           <SelectContent>
@@ -139,7 +145,13 @@ export function BaseTicketForm({
         </Select>
       </div>
     );
-  }, [showTemplateSelect, selectedTemplateId, onChangeTemplateId, templates]);
+  }, [
+    showTemplateSelect,
+    selectedTemplateId,
+    onChangeTemplateId,
+    templates,
+    disabled,
+  ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -162,6 +174,7 @@ export function BaseTicketForm({
               onChange={(e) => onChange({ title: e.target.value })}
               placeholder="Brief description of the issue or request"
               className={errors.title ? "border-destructive" : ""}
+              disabled={disabled}
             />
             {errors.title && (
               <p className="text-sm text-destructive">{errors.title}</p>
@@ -178,6 +191,7 @@ export function BaseTicketForm({
               className={`min-h-[120px] ${
                 errors.description ? "border-destructive" : ""
               }`}
+              disabled={disabled}
             />
             {errors.description && (
               <p className="text-sm text-destructive">{errors.description}</p>
@@ -191,9 +205,12 @@ export function BaseTicketForm({
               <Select
                 value={values.urgency}
                 onValueChange={(value: Urgency) => onChange({ urgency: value })}
-                disabled={!selectedMarketCenter}
+                disabled={!selectedMarketCenter || disabled}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={errors.urgency ? "border-destructive" : ""}
+                  disabled={disabled}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -215,6 +232,7 @@ export function BaseTicketForm({
                   <Button
                     variant="outline"
                     className="w-full justify-start text-left font-normal bg-transparent"
+                    disabled={disabled}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {values.dueDate
@@ -229,7 +247,7 @@ export function BaseTicketForm({
                     onSelect={(date) =>
                       onChange({ dueDate: date || undefined })
                     }
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => date < new Date() || disabled}
                   />
                 </PopoverContent>
               </Popover>
@@ -249,9 +267,12 @@ export function BaseTicketForm({
               onValueChange={(value) =>
                 setSelectedMarketCenter(findMarketCenter(marketCenters, value))
               }
-              disabled={role !== "ADMIN"}
+              disabled={role !== "ADMIN" || disabled}
             >
-              <SelectTrigger>
+              <SelectTrigger
+                className={errors.marketCenter ? "border-destructive" : ""}
+                disabled={role !== "ADMIN" || disabled}
+              >
                 <SelectValue placeholder={"Select Market Center"} />
               </SelectTrigger>
               <SelectContent>
@@ -290,9 +311,11 @@ export function BaseTicketForm({
                     assigneeId: assignee && assignee?.id,
                   });
                 }}
+                disabled={disabled}
               >
                 <SelectTrigger
                   className={errors.category ? "border-destructive" : ""}
+                  disabled={disabled}
                 >
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
@@ -323,9 +346,11 @@ export function BaseTicketForm({
               <Select
                 value={values.assigneeId}
                 onValueChange={(value) => onChange({ assigneeId: value })}
+                disabled={disabled}
               >
                 <SelectTrigger
                   className={errors.assigneeId ? "border-destructive" : ""}
+                  disabled={disabled}
                 >
                   <SelectValue placeholder="Select an assignee" />
                 </SelectTrigger>
@@ -357,7 +382,11 @@ export function BaseTicketForm({
             >
               <X className="h-4 w-4 mr-2" /> Cancel
             </Button>
-            <Button type="submit" disabled={!!loading} className="gap-2">
+            <Button
+              type="submit"
+              disabled={!!loading || disabled}
+              className="gap-2"
+            >
               <Save className="h-4 w-4" />
               {loading ? "Saving..." : "Save"}
             </Button>

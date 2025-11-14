@@ -381,11 +381,11 @@ export const STATUS_LABELS: Record<StatusKey, string> = {
 };
 export const STATUS_COLORS: Record<StatusKey, string> = {
   CREATED: "#B42318",
-  UNASSIGNED: "#F7BB00",
-  ASSIGNED: "#027A48",
-  AWAITING_RESPONSE: "#C4320A",
+  UNASSIGNED: "#C4320A",
+  ASSIGNED: "#C18900",
+  AWAITING_RESPONSE: "#6B21A8",
   IN_PROGRESS: "#3538CD",
-  RESOLVED: "#6B21A8",
+  RESOLVED: "#027A48",
 };
 export const ticketByStatusChartConfig = {
   CREATED: { label: STATUS_LABELS.CREATED, color: STATUS_COLORS.CREATED },

@@ -1,4 +1,3 @@
-import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
 import TicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list";
 
 export default function DashboardTicketsPage() {
@@ -10,7 +9,6 @@ export default function DashboardTicketsPage() {
           Manage and track support tickets efficiently
         </p>
       </div>
-      <TicketTabs />
       <TicketList />
     </div>
   );

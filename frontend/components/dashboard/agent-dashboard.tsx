@@ -8,6 +8,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
+import { getResolvedInBusinessDays } from "@/lib/utils";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
@@ -31,20 +32,46 @@ export function AgentDashboard() {
     },
     enabled: !!currentUser,
   });
-
-  const tickets: Ticket[] = ticketsData?.tickets || [];
-  const ticketTotal: number = ticketsData?.total || 0;
+  const tickets: Ticket[] = useMemo(() => {
+    return ticketsData?.tickets ?? [];
+  }, [ticketsData]);
+  const ticketTotal: number = ticketsData?.total ?? 0;
 
   const stats = useMemo(() => {
+    const highPriority = tickets.filter(
+      (t: Ticket) => t.urgency === "HIGH"
+    ).length;
+
+    const activeTickets = tickets.filter((t: Ticket) =>
+      ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
+    ).length;
+
+    const resolvedTicketsCount = tickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+
     const now = new Date();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
-    const ongoing = tickets.filter((t: Ticket) =>
-      ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
-    ).length;
-    let resolved = 0;
-    let newTickets = 0; // tickets assigned within the last week
 
+    let totalBusinessDays = 0;
+    let newTickets = 0;
+
+    tickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
+      }
+    });
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
+      : 0;
     tickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
       if (createdDate && createdDate >= oneWeekAgo) {
@@ -53,9 +80,11 @@ export function AgentDashboard() {
     });
 
     return {
+      highPriority,
       newTickets,
-      ongoing,
-      resolved,
+      activeTickets,
+      resolvedTicketsCount,
+      avgResolutionBusinessDays,
     };
   }, [tickets]);
 
@@ -90,7 +119,10 @@ export function AgentDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-center">{ticketTotal}</div>
+            <p className="text-2xl font-bold text-center">{ticketTotal}</p>
+            <p className="text-center text-xs text-muted-foreground">
+              across all time
+            </p>
           </CardContent>
         </Card>
 
@@ -104,32 +136,41 @@ export function AgentDashboard() {
             <div className="text-2xl font-bold text-center">
               {stats.newTickets}
             </div>
+            <p className="text-center text-xs text-muted-foreground">
+              in the last 7 days
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="font-medium text-center">
-              Ongoing Tickets
+              Active Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-center">
-              {stats.ongoing}
+              {stats.activeTickets}
             </div>
+            <p className="text-center text-xs text-muted-foreground">
+              {stats.highPriority} high priority
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-medium text-center">
-              Resolved Tickets
+            <CardTitle className="text-center font-medium">
+              Ticket Closed within
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-center">
-              {stats.resolved}
-            </div>
+            <p className="text-center text-2xl font-bold">
+              {stats.avgResolutionBusinessDays}
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              business days (average)
+            </p>
           </CardContent>
         </Card>
       </div>

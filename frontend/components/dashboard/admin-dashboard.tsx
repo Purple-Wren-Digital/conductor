@@ -16,14 +16,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import {
-  AlertCircle,
-  BarChartIcon,
-  Building2,
-  Ticket,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { BarChartIcon, Building2, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +24,7 @@ import { useMemo, useState } from "react";
 import { TicketTabs } from "../ui/tabs/ticket-tabs";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFetchAdminTickets } from "@/hooks/use-tickets";
+import { useListAdminTickets } from "@/hooks/use-tickets";
 import { TeamSwitcher } from "../ui/team-switcher";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import {
@@ -47,13 +40,14 @@ import {
 } from "recharts";
 import {
   chartColors,
+  getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
   StatusKey,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
-import { MarketCenter } from "@/lib/types";
+import type { MarketCenter, Ticket } from "@/lib/types";
 
 export function AdminDashboard() {
   const { user: clerkUser } = useUser();
@@ -68,6 +62,7 @@ export function AdminDashboard() {
     if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
     }
+
     return params;
   }, [selectedMarketCenterId]);
 
@@ -80,13 +75,11 @@ export function AdminDashboard() {
     [queryKeyParams]
   );
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useFetchAdminTickets(
-    {
-      role,
-      adminTicketsQueryKey,
-      queryParams,
-    }
-  );
+  const { data: ticketsData, isLoading: ticketsLoading } = useListAdminTickets({
+    role,
+    adminTicketsQueryKey,
+    queryParams,
+  });
 
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
@@ -107,7 +100,9 @@ export function AdminDashboard() {
 
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
     useFetchAllMarketCenters(role);
-  const marketCenters = marketCentersData?.marketCenters ?? [];
+  const marketCenters = useMemo(() => {
+    return marketCentersData?.marketCenters ?? [];
+  }, [marketCentersData]);
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
@@ -134,6 +129,9 @@ export function AdminDashboard() {
     ).length;
     const highPriority = filteredTickets.filter(
       (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
+    ).length;
+    const unassignedTickets = filteredTickets.filter(
+      (t: any) => !t.assigneeId && t.status === "UNASSIGNED"
     ).length;
 
     const ticketsByStatus = filteredTickets.reduce(
@@ -189,8 +187,6 @@ export function AdminDashboard() {
     );
 
     const totalUsers = filteredUsers.length;
-    const agents = filteredUsers.filter((u: any) => u.role === "AGENT").length;
-    const staff = filteredUsers.filter((u: any) => u.role === "STAFF").length;
     const resolutionRate = totalTickets
       ? Math.round(
           (filteredTickets.filter((t: any) => t.status === "RESOLVED").length /
@@ -199,19 +195,55 @@ export function AdminDashboard() {
         )
       : 0;
 
+    const now = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
+
+    const resolvedTicketsCount = filteredTickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+    oneWeekAgo.setDate(now.getDate() - 7);
+
+    let totalBusinessDays = 0;
+    let newTickets = 0;
+
+    filteredTickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
+      }
+    });
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
+      : 0;
+
+    filteredTickets.forEach((t: Ticket) => {
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      if (createdDate && createdDate >= oneWeekAgo) {
+        newTickets += 1;
+      }
+    });
+
     return {
       totalTickets,
       openTickets,
       highPriority,
+      unassignedTickets,
       ticketsByStatus,
       ticketsByMarketCenter: Object.values(ticketsByMarketCenter),
       totalUsers,
-      agents,
-      staff,
-      avgResponseTime: "2.4 hours", // TODO: calculate avg response time
       resolutionRate,
+      newTickets,
+      resolvedTicketsCount,
+      avgResolutionBusinessDays,
     };
-  }, [filteredTickets, filteredUsers]);
+  }, [filteredTickets, filteredUsers, marketCenters]);
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -281,52 +313,65 @@ export function AdminDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-            <Ticket className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="text-center font-medium">
+              Total Tickets
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.openTickets} open • {stats.resolutionRate}% resolved
+            <p className="text-center text-2xl font-bold">
+              {stats.totalTickets}
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              across all time
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-            <AlertCircle className="h-4 w-4 text-[#B42318]" />
+          <CardHeader>
+            <CardTitle className="text-center font-medium">
+              New Tickets
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.highPriority}</div>
-            <p className="text-xs text-muted-foreground">
-              Requires immediate attention
+            <p className="text-center text-2xl font-bold">{stats.newTickets}</p>
+            <p className="text-center text-xs text-muted-foreground">
+              in the last 7 days
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="text-center font-medium">
+              Active Tickets
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.agents} agents • {stats.staff} staff
+            <p className="text-center text-2xl font-bold">
+              {stats.openTickets}
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+              unassigned
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="text-center font-medium">
+              Ticket Closed within
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.avgResponseTime}</div>
-            <p className="text-xs text-muted-foreground">First response time</p>
+            <p className="text-center text-2xl font-bold">
+              {stats.avgResolutionBusinessDays}
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              business days (average)
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -335,10 +380,11 @@ export function AdminDashboard() {
         {/* MARKET CENTERS */}
         <Card>
           <CardHeader>
-            <CardTitle>
-              Market Centers ({marketCenters?.length ?? "0"})
-            </CardTitle>
-            <CardDescription>Ticket distribution by team</CardDescription>
+            <CardTitle>Market Centers</CardTitle>
+            <CardDescription>
+              {marketCenters?.length ?? "0"} market centers • {stats.totalUsers}{" "}
+              users
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="space-y-4 md:h-50 overflow-y-auto">

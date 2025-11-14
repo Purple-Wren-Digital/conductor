@@ -118,10 +118,10 @@ export default function TicketListStaff({
   const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    currentUser?.marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUser?.name || ""
   );
   const [selectedCreator, setSelectedCreator] = useState<string>(
-    currentUser?.marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUser?.name || ""
   );
 
   const [dateFrom, setDateFrom] = useState<Date>();
@@ -168,9 +168,10 @@ export default function TicketListStaff({
     if (selectedCategory !== "all")
       params.append("categoryId", selectedCategory);
 
-    if (selectedAssignee !== "all")
+    if (currentUser?.marketCenterId && selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
-    if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
+    if (currentUser?.marketCenterId && selectedCreator !== "all")
+      params.append("creatorId", selectedCreator);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -183,14 +184,15 @@ export default function TicketListStaff({
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
+    currentUser?.marketCenterId,
     selectedAssignee,
     selectedCreator,
     dateFrom,
     dateTo,
     sortBy,
     sortDir,
-    currentPage,
     itemsPerPage,
+    currentPage,
   ]);
 
   const queryKeyParams = useMemo(
@@ -205,15 +207,14 @@ export default function TicketListStaff({
 
   const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
     {
-      marketCenterId: marketCenterId,
-      userId: currentUserId,
       queryParams,
       staffTicketsQueryKey,
     }
   );
 
-  const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
-  console.log("STAFF TICKETS DASHBOARD:", ticketsData);
+  const tickets: TicketWithUpdatedAt[] = useMemo(() => {
+    return ticketsData?.tickets ?? [];
+  }, [ticketsData]);
 
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = calculateTotalPages({
@@ -323,13 +324,17 @@ export default function TicketListStaff({
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
     setSelectedCategory("all");
-    setSelectedAssignee("all");
-    setSelectedCreator("all");
+    if (marketCenterId) {
+      setSelectedAssignee("all");
+      setSelectedCreator("all");
+    }
     setDateFrom(undefined);
     setDateTo(undefined);
     setOpenFrom(false);
     setOpenTo(false);
     setCurrentPage(1);
+    setSortBy("updatedAt");
+    setSortDir("desc");
   };
 
   const hasActiveFilters =
@@ -361,34 +366,35 @@ export default function TicketListStaff({
   };
 
   const stats = useMemo(() => {
+    const resolvedTicketsCount = tickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+
     const now = new Date();
     const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
-    let resolved = 0;
+    oneWeekAgo.setDate(now.getDate() - 7);
+
     let totalBusinessDays = 0;
-    let resolvedTicketsCount = 0;
 
     tickets.forEach((t: Ticket) => {
       const status = t.status;
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
       const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
-      if (status === "RESOLVED") {
-        resolved += 1;
-        if (createdDate && resolvedDate) {
-          totalBusinessDays += getResolvedInBusinessDays(
-            createdDate,
-            resolvedDate
-          );
-          resolvedTicketsCount += 1;
-        }
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
       }
     });
 
     const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Math.round(totalBusinessDays / resolvedTicketsCount)
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
       : 0;
 
     return {
+      resolvedTicketsCount,
       avgResolutionBusinessDays,
     };
   }, [tickets]);
@@ -559,7 +565,9 @@ export default function TicketListStaff({
                             htmlFor={`status-${status}`}
                             className="text-sm font-normal"
                           >
-                            {status.replace("_", " ")}
+                            <Badge variant={status.toLowerCase() as any}>
+                              {status.replace("_", " ")}
+                            </Badge>
                           </Label>
                         </div>
                       ))}
@@ -707,7 +715,6 @@ export default function TicketListStaff({
             )}
           </div>
         </CardHeader>
-
         <CardContent>
           <div
             className={`space-y-4 transition-opacity duration-300 ${
@@ -715,12 +722,12 @@ export default function TicketListStaff({
             }`}
           >
             <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Avg Resolution: {stats?.avgResolutionBusinessDays ?? 0}{" "}
-                  business days
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Avg Resolution:{" "}
+                {selectedStatuses.includes("RESOLVED")
+                  ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
+                  : "N/A"}
+              </p>
               <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
                 {/* SORT BY */}
                 <div className="space-y-2 w-full sm:w-fit">
@@ -783,9 +790,22 @@ export default function TicketListStaff({
             <Table>
               <TableHeader className="bg-muted">
                 <TableRow className="border rounded">
-                  <TableHead className="text-black">Ticket</TableHead>
+                  <TableHead className="text-black cursor-pointer">
+                    <Checkbox
+                      className="mr-2 bg-white"
+                      checked={
+                        selectedTickets.length === tickets.length &&
+                        tickets.length > 0
+                      }
+                      onCheckedChange={(v: boolean | "indeterminate") =>
+                        handleSelectAll(v === true)
+                      }
+                    />
+                    Ticket
+                  </TableHead>
+                  <TableHead className="text-black">Assignee</TableHead>
                   <TableHead
-                    className="text-black"
+                    className="text-black cursor-pointer"
                     onClick={() => {
                       setSortBy("status");
                       setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -804,7 +824,7 @@ export default function TicketListStaff({
                     </p>
                   </TableHead>
                   <TableHead
-                    className="text-black"
+                    className="text-black cursor-pointer"
                     onClick={() => {
                       setSortBy("urgency");
                       setSortDir(sortDir === "asc" ? "desc" : "asc");

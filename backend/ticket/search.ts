@@ -43,7 +43,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    let scopeFilter = await getTicketScopeFilter(userContext);
+    // let scopeFilter = await getTicketScopeFilter(userContext);
 
     let where: any = {};
 
@@ -61,17 +61,17 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         OR: [
           {
             category: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
           {
             creator: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
           {
             assignee: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
         ],
@@ -122,8 +122,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       };
 
       if (where.OR) {
-        where.AND = [scopeFilter, searchCondition];
-      } else {
+        //   where.AND = [scopeFilter, searchCondition];
+        // } else {
         where.OR = searchCondition.OR;
       }
     }
@@ -183,13 +183,14 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
           creator: true,
           assignee: true,
           category: true,
-          _count: { select: { comments: true } },
+          _count: { select: { comments: true, attachments: true } },
         },
         orderBy,
         take: limit,
         skip: offset,
       }),
       prisma.ticket.count({ where }),
+      prisma.attachment.count(),
     ]);
 
     const ticketsMapped: Partial<Ticket>[] = tickets.map((r) => ({
@@ -215,8 +216,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         : null,
 
       commentCount: r._count.comments,
+      attachmentCount: r._count.attachments,
     }));
-
     return {
       tickets: ticketsMapped,
       total,
