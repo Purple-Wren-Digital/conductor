@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { useFetchAllTemplatesQuery } from "@/hooks/use-templates";
@@ -9,6 +9,8 @@ import NotificationTemplates from "@/components/templates/notification-templates
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function NotificationTemplatesPage() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { data: templateData, isLoading } = useFetchAllTemplatesQuery({
@@ -23,6 +25,7 @@ export default function NotificationTemplatesPage() {
   }, [queryClient]);
 
   const handleResetAllToDefault = async () => {
+    setIsSubmitting(true);
     try {
       const token = await getToken();
       if (!token) {
@@ -43,6 +46,7 @@ export default function NotificationTemplatesPage() {
       console.error("Error resetting notification templates:", error);
     } finally {
       await invalidateFetchAllUserNotifications();
+      setIsSubmitting(false);
     }
   };
 
@@ -53,7 +57,10 @@ export default function NotificationTemplatesPage() {
           <h1 className="text-3xl font-bold tracking-tight">
             Admin: Notification Templates ({templateData?.length || 0})
           </h1>
-          <Button onClick={handleResetAllToDefault}>
+          <Button
+            onClick={handleResetAllToDefault}
+            disabled={isLoading || isSubmitting}
+          >
             Reset All to Default
           </Button>
         </div>
@@ -64,7 +71,7 @@ export default function NotificationTemplatesPage() {
       </div>
       <NotificationTemplates
         notificationTemplates={templateData || []}
-        isLoading={isLoading}
+        isLoading={isLoading || isSubmitting}
         refreshTemplates={invalidateFetchAllUserNotifications}
       />
     </div>
