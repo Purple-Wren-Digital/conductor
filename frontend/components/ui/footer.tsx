@@ -7,9 +7,10 @@ import {
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 import Link from "next/link";
+import Image from "next/image";
+import conductorLogo from "@/app/(landing)/assets/conductor/conductor_logo_dark.png";
 
 export function Footer() {
-  // const router = useRouter();
   const footerLinks = [
     { href: "/company", label: "Overview" },
     { href: "/features", label: "Features" },
@@ -95,16 +96,19 @@ export function Footer() {
   ];
 
   return (
-    // h-20
-    <footer className="fixed bottom-0 h-1/12 w-full px-5 sm:px-10 z-[50] flex flex-wrap items-center justify-center sm:justify-between p-2 bg-background">
-      <Link
-        href="/"
-        className="hidden sm:visible sm:flex sm:items-center sm:gap-3"
-      >
-        <div className="size-10 rounded bg-muted text-muted-foreground text-xs flex items-center justify-center">
-          LOGO
-        </div>
-        <span className="hidden sm:visible font-bold">Conductor</span>
+    <footer
+      className={`fixed bottom-0 z-[50] h-[65px] w-full px-5 sm:px-10 flex flex-wrap items-center justify-center sm:justify-between p-2 bg-background`}
+    >
+      <Link href="/" className="w-[50px] h-[50px]">
+        <Image
+          src={conductorLogo}
+          alt="Conductor Logo"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+        />
       </Link>
 
       <NavigationMenu className="hidden sm:visible sm:flex">
@@ -145,7 +149,7 @@ export function Footer() {
           })}
       </div>
 
-      <span className="text-xs sm:text-sm text-muted-foreground w-full text-center sm:w-fit">
+      <span className="text-[10px] text-muted-foreground w-full text-center sm:w-fit">
         &copy; {new Date().getFullYear()} Conductor. All rights reserved.
       </span>
     </footer>

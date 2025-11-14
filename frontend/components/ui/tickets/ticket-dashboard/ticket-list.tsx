@@ -32,7 +32,7 @@ export default function TicketList() {
     case "STAFF":
       return <StaffTicketList currentUserId={currentUserData?.id || ""} />;
     case "AGENT":
-      return <AgentTicketList currentUserId={currentUserData?.id || ""} />;
+      return <AgentTicketList />;
     default:
       return (
         <Card className="flex items-center justify-center h-96">

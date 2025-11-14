@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   Card,
   CardContent,
@@ -53,14 +54,11 @@ import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
 import { AttachmentsList } from "./attachments-list";
 import { FileUpload } from "./file-upload";
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
   capitalizeEveryWord,
   getCategoryStyle,
-  getStatusColor,
-  getUrgencyColor,
   parseJsonSafe,
   statusOptions,
   urgencyOptions,
@@ -160,7 +158,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     userToNotify: UsersToNotify;
     changedDetails: ActivityUpdates[] | null;
   }) => {
-    console.log("SENDING NOTIFICATIONS....");
     const title = ticket?.title ?? "";
     const notifySomeone = userToNotify.updateType === "unchanged";
     const notifyAssigneeChanges =
@@ -398,7 +395,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           </Button>
         )}
         <div className="flex items-center gap-2">
-          {getStatusIcon(ticket.status)}
           <h1 className="text-2xl font-bold">#{ticket.id.substring(0, 8)}</h1>
         </div>
         <div className="flex items-center gap-4">
@@ -457,10 +453,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
                   <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <Badge variant={getStatusColor(ticket.status)}>
-                      {ticket.status.replace("_", " ")}
+                    <Badge
+                      variant={ticket.status.toLowerCase() as any}
+                      className="capitalize"
+                    >
+                      {ticket.status.split("_").join(" ").toLowerCase()}
                     </Badge>
-                    <Badge variant={getUrgencyColor(ticket.urgency)}>
+                    <Badge variant={ticket.urgency.toLowerCase() as any}>
                       {ticket.urgency}
                     </Badge>
                     <Badge
@@ -585,9 +584,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions.map((status) => (
+                      {statusOptions.map((status: TicketStatus) => (
                         <SelectItem key={status} value={status}>
-                          {status.replace("_", " ")}
+                          <Badge variant={status.toLowerCase() as any}>
+                            {status.replace("_", " ")}
+                          </Badge>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -609,7 +610,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       <SelectContent>
                         {urgencyOptions.map((urgency) => (
                           <SelectItem key={urgency} value={urgency}>
-                            {urgency}
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
                           </SelectItem>
                         ))}
                       </SelectContent>

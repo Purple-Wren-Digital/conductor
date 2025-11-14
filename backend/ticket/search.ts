@@ -47,9 +47,23 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
 
     let where: any = {};
 
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
+    if (userContext.role === "AGENT") {
+      where.assigneeId = userContext.userId;
+    }
+
+    if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
+      where.assigneeId = userContext.userId;
+      where.creatorId = userContext.userId;
+    }
+
+    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
       where = {
         OR: [
+          {
+            category: {
+              marketCenterId: req.marketCenterId,
+            },
+          },
           {
             creator: {
               marketCenterId: req.marketCenterId,
@@ -64,19 +78,9 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       };
     }
 
-    if (
-      userContext.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      req?.marketCenterId &&
-      req?.marketCenterId === userContext?.marketCenterId
-    ) {
+    if (userContext.role === "ADMIN" && req.marketCenterId) {
       where = {
         OR: [
-          {
-            category: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
           {
             creator: {
               marketCenterId: req.marketCenterId,
@@ -101,19 +105,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       where.urgency = { in: req.urgency as Urgency[] };
     }
     if (req.categoryId) where.categoryId = { in: req.categoryId };
-
-    if (
-      userContext.role === "AGENT" ||
-      (userContext.role === "STAFF" && !userContext?.marketCenterId)
-    ) {
-      where.assigneeId = userContext.userId;
-      where.creatorId = userContext.userId;
-    } else {
-      if (req.assigneeId)
-        where.assigneeId =
-          req.assigneeId === "Unassigned" ? { equals: null } : req.assigneeId;
-      if (req.creatorId) where.creatorId = req.creatorId;
-    }
 
     if (req.query) {
       const searchCondition = {

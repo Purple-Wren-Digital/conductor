@@ -23,7 +23,6 @@ import { API_BASE } from "@/lib/api/utils";
 import type {
   PrismaUser,
   MarketCenterForm,
-  TicketCategory,
   UsersResponse,
   MarketCenterNotificationCallback,
 } from "@/lib/types";

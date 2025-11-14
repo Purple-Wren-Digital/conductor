@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ import {
   AlertCircle,
   Plus,
   User,
+  Activity,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -36,6 +39,7 @@ import { ScrollArea } from "../ui/scroll-area";
 
 export function StaffDashboard() {
   const { currentUser } = useStore();
+  const { user: clerkUser } = useUser();
 
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
 
@@ -67,6 +71,15 @@ export function StaffDashboard() {
 
   const stats = {
     totalTickets: filteredTickets?.length ?? 0,
+    resolutionRate:
+      filteredTickets?.length && filteredTickets?.length > 0
+        ? Math.round(
+            (filteredTickets.filter((t: any) => t.status === "RESOLVED")
+              .length /
+              filteredTickets.length) *
+              100
+          )
+        : 0,
     openTickets: filteredTickets.filter((t: any) => t.status !== "RESOLVED")
       .length,
     highPriority: filteredTickets.filter(
@@ -79,6 +92,7 @@ export function StaffDashboard() {
     const memberTickets = tickets.filter(
       (t: any) => t.assigneeId === member.id
     );
+
     acc[member.id] = {
       name: member.name,
       assigned: memberTickets.filter((t: any) => t.status !== "RESOLVED")
@@ -88,6 +102,15 @@ export function StaffDashboard() {
     };
     return acc;
   }, {});
+
+  // const urgencyChartData = useMemo(() => {
+  //   if (!stats) return [];
+  //   return URGENCY_ORDER.map((key) => ({
+  //     urgency: key,
+  //     count: stats.ticketsByUrgency[key] ?? 0,
+  //     fill: URGENCY_COLORS[key],
+  //   }));
+  // }, [stats]);
 
   if (ticketsLoading || marketCenterLoading) {
     return (
@@ -108,7 +131,9 @@ export function StaffDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Team Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+            Welcome, {clerkUser?.firstName}
+          </h1>
           <p className="text-muted-foreground">
             Managing {marketCenter?.name || "your"} market center
           </p>
@@ -170,9 +195,7 @@ export function StaffDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.highPriority}</div>
-            <p className="text-xs text-muted-foreground">
-              Require immediate attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
 
@@ -188,25 +211,49 @@ export function StaffDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row justify-between items-center flex-wrap space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium ">
+              Resolution Rate
+            </CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{teamMembers.length}</div>
-            <p className="text-xs text-muted-foreground">Active members</p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold">{stats.resolutionRate}%</p>
+              <Badge
+                // size="sm"
+                variant={
+                  stats.resolutionRate <= 59.9
+                    ? "orange"
+                    : stats.resolutionRate === 60 ||
+                        stats.resolutionRate <= 79.9
+                      ? "warning"
+                      : "success"
+                }
+              >
+                {stats.resolutionRate <= 59.9
+                  ? "Poor"
+                  : stats.resolutionRate === 60 || stats.resolutionRate <= 79.9
+                    ? "Fair"
+                    : "Excellent"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">Resolved</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Tickets</CardTitle>
-            <CardDescription>Latest tickets from your team</CardDescription>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="h-fit">
+          <CardHeader className="flex flex-row justify-between">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest tickets from your team</CardDescription>
+            </div>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 md:h-100">
+            <ScrollArea className="space-y-2 md:max-h-100 overflow-y-auto">
               {!tickets && !tickets?.length && (
                 <p className="text-sm font-medium text-muted-foreground">
                   No tickets found
@@ -231,11 +278,7 @@ export function StaffDashboard() {
                           #{ticket.id.substring(0, 8)}
                         </span>
                         <Badge
-                          variant={
-                            ticket.urgency === "HIGH"
-                              ? "destructive"
-                              : "secondary"
-                          }
+                          variant={ticket.urgency.toLowerCase() as any}
                           className="text-xs"
                         >
                           {ticket.urgency}
@@ -252,7 +295,7 @@ export function StaffDashboard() {
                   No tickets yet
                 </p>
               )}
-            </div>
+            </ScrollArea>
             <div className="mt-4">
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard/tickets">View All Tickets</Link>
@@ -261,15 +304,18 @@ export function StaffDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Team Performance</CardTitle>
-            <CardDescription>
-              Ticket distribution across team members
-            </CardDescription>
+        <Card className="h-fit">
+          <CardHeader className="flex flex-row justify-between">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>
+                Ticket distribution across {teamMembers.length} team members
+              </CardDescription>
+            </div>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <ScrollArea className="space-y-4 md:h-100">
+            <ScrollArea className="space-y-4 md:max-h-100 overflow-y-auto">
               {Object.entries(teamStats).map(
                 ([memberId, stats]: [string, any]) => {
                   const isViewingStats = selectedTeamMemberId === memberId;

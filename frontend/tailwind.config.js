@@ -44,6 +44,42 @@ module.exports = {
         primary_300: "#A2646A",
         primary_100: "#B39194",
 
+        // chartConductor: {
+        //   red: "#6D1C24",
+        //   orange: "#B45309",
+        //   yellow: "#CA8A04",
+        //   green: "#15803D",
+        //   blue: "#1E40AF",
+        //   indigo: "#4338CA",
+        //   purple: "#6B21A8",
+        //   pink: "#BE185D",
+        //   grey: "#2c293b",
+        // },
+
+        chartPrimary: {
+          red: "#B42318",
+          orange: "#C4320A",
+          yellow: "#F7BB00",
+          green: "#027A48",
+          blue: "#175CD3",
+          indigo: "#3538CD",
+          purple: "#6941C6",
+          pink: "#BC2E74",
+          grey: "#9CA3AF",
+        },
+
+        chartSecondary: {
+          red: "#FEF3F2",
+          orange: "#FFF6ED",
+          yellow: "#FFFDDA",
+          green: "#ECFDF3",
+          blue: "#EFF8FF",
+          indigo: "#EEF4FF",
+          purple: "#F9F5FF",
+          pink: "#F5E4ED",
+          grey: "#eae9ed",
+        },
+
         structure: {
           dark: "#2c293b",
           base: "#747279",

@@ -1,10 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,14 @@ import {
 } from "@/components/ui/select";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
 import {
@@ -47,6 +55,7 @@ import {
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
+  getResolvedInBusinessDays,
   orderByOptions,
   sortByTicketOptions,
   statusOptions,
@@ -363,6 +372,39 @@ export default function AdminTicketList() {
     router.push(`/dashboard/tickets/${ticket.id}`);
   };
 
+  const stats = useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
+    let resolved = 0;
+    let totalBusinessDays = 0;
+    let resolvedTicketsCount = 0;
+
+    tickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+      if (status === "RESOLVED") {
+        resolved += 1;
+        if (createdDate && resolvedDate) {
+          totalBusinessDays += getResolvedInBusinessDays(
+            createdDate,
+            resolvedDate
+          );
+          resolvedTicketsCount += 1;
+        }
+      }
+    });
+
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Math.round(totalBusinessDays / resolvedTicketsCount)
+      : 0;
+
+    return {
+      avgResolutionBusinessDays,
+    };
+  }, [tickets]);
+
   return (
     <>
       <Card>
@@ -595,7 +637,9 @@ export default function AdminTicketList() {
                             htmlFor={`urgency-${urgency}`}
                             className="text-sm font-normal"
                           >
-                            {urgency}
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
                           </Label>
                         </div>
                       ))}
@@ -658,21 +702,13 @@ export default function AdminTicketList() {
               ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
             }`}
           >
-            <div className="flex flex-wrap justify-between items-center pb-2 border-b gap-4 w-full">
-              {permissions?.canBulkUpdate && (
-                <div className="w-full sm:w-fit h-9 px-4 py-2 has-[>svg]:px-3 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground">
-                  <Checkbox
-                    checked={
-                      selectedTickets.length === tickets.length &&
-                      tickets.length > 0
-                    }
-                    onCheckedChange={(v: boolean | "indeterminate") =>
-                      handleSelectAll(v === true)
-                    }
-                  />
-                  <span className="text-sm font-medium">Select All</span>
-                </div>
-              )}
+            <div className="flex flex-wrap justify-between items-center pb-2 px-2 gap-4 w-full">
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  Avg Resolution: {stats?.avgResolutionBusinessDays ?? 0}{" "}
+                  business days
+                </p>
+              </div>
               <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
                 {/* SORT BY */}
                 <div className="space-y-2 w-full sm:w-fit">
@@ -731,42 +767,101 @@ export default function AdminTicketList() {
                 </div>
               </div>
             </div>
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow className="border rounded">
+                  <TableHead className="text-black">Ticket</TableHead>
+                  <TableHead
+                    className="text-black"
+                    onClick={() => {
+                      setSortBy("status");
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <p className="flex items-center gap-1">
+                      {sortBy === "status" && sortDir === "asc" ? (
+                        <ArrowUp className="size-4" />
+                      ) : sortBy === "status" && sortDir === "desc" ? (
+                        <ArrowDown className="size-4" />
+                      ) : (
+                        <ArrowDownUp className="size-4" />
+                      )}
+                      Status
+                    </p>
+                  </TableHead>
+                  <TableHead
+                    className="text-black"
+                    onClick={() => {
+                      setSortBy("urgency");
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <p className="flex items-center gap-1">
+                      {sortBy === "urgency" && sortDir === "asc" ? (
+                        <ArrowUp className="size-4" />
+                      ) : sortBy === "urgency" && sortDir === "desc" ? (
+                        <ArrowDown className="size-4" />
+                      ) : (
+                        <ArrowDownUp className="size-4" />
+                      )}
+                      Urgency
+                    </p>
+                  </TableHead>
+                  <TableHead className="text-black">Category</TableHead>
+                  <TableHead className="text-center text-black">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="border [&_tr:last-child]:border-0">
+                {ticketsLoading && (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow
+                        key={i}
+                        className="h-16 w-full bg-muted rounded animate-pulse"
+                      >
+                        <TableCell colSpan={5} className="py-8">
+                          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                )}
 
-            {ticketsLoading && (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-16 bg-muted rounded animate-pulse"
-                  ></div>
-                ))}
-              </div>
-            )}
+                {!ticketsLoading &&
+                  tickets &&
+                  tickets.length > 0 &&
+                  tickets.map((ticket: TicketWithUpdatedAt) => (
+                    <TicketListItemWrapper
+                      key={ticket.id}
+                      ticket={ticket}
+                      selected={selectedTickets.includes(ticket.id)}
+                      onSelect={(checked: boolean) =>
+                        handleSelectTicket(ticket.id, checked)
+                      }
+                      onEdit={(e: React.MouseEvent) =>
+                        handleQuickEdit(e, ticket)
+                      }
+                      onClose={(e: React.MouseEvent) =>
+                        handleQuickClose(e, ticket.id)
+                      }
+                      onClick={() => handleTicketClick(ticket)}
+                    />
+                  ))}
 
-            {!ticketsLoading &&
-              tickets &&
-              tickets.length > 0 &&
-              tickets.map((ticket: TicketWithUpdatedAt) => (
-                <TicketListItemWrapper
-                  key={ticket.id}
-                  ticket={ticket}
-                  selected={selectedTickets.includes(ticket.id)}
-                  onSelect={(checked: boolean) =>
-                    handleSelectTicket(ticket.id, checked)
-                  }
-                  onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
-                  onClose={(e: React.MouseEvent) =>
-                    handleQuickClose(e, ticket.id)
-                  }
-                  onClick={() => handleTicketClick(ticket)}
-                />
-              ))}
+                {!ticketsLoading && (!tickets || !tickets.length) && (
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
+                      No tickets found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
 
-            {!ticketsLoading && (!tickets || !tickets.length) && (
-              <div className="text-center py-8 text-muted-foreground">
-                No tickets found.
-              </div>
-            )}
             <PagesAndItemsCount
               type="tickets"
               totalItems={totalTickets}

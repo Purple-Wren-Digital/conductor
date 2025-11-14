@@ -39,6 +39,7 @@ import { findMarketCenter, urgencyOptions } from "@/lib/utils";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 export type TicketFormValues = {
   title: string;
@@ -198,18 +199,9 @@ export function BaseTicketForm({
                 <SelectContent>
                   {urgencyOptions.map((urgency) => (
                     <SelectItem key={urgency} value={urgency}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            urgency === "HIGH"
-                              ? "bg-red-500"
-                              : urgency === "MEDIUM"
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
-                          }`}
-                        />
+                      <Badge variant={urgency.toLowerCase() as any}>
                         {urgency}
-                      </div>
+                      </Badge>
                     </SelectItem>
                   ))}
                 </SelectContent>

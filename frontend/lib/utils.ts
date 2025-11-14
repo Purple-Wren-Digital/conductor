@@ -70,19 +70,6 @@ export const ROLE_DESCRIPTIONS: {
   AGENT: "Can view and manage assigned tickets",
 };
 
-// export const getRoleDescription = (role?: string) => {
-//   switch (role) {
-//     case "ADMIN":
-//       return "Full access to all settings and data";
-//     case "STAFF":
-//       return "Create, view and manage their team and associated tickets";
-//     case "AGENT":
-//       return "View and update assigned tickets";
-//     default:
-//       return "";
-//   }
-// };
-
 export const getRoleDescription = (userRole: UserRole) => {
   const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
   return description;
@@ -141,82 +128,6 @@ export function getCategoryStyle(category: string): React.CSSProperties {
   const color = `hsl(222, 14%, 12%)`;
   return { backgroundColor: bg, borderColor: border, color };
 }
-
-export function getStatusBadgeStyle(
-  status: string
-): React.CSSProperties | undefined {
-  switch (status) {
-    case "RESOLVED":
-      return {
-        backgroundColor: "#16a34a",
-        color: "white",
-        borderColor: "#15803d",
-      };
-    case "IN_PROGRESS":
-      return undefined;
-    case "ASSIGNED":
-      return undefined;
-    case "AWAITING_RESPONSE":
-      return undefined;
-    default:
-      return undefined;
-  }
-}
-
-export function getUrgencyBadgeStyle(
-  urgency: string
-): React.CSSProperties | undefined {
-  switch (urgency) {
-    case "HIGH":
-      return {
-        backgroundColor: "#ef4444",
-        color: "white",
-        borderColor: "#dc2626",
-      };
-    case "MEDIUM":
-      return {
-        backgroundColor: "#fb923c",
-        color: "#111827",
-        borderColor: "#f97316",
-      };
-    case "LOW":
-      return {
-        backgroundColor: "#fde047",
-        color: "#111827",
-        borderColor: "#facc15",
-      };
-    default:
-      return undefined;
-  }
-}
-
-export const getStatusColor = (status: TicketStatus) => {
-  switch (status) {
-    case "RESOLVED":
-      return "default";
-    case "IN_PROGRESS":
-      return "default";
-    case "ASSIGNED":
-      return "secondary";
-    case "AWAITING_RESPONSE":
-      return "outline";
-    default:
-      return "secondary";
-  }
-};
-
-export const getUrgencyColor = (urgency: Urgency) => {
-  switch (urgency) {
-    case "HIGH":
-      return "destructive";
-    case "MEDIUM":
-      return "default";
-    case "LOW":
-      return "secondary";
-    default:
-      return "secondary";
-  }
-};
 
 export const capitalizeEachWord = (text: string) => {};
 
@@ -437,3 +348,75 @@ export const LANGUAGES = [
   // { value: "es", label: "Spanish" },
   // { value: "fr", label: "French" },
 ];
+
+// REPORTS, METRICS, CHARTS
+export const chartColors = {
+  blue: "#175CD3",
+  orange: "#C4320A",
+  indigo: "#3538CD",
+  yellow: "#F7BB00",
+  purple: "#6941C6",
+  pink: "#BC2E74",
+  green: "#027A48",
+  red: "#B42318",
+  grey: "#9CA3AF",
+};
+
+export const STATUS_ORDER = [
+  "CREATED",
+  "UNASSIGNED",
+  "ASSIGNED",
+  "AWAITING_RESPONSE",
+  "IN_PROGRESS",
+  "RESOLVED",
+] as const;
+export type StatusKey = (typeof STATUS_ORDER)[number];
+export const STATUS_LABELS: Record<StatusKey, string> = {
+  CREATED: "Created",
+  UNASSIGNED: "Unassigned",
+  ASSIGNED: "Assigned",
+  AWAITING_RESPONSE: "Awaiting Response",
+  IN_PROGRESS: "In Progress",
+  RESOLVED: "Resolved",
+};
+export const STATUS_COLORS: Record<StatusKey, string> = {
+  CREATED: "#B42318",
+  UNASSIGNED: "#F7BB00",
+  ASSIGNED: "#027A48",
+  AWAITING_RESPONSE: "#C4320A",
+  IN_PROGRESS: "#3538CD",
+  RESOLVED: "#6B21A8",
+};
+export const ticketByStatusChartConfig = {
+  CREATED: { label: STATUS_LABELS.CREATED, color: STATUS_COLORS.CREATED },
+  UNASSIGNED: {
+    label: STATUS_LABELS.UNASSIGNED,
+    color: STATUS_COLORS.UNASSIGNED,
+  },
+  ASSIGNED: { label: STATUS_LABELS.ASSIGNED, color: STATUS_COLORS.ASSIGNED },
+  AWAITING_RESPONSE: {
+    label: STATUS_LABELS.AWAITING_RESPONSE,
+    color: STATUS_COLORS.AWAITING_RESPONSE,
+  },
+  IN_PROGRESS: {
+    label: STATUS_LABELS.IN_PROGRESS,
+    color: STATUS_COLORS.IN_PROGRESS,
+  },
+  RESOLVED: { label: STATUS_LABELS.RESOLVED, color: STATUS_COLORS.RESOLVED },
+};
+
+export function getResolvedInBusinessDays(
+  startDate: Date,
+  endDate: Date
+): number {
+  let count = 0;
+  const current = new Date(startDate);
+
+  while (current <= endDate) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count += 1; // skip Sunday (0) and Saturday (6)
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}

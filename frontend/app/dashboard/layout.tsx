@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEncoreClient } from "@/lib/api/client-side";
 import { Footer } from "@/components/ui/footer";
+import conductorLogo from "@/app/(landing)/assets/conductor/conductor-icon.png";
+import Image from "next/image";
 
 export default function DashboardLayout({
   children,
@@ -208,8 +210,8 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-10 rounded bg-muted text-muted-foreground text-sm flex items-center justify-center md:size:12">
-                  LOGO
+                <div className="size-10 rounded bg-muted text-muted-foreground flex items-center justify-center md:size:12">
+                  <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
                 <div className="hidden md:flex flex-col leading-tight ">
                   <h1 className="text-sm font-bold sm:text-xl text-muted">
@@ -236,7 +238,7 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          <main className="flex-grow container mx-auto p-6 overflow-y-auto">
+          <main className="flex-grow container mx-auto p-6 pb-30 overflow-y-auto">
             {children}
           </main>
         </div>

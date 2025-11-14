@@ -6,22 +6,17 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 type AgentSearchTicketsQuery = {
   queryParams: URLSearchParams;
   agentTicketsQueryKey: readonly [string, Record<string, string>];
-  userId?: string;
 };
 
 export function useFetchAgentTickets({
   queryParams,
   agentTicketsQueryKey,
-  userId,
 }: AgentSearchTicketsQuery) {
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
     queryKey: agentTicketsQueryKey,
     queryFn: async () => {
-      if (!userId) {
-        return { tickets: [], total: 0 } as TicketsResponse;
-      }
       try {
         const token = await getToken();
         if (!token) {
@@ -29,7 +24,7 @@ export function useFetchAgentTickets({
         }
 
         const response = await fetch(
-          `${API_BASE}/tickets/search?assigneeId=${userId}${queryParams ? `&${queryParams.toString()}` : ""}`,
+          `${API_BASE}/tickets/search${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -44,7 +39,6 @@ export function useFetchAgentTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: !!userId,
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });

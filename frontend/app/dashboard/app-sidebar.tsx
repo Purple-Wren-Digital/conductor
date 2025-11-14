@@ -23,6 +23,7 @@ import {
   Building2,
   Building,
   Info,
+  Contact,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -167,6 +168,23 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
+
+            {/* AGENT - MARKET CENTER INFORMATION */}
+            {role === "AGENT" && currentUser?.marketCenterId && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}/team`}
+                  >
+                    <Contact className="text-muted-foreground" />
+                    Team Members
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarGroup>
 
           <SideBarNewNotification
@@ -175,7 +193,7 @@ export function AppSidebar({
             markAsReadMutation={markAsReadMutation}
           />
 
-          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15">
+          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
             {/* SUPPORT/HELP */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>

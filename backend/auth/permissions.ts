@@ -255,5 +255,9 @@ export async function marketCenterScopeFilter(
     return { id: userContext.marketCenterId };
   }
 
+  if (userContext.role === "AGENT" && userContext?.marketCenterId) {
+    return { id: userContext.marketCenterId };
+  }
+
   return null;
 }
