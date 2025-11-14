@@ -1,9 +1,6 @@
 "use client";
 
-interface MarketCenterDetailProps {
-  marketCenterId: string;
-}
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,9 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui//separator";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import type { MarketCenter, UserRole } from "@/lib/types";
 import {
+  arrayToCommaSeparatedListWithConjunction,
   getRoleBadgeStyle,
   getRoleColor,
   getRoleDescription,
@@ -21,10 +22,10 @@ import {
 } from "@/lib/utils";
 import { Building, Hash, Tags, Ticket, User, Users } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "../badge";
-import { ToolTip } from "../tooltip/tooltip";
-import { arrayToCommaSeparatedListWithConjunction } from "@/lib/utils";
-import { user } from "@/lib/api/encore-client";
+
+interface MarketCenterDetailProps {
+  marketCenterId: string;
+}
 
 export default function MarketCenterAgentView({
   marketCenterId,
@@ -109,9 +110,7 @@ export default function MarketCenterAgentView({
             </div>
           </div>
         </CardContent>
-      </Card>
-      {/* TEAM MEMBERS */}
-      <Card>
+        <Separator className="bg-transparent" />
         <CardHeader>
           <CardTitle>Team Members</CardTitle>
           <CardDescription>
@@ -119,7 +118,7 @@ export default function MarketCenterAgentView({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <ScrollArea className="space-y-4">
             {isLoading && (
               <p className="font-medium text-muted-foreground">
                 Loading team members...
@@ -173,7 +172,7 @@ export default function MarketCenterAgentView({
                   })}
                 </div>
               )}
-          </div>
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>

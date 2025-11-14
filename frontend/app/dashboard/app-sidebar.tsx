@@ -23,7 +23,7 @@ import {
   Building2,
   Building,
   Info,
-  Contact,
+  BookMarked,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -179,8 +179,8 @@ export function AppSidebar({
                   <Link
                     href={`/dashboard/marketCenters/${currentUser.marketCenterId}/team`}
                   >
-                    <Contact className="text-muted-foreground" />
-                    Team Members
+                    <BookMarked className="text-muted-foreground" />
+                    Market Center
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

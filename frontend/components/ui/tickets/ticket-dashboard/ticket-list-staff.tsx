@@ -89,11 +89,7 @@ import type {
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export default function TicketListStaff({
-  currentUserId,
-}: {
-  currentUserId: string;
-}) {
+export default function TicketListStaff() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions } = useUserRole();
@@ -598,7 +594,6 @@ export default function TicketListStaff({
                             setCurrentPage(1);
                             setOpenFrom(false);
                           }}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
@@ -628,7 +623,6 @@ export default function TicketListStaff({
                             setCurrentPage(1);
                             setOpenTo(false);
                           }}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>

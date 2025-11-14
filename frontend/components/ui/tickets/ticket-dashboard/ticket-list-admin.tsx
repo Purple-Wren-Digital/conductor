@@ -93,7 +93,7 @@ import {
 export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { permissions, role } = useUserRole();
+  const { role } = useUserRole();
   const { currentUser } = useStore();
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
@@ -236,7 +236,7 @@ export default function AdminTicketList() {
   const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
 
   const queryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: ["tickets"] });
+    queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
 
   const bulkAssignMutation = useMutation({
     mutationFn: async (payload: {

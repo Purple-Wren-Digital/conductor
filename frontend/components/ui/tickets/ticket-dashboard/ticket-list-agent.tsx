@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
 import { Calendar } from "@/components/ui/calendar";
@@ -143,6 +144,9 @@ export default function AgentTicketList() {
     () => ["agent-tickets", queryKeyParams] as const,
     [queryKeyParams]
   );
+
+  const queryInvalidator = () =>
+    queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey });
 
   const {
     data: ticketsData,
@@ -316,7 +320,6 @@ export default function AgentTicketList() {
                           setCurrentPage(1);
                           setOpenFrom(false);
                         }}
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -346,7 +349,6 @@ export default function AgentTicketList() {
                           setCurrentPage(1);
                           setOpenTo(false);
                         }}
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -570,9 +572,6 @@ export default function AgentTicketList() {
                   </p>
                 </TableHead>
                 <TableHead className="text-black">Category</TableHead>
-                <TableHead className="text-center text-black">
-                  Actions
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="border [&_tr:last-child]:border-0">
