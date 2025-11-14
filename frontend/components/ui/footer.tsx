@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import Link from "next/link";
 import Image from "next/image";
-import conductorLogo from "@/app/(landing)/assets/conductor/conductor_logo_dark.png";
+import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Logo_Full Color.png";
 
 export function Footer() {
   const footerLinks = [
@@ -99,7 +99,7 @@ export function Footer() {
     <footer
       className={`fixed bottom-0 z-[50] h-[65px] w-full px-5 sm:px-10 flex flex-wrap items-center justify-center sm:justify-between p-2 bg-background`}
     >
-      <Link href="/" className="w-[50px] h-[50px]">
+      <Link href="/" className="size-13">
         <Image
           src={conductorLogo}
           alt="Conductor Logo"

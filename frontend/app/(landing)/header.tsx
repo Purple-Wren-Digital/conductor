@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useStore } from "@/context/store-provider";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api/utils";
-import conductorLogo from "@/app/(landing)/assets/conductor/conductor-icon.png";
+import conductorIcon from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
 import Image from "next/image";
 
 export function Header() {
@@ -69,15 +69,23 @@ export function Header() {
     <header className="border-b bg-[var(--conductor)]">
       <div className="px-5 sm:px-10 flex items-center gap-4 justify-between py-2">
         <Link href="/" className="flex items-center gap-3">
-          <div className="size-10 rounded bg-muted text-muted-foreground flex items-center justify-center md:size:12">
-            <Image src={conductorLogo} alt="Conductor Logo" />
+          <div className="size-12 flex items-center justify-center">
+            <Image
+              src={conductorIcon}
+              alt="Conductor Logo"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+              }}
+            />
           </div>
           <div className="hidden md:flex flex-col leading-tight">
             <h1 className="text-sm font-bold sm:text-xl text-muted">
               Conductor
             </h1>
             <p className="text-xs font-medium sm:text-sm text-muted">
-              Agent Support System
+              Agent Ticketing System
             </p>
           </div>
         </Link>

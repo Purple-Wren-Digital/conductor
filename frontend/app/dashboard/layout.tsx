@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEncoreClient } from "@/lib/api/client-side";
 import { Footer } from "@/components/ui/footer";
-import conductorLogo from "@/app/(landing)/assets/conductor/conductor-icon.png";
+import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
 import Image from "next/image";
 
 export default function DashboardLayout({
@@ -210,7 +210,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-10 rounded bg-muted text-muted-foreground flex items-center justify-center md:size:12">
+                <div className="size-12 flex items-center justify-center">
                   <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
                 <div className="hidden md:flex flex-col leading-tight ">
@@ -218,7 +218,7 @@ export default function DashboardLayout({
                     Conductor
                   </h1>
                   <p className="text-xs font-medium sm:text-sm text-muted">
-                    Agent Support System
+                    Agent Ticketing System
                   </p>
                 </div>
               </Link>
