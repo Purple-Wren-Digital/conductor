@@ -23,6 +23,8 @@ import {
   Building2,
   Building,
   Folder,
+  BookMarked,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -111,8 +113,8 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
+        <SidebarMenu>
+          <SidebarGroup>
             {/* DASHBOARD */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
@@ -221,14 +223,8 @@ export function AppSidebar({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            <SideBarNewNotification
-              newestNotification={newestNotification}
-              setNewestNotification={setNewestNotification}
-              markAsReadMutation={markAsReadMutation}
-            />
-          </SidebarMenu>
-        </SidebarGroup>
+          </SidebarGroup>
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   );
