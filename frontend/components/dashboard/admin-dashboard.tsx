@@ -378,7 +378,7 @@ export function AdminDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* MARKET CENTERS */}
-        <Card>
+        <Card className="max-w-[62%] sm:max-w-full">
           <CardHeader>
             <CardTitle>Market Centers</CardTitle>
             <CardDescription>
@@ -407,23 +407,23 @@ export function AdminDashboard() {
                     <div
                       key={mc?.id}
                       onClick={() => setSelectedMarketCenterId(mc?.id)}
-                      className={`flex flex-col p-2 rounded hover:bg-muted ${
+                      className={`flex flex-col p-2 rounded hover:bg-muted flex-wrap ${
                         isViewingStats && "bg-muted"
                       }`}
                     >
                       <div className="flex justify-between">
                         <Link
                           href={`/dashboard/marketCenters/${mc.id}?tab=team`}
-                          className="font-medium hover:underline cursor-pointer"
+                          className="text-[12px] sm:text-md font-medium hover:underline cursor-pointer"
                         >
                           {mc?.name && mc.name}
                         </Link>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           #{mc?.id && mc.id.substring(0, 8)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           Users: {mc?.users ? mc?.users.length : 0}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -436,7 +436,7 @@ export function AdminDashboard() {
             </ScrollArea>
 
             <div className="mt-4">
-              <Button asChild variant="outline" className="w-full">
+              <Button asChild variant="outline" className="w-fit md:w-full">
                 <Link href="/dashboard/marketCenters">
                   Manage Market Centers
                 </Link>
@@ -446,17 +446,17 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY MARKET CENTER */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="max-w-[62%] sm:max-w-full">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">
               Open Tickets by Market Center
             </CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground hidden sm:visible" />
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={ticketsByMarketCenterChartConfig}
-              className="h-[220px] w-full"
+              className="h-[220px] w-[99%] md:w-full mx-auto"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -503,11 +503,11 @@ export function AdminDashboard() {
               </ResponsiveContainer>
             </ChartContainer>
 
-            <div className="flex flex-wrap gap-2 justify-center-safe">
+            <div className="flex flex-wrap gap-2 justify-center">
               {stats?.ticketsByMarketCenter.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-1">
+                <div key={entry.name} className="flex items-center gap-0.75">
                   <span
-                    className="w-1.5 h-1.5 rounded-md inline-block"
+                    className="w-1.5 h-1.5 rounded-md"
                     style={{ backgroundColor: entry.color }}
                   />
                   <span className="text-xs font-medium">{entry.name}</span>
@@ -518,8 +518,8 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY STATUS */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="max-w-[62%] sm:max-w-full">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <div className="flex flex-col gap-1">
               <CardTitle>Tickets by Status</CardTitle>
               <CardDescription>
@@ -529,12 +529,12 @@ export function AdminDashboard() {
                   : ""}{" "}
               </CardDescription>
             </div>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground hidden sm:visible" />
           </CardHeader>
           <CardContent className="space-y-2 md:h-50">
             <ChartContainer
               config={ticketByStatusChartConfig}
-              className="md:h-[100%] w-full"
+              className="h-[220px] w-[99%] md:w-full mx-auto "
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -543,21 +543,18 @@ export function AdminDashboard() {
                     left: -30,
                     bottom: 10,
                   }}
-                  // margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
                 >
                   <XAxis
                     dataKey="status"
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    width={80}
-                    angle={-15}
+                    tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                    angle={window.innerWidth < 640 ? 0 : -15}
                     tickMargin={10}
                     tickFormatter={(value: StatusKey) =>
                       STATUS_LABELS[value] || value
                     }
                   />
                   <YAxis
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
                     allowDecimals={false}
                     tickMargin={5}
                   />
@@ -567,7 +564,6 @@ export function AdminDashboard() {
                   />
                   <Bar
                     dataKey="count"
-                    // nameKey="Count"
                     isAnimationActive={true}
                     radius={[4, 4, 0, 0]}
                   >
@@ -578,13 +574,13 @@ export function AdminDashboard() {
                       dataKey="count"
                       position="top"
                       formatter={(v: number) => (v ?? 0).toString()}
-                      className="fill-foreground"
+                      className="fill-foreground rounded-md"
                     />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
-            <CardDescription className="text-center">
+            <CardDescription className="text-[12px] text-center md:text-md">
               Viewing{" "}
               {selectedMarketCenterId === "all"
                 ? "all market centers"
@@ -594,7 +590,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* RECENT TICKET ACTIVITY */}
-        <Card>
+        <Card className="max-w-[62%] sm:max-w-full">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>
@@ -607,27 +603,27 @@ export function AdminDashboard() {
               {filteredTickets.slice(0, 5).map((ticket: any) => (
                 <div
                   key={ticket.id}
-                  className="flex items-center justify-between p-2 rounded hover:bg-muted"
+                  className="flex items-center justify-between flex-wrap p-2 rounded hover:bg-muted"
                 >
                   <div className="flex-1">
                     <Link
                       href={`/dashboard/tickets/${ticket.id}`}
-                      className="font-medium hover:underline"
+                      className="text-[12px] sm:text-md font-medium hover:underline"
                     >
                       {ticket.title}
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">
                         #{ticket.id.substring(0, 8)}
                       </span>
                       <Badge
                         variant={ticket.urgency.toLowerCase() as any}
-                        className="text-xs"
+                        className="text-[10px] sm:text-xs"
                       >
                         {ticket.urgency}
                       </Badge>
                       {ticket.creator && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">
                           by {ticket.creator.name}
                         </span>
                       )}
@@ -637,7 +633,7 @@ export function AdminDashboard() {
               ))}
             </ScrollArea>
             <div className="mt-4">
-              <Button asChild variant="outline" className="w-full">
+              <Button asChild variant="outline" className="w-fit md:w-full">
                 <Link href="/dashboard/tickets">View All Tickets</Link>
               </Button>
             </div>
