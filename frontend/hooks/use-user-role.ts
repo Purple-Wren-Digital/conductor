@@ -7,6 +7,7 @@ export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 
 export interface UserPermissions {
   canCreateTicket: boolean;
+  canEditAnyTicket: boolean;
   canDeleteTicket: boolean;
   canReassignTicket: boolean;
   canBulkUpdate: boolean;
@@ -30,6 +31,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
     case "ADMIN":
       return {
         canCreateTicket: true,
+        canEditAnyTicket: true,
         canDeleteTicket: true,
         canReassignTicket: true,
         canBulkUpdate: true,
@@ -50,6 +52,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
     case "STAFF":
       return {
         canCreateTicket: true,
+        canEditAnyTicket: false,
         canDeleteTicket: true,
         canReassignTicket: true,
         canBulkUpdate: true,
@@ -69,7 +72,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
       };
     case "AGENT":
       return {
-        canCreateTicket: false,
+        canCreateTicket: true,
+        canEditAnyTicket: false,
         canDeleteTicket: false,
         canReassignTicket: false,
         canBulkUpdate: false,

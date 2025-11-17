@@ -22,11 +22,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import TicketHistoryTable from "@/components/history-tables/tickets/history-table-ticket";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
   CalendarIcon,
-  CheckCircle,
   CircleMinus,
   CirclePlus,
   Clipboard,
@@ -49,11 +47,10 @@ import type {
   TicketHistory,
   UsersToNotify,
 } from "@/lib/types";
-
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
-import { AttachmentsList } from "./attachments-list";
-import { FileUpload } from "./file-upload";
+import { AttachmentsList } from "@/components/ui/tickets/attachments-list";
+import { FileUpload } from "@/components/ui/tickets/file-upload";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
@@ -96,6 +93,29 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const { currentUser } = useStore();
   const { permissions, role } = useUserRole();
   const queryClient = useQueryClient();
+
+  const agentCanEditTicket =
+    role === "AGENT" &&
+    ticket?.creator &&
+    ticket?.creator?.email === currentUser?.email;
+
+  const staffCanEditMCTicket =
+    (role === "STAFF" && currentUser?.marketCenterId) ||
+    (ticket?.assignee &&
+      ticket?.assignee?.marketCenterId === currentUser?.marketCenterId) ||
+    (ticket?.creator &&
+      ticket?.creator?.marketCenterId === currentUser?.marketCenterId);
+  const staffCanEditOwnTickets =
+    role === "STAFF" &&
+    !currentUser?.marketCenterId &&
+    ((ticket?.creator && ticket?.creator?.email === currentUser?.email) ||
+      (ticket?.assignee && ticket?.assignee?.email === currentUser?.email));
+
+  const canEditTicket =
+    role === "ADMIN" ||
+    agentCanEditTicket ||
+    staffCanEditMCTicket ||
+    staffCanEditOwnTickets;
 
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
@@ -403,20 +423,17 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <History className="h-4 w-4" /> View History
             </Button>
           </div>
-          {ticket.status !== "RESOLVED" ||
-            permissions?.canReassignTicket ||
-            (role === "AGENT" && ticket.assigneeId === currentUser?.id && (
-              <div className="ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEditForm(true)}
-                  className="gap-2"
-                  disabled={ticket.status === "RESOLVED"}
-                >
-                  <Edit className="h-4 w-4" /> Edit Ticket
-                </Button>
-              </div>
-            ))}
+          {canEditTicket && (
+            <div className="ml-auto">
+              <Button
+                onClick={() => setShowEditForm(true)}
+                className="gap-2"
+                disabled={ticket.status === "RESOLVED"}
+              >
+                <Edit className="h-4 w-4" /> Edit Ticket
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -433,6 +450,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 <Button
                   variant={"ghost"}
                   onClick={() => setShowHistoryModal(false)}
+                  disabled={!canEditTicket}
                 >
                   <X className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -554,6 +572,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 onAttachmentDeleted={() => refreshAllData()}
               />
               <FileUpload
+                disabled={!canEditTicket}
                 ticketId={ticket.id}
                 onUploadComplete={() => refreshAllData()}
               />
@@ -574,9 +593,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     onValueChange={(value: TicketStatus) =>
                       handleUpdateTicket("status", value)
                     }
-                    disabled={
-                      role === "AGENT" && ticket.assigneeId !== currentUser?.id
-                    }
+                    disabled={!canEditTicket}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -593,30 +610,29 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   </Select>
                 </div>
 
-                {permissions?.canReassignTicket && (
-                  <div className="space-y-2">
-                    <Label>Urgency</Label>
-                    <Select
-                      value={ticket.urgency}
-                      onValueChange={(value: Urgency) =>
-                        handleUpdateTicket("urgency", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {urgencyOptions.map((urgency) => (
-                          <SelectItem key={urgency} value={urgency}>
-                            <Badge variant={urgency.toLowerCase() as any}>
-                              {urgency}
-                            </Badge>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>Urgency</Label>
+                  <Select
+                    value={ticket.urgency}
+                    onValueChange={(value: Urgency) =>
+                      handleUpdateTicket("urgency", value)
+                    }
+                    disabled={!canEditTicket}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {urgencyOptions.map((urgency) => (
+                        <SelectItem key={urgency} value={urgency}>
+                          <Badge variant={urgency.toLowerCase() as any}>
+                            {urgency}
+                          </Badge>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {permissions?.canReassignTicket && (
                   <div className="space-y-2">
@@ -624,6 +640,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                     <Select
                       value={ticket.assignee?.id || "Unassigned"}
                       onValueChange={handleAssigneeChange}
+                      disabled={
+                        ticket.status === "RESOLVED" ||
+                        !permissions?.canReassignTicket
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -751,6 +771,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       </div>
 
       <EditTicketForm
+        disabled={ticket.status === "RESOLVED" || !canEditTicket}
         ticket={ticket ?? undefined}
         isOpen={showEditForm}
         onClose={() => setShowEditForm(false)}

@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import { getUserContext } from "../auth/user-context";
-import { canDeleteTicket } from "../auth/permissions";
+// import { canDeleteTicket } from "../auth/permissions";
 import { TicketHistory } from "./types";
 
 export interface DeleteTicketRequest {

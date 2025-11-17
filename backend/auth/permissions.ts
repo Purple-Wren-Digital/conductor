@@ -75,7 +75,7 @@ export async function canModifyTicket(
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
     });
-    return ticket?.assigneeId === userContext.userId;
+    return ticket?.creatorId === userContext.userId;
   }
 
   if (userContext.role === "STAFF") {
@@ -100,16 +100,16 @@ export async function canUpdateTicket(
 }
 
 export async function canCreateTicket(
-  userContext: UserContext
+  userContext?: UserContext
 ): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return userContext && userContext?.role ? true : false;
 }
 
-export async function canDeleteTicket(
-  userContext: UserContext
-): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
-}
+// export async function canDeleteTicket(
+//   userContext: UserContext
+// ): Promise<boolean> {
+//   // return userContext.role === "STAFF" || userContext.role === "ADMIN";
+// }
 
 export async function canReassignTicket(
   userContext: UserContext
@@ -182,11 +182,12 @@ export async function getTicketScopeFilter(
     };
   }
 
-  if (
-    userContext.role === "AGENT" ||
-    (userContext.role === "STAFF" && !userContext?.marketCenterId)
-  ) {
+  if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
     return { assigneeId: userContext.userId };
+  }
+
+  if (userContext.role === "AGENT") {
+    return { creatorId: userContext.userId };
   }
 
   return { id: "impossible-id" };

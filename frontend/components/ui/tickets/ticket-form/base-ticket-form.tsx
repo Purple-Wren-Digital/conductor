@@ -96,30 +96,42 @@ export function BaseTicketForm({
     useState<MarketCenter>({} as MarketCenter);
 
   const { role } = useUserRole();
-  const { data: marketCentersData } = useFetchAllMarketCenters(role);
+  const { data: marketCentersData, isLoading: isMarketCentersLoading } =
+    useFetchAllMarketCenters(role);
 
   const marketCenters = useMemo(() => {
     return marketCentersData?.marketCenters ?? [];
   }, [marketCentersData]);
 
-  const marketCenterTicketCategories: TicketCategory[] =
-    selectedMarketCenter && selectedMarketCenter?.ticketCategories
+  const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
+    return selectedMarketCenter && selectedMarketCenter?.ticketCategories
       ? selectedMarketCenter?.ticketCategories
       : [];
-  const marketCenterAssignees: PrismaUser[] =
-    selectedMarketCenter && selectedMarketCenter?.users
+  }, [selectedMarketCenter]);
+
+  const marketCenterAssignees: PrismaUser[] = useMemo(() => {
+    return !isMarketCentersLoading &&
+      selectedMarketCenter &&
+      selectedMarketCenter?.users
       ? selectedMarketCenter?.users
       : [];
+  }, [selectedMarketCenter, isMarketCentersLoading]);
 
-  const prefillData = useCallback(() => {
+  const prefillMarketCenterData = useCallback(() => {
     const marketCenter = findMarketCenter(marketCenters, marketCenterId);
     setSelectedMarketCenter(marketCenter);
   }, [marketCenterId, marketCenters]);
 
   useEffect(() => {
     if (!marketCenterId) return;
-    prefillData();
-  }, [marketCenterId, prefillData]);
+    prefillMarketCenterData();
+  }, [marketCenterId, prefillMarketCenterData, values]);
+
+  const normalizedAssigneeId = useMemo(() => {
+    return values?.assigneeId && values.assigneeId !== ""
+      ? values.assigneeId
+      : "Unassigned";
+  }, [values?.assigneeId]);
 
   const templateSection = useMemo(() => {
     if (!showTemplateSelect) return null;
@@ -253,47 +265,55 @@ export function BaseTicketForm({
               </Popover>
             </div>
           </div>
-          {/* MARKET CENTER */}
-          <div className="space-y-2">
-            <div className="flex flex-row align-center justify-between">
-              <Label>Market Center *</Label>
-              <ToolTip
-                trigger={<Info className="w-3 h-3" />}
-                content="Select a Market Center to view all team members and categories"
-              />
-            </div>
-            <Select
-              value={selectedMarketCenter?.id}
-              onValueChange={(value) =>
-                setSelectedMarketCenter(findMarketCenter(marketCenters, value))
-              }
-              disabled={role !== "ADMIN" || disabled}
-            >
-              <SelectTrigger
-                className={errors.marketCenter ? "border-destructive" : ""}
+          {/* MARKET CENTER + CATEGORY + ASSIGNEE */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* MARKET CENTER */}
+            <div className={"space-y-2 col-span-2"}>
+              <div className="flex flex-row align-center justify-between">
+                <Label>Market Center *</Label>
+                <ToolTip
+                  trigger={<Info className="w-3 h-3" />}
+                  content="Select a Market Center to view all team members and categories"
+                />
+              </div>
+              <Select
+                value={selectedMarketCenter?.id}
+                onValueChange={(value) =>
+                  setSelectedMarketCenter(
+                    findMarketCenter(marketCenters, value)
+                  )
+                }
                 disabled={role !== "ADMIN" || disabled}
               >
-                <SelectValue placeholder={"Select Market Center"} />
-              </SelectTrigger>
-              <SelectContent>
-                {marketCenters &&
-                  marketCenters.length > 0 &&
-                  marketCenters.map((marketCenter: MarketCenter) => (
-                    <SelectItem key={marketCenter?.id} value={marketCenter?.id}>
-                      <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 " />
-                        {marketCenter?.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {errors.marketCenter && (
-              <p className="text-sm text-destructive">{errors.marketCenter}</p>
-            )}
-          </div>
+                <SelectTrigger
+                  className={errors.marketCenter ? "border-destructive" : ""}
+                  disabled={role !== "ADMIN" || disabled}
+                >
+                  <SelectValue placeholder={"Select Market Center"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {marketCenters &&
+                    marketCenters.length > 0 &&
+                    marketCenters.map((marketCenter: MarketCenter) => (
+                      <SelectItem
+                        key={marketCenter?.id}
+                        value={marketCenter?.id}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4 " />
+                          {marketCenter?.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {errors.marketCenter && (
+                <p className="text-sm text-destructive">
+                  {errors.marketCenter}
+                </p>
+              )}
+            </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
             {/* CATEGORY */}
             <div className="space-y-2">
               <Label>Category *</Label>
@@ -308,7 +328,8 @@ export function BaseTicketForm({
                   );
                   onChange({
                     categoryId: value,
-                    assigneeId: assignee && assignee?.id,
+                    assigneeId:
+                      assignee && assignee?.id ? assignee.id : "Unassigned",
                   });
                 }}
                 disabled={disabled}
@@ -334,31 +355,28 @@ export function BaseTicketForm({
               )}
             </div>
             {/* ASSIGNEE */}
-            <div className="space-y-2">
+            <div className={`space-y-2`}>
               <div className="flex flex-row align-center justify-between">
                 <Label>Assign To</Label>
                 <ToolTip
                   trigger={<Info className="w-3 h-3" />}
-                  content="If no user is selected, the ticket will automatically be
-                assigned to you."
+                  content="Only Staff users may assign tickets"
                 />
               </div>
               <Select
-                value={values.assigneeId}
+                value={normalizedAssigneeId}
                 onValueChange={(value) => onChange({ assigneeId: value })}
-                disabled={disabled}
+                disabled={disabled || role === "AGENT"}
               >
                 <SelectTrigger
                   className={errors.assigneeId ? "border-destructive" : ""}
-                  disabled={disabled}
                 >
-                  <SelectValue placeholder="Select an assignee" />
+                  <SelectValue placeholder={"Select an assignee"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={"Unassigned"}>Unassigned</SelectItem>
-                  {marketCenterAssignees &&
-                    marketCenterAssignees.length > 0 &&
-                    marketCenterAssignees.map((user) => {
+                  {!isMarketCentersLoading &&
+                    marketCenterAssignees?.map((user) => {
                       return (
                         <SelectItem key={user?.id} value={user?.id}>
                           {user?.name ?? user?.id}
@@ -378,13 +396,13 @@ export function BaseTicketForm({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={!!loading}
+              disabled={!!loading || isMarketCentersLoading}
             >
               <X className="h-4 w-4 mr-2" /> Cancel
             </Button>
             <Button
               type="submit"
-              disabled={!!loading || disabled}
+              disabled={!!loading || disabled || isMarketCentersLoading}
               className="gap-2"
             >
               <Save className="h-4 w-4" />

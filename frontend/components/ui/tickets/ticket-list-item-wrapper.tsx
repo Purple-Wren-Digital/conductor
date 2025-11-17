@@ -25,25 +25,42 @@ export function TicketListItemWrapper({
   onClick?: () => void;
 }) {
   const { currentUser } = useStore();
-  const { permissions } = useUserRole();
+  const { permissions, role } = useUserRole();
 
   const canEdit = React.useMemo(() => {
     if (!permissions) return false;
-    if (permissions.canReassignTicket) return true;
-    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id) {
+    if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
+      return true;
+    }
+    if (
+      role === "STAFF" &&
+      (ticket?.assignee?.email === currentUser?.email ||
+        ticket?.creator?.email === currentUser?.email)
+    ) {
+      return true;
+    }
+    if (
+      role === "STAFF" &&
+      (ticket?.assignee?.marketCenterId === currentUser?.marketCenterId ||
+        ticket?.creator?.marketCenterId === currentUser?.marketCenterId)
+    ) {
+      return true;
+    }
+    return permissions.canEditAnyTicket;
+  }, [permissions, currentUser, role, ticket]);
+
+  const canClose = React.useMemo(() => {
+    if (!permissions) {
+      return false;
+    }
+    if (role === "ADMIN" || role === "STAFF") {
+      return true;
+    }
+    if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
       return true;
     }
     return false;
-  }, [permissions, currentUser, ticket.assigneeId]);
-
-  const canClose = React.useMemo(() => {
-    if (!permissions) return false;
-    if (currentUser?.role === "ADMIN" || currentUser?.role === "STAFF")
-      return true;
-    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id)
-      return true;
-    return false;
-  }, [permissions, currentUser, ticket.assigneeId]);
+  }, [permissions, currentUser, role, ticket]);
 
   const showCheckbox = permissions?.canBulkUpdate || false;
 

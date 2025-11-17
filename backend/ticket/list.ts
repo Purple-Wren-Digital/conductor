@@ -36,7 +36,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     let where: any = {};
 
     if (userContext.role === "AGENT") {
-      where.assigneeId = userContext.userId;
+      where.creatorId = userContext.userId;
     }
 
     if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
@@ -90,17 +90,7 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       prisma.ticket.findMany({
         where,
         include: {
-          // category: true,
-          // creator: true,
-          // assignee: true,
-          // ticketHistory: true,
           _count: true,
-          // {
-          //   select: {
-          //     comments: true,
-          //     attachments: true,
-          //   },
-          // },
         },
         orderBy: { createdAt: "desc" },
         take: limit,

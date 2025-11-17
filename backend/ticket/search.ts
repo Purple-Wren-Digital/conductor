@@ -48,7 +48,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     let where: any = {};
 
     if (userContext.role === "AGENT") {
-      where.assigneeId = userContext.userId;
+      where.creatorId = userContext.userId;
     }
 
     if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
