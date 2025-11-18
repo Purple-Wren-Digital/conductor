@@ -39,18 +39,9 @@ export const seedData = api<void, SeedResponse>(
     // 3-5 Market Centers
     const mc = await prisma.marketCenter.createManyAndReturn({
       data: [
-        {
-          name: "Keller Williams Downtown",
-          settings: {},
-        },
-        {
-          name: "Keller Williams Simpsonville",
-          settings: {},
-        },
-        {
-          name: "Keller Williams Travelers Rest",
-          settings: {},
-        },
+        { name: "Downtown Greenville" },
+        { name: "Simpsonville" },
+        { name: "Travelers Rest" },
       ],
     });
 
@@ -69,6 +60,7 @@ export const seedData = api<void, SeedResponse>(
           role: "STAFF",
           clerkId: "seed-02",
           marketCenterId: mc[0]?.id,
+          staffLeader: true,
         },
         {
           email: "clara.admin@kw.com",
@@ -104,6 +96,7 @@ export const seedData = api<void, SeedResponse>(
           role: "STAFF",
           clerkId: "seed-07",
           marketCenterId: mc[1]?.id,
+          staffLeader: true,
         },
         {
           email: "henry.agent@kw.com",
@@ -140,49 +133,36 @@ export const seedData = api<void, SeedResponse>(
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
 
     // Create User Default settings
-    // const setUpUserSettings = createdUsers.forEach(async (user, index) => {
-    //   await prisma.user.update({
-    //     where: { id: user?.id },
-    //     data: {
-    //       userSettings: {
-    //         create: {
-    //           notificationPreferences: {
-    //             create: defaultNotificationPreferences,
-    //           },
-    //         },
-    //       },
-    //     },
-    //     include: {
-    //       userSettings: true,
-    //     },
-    //   });
+    createdUsers.forEach(async (user, index) => {
+      await prisma.user.update({
+        where: { id: user?.id },
+        data: {
+          userSettings: {
+            create: {
+              notificationPreferences: {
+                create: defaultNotificationPreferences,
+              },
+            },
+          },
+        },
+        include: {
+          userSettings: true,
+        },
+      });
 
-    //   await prisma.notification.create({
-    //     data: {
-    //       userId: user?.id,
-    //       channel: "IN_APP",
-    //       category: "ACCOUNT",
-    //       priority: "HIGH",
-    //       type: "General",
-    //       title: "Welcome to Conductor",
-    //       body: "Take a moment to look around and get familiar",
-    //       deliveredAt: new Date(),
-    //     },
-    //   });
-
-    // await prisma.notification.create({
-    //   data: {
-    //     userId: user?.id,
-    //     channel: "EMAIL",
-    //     category: "ACCOUNT",
-    //     priority: "HIGH",
-    //     type: "General",
-    //     title: "Welcome to Conductor",
-    //     body: "Take a moment to look around and get familiar",
-    //     deliveredAt: new Date(),
-    //   },
-    // });
-    // });
+      await prisma.notification.create({
+        data: {
+          userId: user?.id,
+          channel: "IN_APP",
+          category: "ACCOUNT",
+          priority: "HIGH",
+          type: "General",
+          title: "Welcome to Conductor",
+          body: "Take a moment to look around and get familiar",
+          deliveredAt: new Date(),
+        },
+      });
+    });
 
     // Create ticket categories
     const categoryNames = [
@@ -404,13 +384,13 @@ export const seedData = api<void, SeedResponse>(
             t.status === "CREATED"
               ? undefined
               : category?.defaultAssigneeId
-              ? category.defaultAssigneeId
-              : undefined,
+                ? category.defaultAssigneeId
+                : undefined,
 
           createdAt: t.createdAt,
           dueDate: t.dueDate ?? null,
           resolvedAt:
-            t.status === "RESOLVED" ? t.resolvedAt ?? subDays(now, 1) : null,
+            t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null,
         };
         return base;
       }
@@ -462,13 +442,39 @@ export const seedData = api<void, SeedResponse>(
 
       for (let i = 0; i < numAttachments; i++) {
         const fileTypes = [
-          { name: 'contract.pdf', mimeType: 'application/pdf', size: 1024 * 256 },
-          { name: 'property-photo.jpg', mimeType: 'image/jpeg', size: 1024 * 1024 * 2 },
-          { name: 'inspection-report.pdf', mimeType: 'application/pdf', size: 1024 * 512 },
-          { name: 'floorplan.png', mimeType: 'image/png', size: 1024 * 800 },
-          { name: 'disclosure.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024 * 128 },
-          { name: 'hoa-bylaws.pdf', mimeType: 'application/pdf', size: 1024 * 384 },
-          { name: 'budget.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 1024 * 96 },
+          {
+            name: "contract.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 256,
+          },
+          {
+            name: "property-photo.jpg",
+            mimeType: "image/jpeg",
+            size: 1024 * 1024 * 2,
+          },
+          {
+            name: "inspection-report.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 512,
+          },
+          { name: "floorplan.png", mimeType: "image/png", size: 1024 * 800 },
+          {
+            name: "disclosure.docx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            size: 1024 * 128,
+          },
+          {
+            name: "hoa-bylaws.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 384,
+          },
+          {
+            name: "budget.xlsx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            size: 1024 * 96,
+          },
         ];
 
         const fileInfo = rand(fileTypes);
@@ -481,7 +487,9 @@ export const seedData = api<void, SeedResponse>(
           bucketKey: `${ticket.id}/${timestamp}_${fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
           ticketId: ticket.id,
           uploadedBy: rand([...staff, ...agents]).id,
-          createdAt: new Date(ticket.createdAt.getTime() + Math.random() * 86400000), // Random time after ticket creation
+          createdAt: new Date(
+            ticket.createdAt.getTime() + Math.random() * 86400000
+          ), // Random time after ticket creation
         });
       }
     }

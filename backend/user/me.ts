@@ -4,10 +4,12 @@ import { getUserContext } from "../auth/user-context";
 
 export interface GetCurrentUserResponse {
   // user: User;
+  id: string;
   email: string;
   name: string;
   role: string;
   isActive: boolean;
+  staffLeader: boolean;
   marketCenterId: string | null;
   marketCenter?: {
     id: string;
@@ -33,13 +35,13 @@ export const me = api<void, GetCurrentUserResponse>(
     if (!user || !user?.id) {
       throw APIError.notFound("User not found");
     }
-
     return {
       id: user.id,
       email: user.email,
       name: user.name ?? "",
       role: user.role,
       isActive: user.isActive,
+      staffLeader: user.staffLeader,
       marketCenterId: user.marketCenterId,
       marketCenter: user.marketCenter
         ? {

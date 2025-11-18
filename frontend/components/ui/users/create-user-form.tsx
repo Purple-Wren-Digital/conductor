@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
-import type { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
+import { useState } from "react";
+import type { MarketCenter, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

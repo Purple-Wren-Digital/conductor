@@ -6,7 +6,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs/base-tabs";
-import { Mailbox, UserPlus, Users } from "lucide-react";
+import { Mailbox, Users } from "lucide-react";
 import UserManagement from "./user-management";
 import { useRouter, useSearchParams } from "next/navigation";
 import UserInvitationManagement from "./user-invitation-management";

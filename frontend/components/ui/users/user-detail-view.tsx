@@ -7,6 +7,7 @@ import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -67,12 +69,13 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     lastName: "",
     email: "",
     role: user?.role ?? "AGENT",
+    staffLeader: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { currentUser } = useStore();
-  const { permissions } = useUserRole();
+  const { role, permissions } = useUserRole();
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
@@ -105,7 +108,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     //   errors.email = "Invalid email format";
     // }
 
-    if (!formData.role) errors.role = "Role is required";
+    if (!formData?.role) errors.role = "Role is required";
 
     if (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
       errors.general = "No changes made";
@@ -322,6 +325,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               lastName: user && user?.name ? user?.name.split(" ")?.[1] : "",
               email: user?.email ?? "",
               role: user?.role ?? "AGENT",
+              staffLeader: user?.staffLeader ?? false,
             });
           }}
           className="gap-2"
@@ -386,7 +390,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
+              <Label className="text-sm font-medium">Role *</Label>
               <Select
                 value={user?.role}
                 onValueChange={(value: UserRole) => {
@@ -397,6 +401,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       user && user?.name ? user?.name.split(" ")?.[1] : "",
                     email: user?.email ?? "",
                     role: value,
+                    staffLeader: user?.staffLeader ?? false,
                   });
                   handleRoleChange();
                 }}
@@ -422,15 +427,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 </SelectContent>
               </Select>
             </div>
-            {/* <div className="space-y-2">
-                    <label className="text-sm font-medium">Market Center</label>
-                    <TeamSwitcher
-                      type="User Profile"
-                      selectedMarketCenterId={selectedMarketCenterId}
-                      setSelectedMarketCenterId={setSelectedMarketCenterId}
-                      handleUpdateMarketCenter={handleUpdateMarketCenter}
-                    />
-              </div>*/}
           </CardContent>
         </Card>
 
@@ -459,9 +455,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </DialogHeader>
           <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="firstName" className="text-sm font-medium">
+              <Label htmlFor="firstName" className="text-sm font-medium">
                 First Name *
-              </label>
+              </Label>
               <Input
                 id="firstName"
                 value={formData?.firstName}
@@ -481,9 +477,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="lastName" className="text-sm font-medium">
+              <Label htmlFor="lastName" className="text-sm font-medium">
                 Last Name *
-              </label>
+              </Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -502,9 +498,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-medium">
                 Email Address *
-              </label>
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -525,28 +521,68 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
+              <Label className="text-sm font-medium">Role *</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
-                disabled={!permissions?.canChangeUserRoles}
+                disabled={
+                  !role ||
+                  role === "AGENT" ||
+                  (role === "STAFF" && !currentUser?.staffLeader)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roleOptions.map((option: UserRole) => {
+                    if (role === "STAFF" && option === "ADMIN") return null;
+                    return (
+                      <SelectItem key={option} value={option}>
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(option)}
+                          {option}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-2 flex items-center justify-end gap-2 h-0.1">
+              <Label
+                className={`text-sm font-medium ${
+                  formData.role !== "STAFF" ||
+                  !role ||
+                  role === "AGENT" ||
+                  (role === "STAFF" && !currentUser?.staffLeader)
+                    ? "opacity-50"
+                    : ""
+                }`}
+              >
+                Staff Leader?
+              </Label>
+              <Checkbox
+                checked={formData.staffLeader}
+                onCheckedChange={(value) => {
+                  setFormData({
+                    ...formData,
+                    staffLeader: value as boolean,
+                  });
+                }}
+                disabled={
+                  formData.role !== "STAFF" ||
+                  !role ||
+                  role === "AGENT" ||
+                  (role === "STAFF" && !currentUser?.staffLeader)
+                }
+                className="border-accent-foreground"
+                // prevent row click
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">

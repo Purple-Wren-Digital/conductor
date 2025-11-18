@@ -15,7 +15,7 @@ export interface SearchUsersRequest {
   updatedAt?: string;
   deletedAt?: string;
 
-  sortBy?: Query<"updatedAt" | "createdAt" | "name">;
+  sortBy?: Query<"updatedAt" | "createdAt" | "name" | "role">;
   sortDir?: Query<"asc" | "desc">;
 
   limit?: number;
@@ -116,7 +116,7 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
     //   }
     // }
 
-    const sortBy: "updatedAt" | "createdAt" | "name" | "id" =
+    const sortBy: "updatedAt" | "createdAt" | "name" | "role" =
       (req.sortBy as any) ?? "updatedAt";
 
     const sortDir: Prisma.SortOrder = req.sortDir === "asc" ? "asc" : "desc";
@@ -130,8 +130,8 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       case "name":
         orderBy.push({ name: sortDir });
         break;
-      case "id":
-        orderBy.push({ id: sortDir });
+      case "role":
+        orderBy.push({ role: sortDir });
         break;
       default:
         orderBy.push({ updatedAt: sortDir });
@@ -142,11 +142,13 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       prisma.user.findMany({
         where,
         include: {
+          defaultForCategories: true,
           _count: {
             select: {
               createdTickets: true,
               assignedTickets: true,
               comments: true,
+              defaultForCategories: true,
             },
           },
         },
@@ -159,7 +161,7 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
 
     const formattedUsers = users.map((user) => ({
       ...user,
-      name: user.name ?? "",
+      name: user.name ?? "N/A",
     }));
 
     return {

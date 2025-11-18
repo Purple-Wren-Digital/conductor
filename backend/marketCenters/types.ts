@@ -12,7 +12,10 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: User[];
   marketCenterHistory?: MarketCenterHistory[];
+  staffLeaderIds?: string[];
+
   totalTickets?: number;
+  totalUsers?: number;
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 export interface MarketCenterHistory {

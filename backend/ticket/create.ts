@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, Urgency } from "./types";
-import { applyAutoAssignment } from "./auto-assignment";
+// import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";

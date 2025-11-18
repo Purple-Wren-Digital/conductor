@@ -180,12 +180,14 @@ export const sortByUserOptions: UserSortBy[] = [
   "updatedAt",
   "createdAt",
   "name",
+  "role",
 ];
 
 const userOptionLabels: Record<UserSortBy, string> = {
   updatedAt: "Updated At",
   createdAt: "Created At",
   name: "Name",
+  role: "Role",
 };
 
 export const formatUserOptions = (option: UserSortBy) => {

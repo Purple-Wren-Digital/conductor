@@ -24,7 +24,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
+
 import { ScrollArea } from "../ui/scroll-area";
 import type { Ticket } from "@/lib/types";
 import { getResolvedInBusinessDays } from "@/lib/utils";
@@ -127,6 +128,7 @@ export function StaffDashboard() {
 
     acc[member.id] = {
       name: member.name,
+      staffLeader: member.staffLeader,
       assigned: memberTickets.filter((t: any) => t.status !== "RESOLVED")
         .length,
       resolved: memberTickets.filter((t: any) => t.status === "RESOLVED")
@@ -167,7 +169,7 @@ export function StaffDashboard() {
             Welcome, {clerkUser?.firstName}
           </h1>
           <p className="text-muted-foreground">
-            Managing {marketCenter?.name || "your"} market center
+            {`${marketCenter?.name || "your"} market center`}
           </p>
         </div>
         <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
@@ -185,11 +187,13 @@ export function StaffDashboard() {
               </SelectItem>
               {teamMembers &&
                 teamMembers?.length &&
-                teamMembers?.map((mc: any) => {
+                teamMembers?.map((member: any) => {
                   return (
-                    <SelectItem key={mc.id} value={mc.id}>
-                      <User className="w-4 h-4" />
-                      {mc.name}
+                    <SelectItem key={member.id} value={member.id}>
+                      <User
+                        className={`w-4 h-4 ${member.staffLeader ? " text-yellow-500" : ""}`}
+                      />
+                      {member.name}
                     </SelectItem>
                   );
                 })}
@@ -354,12 +358,10 @@ export function StaffDashboard() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="font-medium hover:underline">
-                            {stats.name}{" "}
-                            {memberId === currentUser?.id && "(You)"}
-                          </p>
+                          <p className="font-medium ">{stats.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {stats.assigned} active • {stats.resolved} resolved
+                            {stats?.staffLeader ? " • Staff Leader" : ""}
                           </p>
                         </div>
                         <div className="flex gap-2">

@@ -146,6 +146,8 @@ export interface PrismaUser {
   email: string;
   name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
+  staffLeader: boolean;
+
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
@@ -166,6 +168,13 @@ export interface PrismaUser {
   userSettings?: UserSettings;
 
   notifications?: Notification[];
+
+  _count: {
+    assignedTickets?: number;
+    comments?: number;
+    createdTickets?: number;
+    defaultForCategories?: number;
+  };
 }
 export interface UserHistory {
   id: string;
@@ -188,6 +197,7 @@ export interface UserEditFormData {
   email: string;
   role: UserRole;
   marketCenterId?: string;
+  staffLeader: boolean;
 }
 
 export interface UserWithStats extends PrismaUser {
@@ -246,6 +256,7 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
   totalTickets?: number;
+  staffLeaderIds?: string[];
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 
@@ -368,7 +379,7 @@ export interface TeamInvitation {
 // SEARCH FILTERS
 export type OrderBy = "asc" | "desc";
 
-export type UserSortBy = "updatedAt" | "createdAt" | "name";
+export type UserSortBy = "updatedAt" | "createdAt" | "name" | "role";
 export type UsersResponse = { users: PrismaUser[]; total: number };
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";

@@ -199,7 +199,7 @@ export async function getUserScopeFilter(userContext: UserContext) {
     return {};
   }
 
-  if (userContext.role === "STAFF" && userContext.marketCenterId) {
+  if (userContext.role === "STAFF" && userContext?.marketCenterId) {
     return { marketCenterId: userContext.marketCenterId };
   }
 

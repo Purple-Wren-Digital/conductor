@@ -86,14 +86,20 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
+  UsersToNotify,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ActivityUpdates } from "@/packages/transactional/emails/types";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 export default function TicketListStaff() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -218,9 +224,9 @@ export default function TicketListStaff() {
     itemsPerPage,
   });
 
-  const queryInvalidator = () =>
+  const staffTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({
-      queryKey: ["market-center-tickets", marketCenterId, queryParams],
+      queryKey: staffTicketsQueryKey,
     });
 
   const bulkAssignMutation = useMutation({
@@ -243,10 +249,10 @@ export default function TicketListStaff() {
       if (!res.ok) throw new Error("Failed to bulk assign tickets");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSelectedTickets([]);
       setIsAssignModalOpen(false);
-      queryInvalidator();
+      await staffTicketsQueryInvalidator();
     },
   });
 
@@ -277,21 +283,86 @@ export default function TicketListStaff() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSelectedTickets([]);
       setIsUpdateStatusModalOpen(false);
-      queryInvalidator();
+      await staffTicketsQueryInvalidator();
     },
   });
 
-  const closeTicketMutation = useMutation({
-    mutationFn: async (ticketId: string) => {
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedTickets(checked ? tickets.map((t) => t.id) : []);
+  };
+
+  const handleSelectTicket = (ticketId: string, checked: boolean) => {
+    setSelectedTickets((prevSelected) => {
+      if (checked) {
+        return [...prevSelected, ticketId];
+      } else {
+        return prevSelected.filter((id) => id !== ticketId);
+      }
+    });
+  };
+
+  const handleSendTicketNotifications = async ({
+    ticket,
+    userToNotify,
+    changedDetails,
+  }: {
+    ticket: {
+      id: string;
+      title: string;
+      createdAt: Date;
+      updatedOn: Date;
+    };
+    userToNotify: UsersToNotify;
+    changedDetails: ActivityUpdates;
+  }) => {
+    try {
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
-        method: "PUT",
+      const response = await createAndSendNotification({
+        authToken: token,
+        trigger: "Ticket Updated",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          updatedTicket: {
+            ticketNumber: ticket.id,
+            ticketTitle: ticket?.title ?? "No title provided",
+            createdOn: ticket?.createdAt,
+            updatedOn: ticket?.updatedOn,
+            editedByName: currentUser?.name ?? "Unknown",
+            editedById: currentUser?.id ?? "",
+            changedDetails: [changedDetails],
+          },
+        },
+      });
+    } catch (error) {
+      console.error(
+        "AgentTicketList - Unable to generate notifications for closed ticket:",
+        error
+      );
+    }
+  };
+
+  const closeTicketMutation = useMutation({
+    mutationFn: async (ticket: Ticket) => {
+      setIsLoading(true);
+      if (!ticket || !ticket?.id) {
+        throw new Error("Ticket ID is required to close a ticket");
+      }
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(`${API_BASE}/tickets/close/${ticket.id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -300,19 +371,52 @@ export default function TicketListStaff() {
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
       });
       if (!res.ok) throw new Error("Failed to close ticket");
-      return res.json();
+      const data = await res.json();
+      if (
+        !data ||
+        !data?.usersToNotify ||
+        !data?.usersToNotify.length ||
+        !data?.changedDetails
+      )
+        throw new Error("No data returned from close ticket");
+      return { ...data, ticket: ticket };
     },
-    onSuccess: queryInvalidator,
+    onSuccess: async (data: {
+      usersToNotify: UsersToNotify[];
+      changedDetails: ActivityUpdates;
+      ticket: Ticket;
+    }) => {
+      const { usersToNotify, changedDetails, ticket } = data;
+      await Promise.all(
+        usersToNotify.map((user) =>
+          handleSendTicketNotifications({
+            ticket: {
+              id: ticket.id,
+              title: ticket?.title ?? "No title provided",
+              createdAt: ticket.createdAt,
+              updatedOn: new Date(),
+            },
+            userToNotify: user,
+            changedDetails,
+          })
+        )
+      );
+
+      toast.success("Ticket closed successfully.");
+    },
+    onError: (error) => {
+      console.error("Failed to close ticket:", error);
+      toast.error("Error: Failed to close ticket. Please try again.");
+    },
+    onSettled: async () => {
+      await staffTicketsQueryInvalidator();
+      setIsLoading(false);
+    },
   });
 
-  const handleSelectTicket = (ticketId: string, checked: boolean) => {
-    setSelectedTickets((prev) =>
-      checked ? [...prev, ticketId] : prev.filter((id) => id !== ticketId)
-    );
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    setSelectedTickets(checked ? tickets.map((t) => t.id) : []);
+  const handleQuickClose = (e: React.MouseEvent, ticket: Ticket) => {
+    e.stopPropagation();
+    closeTicketMutation.mutate(ticket);
   };
 
   const clearFilters = () => {
@@ -349,11 +453,6 @@ export default function TicketListStaff() {
     e.stopPropagation();
     setEditingTicket(ticket);
     setIsEditOpen(true);
-  };
-
-  const handleQuickClose = (e: React.MouseEvent, ticketId: string) => {
-    e.stopPropagation();
-    closeTicketMutation.mutate(ticketId);
   };
 
   const handleTicketClick = (ticket: Ticket) => {
@@ -466,6 +565,7 @@ export default function TicketListStaff() {
             {showFilters && (
               <Card className="p-4 bg-muted/50">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* ASSIGNEE */}
                   <div className="space-y-2">
                     <Label>Assignee</Label>
                     <Select
@@ -491,6 +591,7 @@ export default function TicketListStaff() {
                               teamMembers.map((user: PrismaUser) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   {user.name}
+                                  {user?.staffLeader ? " (Staff Leader)" : ""}
                                 </SelectItem>
                               ))}
                           </>
@@ -504,7 +605,7 @@ export default function TicketListStaff() {
                       </SelectContent>
                     </Select>
                   </div>
-
+                  {/* CREATOR */}
                   <div className="space-y-2">
                     <Label>Creator</Label>
                     <Select
@@ -530,13 +631,15 @@ export default function TicketListStaff() {
                           teamMembers.length &&
                           teamMembers.map((user: PrismaUser) => (
                             <SelectItem key={user.id} value={user.id}>
-                              {user.name}
+                              {user?.name}
+                              {user?.staffLeader ? " (Staff Leader)" : ""}
                             </SelectItem>
                           ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  {/* STATUS */}
+                  <div className="space-y-2 lg:row-span-2">
                     <Label>Status</Label>
                     <div className="flex flex-wrap gap-2">
                       {statusOptions.map((status) => (
@@ -628,40 +731,8 @@ export default function TicketListStaff() {
                     </Popover>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Urgency</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {urgencyOptions.map((urgency) => (
-                        <div
-                          key={urgency}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`urgency-${urgency}`}
-                            checked={selectedUrgencies.includes(urgency)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedUrgencies((prev) =>
-                                checked
-                                  ? [...prev, urgency]
-                                  : prev.filter((u) => u !== urgency)
-                              );
-                              setCurrentPage(1);
-                            }}
-                          />
-                          <Label
-                            htmlFor={`urgency-${urgency}`}
-                            className="text-sm font-normal"
-                          >
-                            <Badge variant={urgency.toLowerCase() as any}>
-                              {urgency}
-                            </Badge>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2 lg:col-span-3">
+                  {/* CATEGORY */}
+                  <div className="space-y-2 lg:col-span-2 lg:row-span-2">
                     <Label>Category</Label>
                     <RadioGroup
                       value={selectedCategory}
@@ -703,6 +774,41 @@ export default function TicketListStaff() {
                           )
                         )}
                     </RadioGroup>
+                  </div>
+
+                  {/* URGENCY */}
+                  <div className="space-y-2">
+                    <Label>Urgency</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {urgencyOptions.map((urgency) => (
+                        <div
+                          key={urgency}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`urgency-${urgency}`}
+                            checked={selectedUrgencies.includes(urgency)}
+                            onCheckedChange={(v: boolean | "indeterminate") => {
+                              const checked = v === true;
+                              setSelectedUrgencies((prev) =>
+                                checked
+                                  ? [...prev, urgency]
+                                  : prev.filter((u) => u !== urgency)
+                              );
+                              setCurrentPage(1);
+                            }}
+                          />
+                          <Label
+                            htmlFor={`urgency-${urgency}`}
+                            className="text-sm font-normal"
+                          >
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -873,7 +979,7 @@ export default function TicketListStaff() {
                         handleQuickEdit(e, ticket)
                       }
                       onClose={(e: React.MouseEvent) =>
-                        handleQuickClose(e, ticket.id)
+                        handleQuickClose(e, ticket)
                       }
                       onClick={() => handleTicketClick(ticket)}
                     />
@@ -921,6 +1027,7 @@ export default function TicketListStaff() {
                   teamMembers.map((user: PrismaUser) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
+                      {user?.staffLeader ? " (Staff Leader)" : ""}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -1010,10 +1117,11 @@ export default function TicketListStaff() {
 
       {/* Quick Edit Modal */}
       <EditTicketForm
+        disabled={isLoading}
         ticket={editingTicket}
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
-        onSuccess={(updated) => {
+        onSuccess={async (updated) => {
           setIsEditOpen(false);
           setEditingTicket(null);
           if (updated) {
@@ -1032,7 +1140,7 @@ export default function TicketListStaff() {
               }
             );
           }
-          queryInvalidator();
+          await staffTicketsQueryInvalidator();
         }}
       />
 
@@ -1040,9 +1148,9 @@ export default function TicketListStaff() {
       <CreateTicketForm
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setIsCreateOpen(false);
-          queryInvalidator();
+          await staffTicketsQueryInvalidator();
         }}
       />
     </>

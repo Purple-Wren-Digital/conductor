@@ -131,6 +131,56 @@ export function useFetchMarketCenter(
   });
 }
 
+// GET MARKET CENTER USERS
+export function useFetchMarketCenterUsers({
+  queryKey,
+  queryKeyParams,
+  marketCenterId,
+}: {
+  queryKey: (string | Record<string, string> | undefined)[];
+  queryKeyParams?: Record<string, string>;
+  marketCenterId?: string;
+}) {
+  const { getToken } = useAuth();
+
+  return useQuery({
+    queryKey: queryKey,
+    queryFn: async () => {
+      try {
+        if (!marketCenterId) {
+          throw new Error("No Market Center ID");
+        }
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+
+        const response = await fetch(
+          `${API_BASE}/users/search?marketCenterId=${marketCenterId}${queryKeyParams ? `&${new URLSearchParams(queryKeyParams).toString()}` : ""}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        // console.log("useFetchMarketCenterUsers - response", response);
+        if (!response || !response.ok)
+          throw new Error(
+            "Failed to fetch ticket categories for market center"
+          );
+        const data = await response.json();
+        // console.log("useFetchMarketCenterUsers - data", data);
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch market center - ", error);
+        return null;
+      }
+    },
+    enabled: !!marketCenterId,
+  });
+}
+
+// GET MARKET CENTER CATEGORIES
 export function useFetchMarketCenterCategories(marketCenterId?: string) {
   const { getToken } = useAuth();
 
