@@ -155,21 +155,22 @@ export function AppSidebar({
               </SidebarMenuItem>
             )}
             {/* STAFF - MARKET CENTER MANAGEMENT */}
-            {role === "STAFF" && currentUser?.marketCenterId && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  disabled={isLoading || !currentUser?.marketCenterId}
-                >
-                  <Link
-                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
+            {(role === "STAFF" || role === "STAFF_LEADER") &&
+              currentUser?.marketCenterId && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    disabled={isLoading || !currentUser?.marketCenterId}
                   >
-                    <Building className="text-muted-foreground" /> Market Center
-                    Team
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+                    <Link
+                      href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
+                    >
+                      <Building className="text-muted-foreground" /> Market
+                      Center Team
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
             {/* AGENT - MARKET CENTER INFORMATION */}
             {role === "AGENT" && currentUser?.marketCenterId && (

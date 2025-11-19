@@ -323,7 +323,9 @@ export default function CreateUser({
                 onValueChange={(value) => {
                   setSelectedMarketCenterId(value);
                 }}
-                disabled={isLoading || role === "STAFF"}
+                disabled={
+                  isLoading || role === "STAFF" || role === "STAFF_LEADER"
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a team" />

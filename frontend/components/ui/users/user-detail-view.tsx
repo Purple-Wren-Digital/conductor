@@ -531,7 +531,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
-                    if (role === "STAFF" && option === "ADMIN") return null;
+                    if (
+                      (role === "STAFF" || role === "STAFF_LEADER") &&
+                      option === "ADMIN"
+                    )
+                      return null;
                     return (
                       <SelectItem key={option} value={option}>
                         <div className="flex items-center gap-2">

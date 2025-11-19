@@ -282,13 +282,13 @@ export interface TeamMember {
   id: string;
   email: string;
   name: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
   isActive: boolean;
   createdAt: Date;
 }
 
 export interface UpdateMemberRequest {
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 
 // MARKET CENTER SETTINGS
@@ -358,7 +358,7 @@ export interface SettingsAuditLogEntry {
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 export interface TeamInviteRequest {
   email: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 export interface TeamInvitation {
   id: string;

@@ -118,44 +118,21 @@ export async function canReassignTicket(
   if (!userContext?.role || userContext?.role === "AGENT") {
     return false;
   }
-  if (userContext.role === "ADMIN") {
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
-
-  const isStaff =
-    userContext.role === "STAFF" || userContext.role === "STAFF_LEADER";
   const isMarketCenter =
-    ticket?.creatorId === userContext?.userId ||
-    ticket?.category?.marketCenterId === userContext?.marketCenterId;
-
-  if (isStaff && !ticket?.assigneeId && isMarketCenter) {
-    return true;
-  }
-
-  if (isStaff && newAssigneeId === userContext?.userId) {
-    return true;
-  }
+    ticket?.category?.marketCenterId === userContext?.marketCenterId ||
+    ticket?.creator?.marketCenterId === userContext?.marketCenterId;
 
   if (
-    userContext.role === "STAFF_LEADER" &&
-    ticket?.assigneeId === userContext.userId
+    userContext.role === "STAFF" &&
+    ticket?.assigneeId === userContext?.userId
   ) {
     return true;
   }
 
-  if (
-    userContext.role === "STAFF_LEADER" &&
-    ticket?.assignee &&
-    ticket.assignee?.marketCenterId === userContext?.marketCenterId
-  ) {
-    return true;
-  }
-
-  if (
-    userContext.role === "STAFF_LEADER" &&
-    newAssigneeId === "Unassigned" &&
-    isMarketCenter
-  ) {
+  if (userContext.role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
     return true;
   }
 

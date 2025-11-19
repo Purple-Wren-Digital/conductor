@@ -10,7 +10,7 @@ import type {
   UserSortBy,
   UserWithStats,
 } from "@/lib/types";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -67,7 +67,6 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function UserManagement() {
-  const { user: clerkUser } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -79,7 +78,8 @@ export default function UserManagement() {
     ? currentUser.marketCenterId
     : "null";
 
-  const defaultMarketCenterId = role === "STAFF" ? marketCenterId : "all";
+  const defaultMarketCenterId =
+    role === "STAFF" || role === "STAFF_LEADER" ? marketCenterId : "all";
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -141,7 +141,7 @@ export default function UserManagement() {
     if (role === "ADMIN" && selectedMarketCenterId !== "all")
       params.append("marketCenterId", selectedMarketCenterId);
     if (
-      role === "STAFF" &&
+      (role === "STAFF" || role === "STAFF_LEADER") &&
       selectedMarketCenterId !== "all" &&
       currentUser?.marketCenterId
     )
@@ -149,7 +149,7 @@ export default function UserManagement() {
 
     if (
       selectedMarketCenterId !== "all" &&
-      role === "STAFF" &&
+      (role === "STAFF" || role === "STAFF_LEADER") &&
       currentUser?.marketCenterId
     ) {
       params.append("marketCenterId", currentUser?.marketCenterId);

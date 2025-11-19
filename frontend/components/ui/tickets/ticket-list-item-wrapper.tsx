@@ -28,24 +28,26 @@ export function TicketListItemWrapper({
   const { permissions, role } = useUserRole();
 
   const canEdit = React.useMemo(() => {
-    if (!permissions) return false;
+    if (!role || !permissions) return false;
+
     if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
       return true;
     }
-    if (
-      role === "STAFF" &&
-      (ticket?.assignee?.email === currentUser?.email ||
-        ticket?.creator?.email === currentUser?.email)
-    ) {
+    if (role === "STAFF_LEADER") {
       return true;
     }
-    if (
-      role === "STAFF" &&
-      (ticket?.assignee?.marketCenterId === currentUser?.marketCenterId ||
-        ticket?.creator?.marketCenterId === currentUser?.marketCenterId)
-    ) {
+    const isMarketCenter =
+      ticket?.category?.marketCenterId === currentUser?.marketCenterId ||
+      ticket?.creator?.marketCenterId === currentUser?.marketCenterId;
+
+    if (role === "STAFF" && ticket?.assigneeId === currentUser?.id) {
       return true;
     }
+
+    if (role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
+      return true;
+    }
+
     return permissions.canEditAnyTicket;
   }, [permissions, currentUser, role, ticket]);
 
@@ -53,9 +55,22 @@ export function TicketListItemWrapper({
     if (!permissions) {
       return false;
     }
-    if (role === "ADMIN" || role === "STAFF") {
+    if (role === "ADMIN" || role === "STAFF_LEADER") {
       return true;
     }
+
+    const isMarketCenter =
+      ticket?.category?.marketCenterId === currentUser?.marketCenterId ||
+      ticket?.creator?.marketCenterId === currentUser?.marketCenterId;
+
+    if (role === "STAFF" && ticket?.assigneeId === currentUser?.id) {
+      return true;
+    }
+
+    if (role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
+      return true;
+    }
+
     if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
       return true;
     }

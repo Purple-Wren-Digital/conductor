@@ -52,20 +52,20 @@ export interface SettingsAuditLogEntry {
 
 export interface TeamInviteRequest {
   email: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
 }
 
 export interface TeamMember {
   id: string;
   email: string;
   name: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
   isActive: boolean;
   createdAt: Date;
 }
 
 export interface UpdateMemberRoleRequest {
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
 }
 
 export interface AuditLogResponse {

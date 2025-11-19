@@ -221,6 +221,7 @@ type MarketCenterSearchTickets = {
   queryParams: URLSearchParams | null;
   queryKeyParams: Record<string, string> | null;
 };
+
 // STAFF: GET TICKETS WITHIN MARKET CENTER
 export function useFetchMarketCenterTickets({
   queryParams,
@@ -243,6 +244,7 @@ export function useFetchMarketCenterTickets({
           `${API_BASE}/tickets?marketCenterId=${marketCenterId}&${queryParams}`,
           {
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
           }

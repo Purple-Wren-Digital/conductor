@@ -378,7 +378,7 @@ export function AdminDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* MARKET CENTERS */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader>
             <CardTitle>Market Centers</CardTitle>
             <CardDescription>
@@ -446,7 +446,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY MARKET CENTER */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">
               Open Tickets by Market Center
@@ -518,7 +518,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY STATUS */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <div className="flex flex-col gap-1">
               <CardTitle>Tickets by Status</CardTitle>
@@ -590,7 +590,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* RECENT TICKET ACTIVITY */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>

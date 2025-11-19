@@ -8,1965 +8,2319 @@
 /**
  * BaseURL is the base URL for calling the Encore application's API.
  */
-export type BaseURL = string
+export type BaseURL = string;
 
-export const Local: BaseURL = "http://localhost:4000"
+export const Local: BaseURL = "http://localhost:4000";
 
 /**
  * Environment returns a BaseURL for calling the cloud environment with the given name.
  */
 export function Environment(name: string): BaseURL {
-    return `https://${name}-conductor-ee92.encr.app`
+  return `https://${name}-conductor-ee92.encr.app`;
 }
 
 /**
  * PreviewEnv returns a BaseURL for calling the preview environment with the given PR number.
  */
 export function PreviewEnv(pr: number | string): BaseURL {
-    return Environment(`pr${pr}`)
+  return Environment(`pr${pr}`);
 }
 
-const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
+const BROWSER = typeof globalThis === "object" && "window" in globalThis;
 
 /**
  * Client is an API client for the conductor-ee92 Encore application.
  */
 export default class Client {
-    public readonly admin: admin.ServiceClient
-    public readonly attachments: attachments.ServiceClient
-    public readonly comment: comment.ServiceClient
-    public readonly dashboard: dashboard.ServiceClient
-    public readonly marketCenters: marketCenters.ServiceClient
-    public readonly notifications: notifications.ServiceClient
-    public readonly seed: seed.ServiceClient
-    public readonly settings: settings.ServiceClient
-    public readonly ticket: ticket.ServiceClient
-    public readonly user: user.ServiceClient
-    private readonly options: ClientOptions
-    private readonly target: string
+  public readonly admin: admin.ServiceClient;
+  public readonly attachments: attachments.ServiceClient;
+  public readonly comment: comment.ServiceClient;
+  public readonly dashboard: dashboard.ServiceClient;
+  public readonly marketCenters: marketCenters.ServiceClient;
+  public readonly notifications: notifications.ServiceClient;
+  public readonly seed: seed.ServiceClient;
+  public readonly settings: settings.ServiceClient;
+  public readonly ticket: ticket.ServiceClient;
+  public readonly user: user.ServiceClient;
+  private readonly options: ClientOptions;
+  private readonly target: string;
 
+  /**
+   * Creates a Client for calling the public and authenticated APIs of your Encore application.
+   *
+   * @param target  The target which the client should be configured to use. See Local and Environment for options.
+   * @param options Options for the client
+   */
+  constructor(target: BaseURL, options?: ClientOptions) {
+    this.target = target;
+    this.options = options ?? {};
+    const base = new BaseClient(this.target, this.options);
+    this.admin = new admin.ServiceClient(base);
+    this.attachments = new attachments.ServiceClient(base);
+    this.comment = new comment.ServiceClient(base);
+    this.dashboard = new dashboard.ServiceClient(base);
+    this.marketCenters = new marketCenters.ServiceClient(base);
+    this.notifications = new notifications.ServiceClient(base);
+    this.seed = new seed.ServiceClient(base);
+    this.settings = new settings.ServiceClient(base);
+    this.ticket = new ticket.ServiceClient(base);
+    this.user = new user.ServiceClient(base);
+  }
 
-    /**
-     * Creates a Client for calling the public and authenticated APIs of your Encore application.
-     *
-     * @param target  The target which the client should be configured to use. See Local and Environment for options.
-     * @param options Options for the client
-     */
-    constructor(target: BaseURL, options?: ClientOptions) {
-        this.target = target
-        this.options = options ?? {}
-        const base = new BaseClient(this.target, this.options)
-        this.admin = new admin.ServiceClient(base)
-        this.attachments = new attachments.ServiceClient(base)
-        this.comment = new comment.ServiceClient(base)
-        this.dashboard = new dashboard.ServiceClient(base)
-        this.marketCenters = new marketCenters.ServiceClient(base)
-        this.notifications = new notifications.ServiceClient(base)
-        this.seed = new seed.ServiceClient(base)
-        this.settings = new settings.ServiceClient(base)
-        this.ticket = new ticket.ServiceClient(base)
-        this.user = new user.ServiceClient(base)
-    }
-
-    /**
-     * Creates a new Encore client with the given client options set.
-     *
-     * @param options Client options to set. They are merged with existing options.
-     **/
-    public with(options: ClientOptions): Client {
-        return new Client(this.target, {
-            ...this.options,
-            ...options,
-        })
-    }
+  /**
+   * Creates a new Encore client with the given client options set.
+   *
+   * @param options Client options to set. They are merged with existing options.
+   **/
+  public with(options: ClientOptions): Client {
+    return new Client(this.target, {
+      ...this.options,
+      ...options,
+    });
+  }
 }
 
 /**
  * ClientOptions allows you to override any default behaviour within the generated Encore client.
  */
 export interface ClientOptions {
-    /**
-     * By default the client will use the inbuilt fetch function for making the API requests.
-     * however you can override it with your own implementation here if you want to run custom
-     * code on each API request made or response received.
-     */
-    fetcher?: Fetcher
+  /**
+   * By default the client will use the inbuilt fetch function for making the API requests.
+   * however you can override it with your own implementation here if you want to run custom
+   * code on each API request made or response received.
+   */
+  fetcher?: Fetcher;
 
-    /** Default RequestInit to be used for the client */
-    requestInit?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> }
+  /** Default RequestInit to be used for the client */
+  requestInit?: Omit<RequestInit, "headers"> & {
+    headers?: Record<string, string>;
+  };
 
-    /**
-     * Allows you to set the authentication data to be used for each
-     * request either by passing in a static object or by passing in
-     * a function which returns a new object for each request.
-     */
-    auth?: auth.AuthParams | AuthDataGenerator
+  /**
+   * Allows you to set the authentication data to be used for each
+   * request either by passing in a static object or by passing in
+   * a function which returns a new object for each request.
+   */
+  auth?: auth.AuthParams | AuthDataGenerator;
 }
 
 export namespace admin {
-    export interface DashboardData {
-        totalUsers: number
-        totalOrders: number
-        totalRevenue: number
+  export interface DashboardData {
+    totalUsers: number;
+    totalOrders: number;
+    totalRevenue: number;
+  }
+
+  export interface HealthCheck {
+    status: string;
+    timestamp: string;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.getDashboardData = this.getDashboardData.bind(this);
+      this.health = this.health.bind(this);
     }
 
-    export interface HealthCheck {
-        status: string
-        timestamp: string
+    /**
+     * A simple authenticated API endpoint that returns some fake data
+     */
+    public async getDashboardData(): Promise<DashboardData> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/admin.getDashboardData`
+      );
+      return (await resp.json()) as DashboardData;
     }
 
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.getDashboardData = this.getDashboardData.bind(this)
-            this.health = this.health.bind(this)
-        }
-
-        /**
-         * A simple authenticated API endpoint that returns some fake data
-         */
-        public async getDashboardData(): Promise<DashboardData> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/admin.getDashboardData`)
-            return await resp.json() as DashboardData
-        }
-
-        /**
-         * Health check endpoint
-         */
-        public async health(): Promise<HealthCheck> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/health`)
-            return await resp.json() as HealthCheck
-        }
+    /**
+     * Health check endpoint
+     */
+    public async health(): Promise<HealthCheck> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI("GET", `/health`);
+      return (await resp.json()) as HealthCheck;
     }
+  }
 }
 
 export namespace attachments {
-    export interface AttachmentInfo {
-        id: string
-        fileName: string
-        fileSize: number
-        mimeType: string
-        uploadedBy: string
-        uploaderName: string
-        createdAt: string
+  export interface AttachmentInfo {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedBy: string;
+    uploaderName: string;
+    createdAt: string;
+  }
+
+  export interface DeleteAttachmentResponse {
+    success: boolean;
+  }
+
+  export interface GetDownloadUrlResponse {
+    downloadUrl: string;
+    fileName: string;
+    mimeType: string;
+  }
+
+  export interface GetSignedUploadUrlRequest {
+    ticketId: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+  }
+
+  export interface GetSignedUploadUrlResponse {
+    uploadUrl: string;
+    bucketKey: string;
+    attachmentId: string;
+  }
+
+  export interface ListAttachmentsResponse {
+    attachments: AttachmentInfo[];
+  }
+
+  export interface UploadAttachmentRequest {
+    ticketId: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    content: string;
+  }
+
+  export interface UploadAttachmentResponse {
+    attachment: {
+      id: string;
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      ticketId: string;
+      uploadedBy: string;
+      createdAt: string;
+      downloadUrl?: string;
+    };
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.deleteAttachment = this.deleteAttachment.bind(this);
+      this.getDownloadUrl = this.getDownloadUrl.bind(this);
+      this.getSignedUploadUrl = this.getSignedUploadUrl.bind(this);
+      this.list = this.list.bind(this);
+      this.upload = this.upload.bind(this);
     }
 
-    export interface DeleteAttachmentResponse {
-        success: boolean
+    /**
+     * Delete an attachment
+     */
+    public async deleteAttachment(
+      attachmentId: string
+    ): Promise<DeleteAttachmentResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/attachments/${encodeURIComponent(attachmentId)}`
+      );
+      return (await resp.json()) as DeleteAttachmentResponse;
     }
 
-    export interface GetDownloadUrlResponse {
-        downloadUrl: string
-        fileName: string
-        mimeType: string
+    /**
+     * Get a signed download URL for an attachment
+     */
+    public async getDownloadUrl(
+      attachmentId: string
+    ): Promise<GetDownloadUrlResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/attachments/${encodeURIComponent(attachmentId)}/download-url`
+      );
+      return (await resp.json()) as GetDownloadUrlResponse;
     }
 
-    export interface GetSignedUploadUrlRequest {
-        ticketId: string
-        fileName: string
-        fileSize: number
-        mimeType: string
+    /**
+     * Get a signed URL for direct file upload from the client
+     * This is more efficient for large files as they don't need to go through the backend
+     */
+    public async getSignedUploadUrl(
+      params: GetSignedUploadUrlRequest
+    ): Promise<GetSignedUploadUrlResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/attachments/signed-upload-url`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as GetSignedUploadUrlResponse;
     }
 
-    export interface GetSignedUploadUrlResponse {
-        uploadUrl: string
-        bucketKey: string
-        attachmentId: string
+    /**
+     * List all attachments for a ticket
+     */
+    public async list(ticketId: string): Promise<ListAttachmentsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/attachments/ticket/${encodeURIComponent(ticketId)}`
+      );
+      return (await resp.json()) as ListAttachmentsResponse;
     }
 
-    export interface ListAttachmentsResponse {
-        attachments: AttachmentInfo[]
+    /**
+     * Upload a file attachment to a ticket
+     */
+    public async upload(
+      params: UploadAttachmentRequest
+    ): Promise<UploadAttachmentResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/attachments/upload`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as UploadAttachmentResponse;
     }
-
-    export interface UploadAttachmentRequest {
-        ticketId: string
-        fileName: string
-        fileSize: number
-        mimeType: string
-        content: string
-    }
-
-    export interface UploadAttachmentResponse {
-        attachment: {
-            id: string
-            fileName: string
-            fileSize: number
-            mimeType: string
-            ticketId: string
-            uploadedBy: string
-            createdAt: string
-            downloadUrl?: string
-        }
-    }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.deleteAttachment = this.deleteAttachment.bind(this)
-            this.getDownloadUrl = this.getDownloadUrl.bind(this)
-            this.getSignedUploadUrl = this.getSignedUploadUrl.bind(this)
-            this.list = this.list.bind(this)
-            this.upload = this.upload.bind(this)
-        }
-
-        /**
-         * Delete an attachment
-         */
-        public async deleteAttachment(attachmentId: string): Promise<DeleteAttachmentResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/attachments/${encodeURIComponent(attachmentId)}`)
-            return await resp.json() as DeleteAttachmentResponse
-        }
-
-        /**
-         * Get a signed download URL for an attachment
-         */
-        public async getDownloadUrl(attachmentId: string): Promise<GetDownloadUrlResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/attachments/${encodeURIComponent(attachmentId)}/download-url`)
-            return await resp.json() as GetDownloadUrlResponse
-        }
-
-        /**
-         * Get a signed URL for direct file upload from the client
-         * This is more efficient for large files as they don't need to go through the backend
-         */
-        public async getSignedUploadUrl(params: GetSignedUploadUrlRequest): Promise<GetSignedUploadUrlResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/attachments/signed-upload-url`, JSON.stringify(params))
-            return await resp.json() as GetSignedUploadUrlResponse
-        }
-
-        /**
-         * List all attachments for a ticket
-         */
-        public async list(ticketId: string): Promise<ListAttachmentsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/attachments/ticket/${encodeURIComponent(ticketId)}`)
-            return await resp.json() as ListAttachmentsResponse
-        }
-
-        /**
-         * Upload a file attachment to a ticket
-         */
-        public async upload(params: UploadAttachmentRequest): Promise<UploadAttachmentResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/attachments/upload`, JSON.stringify(params))
-            return await resp.json() as UploadAttachmentResponse
-        }
-    }
+  }
 }
 
 export namespace auth {
-    export interface AuthParams {
-        authorization: string
-    }
+  export interface AuthParams {
+    authorization: string;
+  }
 }
 
 export namespace comment {
-    export interface CommentCreatedEvent {
-        type: "comment.created"
-        comment: ticket.Comment
-        ticketId: string
+  export interface CommentCreatedEvent {
+    type: "comment.created";
+    comment: ticket.Comment;
+    ticketId: string;
+  }
+
+  export interface CommentDeletedEvent {
+    type: "comment.deleted";
+    commentId: string;
+    ticketId: string;
+  }
+
+  export type CommentEvent =
+    | CommentCreatedEvent
+    | CommentUpdatedEvent
+    | CommentDeletedEvent;
+
+  export interface CommentStreamMessage {
+    event: CommentEvent;
+  }
+
+  export interface CommentUpdatedEvent {
+    type: "comment.updated";
+    comment: ticket.Comment;
+    ticketId: string;
+  }
+
+  export interface CreateCommentRequest {
+    content: string;
+    internal?: boolean;
+  }
+
+  export interface CreateCommentResponse {
+    comment: ticket.Comment;
+  }
+
+  export interface DeleteCommentResponse {
+    success: boolean;
+    message: string;
+  }
+
+  export interface ListCommentsResponse {
+    comments: ticket.Comment[];
+  }
+
+  export interface UpdateCommentRequest {
+    userId: string;
+    content: string;
+    internal?: boolean;
+  }
+
+  export interface UpdateCommentResponse {
+    comment: ticket.Comment;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.commentStream = this.commentStream.bind(this);
+      this.create = this.create.bind(this);
+      this.deleteComment = this.deleteComment.bind(this);
+      this.list = this.list.bind(this);
+      this.update = this.update.bind(this);
     }
 
-    export interface CommentDeletedEvent {
-        type: "comment.deleted"
-        commentId: string
-        ticketId: string
+    /**
+     * Streaming endpoint for real-time comment events
+     * Clients connect to this endpoint to receive live comment updates for a specific ticket
+     */
+    public async commentStream(
+      ticketId: string
+    ): Promise<StreamIn<CommentStreamMessage>> {
+      return await this.baseClient.createStreamIn(
+        `/comments/stream/${encodeURIComponent(ticketId)}`
+      );
     }
 
-    export type CommentEvent = CommentCreatedEvent | CommentUpdatedEvent | CommentDeletedEvent
-
-    export interface CommentStreamMessage {
-        event: CommentEvent
+    public async create(
+      ticketId: string,
+      params: CreateCommentRequest
+    ): Promise<CreateCommentResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/tickets/${encodeURIComponent(ticketId)}/comments`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as CreateCommentResponse;
     }
 
-    export interface CommentUpdatedEvent {
-        type: "comment.updated"
-        comment: ticket.Comment
-        ticketId: string
+    public async deleteComment(
+      ticketId: string,
+      commentId: string
+    ): Promise<DeleteCommentResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/tickets/${encodeURIComponent(ticketId)}/comments/${encodeURIComponent(commentId)}`
+      );
+      return (await resp.json()) as DeleteCommentResponse;
     }
 
-    export interface CreateCommentRequest {
-        content: string
-        internal?: boolean
+    public async list(ticketId: string): Promise<ListCommentsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/tickets/${encodeURIComponent(ticketId)}/comments`
+      );
+      return (await resp.json()) as ListCommentsResponse;
     }
 
-    export interface CreateCommentResponse {
-        comment: ticket.Comment
+    public async update(
+      ticketId: string,
+      commentId: string,
+      params: UpdateCommentRequest
+    ): Promise<UpdateCommentResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PUT",
+        `/tickets/${encodeURIComponent(ticketId)}/comments/${encodeURIComponent(commentId)}`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as UpdateCommentResponse;
     }
-
-    export interface DeleteCommentResponse {
-        success: boolean
-        message: string
-    }
-
-    export interface ListCommentsResponse {
-        comments: ticket.Comment[]
-    }
-
-    export interface UpdateCommentRequest {
-        userId: string
-        content: string
-        internal?: boolean
-    }
-
-    export interface UpdateCommentResponse {
-        comment: ticket.Comment
-    }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.commentStream = this.commentStream.bind(this)
-            this.create = this.create.bind(this)
-            this.deleteComment = this.deleteComment.bind(this)
-            this.list = this.list.bind(this)
-            this.update = this.update.bind(this)
-        }
-
-        /**
-         * Streaming endpoint for real-time comment events
-         * Clients connect to this endpoint to receive live comment updates for a specific ticket
-         */
-        public async commentStream(ticketId: string): Promise<StreamIn<CommentStreamMessage>> {
-            return await this.baseClient.createStreamIn(`/comments/stream/${encodeURIComponent(ticketId)}`)
-        }
-
-        public async create(ticketId: string, params: CreateCommentRequest): Promise<CreateCommentResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/tickets/${encodeURIComponent(ticketId)}/comments`, JSON.stringify(params))
-            return await resp.json() as CreateCommentResponse
-        }
-
-        public async deleteComment(ticketId: string, commentId: string): Promise<DeleteCommentResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/tickets/${encodeURIComponent(ticketId)}/comments/${encodeURIComponent(commentId)}`)
-            return await resp.json() as DeleteCommentResponse
-        }
-
-        public async list(ticketId: string): Promise<ListCommentsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/tickets/${encodeURIComponent(ticketId)}/comments`)
-            return await resp.json() as ListCommentsResponse
-        }
-
-        public async update(ticketId: string, commentId: string, params: UpdateCommentRequest): Promise<UpdateCommentResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PUT", `/tickets/${encodeURIComponent(ticketId)}/comments/${encodeURIComponent(commentId)}`, JSON.stringify(params))
-            return await resp.json() as UpdateCommentResponse
-        }
-    }
+  }
 }
 
 export namespace dashboard {
-    export interface GetMetricsResponse {
-        metrics: ticket.DashboardMetrics
+  export interface GetMetricsResponse {
+    metrics: ticket.DashboardMetrics;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.getMetrics = this.getMetrics.bind(this);
     }
 
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.getMetrics = this.getMetrics.bind(this)
-        }
-
-        public async getMetrics(): Promise<GetMetricsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/dashboard/metrics`)
-            return await resp.json() as GetMetricsResponse
-        }
+    public async getMetrics(): Promise<GetMetricsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/dashboard/metrics`
+      );
+      return (await resp.json()) as GetMetricsResponse;
     }
+  }
 }
 
 export namespace marketCenters {
-    export interface CreateMarketCenterRequest {
-        name: string
-        users?: user.User[]
-        ticketCategories?: TicketCategory[]
+  export interface CreateMarketCenterRequest {
+    name: string;
+    users?: user.User[];
+    ticketCategories?: TicketCategory[];
+  }
+
+  export interface CreateMarketCenterResponse {
+    marketCenter: MarketCenter;
+  }
+
+  export interface DeleteMarketCenterResponse {
+    success: boolean;
+    message: string;
+  }
+
+  export interface GetMarketCenterResponse {
+    marketCenter: MarketCenter;
+  }
+
+  export type InvitationStatus =
+    | "PENDING"
+    | "ACCEPTED"
+    | "EXPIRED"
+    | "CANCELLED";
+
+  export interface ListMarketCentersRequest {
+    id?: string;
+    categoryId?: string[];
+    userIds?: string[];
+    query?: string;
+    sortBy?: "updatedAt" | "createdAt" | "urgency" | "status";
+    sortDir?: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface ListMarketCentersResponse {
+    marketCenters: MarketCenter[];
+    total: number;
+  }
+
+  export interface MarketCenter {
+    id: string;
+    name: string;
+    /**
+     * settings?: MarketCenterSettings;
+     */
+    createdAt: string;
+
+    updatedAt: string;
+    teamInvitations?: TeamInvitation[];
+    ticketCategories?: TicketCategory[];
+    users?: user.User[];
+    marketCenterHistory?: MarketCenterHistory[];
+    totalTickets?: number;
+  }
+
+  export interface MarketCenterHistory {
+    id: string;
+    marketCenterId: string;
+    action: string;
+    field: string;
+    previousValue: string;
+    newValue: string;
+    changedAt: string;
+    changedById: string;
+    marketCenter?: MarketCenter;
+    changedBy?: user.User;
+  }
+
+  export interface RemoveUsersRequest {
+    users: user.User[];
+  }
+
+  export interface RemoveUsersResponse {
+    marketCenter: MarketCenter;
+  }
+
+  export interface TeamInvitation {
+    id: string;
+    email: string;
+    role: user.UserRole;
+    status: InvitationStatus;
+    marketCenterId?: string;
+    invitedBy?: string;
+    token: string;
+    expiresAt: string;
+    acceptedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    marketCenter?: MarketCenter;
+  }
+
+  export interface TicketCategory {
+    id: string;
+    name: string;
+    description: string | null;
+    marketCenterId: string;
+    defaultAssigneeId?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    defaultAssignee?: user.User | null;
+    marketCenter?: MarketCenter;
+    ticketCount?: number;
+  }
+
+  export interface UpdateMarketCenterRequest {
+    name?: string;
+    users?: user.User[];
+    ticketCategories?: TicketCategory[];
+  }
+
+  export interface UpdateMarketCenterResponse {
+    marketCenter: MarketCenter;
+    usersToNotify: notifications.UsersToNotify[];
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.create = this.create.bind(this);
+      this.createCategory = this.createCategory.bind(this);
+      this.deleteCategory = this.deleteCategory.bind(this);
+      this.deleteMarketCenter = this.deleteMarketCenter.bind(this);
+      this.get = this.get.bind(this);
+      this.getUserHistory = this.getUserHistory.bind(this);
+      this.listCategories = this.listCategories.bind(this);
+      this.removeUsers = this.removeUsers.bind(this);
+      this.search = this.search.bind(this);
+      this.update = this.update.bind(this);
+      this.updateCategory = this.updateCategory.bind(this);
     }
 
-    export interface CreateMarketCenterResponse {
-        marketCenter: MarketCenter
+    public async create(
+      params: CreateMarketCenterRequest
+    ): Promise<CreateMarketCenterResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/marketCenters`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as CreateMarketCenterResponse;
     }
 
-    export interface DeleteMarketCenterResponse {
-        success: boolean
-        message: string
+    public async createCategory(
+      params: ticketCategories.CreateCategoryRequest
+    ): Promise<ticketCategories.CreateCategoryResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/marketCenters/ticketCategories`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as ticketCategories.CreateCategoryResponse;
     }
 
-    export interface GetMarketCenterResponse {
-        marketCenter: MarketCenter
+    public async deleteCategory(
+      id: string
+    ): Promise<ticketCategories.DeleteCategoryResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/marketCenters/ticketCategories/${encodeURIComponent(id)}`
+      );
+      return (await resp.json()) as ticketCategories.DeleteCategoryResponse;
     }
 
-    export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED"
-
-    export interface ListMarketCentersRequest {
-        id?: string
-        categoryId?: string[]
-        userIds?: string[]
-        query?: string
-        sortBy?: "updatedAt" | "createdAt" | "urgency" | "status"
-        sortDir?: "asc" | "desc"
-        limit?: number
-        offset?: number
+    public async deleteMarketCenter(
+      id: string
+    ): Promise<DeleteMarketCenterResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/marketCenters/${encodeURIComponent(id)}`
+      );
+      return (await resp.json()) as DeleteMarketCenterResponse;
     }
 
-    export interface ListMarketCentersResponse {
-        marketCenters: MarketCenter[]
-        total: number
+    public async get(id: string): Promise<GetMarketCenterResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/marketCenters/${encodeURIComponent(id)}`
+      );
+      return (await resp.json()) as GetMarketCenterResponse;
     }
 
-    export interface MarketCenter {
-        id: string
-        name: string
-        /**
-         * settings?: MarketCenterSettings;
-         */
-        createdAt: string
+    public async getUserHistory(
+      id: string,
+      params: history.GetMarketCenterHistoryRequest
+    ): Promise<history.GetMarketCenterHistoryResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        orderBy: String(params.orderBy),
+      });
 
-        updatedAt: string
-        teamInvitations?: TeamInvitation[]
-        ticketCategories?: TicketCategory[]
-        users?: user.User[]
-        marketCenterHistory?: MarketCenterHistory[]
-        totalTickets?: number
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/marketCenter/${encodeURIComponent(id)}/history`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as history.GetMarketCenterHistoryResponse;
     }
 
-    export interface MarketCenterHistory {
-        id: string
-        marketCenterId: string
-        action: string
-        field: string
-        previousValue: string
-        newValue: string
-        changedAt: string
-        changedById: string
-        marketCenter?: MarketCenter
-        changedBy?: user.User
+    public async listCategories(
+      params: ticketCategories.ListCategoriesRequest
+    ): Promise<ticketCategories.ListCategoriesResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        id: params.id,
+        marketCenterId: params.marketCenterId,
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/marketCenters/ticketCategories`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as ticketCategories.ListCategoriesResponse;
     }
 
-    export interface RemoveUsersRequest {
-        users: user.User[]
+    /**
+     * Removes users from a market center
+     */
+    public async removeUsers(
+      id: string,
+      params: RemoveUsersRequest
+    ): Promise<RemoveUsersResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/marketCenters/users/${encodeURIComponent(id)}`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as RemoveUsersResponse;
     }
 
-    export interface RemoveUsersResponse {
-        marketCenter: MarketCenter
+    public async search(
+      params: ListMarketCentersRequest
+    ): Promise<ListMarketCentersResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        categoryId: params.categoryId?.map((v) => v),
+        id: params.id,
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        query: params.query,
+        sortBy: params.sortBy === undefined ? undefined : String(params.sortBy),
+        sortDir:
+          params.sortDir === undefined ? undefined : String(params.sortDir),
+        userIds: params.userIds?.map((v) => v),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/marketCenters/search`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as ListMarketCentersResponse;
     }
 
-    export interface TeamInvitation {
-        id: string
-        email: string
-        role: user.UserRole
-        status: InvitationStatus
-        marketCenterId?: string
-        invitedBy?: string
-        token: string
-        expiresAt: string
-        acceptedAt?: string
-        createdAt: string
-        updatedAt: string
-        marketCenter?: MarketCenter
+    /**
+     * Creates a new market center
+     */
+    public async update(
+      id: string,
+      params: UpdateMarketCenterRequest
+    ): Promise<UpdateMarketCenterResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/marketCenters/${encodeURIComponent(id)}`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as UpdateMarketCenterResponse;
     }
 
-    export interface TicketCategory {
-        id: string
-        name: string
-        description: string | null
-        marketCenterId: string
-        defaultAssigneeId?: string | null
-        createdAt: string
-        updatedAt: string
-        defaultAssignee?: user.User | null
-        marketCenter?: MarketCenter
-        ticketCount?: number
+    public async updateCategory(
+      id: string,
+      params: ticketCategories.UpdateCategoryRequest
+    ): Promise<ticketCategories.UpdateCategoryResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/marketCenters/ticketCategories/${encodeURIComponent(id)}`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as ticketCategories.UpdateCategoryResponse;
     }
-
-    export interface UpdateMarketCenterRequest {
-        name?: string
-        users?: user.User[]
-        ticketCategories?: TicketCategory[]
-    }
-
-    export interface UpdateMarketCenterResponse {
-        marketCenter: MarketCenter
-        usersToNotify: notifications.UsersToNotify[]
-    }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.create = this.create.bind(this)
-            this.createCategory = this.createCategory.bind(this)
-            this.deleteCategory = this.deleteCategory.bind(this)
-            this.deleteMarketCenter = this.deleteMarketCenter.bind(this)
-            this.get = this.get.bind(this)
-            this.getUserHistory = this.getUserHistory.bind(this)
-            this.listCategories = this.listCategories.bind(this)
-            this.removeUsers = this.removeUsers.bind(this)
-            this.search = this.search.bind(this)
-            this.update = this.update.bind(this)
-            this.updateCategory = this.updateCategory.bind(this)
-        }
-
-        public async create(params: CreateMarketCenterRequest): Promise<CreateMarketCenterResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/marketCenters`, JSON.stringify(params))
-            return await resp.json() as CreateMarketCenterResponse
-        }
-
-        public async createCategory(params: ticketCategories.CreateCategoryRequest): Promise<ticketCategories.CreateCategoryResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/marketCenters/ticketCategories`, JSON.stringify(params))
-            return await resp.json() as ticketCategories.CreateCategoryResponse
-        }
-
-        public async deleteCategory(id: string): Promise<ticketCategories.DeleteCategoryResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/marketCenters/ticketCategories/${encodeURIComponent(id)}`)
-            return await resp.json() as ticketCategories.DeleteCategoryResponse
-        }
-
-        public async deleteMarketCenter(id: string): Promise<DeleteMarketCenterResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/marketCenters/${encodeURIComponent(id)}`)
-            return await resp.json() as DeleteMarketCenterResponse
-        }
-
-        public async get(id: string): Promise<GetMarketCenterResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/marketCenters/${encodeURIComponent(id)}`)
-            return await resp.json() as GetMarketCenterResponse
-        }
-
-        public async getUserHistory(id: string, params: history.GetMarketCenterHistoryRequest): Promise<history.GetMarketCenterHistoryResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                limit:   params.limit === undefined ? undefined : String(params.limit),
-                offset:  params.offset === undefined ? undefined : String(params.offset),
-                orderBy: String(params.orderBy),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/marketCenter/${encodeURIComponent(id)}/history`, undefined, {query})
-            return await resp.json() as history.GetMarketCenterHistoryResponse
-        }
-
-        public async listCategories(params: ticketCategories.ListCategoriesRequest): Promise<ticketCategories.ListCategoriesResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                id:             params.id,
-                marketCenterId: params.marketCenterId,
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/marketCenters/ticketCategories`, undefined, {query})
-            return await resp.json() as ticketCategories.ListCategoriesResponse
-        }
-
-        /**
-         * Removes users from a market center
-         */
-        public async removeUsers(id: string, params: RemoveUsersRequest): Promise<RemoveUsersResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/marketCenters/users/${encodeURIComponent(id)}`, JSON.stringify(params))
-            return await resp.json() as RemoveUsersResponse
-        }
-
-        public async search(params: ListMarketCentersRequest): Promise<ListMarketCentersResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                categoryId: params.categoryId?.map((v) => v),
-                id:         params.id,
-                limit:      params.limit === undefined ? undefined : String(params.limit),
-                offset:     params.offset === undefined ? undefined : String(params.offset),
-                query:      params.query,
-                sortBy:     params.sortBy === undefined ? undefined : String(params.sortBy),
-                sortDir:    params.sortDir === undefined ? undefined : String(params.sortDir),
-                userIds:    params.userIds?.map((v) => v),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/marketCenters/search`, undefined, {query})
-            return await resp.json() as ListMarketCentersResponse
-        }
-
-        /**
-         * Creates a new market center
-         */
-        public async update(id: string, params: UpdateMarketCenterRequest): Promise<UpdateMarketCenterResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/marketCenters/${encodeURIComponent(id)}`, JSON.stringify(params))
-            return await resp.json() as UpdateMarketCenterResponse
-        }
-
-        public async updateCategory(id: string, params: ticketCategories.UpdateCategoryRequest): Promise<ticketCategories.UpdateCategoryResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/marketCenters/ticketCategories/${encodeURIComponent(id)}`, JSON.stringify(params))
-            return await resp.json() as ticketCategories.UpdateCategoryResponse
-        }
-    }
+  }
 }
 
 export namespace notifications {
-    export interface CreateNotificationRequest {
-        category: NotificationCategory
-        type: string
-        title: string
-        body: string
-        data?: NotificationData
-        priority?: ticket.Urgency
+  export interface CreateNotificationRequest {
+    category: NotificationCategory;
+    type: string;
+    title: string;
+    body: string;
+    data?: NotificationData;
+    priority?: ticket.Urgency;
+  }
+
+  export interface DeleteNotificationsRequest {
+    notificationIds?: string[];
+  }
+
+  export interface DeleteNotificationsResponse {
+    deletedCount: number;
+    message: string;
+  }
+
+  export interface ListInAppNotificationsRequest {
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface ListInAppNotificationsResponse {
+    notifications: Notification[];
+    unReadAmount: number;
+  }
+
+  export interface Notification {
+    id: string;
+    userId: string;
+    user?: user.User;
+    channel?: NotificationChannel;
+    category: NotificationCategory;
+    priority?: ticket.Urgency;
+    type: string;
+    title: string;
+    body: string;
+    data?: NotificationData;
+    read: boolean;
+    deliveredAt: string | null;
+    createdAt: string;
+  }
+
+  export type NotificationCategory =
+    | "ACCOUNT"
+    | "ACTIVITY"
+    | "MARKETING"
+    | "PERMISSIONS"
+    | "PRODUCT";
+
+  export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
+
+  export interface NotificationData {
+    /**
+     * IN-APP OR BROWSER
+     */
+    url?: string;
+
+    ticketId?: string;
+    marketCenterId?: string;
+    userId?: string;
+    commentId?: string;
+    categoryId?: string;
+    /**
+     * EMAIL
+     */
+    appPermissions?: emails.AppPermissionsReviewProps;
+
+    accountInformation?: emails.AccountInformationProps;
+    emails?: string[];
+    invitation?: emails.NewUserInvitationProps;
+    /**
+     * ACTIVITY: MARKET CENTER
+     */
+    marketCenterAssignment?: emails.MarketCenterAssignmentProps;
+
+    categoryAssignment?: emails.CategoryAssignmentProps;
+    /**
+     * ACTIVITY: TICKETS
+     */
+    createdTicket?: emails.CreatedTicketNotificationProps;
+
+    updatedTicket?: emails.UpdatedTicketProps;
+    ticketAssignment?: emails.AssignedTicketNotificationProps;
+    quickEditTicket?: emails.QuickEditTicketNotificationProps;
+    newComment?: emails.NewCommentNotificationProps;
+  }
+
+  export type NotificationFrequency =
+    | "NONE"
+    | "INSTANT"
+    | "DAILY"
+    | "WEEKLY"
+    | "MONTHLY"
+    | "QUARTERLY"
+    | "ANNUALLY";
+
+  export interface UpdateNotificationResponse {
+    success: boolean;
+  }
+
+  export interface UsersToNotify {
+    id: string;
+    name: string;
+    email: string;
+    updateType: emails.AssignmentUpdateType;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.create = this.create.bind(this);
+      this.deleteNotifications = this.deleteNotifications.bind(this);
+      this.listInApp = this.listInApp.bind(this);
+      this.notificationStream = this.notificationStream.bind(this);
+      this.update = this.update.bind(this);
     }
 
-    export interface DeleteNotificationsRequest {
-        notificationIds?: string[]
+    public async create(
+      userId: string,
+      params: CreateNotificationRequest
+    ): Promise<void> {
+      await this.baseClient.callTypedAPI(
+        "POST",
+        `/notifications/create/${encodeURIComponent(userId)}`,
+        JSON.stringify(params)
+      );
     }
 
-    export interface DeleteNotificationsResponse {
-        deletedCount: number
-        message: string
+    public async deleteNotifications(
+      userId: string,
+      params: DeleteNotificationsRequest
+    ): Promise<DeleteNotificationsResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        notificationIds: params.notificationIds?.map((v) => v),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/notifications/${encodeURIComponent(userId)}`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as DeleteNotificationsResponse;
     }
 
-    export interface ListInAppNotificationsRequest {
-        limit?: number
-        offset?: number
+    public async listInApp(
+      email: string,
+      params: ListInAppNotificationsRequest
+    ): Promise<ListInAppNotificationsResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/notifications/in-app/${encodeURIComponent(email)}`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as ListInAppNotificationsResponse;
     }
 
-    export interface ListInAppNotificationsResponse {
-        notifications: Notification[]
-        unReadAmount: number
+    /**
+     * Streaming endpoint for real-time notifications
+     * Clients connect to this endpoint to receive live notifications
+     */
+    public async notificationStream(): Promise<StreamIn<Notification>> {
+      return await this.baseClient.createStreamIn(`/notifications/stream`);
     }
 
-    export interface Notification {
-        id: string
-        userId: string
-        user?: user.User
-        channel?: NotificationChannel
-        category: NotificationCategory
-        priority?: ticket.Urgency
-        type: string
-        title: string
-        body: string
-        data?: NotificationData
-        read: boolean
-        deliveredAt: string | null
-        createdAt: string
+    public async update(
+      notificationId: string,
+      email: string
+    ): Promise<UpdateNotificationResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/notifications/${encodeURIComponent(notificationId)}/${encodeURIComponent(email)}`
+      );
+      return (await resp.json()) as UpdateNotificationResponse;
     }
-
-    export type NotificationCategory = "ACCOUNT" | "ACTIVITY" | "MARKETING" | "PERMISSIONS" | "PRODUCT"
-
-    export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS"
-
-    export interface NotificationData {
-        /**
-         * IN-APP OR BROWSER
-         */
-        url?: string
-
-        ticketId?: string
-        marketCenterId?: string
-        userId?: string
-        commentId?: string
-        categoryId?: string
-        /**
-         * EMAIL
-         */
-        appPermissions?: emails.AppPermissionsReviewProps
-
-        accountInformation?: emails.AccountInformationProps
-        emails?: string[]
-        invitation?: emails.NewUserInvitationProps
-        /**
-         * ACTIVITY: MARKET CENTER
-         */
-        marketCenterAssignment?: emails.MarketCenterAssignmentProps
-
-        categoryAssignment?: emails.CategoryAssignmentProps
-        /**
-         * ACTIVITY: TICKETS
-         */
-        createdTicket?: emails.CreatedTicketNotificationProps
-
-        updatedTicket?: emails.UpdatedTicketProps
-        ticketAssignment?: emails.AssignedTicketNotificationProps
-        quickEditTicket?: emails.QuickEditTicketNotificationProps
-        newComment?: emails.NewCommentNotificationProps
-    }
-
-    export type NotificationFrequency = "NONE" | "INSTANT" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUALLY"
-
-    export interface UpdateNotificationResponse {
-        success: boolean
-    }
-
-    export interface UsersToNotify {
-        id: string
-        name: string
-        email: string
-        updateType: emails.AssignmentUpdateType
-    }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.create = this.create.bind(this)
-            this.deleteNotifications = this.deleteNotifications.bind(this)
-            this.listInApp = this.listInApp.bind(this)
-            this.notificationStream = this.notificationStream.bind(this)
-            this.update = this.update.bind(this)
-        }
-
-        public async create(userId: string, params: CreateNotificationRequest): Promise<void> {
-            await this.baseClient.callTypedAPI("POST", `/notifications/create/${encodeURIComponent(userId)}`, JSON.stringify(params))
-        }
-
-        public async deleteNotifications(userId: string, params: DeleteNotificationsRequest): Promise<DeleteNotificationsResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                notificationIds: params.notificationIds?.map((v) => v),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/notifications/${encodeURIComponent(userId)}`, undefined, {query})
-            return await resp.json() as DeleteNotificationsResponse
-        }
-
-        public async listInApp(email: string, params: ListInAppNotificationsRequest): Promise<ListInAppNotificationsResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                limit:  params.limit === undefined ? undefined : String(params.limit),
-                offset: params.offset === undefined ? undefined : String(params.offset),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/notifications/in-app/${encodeURIComponent(email)}`, undefined, {query})
-            return await resp.json() as ListInAppNotificationsResponse
-        }
-
-        /**
-         * Streaming endpoint for real-time notifications
-         * Clients connect to this endpoint to receive live notifications
-         */
-        public async notificationStream(): Promise<StreamIn<Notification>> {
-            return await this.baseClient.createStreamIn(`/notifications/stream`)
-        }
-
-        public async update(notificationId: string, email: string): Promise<UpdateNotificationResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/notifications/${encodeURIComponent(notificationId)}/${encodeURIComponent(email)}`)
-            return await resp.json() as UpdateNotificationResponse
-        }
-    }
+  }
 }
 
 export namespace seed {
-    export interface SeedResponse {
-        message: string
+  export interface SeedResponse {
+    message: string;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.seedData = this.seedData.bind(this);
     }
 
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.seedData = this.seedData.bind(this)
-        }
-
-        public async seedData(): Promise<SeedResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/seed`)
-            return await resp.json() as SeedResponse
-        }
+    public async seedData(): Promise<SeedResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI("POST", `/seed`);
+      return (await resp.json()) as SeedResponse;
     }
+  }
 }
 
 export namespace settings {
-    export interface CreateNotificationsResponse {
-        created: boolean
+  export interface CreateNotificationsResponse {
+    created: boolean;
+  }
+
+  export interface GetUserSettingsResponse {
+    settings: user.UserSettings;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.getUserHistory = this.getUserHistory.bind(this);
     }
 
-    export interface GetUserSettingsResponse {
-        settings: user.UserSettings
+    public async getUserHistory(userId: string, id: string): Promise<void> {
+      await this.baseClient.callTypedAPI(
+        "GET",
+        `/settings/users/${encodeURIComponent(userId)}/${encodeURIComponent(id)}`
+      );
     }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.getUserHistory = this.getUserHistory.bind(this)
-        }
-
-        public async getUserHistory(userId: string, id: string): Promise<void> {
-            await this.baseClient.callTypedAPI("GET", `/settings/users/${encodeURIComponent(userId)}/${encodeURIComponent(id)}`)
-        }
-    }
+  }
 }
 
 export namespace ticket {
-    export interface AssignTicketRequest {
-        assigneeId: string
+  export interface AssignTicketRequest {
+    assigneeId: string;
+  }
+
+  export interface AssignTicketResponse {
+    ticket: Ticket;
+    usersToNotify: notifications.UsersToNotify[];
+  }
+
+  export interface AssignmentRule {
+    id: string;
+    name: string;
+    description: string;
+    conditions: RuleConditions;
+    action: RuleAction;
+    priority: number;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface Attachment {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    bucketKey: string;
+    ticketId: string;
+    uploadedBy: string;
+    createdAt: string;
+    updatedAt: string;
+    uploader?: user.User;
+    uploaderName?: string;
+  }
+
+  export interface BulkAssignRequest {
+    ticketIds: string[];
+    assigneeId: string;
+  }
+
+  export interface BulkAssignResponse {
+    updated: number;
+    failed: string[];
+  }
+
+  export interface BulkUpdateRequest {
+    /**
+     * currentUserId: string;
+     * currentUserRole: UserRole;
+     */
+    ticketIds: string[];
+
+    status?: TicketStatus;
+    urgency?: Urgency;
+    category?: string;
+    dueDate?: string;
+  }
+
+  export interface BulkUpdateResponse {
+    updated: number;
+    failed: string[];
+  }
+
+  export interface Comment {
+    id: string;
+    content: string;
+    ticketId: string;
+    userId: string;
+    internal: boolean;
+    createdAt: string;
+    user?: user.User;
+  }
+
+  export interface CreateRuleRequest {
+    name: string;
+    description: string;
+    conditions: RuleConditions;
+    action: RuleAction;
+    priority?: number;
+    isActive?: boolean;
+  }
+
+  export interface CreateRuleResponse {
+    rule: AssignmentRule;
+  }
+
+  export interface CreateTicketRequest {
+    title: string;
+    description: string;
+    categoryId: string;
+    urgency: Urgency;
+    dueDate?: string;
+    assigneeId?: string;
+  }
+
+  export interface CreateTicketResponse {
+    ticket: Ticket;
+    usersToNotify: notifications.UsersToNotify[];
+  }
+
+  export interface DashboardMetrics {
+    totalTickets: number;
+    openTickets: number;
+    overdueTickets: number;
+    avgResponseTime: number;
+    ticketsByStatus: {
+      DRAFT: number;
+      CREATED: number;
+      ASSIGNED: number;
+      UNASSIGNED: number;
+      AWAITING_RESPONSE: number;
+      IN_PROGRESS: number;
+      RESOLVED: number;
+    };
+    ticketsByUrgency: {
+      HIGH: number;
+      MEDIUM: number;
+      LOW: number;
+    };
+  }
+
+  export interface DeleteTicketResponse {
+    success: boolean;
+    message: string;
+  }
+
+  export interface GetTemplatesRequest {
+    category?: string;
+    isActive?: boolean;
+  }
+
+  export interface GetTemplatesResponse {
+    templates: TicketTemplate[];
+  }
+
+  export interface GetTicketHistoryRequest {
+    orderBy: string;
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface GetTicketHistoryResponse {
+    ticketHistory: TicketHistory[];
+    total: number;
+  }
+
+  export interface GetTicketResponse {
+    ticket: Ticket;
+  }
+
+  export interface ListTicketsRequest {
+    status?: TicketStatus[];
+    urgency?: Urgency[];
+    assigneeId?: string;
+    creatorId?: string;
+    categoryId?: string;
+    search?: string;
+    marketCenterId?: string;
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface ListTicketsResponse {
+    tickets: Ticket[];
+    total: number;
+  }
+
+  export interface RuleAction {
+    assignToUserId?: string;
+    assignToRole?: user.UserRole;
+    assignToNextAvailable?: boolean;
+    roundRobin?: {
+      userIds: string[];
+      lastAssignedIndex?: number;
+    };
+  }
+
+  export interface RuleConditions {
+    category?: string[];
+    urgency?: Urgency[];
+    keywords?: string[];
+    creatorRole?: user.UserRole[];
+    timeOfDay?: {
+      /**
+       * Assign based on time
+       */
+      start: string;
+
+      end: string;
+    };
+    dayOfWeek?: number[];
+  }
+
+  export interface SearchTicketsRequest {
+    query?: string;
+    status?: TicketStatus[];
+    urgency?: Urgency[];
+    assigneeId?: string;
+    creatorId?: string;
+    categoryId?: string[];
+    marketCenterId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    sortBy?: "updatedAt" | "createdAt" | "urgency" | "status";
+    sortDir?: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface SearchTicketsResponse {
+    tickets: {
+      id?: string;
+      title?: string | null;
+      description?: string | null;
+      status?: TicketStatus;
+      urgency?: Urgency;
+      categoryId?: string | null;
+      creatorId?: string;
+      assigneeId?: string | null;
+      dueDate?: string | null;
+      resolvedAt?: string | null;
+      createdAt?: string;
+      updatedAt?: string;
+      creator?: user.User;
+      assignee?: user.User | null;
+      category?: marketCenters.TicketCategory | null;
+      commentCount?: number | null;
+      attachmentCount?: number | null;
+      attachments?: Attachment[];
+      deletedAt?: string | null;
+      isActive?: boolean;
+      ticketHistory?: TicketHistory[];
+    }[];
+    total: number;
+  }
+
+  export interface Ticket {
+    id: string;
+    title: string | null;
+    description: string | null;
+    status: TicketStatus;
+    urgency: Urgency;
+    categoryId?: string | null;
+    creatorId?: string;
+    assigneeId?: string | null;
+    dueDate: string | null;
+    resolvedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    creator?: user.User;
+    assignee?: user.User | null;
+    category?: marketCenters.TicketCategory | null;
+    commentCount?: number | null;
+    attachmentCount?: number | null;
+    attachments?: Attachment[];
+    deletedAt?: string | null;
+    isActive?: boolean;
+    ticketHistory?: TicketHistory[];
+  }
+
+  export interface TicketHistory {
+    id: string;
+    ticketId: string;
+    action: string;
+    field: string | null;
+    previousValue: string | null;
+    newValue: string | null;
+    snapshot?: {};
+    changedAt: string;
+    changedById: string;
+    changedBy?: user.User;
+  }
+
+  export type TicketStatus =
+    | "DRAFT"
+    | "CREATED"
+    | "ASSIGNED"
+    | "UNASSIGNED"
+    | "AWAITING_RESPONSE"
+    | "IN_PROGRESS"
+    | "RESOLVED";
+
+  export interface TicketTemplate {
+    id: string;
+    name: string;
+    description: string;
+    title: string;
+    ticketDescription: string;
+    category: string;
+    urgency: Urgency;
+    tags?: string[];
+    isActive: boolean;
+  }
+
+  export interface UpdateTicketRequest {
+    title?: string;
+    description?: string;
+    status?: TicketStatus;
+    urgency?: Urgency;
+    categoryId?: string;
+    dueDate?: string;
+    assigneeId?: string;
+  }
+
+  export interface UpdateTicketResponse {
+    ticket: Ticket;
+    usersToNotify: notifications.UsersToNotify[];
+    changedDetails: emails.ActivityUpdates[];
+  }
+
+  export type Urgency = "HIGH" | "MEDIUM" | "LOW";
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.assign = this.assign.bind(this);
+      this.bulkAssign = this.bulkAssign.bind(this);
+      this.bulkUpdate = this.bulkUpdate.bind(this);
+      this.create = this.create.bind(this);
+      this.createRule = this.createRule.bind(this);
+      this.deleteTicket = this.deleteTicket.bind(this);
+      this.get = this.get.bind(this);
+      this.getTemplates = this.getTemplates.bind(this);
+      this.getTicketHistory = this.getTicketHistory.bind(this);
+      this.list = this.list.bind(this);
+      this.search = this.search.bind(this);
+      this.update = this.update.bind(this);
     }
 
-    export interface AssignTicketResponse {
-        ticket: Ticket
-        usersToNotify: notifications.UsersToNotify[]
+    /**
+     * Assigns a ticket to a user
+     */
+    public async assign(
+      id: string,
+      params: AssignTicketRequest
+    ): Promise<AssignTicketResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/tickets/${encodeURIComponent(id)}/assign`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as AssignTicketResponse;
     }
 
-    export interface AssignmentRule {
-        id: string
-        name: string
-        description: string
-        conditions: RuleConditions
-        action: RuleAction
-        priority: number
-        isActive: boolean
-        createdAt: string
-        updatedAt: string
+    public async bulkAssign(
+      params: BulkAssignRequest
+    ): Promise<BulkAssignResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/tickets/bulk-assign`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as BulkAssignResponse;
     }
 
-    export interface Attachment {
-        id: string
-        fileName: string
-        fileSize: number
-        mimeType: string
-        bucketKey: string
-        ticketId: string
-        uploadedBy: string
-        createdAt: string
-        updatedAt: string
-        uploader?: user.User
-        uploaderName?: string
+    public async bulkUpdate(
+      params: BulkUpdateRequest
+    ): Promise<BulkUpdateResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PUT",
+        `/tickets/bulk-update`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as BulkUpdateResponse;
     }
 
-    export interface BulkAssignRequest {
-        ticketIds: string[]
-        assigneeId: string
+    public async create(
+      params: CreateTicketRequest
+    ): Promise<CreateTicketResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/tickets`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as CreateTicketResponse;
     }
 
-    export interface BulkAssignResponse {
-        updated: number
-        failed: string[]
+    public async createRule(
+      params: CreateRuleRequest
+    ): Promise<CreateRuleResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/auto-assignments/rules`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as CreateRuleResponse;
     }
 
-    export interface BulkUpdateRequest {
-        /**
-         * currentUserId: string;
-         * currentUserRole: UserRole;
-         */
-        ticketIds: string[]
-
-        status?: TicketStatus
-        urgency?: Urgency
-        category?: string
-        dueDate?: string
+    public async deleteTicket(ticketId: string): Promise<DeleteTicketResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/tickets/${encodeURIComponent(ticketId)}`
+      );
+      return (await resp.json()) as DeleteTicketResponse;
     }
 
-    export interface BulkUpdateResponse {
-        updated: number
-        failed: string[]
+    public async get(ticketId: string): Promise<GetTicketResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/tickets/${encodeURIComponent(ticketId)}`
+      );
+      return (await resp.json()) as GetTicketResponse;
     }
 
-    export interface Comment {
-        id: string
-        content: string
-        ticketId: string
-        userId: string
-        internal: boolean
-        createdAt: string
-        user?: user.User
+    public async getTemplates(
+      params: GetTemplatesRequest
+    ): Promise<GetTemplatesResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        category: params.category,
+        isActive:
+          params.isActive === undefined ? undefined : String(params.isActive),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/ticket-templates`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as GetTemplatesResponse;
     }
 
-    export interface CreateRuleRequest {
-        name: string
-        description: string
-        conditions: RuleConditions
-        action: RuleAction
-        priority?: number
-        isActive?: boolean
+    public async getTicketHistory(
+      id: string,
+      params: GetTicketHistoryRequest
+    ): Promise<GetTicketHistoryResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        orderBy: params.orderBy,
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/tickets/${encodeURIComponent(id)}/history`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as GetTicketHistoryResponse;
     }
 
-    export interface CreateRuleResponse {
-        rule: AssignmentRule
+    public async list(
+      params: ListTicketsRequest
+    ): Promise<ListTicketsResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        assigneeId: params.assigneeId,
+        categoryId: params.categoryId,
+        creatorId: params.creatorId,
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        marketCenterId: params.marketCenterId,
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        search: params.search,
+        status: params.status?.map((v) => String(v)),
+        urgency: params.urgency?.map((v) => String(v)),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/tickets`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as ListTicketsResponse;
     }
 
-    export interface CreateTicketRequest {
-        title: string
-        description: string
-        categoryId: string
-        urgency: Urgency
-        dueDate?: string
-        assigneeId?: string
+    public async search(
+      params: SearchTicketsRequest
+    ): Promise<SearchTicketsResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        assigneeId: params.assigneeId,
+        categoryId: params.categoryId?.map((v) => v),
+        creatorId: params.creatorId,
+        dateFrom: params.dateFrom,
+        dateTo: params.dateTo,
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        marketCenterId: params.marketCenterId,
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        query: params.query,
+        sortBy: params.sortBy === undefined ? undefined : String(params.sortBy),
+        sortDir:
+          params.sortDir === undefined ? undefined : String(params.sortDir),
+        status: params.status?.map((v) => String(v)),
+        urgency: params.urgency?.map((v) => String(v)),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/tickets/search`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as SearchTicketsResponse;
     }
 
-    export interface CreateTicketResponse {
-        ticket: Ticket
-        usersToNotify: notifications.UsersToNotify[]
+    public async update(
+      ticketId: string,
+      params: UpdateTicketRequest
+    ): Promise<UpdateTicketResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PUT",
+        `/tickets/update/${encodeURIComponent(ticketId)}`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as UpdateTicketResponse;
     }
-
-    export interface DashboardMetrics {
-        totalTickets: number
-        openTickets: number
-        overdueTickets: number
-        avgResponseTime: number
-        ticketsByStatus: {
-            DRAFT: number
-            CREATED: number
-            ASSIGNED: number
-            UNASSIGNED: number
-            "AWAITING_RESPONSE": number
-            "IN_PROGRESS": number
-            RESOLVED: number
-        }
-        ticketsByUrgency: {
-            HIGH: number
-            MEDIUM: number
-            LOW: number
-        }
-    }
-
-    export interface DeleteTicketResponse {
-        success: boolean
-        message: string
-    }
-
-    export interface GetTemplatesRequest {
-        category?: string
-        isActive?: boolean
-    }
-
-    export interface GetTemplatesResponse {
-        templates: TicketTemplate[]
-    }
-
-    export interface GetTicketHistoryRequest {
-        orderBy: string
-        limit?: number
-        offset?: number
-    }
-
-    export interface GetTicketHistoryResponse {
-        ticketHistory: TicketHistory[]
-        total: number
-    }
-
-    export interface GetTicketResponse {
-        ticket: Ticket
-    }
-
-    export interface ListTicketsRequest {
-        status?: TicketStatus[]
-        urgency?: Urgency[]
-        assigneeId?: string
-        creatorId?: string
-        categoryId?: string
-        search?: string
-        marketCenterId?: string
-        limit?: number
-        offset?: number
-    }
-
-    export interface ListTicketsResponse {
-        tickets: Ticket[]
-        total: number
-    }
-
-    export interface RuleAction {
-        assignToUserId?: string
-        assignToRole?: user.UserRole
-        assignToNextAvailable?: boolean
-        roundRobin?: {
-            userIds: string[]
-            lastAssignedIndex?: number
-        }
-    }
-
-    export interface RuleConditions {
-        category?: string[]
-        urgency?: Urgency[]
-        keywords?: string[]
-        creatorRole?: user.UserRole[]
-        timeOfDay?: {
-            /**
-             * Assign based on time
-             */
-            start: string
-
-            end: string
-        }
-        dayOfWeek?: number[]
-    }
-
-    export interface SearchTicketsRequest {
-        query?: string
-        status?: TicketStatus[]
-        urgency?: Urgency[]
-        assigneeId?: string
-        creatorId?: string
-        categoryId?: string[]
-        marketCenterId?: string
-        dateFrom?: string
-        dateTo?: string
-        sortBy?: "updatedAt" | "createdAt" | "urgency" | "status"
-        sortDir?: "asc" | "desc"
-        limit?: number
-        offset?: number
-    }
-
-    export interface SearchTicketsResponse {
-        tickets: {
-            id?: string
-            title?: string | null
-            description?: string | null
-            status?: TicketStatus
-            urgency?: Urgency
-            categoryId?: string | null
-            creatorId?: string
-            assigneeId?: string | null
-            dueDate?: string | null
-            resolvedAt?: string | null
-            createdAt?: string
-            updatedAt?: string
-            creator?: user.User
-            assignee?: user.User | null
-            category?: marketCenters.TicketCategory | null
-            commentCount?: number | null
-            attachmentCount?: number | null
-            attachments?: Attachment[]
-            deletedAt?: string | null
-            isActive?: boolean
-            ticketHistory?: TicketHistory[]
-        }[]
-        total: number
-    }
-
-    export interface Ticket {
-        id: string
-        title: string | null
-        description: string | null
-        status: TicketStatus
-        urgency: Urgency
-        categoryId?: string | null
-        creatorId?: string
-        assigneeId?: string | null
-        dueDate: string | null
-        resolvedAt?: string | null
-        createdAt: string
-        updatedAt: string
-        creator?: user.User
-        assignee?: user.User | null
-        category?: marketCenters.TicketCategory | null
-        commentCount?: number | null
-        attachmentCount?: number | null
-        attachments?: Attachment[]
-        deletedAt?: string | null
-        isActive?: boolean
-        ticketHistory?: TicketHistory[]
-    }
-
-    export interface TicketHistory {
-        id: string
-        ticketId: string
-        action: string
-        field: string | null
-        previousValue: string | null
-        newValue: string | null
-        snapshot?: {
-        }
-        changedAt: string
-        changedById: string
-        changedBy?: user.User
-    }
-
-    export type TicketStatus = "DRAFT" | "CREATED" | "ASSIGNED" | "UNASSIGNED" | "AWAITING_RESPONSE" | "IN_PROGRESS" | "RESOLVED"
-
-    export interface TicketTemplate {
-        id: string
-        name: string
-        description: string
-        title: string
-        ticketDescription: string
-        category: string
-        urgency: Urgency
-        tags?: string[]
-        isActive: boolean
-    }
-
-    export interface UpdateTicketRequest {
-        title?: string
-        description?: string
-        status?: TicketStatus
-        urgency?: Urgency
-        categoryId?: string
-        dueDate?: string
-        assigneeId?: string
-    }
-
-    export interface UpdateTicketResponse {
-        ticket: Ticket
-        usersToNotify: notifications.UsersToNotify[]
-        changedDetails: emails.ActivityUpdates[]
-    }
-
-    export type Urgency = "HIGH" | "MEDIUM" | "LOW"
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.assign = this.assign.bind(this)
-            this.bulkAssign = this.bulkAssign.bind(this)
-            this.bulkUpdate = this.bulkUpdate.bind(this)
-            this.create = this.create.bind(this)
-            this.createRule = this.createRule.bind(this)
-            this.deleteTicket = this.deleteTicket.bind(this)
-            this.get = this.get.bind(this)
-            this.getTemplates = this.getTemplates.bind(this)
-            this.getTicketHistory = this.getTicketHistory.bind(this)
-            this.list = this.list.bind(this)
-            this.search = this.search.bind(this)
-            this.update = this.update.bind(this)
-        }
-
-        /**
-         * Assigns a ticket to a user
-         */
-        public async assign(id: string, params: AssignTicketRequest): Promise<AssignTicketResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/tickets/${encodeURIComponent(id)}/assign`, JSON.stringify(params))
-            return await resp.json() as AssignTicketResponse
-        }
-
-        public async bulkAssign(params: BulkAssignRequest): Promise<BulkAssignResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/tickets/bulk-assign`, JSON.stringify(params))
-            return await resp.json() as BulkAssignResponse
-        }
-
-        public async bulkUpdate(params: BulkUpdateRequest): Promise<BulkUpdateResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PUT", `/tickets/bulk-update`, JSON.stringify(params))
-            return await resp.json() as BulkUpdateResponse
-        }
-
-        public async create(params: CreateTicketRequest): Promise<CreateTicketResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/tickets`, JSON.stringify(params))
-            return await resp.json() as CreateTicketResponse
-        }
-
-        public async createRule(params: CreateRuleRequest): Promise<CreateRuleResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/auto-assignments/rules`, JSON.stringify(params))
-            return await resp.json() as CreateRuleResponse
-        }
-
-        public async deleteTicket(ticketId: string): Promise<DeleteTicketResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/tickets/${encodeURIComponent(ticketId)}`)
-            return await resp.json() as DeleteTicketResponse
-        }
-
-        public async get(ticketId: string): Promise<GetTicketResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/tickets/${encodeURIComponent(ticketId)}`)
-            return await resp.json() as GetTicketResponse
-        }
-
-        public async getTemplates(params: GetTemplatesRequest): Promise<GetTemplatesResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                category: params.category,
-                isActive: params.isActive === undefined ? undefined : String(params.isActive),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/ticket-templates`, undefined, {query})
-            return await resp.json() as GetTemplatesResponse
-        }
-
-        public async getTicketHistory(id: string, params: GetTicketHistoryRequest): Promise<GetTicketHistoryResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                limit:   params.limit === undefined ? undefined : String(params.limit),
-                offset:  params.offset === undefined ? undefined : String(params.offset),
-                orderBy: params.orderBy,
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/tickets/${encodeURIComponent(id)}/history`, undefined, {query})
-            return await resp.json() as GetTicketHistoryResponse
-        }
-
-        public async list(params: ListTicketsRequest): Promise<ListTicketsResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                assigneeId:     params.assigneeId,
-                categoryId:     params.categoryId,
-                creatorId:      params.creatorId,
-                limit:          params.limit === undefined ? undefined : String(params.limit),
-                marketCenterId: params.marketCenterId,
-                offset:         params.offset === undefined ? undefined : String(params.offset),
-                search:         params.search,
-                status:         params.status?.map((v) => String(v)),
-                urgency:        params.urgency?.map((v) => String(v)),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/tickets`, undefined, {query})
-            return await resp.json() as ListTicketsResponse
-        }
-
-        public async search(params: SearchTicketsRequest): Promise<SearchTicketsResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                assigneeId:     params.assigneeId,
-                categoryId:     params.categoryId?.map((v) => v),
-                creatorId:      params.creatorId,
-                dateFrom:       params.dateFrom,
-                dateTo:         params.dateTo,
-                limit:          params.limit === undefined ? undefined : String(params.limit),
-                marketCenterId: params.marketCenterId,
-                offset:         params.offset === undefined ? undefined : String(params.offset),
-                query:          params.query,
-                sortBy:         params.sortBy === undefined ? undefined : String(params.sortBy),
-                sortDir:        params.sortDir === undefined ? undefined : String(params.sortDir),
-                status:         params.status?.map((v) => String(v)),
-                urgency:        params.urgency?.map((v) => String(v)),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/tickets/search`, undefined, {query})
-            return await resp.json() as SearchTicketsResponse
-        }
-
-        public async update(ticketId: string, params: UpdateTicketRequest): Promise<UpdateTicketResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PUT", `/tickets/update/${encodeURIComponent(ticketId)}`, JSON.stringify(params))
-            return await resp.json() as UpdateTicketResponse
-        }
-    }
+  }
 }
 
 export namespace user {
-    export interface CreateUserRequest {
-        email: string
-        name: string
-        role?: UserRole
-        clerkId: string
-        marketCenterId?: string
+  export interface CreateUserRequest {
+    email: string;
+    name: string;
+    role?: UserRole;
+    clerkId: string;
+    marketCenterId?: string;
+  }
+
+  export interface CreateUserResponse {
+    user?: User;
+    success: boolean;
+  }
+
+  export interface DeleteUserResponse {
+    success: boolean;
+    message: string;
+  }
+
+  export interface GetCurrentUserResponse {
+    /**
+     * user: User;
+     */
+    email: string;
+
+    name: string;
+    role: string;
+    isActive: boolean;
+    marketCenterId: string | null;
+    marketCenter?: {
+      id: string;
+      name: string;
+    } | null;
+  }
+
+  export interface GetUserByEmailResponse {
+    user: User;
+  }
+
+  export interface GetUserResponse {
+    user: User;
+  }
+
+  export interface ListUsersRequest {
+    role?: UserRole;
+    isActive?: boolean;
+  }
+
+  export interface ListUsersResponse {
+    users: User[];
+  }
+
+  export interface NotificationPreferences {
+    id: string;
+    frequency: notifications.NotificationFrequency;
+    category: notifications.NotificationCategory;
+    type: string;
+    email: boolean;
+    push: boolean;
+    inApp: boolean;
+    sms: boolean;
+    userSettingsId: string;
+    userSettings?: UserSettings;
+  }
+
+  export interface SearchUsersRequest {
+    query?: string;
+    role?: UserRole[];
+    isActive?: boolean;
+    marketCenterId?: string;
+    hasTickets?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+    deletedAt?: string;
+    sortBy?: "updatedAt" | "createdAt" | "name";
+    sortDir?: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
+
+  export interface SearchUsersResponse {
+    users: User[];
+    total: number;
+  }
+
+  export interface UpdateUserRequest {
+    name?: string;
+    role?: UserRole;
+    isActive?: boolean;
+    email?: string;
+    marketCenterId?: string;
+  }
+
+  export interface UpdateUserResponse {
+    user: User;
+  }
+
+  export interface User {
+    id: string;
+    clerkId: string;
+    /**
+     * auth0Id: string;
+     */
+    email: string;
+
+    name: string | null;
+    role: UserRole;
+    createdAt: string;
+    updatedAt: string;
+    isActive: boolean;
+    comments?: ticket.Comment[];
+    defaultForCategories?: marketCenters.TicketCategory[];
+    assignedTickets?: ticket.Ticket[];
+    createdTickets?: ticket.Ticket[];
+    marketCenterId: string | null;
+    marketCenter?: marketCenters.MarketCenter;
+    ticketHistory?: ticket.TicketHistory[];
+    userHistory?: UserHistory[];
+    otherUsersChanges?: UserHistory[];
+    marketCenterHistory?: marketCenters.MarketCenterHistory[];
+    userSettings?: UserSettings;
+    notifications?: notifications.Notification[];
+  }
+
+  export interface UserHistory {
+    id: string;
+    userId: string;
+    marketCenterId: string;
+    action: string;
+    field: string | null;
+    previousValue: string | null;
+    newValue: string | null;
+    snapshot?: {};
+    changedAt: string;
+    changedById: string;
+    changedBy?: User;
+    user?: User;
+  }
+
+  export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
+
+  export interface UserSettings {
+    id: string;
+    userId: string;
+    notificationPreferences?: NotificationPreferences[];
+    createdAt: string;
+    updatedAt: string;
+    user?: User;
+  }
+
+  export class ServiceClient {
+    private baseClient: BaseClient;
+
+    constructor(baseClient: BaseClient) {
+      this.baseClient = baseClient;
+      this.create = this.create.bind(this);
+      this.createNotifications = this.createNotifications.bind(this);
+      this.deleteUser = this.deleteUser.bind(this);
+      this.get = this.get.bind(this);
+      this.getByEmail = this.getByEmail.bind(this);
+      this.getUserHistory = this.getUserHistory.bind(this);
+      this.getUserSettings = this.getUserSettings.bind(this);
+      this.getUserTicketHistory = this.getUserTicketHistory.bind(this);
+      this.list = this.list.bind(this);
+      this.me = this.me.bind(this);
+      this.resetNotificationPreferences =
+        this.resetNotificationPreferences.bind(this);
+      this.search = this.search.bind(this);
+      this.update = this.update.bind(this);
+      this.updateNotificationPreferences =
+        this.updateNotificationPreferences.bind(this);
     }
 
-    export interface CreateUserResponse {
-        user?: User
-        success: boolean
+    public async create(
+      params: CreateUserRequest
+    ): Promise<CreateUserResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "POST",
+        `/users`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as CreateUserResponse;
     }
 
-    export interface DeleteUserResponse {
-        success: boolean
-        message: string
+    public async createNotifications(
+      id: string
+    ): Promise<settings.CreateNotificationsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PUT",
+        `/users/${encodeURIComponent(id)}/settings`
+      );
+      return (await resp.json()) as settings.CreateNotificationsResponse;
     }
 
-    export interface GetCurrentUserResponse {
-        /**
-         * user: User;
-         */
-        email: string
-
-        name: string
-        role: string
-        isActive: boolean
-        marketCenterId: string | null
-        marketCenter?: {
-            id: string
-            name: string
-        } | null
+    public async deleteUser(id: string): Promise<DeleteUserResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "DELETE",
+        `/users/${encodeURIComponent(id)}`
+      );
+      return (await resp.json()) as DeleteUserResponse;
     }
 
-    export interface GetUserByEmailResponse {
-        user: User
+    public async get(id: string): Promise<GetUserResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/${encodeURIComponent(id)}`
+      );
+      return (await resp.json()) as GetUserResponse;
     }
 
-    export interface GetUserResponse {
-        user: User
+    public async getByEmail(email: string): Promise<GetUserByEmailResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/email/${encodeURIComponent(email)}`
+      );
+      return (await resp.json()) as GetUserByEmailResponse;
     }
 
-    export interface ListUsersRequest {
-        role?: UserRole
-        isActive?: boolean
+    public async getUserHistory(
+      id: string,
+      params: history.GetUserHistoryRequest
+    ): Promise<history.GetUserHistoryResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        orderBy: String(params.orderBy),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/${encodeURIComponent(id)}/history`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as history.GetUserHistoryResponse;
     }
 
-    export interface ListUsersResponse {
-        users: User[]
+    public async getUserSettings(
+      id: string
+    ): Promise<settings.GetUserSettingsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/${encodeURIComponent(id)}/settings`
+      );
+      return (await resp.json()) as settings.GetUserSettingsResponse;
     }
 
-    export interface NotificationPreferences {
-        id: string
-        frequency: notifications.NotificationFrequency
-        category: notifications.NotificationCategory
-        type: string
-        email: boolean
-        push: boolean
-        inApp: boolean
-        sms: boolean
-        userSettingsId: string
-        userSettings?: UserSettings
+    public async getUserTicketHistory(
+      id: string,
+      params: history.GetUserTicketHistoryRequest
+    ): Promise<history.GetUserTicketHistoryResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        orderBy: params.orderBy,
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/${encodeURIComponent(id)}/history/tickets`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as history.GetUserTicketHistoryResponse;
     }
 
-    export interface SearchUsersRequest {
-        query?: string
-        role?: UserRole[]
-        isActive?: boolean
-        marketCenterId?: string
-        hasTickets?: boolean
-        createdAt?: string
-        updatedAt?: string
-        deletedAt?: string
-        sortBy?: "updatedAt" | "createdAt" | "name"
-        sortDir?: "asc" | "desc"
-        limit?: number
-        offset?: number
+    public async list(params: ListUsersRequest): Promise<ListUsersResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        isActive:
+          params.isActive === undefined ? undefined : String(params.isActive),
+        role: params.role === undefined ? undefined : String(params.role),
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as ListUsersResponse;
     }
 
-    export interface SearchUsersResponse {
-        users: User[]
-        total: number
+    public async me(): Promise<GetCurrentUserResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI("GET", `/users/me`);
+      return (await resp.json()) as GetCurrentUserResponse;
     }
 
-    export interface UpdateUserRequest {
-        name?: string
-        role?: UserRole
-        isActive?: boolean
-        email?: string
-        marketCenterId?: string
+    public async resetNotificationPreferences(
+      id: string
+    ): Promise<notificationPreferences.ResetNotificationsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/users/${encodeURIComponent(id)}/settings/notificationPreferences/reset`
+      );
+      return (await resp.json()) as notificationPreferences.ResetNotificationsResponse;
     }
 
-    export interface UpdateUserResponse {
-        user: User
+    public async search(
+      params: SearchUsersRequest
+    ): Promise<SearchUsersResponse> {
+      // Convert our params into the objects we need for the request
+      const query = makeRecord<string, string | string[]>({
+        createdAt: params.createdAt,
+        deletedAt: params.deletedAt,
+        hasTickets:
+          params.hasTickets === undefined
+            ? undefined
+            : String(params.hasTickets),
+        isActive:
+          params.isActive === undefined ? undefined : String(params.isActive),
+        limit: params.limit === undefined ? undefined : String(params.limit),
+        marketCenterId: params.marketCenterId,
+        offset: params.offset === undefined ? undefined : String(params.offset),
+        query: params.query,
+        role: params.role?.map((v) => String(v)),
+        sortBy: params.sortBy === undefined ? undefined : String(params.sortBy),
+        sortDir:
+          params.sortDir === undefined ? undefined : String(params.sortDir),
+        updatedAt: params.updatedAt,
+      });
+
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "GET",
+        `/users/search`,
+        undefined,
+        { query }
+      );
+      return (await resp.json()) as SearchUsersResponse;
     }
 
-    export interface User {
-        id: string
-        clerkId: string
-        /**
-         * auth0Id: string;
-         */
-        email: string
-
-        name: string | null
-        role: UserRole
-        createdAt: string
-        updatedAt: string
-        isActive: boolean
-        comments?: ticket.Comment[]
-        defaultForCategories?: marketCenters.TicketCategory[]
-        assignedTickets?: ticket.Ticket[]
-        createdTickets?: ticket.Ticket[]
-        marketCenterId: string | null
-        marketCenter?: marketCenters.MarketCenter
-        ticketHistory?: ticket.TicketHistory[]
-        userHistory?: UserHistory[]
-        otherUsersChanges?: UserHistory[]
-        marketCenterHistory?: marketCenters.MarketCenterHistory[]
-        userSettings?: UserSettings
-        notifications?: notifications.Notification[]
+    public async update(
+      id: string,
+      params: UpdateUserRequest
+    ): Promise<UpdateUserResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PUT",
+        `/users/${encodeURIComponent(id)}/update`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as UpdateUserResponse;
     }
 
-    export interface UserHistory {
-        id: string
-        userId: string
-        marketCenterId: string
-        action: string
-        field: string | null
-        previousValue: string | null
-        newValue: string | null
-        snapshot?: {
-        }
-        changedAt: string
-        changedById: string
-        changedBy?: User
-        user?: User
+    public async updateNotificationPreferences(
+      id: string,
+      params: notificationPreferences.UpdateNotificationsRequest
+    ): Promise<notificationPreferences.UpdateNotificationsResponse> {
+      // Now make the actual call to the API
+      const resp = await this.baseClient.callTypedAPI(
+        "PATCH",
+        `/users/${encodeURIComponent(id)}/update/settings/notifications`,
+        JSON.stringify(params)
+      );
+      return (await resp.json()) as notificationPreferences.UpdateNotificationsResponse;
     }
-
-    export type UserRole = "AGENT" | "STAFF" | "ADMIN"
-
-    export interface UserSettings {
-        id: string
-        userId: string
-        notificationPreferences?: NotificationPreferences[]
-        createdAt: string
-        updatedAt: string
-        user?: User
-    }
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.create = this.create.bind(this)
-            this.createNotifications = this.createNotifications.bind(this)
-            this.deleteUser = this.deleteUser.bind(this)
-            this.get = this.get.bind(this)
-            this.getByEmail = this.getByEmail.bind(this)
-            this.getUserHistory = this.getUserHistory.bind(this)
-            this.getUserSettings = this.getUserSettings.bind(this)
-            this.getUserTicketHistory = this.getUserTicketHistory.bind(this)
-            this.list = this.list.bind(this)
-            this.me = this.me.bind(this)
-            this.resetNotificationPreferences = this.resetNotificationPreferences.bind(this)
-            this.search = this.search.bind(this)
-            this.update = this.update.bind(this)
-            this.updateNotificationPreferences = this.updateNotificationPreferences.bind(this)
-        }
-
-        public async create(params: CreateUserRequest): Promise<CreateUserResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("POST", `/users`, JSON.stringify(params))
-            return await resp.json() as CreateUserResponse
-        }
-
-        public async createNotifications(id: string): Promise<settings.CreateNotificationsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PUT", `/users/${encodeURIComponent(id)}/settings`)
-            return await resp.json() as settings.CreateNotificationsResponse
-        }
-
-        public async deleteUser(id: string): Promise<DeleteUserResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("DELETE", `/users/${encodeURIComponent(id)}`)
-            return await resp.json() as DeleteUserResponse
-        }
-
-        public async get(id: string): Promise<GetUserResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/${encodeURIComponent(id)}`)
-            return await resp.json() as GetUserResponse
-        }
-
-        public async getByEmail(email: string): Promise<GetUserByEmailResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/email/${encodeURIComponent(email)}`)
-            return await resp.json() as GetUserByEmailResponse
-        }
-
-        public async getUserHistory(id: string, params: history.GetUserHistoryRequest): Promise<history.GetUserHistoryResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                limit:   params.limit === undefined ? undefined : String(params.limit),
-                offset:  params.offset === undefined ? undefined : String(params.offset),
-                orderBy: String(params.orderBy),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/${encodeURIComponent(id)}/history`, undefined, {query})
-            return await resp.json() as history.GetUserHistoryResponse
-        }
-
-        public async getUserSettings(id: string): Promise<settings.GetUserSettingsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/${encodeURIComponent(id)}/settings`)
-            return await resp.json() as settings.GetUserSettingsResponse
-        }
-
-        public async getUserTicketHistory(id: string, params: history.GetUserTicketHistoryRequest): Promise<history.GetUserTicketHistoryResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                limit:   params.limit === undefined ? undefined : String(params.limit),
-                offset:  params.offset === undefined ? undefined : String(params.offset),
-                orderBy: params.orderBy,
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/${encodeURIComponent(id)}/history/tickets`, undefined, {query})
-            return await resp.json() as history.GetUserTicketHistoryResponse
-        }
-
-        public async list(params: ListUsersRequest): Promise<ListUsersResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                isActive: params.isActive === undefined ? undefined : String(params.isActive),
-                role:     params.role === undefined ? undefined : String(params.role),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users`, undefined, {query})
-            return await resp.json() as ListUsersResponse
-        }
-
-        public async me(): Promise<GetCurrentUserResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/me`)
-            return await resp.json() as GetCurrentUserResponse
-        }
-
-        public async resetNotificationPreferences(id: string): Promise<notificationPreferences.ResetNotificationsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/users/${encodeURIComponent(id)}/settings/notificationPreferences/reset`)
-            return await resp.json() as notificationPreferences.ResetNotificationsResponse
-        }
-
-        public async search(params: SearchUsersRequest): Promise<SearchUsersResponse> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                createdAt:      params.createdAt,
-                deletedAt:      params.deletedAt,
-                hasTickets:     params.hasTickets === undefined ? undefined : String(params.hasTickets),
-                isActive:       params.isActive === undefined ? undefined : String(params.isActive),
-                limit:          params.limit === undefined ? undefined : String(params.limit),
-                marketCenterId: params.marketCenterId,
-                offset:         params.offset === undefined ? undefined : String(params.offset),
-                query:          params.query,
-                role:           params.role?.map((v) => String(v)),
-                sortBy:         params.sortBy === undefined ? undefined : String(params.sortBy),
-                sortDir:        params.sortDir === undefined ? undefined : String(params.sortDir),
-                updatedAt:      params.updatedAt,
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("GET", `/users/search`, undefined, {query})
-            return await resp.json() as SearchUsersResponse
-        }
-
-        public async update(id: string, params: UpdateUserRequest): Promise<UpdateUserResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PUT", `/users/${encodeURIComponent(id)}/update`, JSON.stringify(params))
-            return await resp.json() as UpdateUserResponse
-        }
-
-        public async updateNotificationPreferences(id: string, params: notificationPreferences.UpdateNotificationsRequest): Promise<notificationPreferences.UpdateNotificationsResponse> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI("PATCH", `/users/${encodeURIComponent(id)}/update/settings/notifications`, JSON.stringify(params))
-            return await resp.json() as notificationPreferences.UpdateNotificationsResponse
-        }
-    }
+  }
 }
 
 export namespace emails {
-    export interface AccountInformationProps {
-        changedByName?: string
-        changedByEmail?: string
-        updates: {
-            value: "name" | "email" | "role" | "password"
-            originalValue: string | null
-            newValue: string | null
-        }[] | null
-    }
+  export interface AccountInformationProps {
+    changedByName?: string;
+    changedByEmail?: string;
+    updates:
+      | {
+          value: "name" | "email" | "role" | "password";
+          originalValue: string | null;
+          newValue: string | null;
+        }[]
+      | null;
+  }
 
-    export interface ActivityUpdates {
-        label: string
-        originalValue: string | null
-        newValue: string
-    }
+  export interface ActivityUpdates {
+    label: string;
+    originalValue: string | null;
+    newValue: string;
+  }
 
-    export interface AppPermissionsReviewProps {
-        email?: string
-        name?: string
-    }
+  export interface AppPermissionsReviewProps {
+    email?: string;
+    name?: string;
+  }
 
-    export interface AssignedTicketNotificationProps {
-        ticketNumber: string
-        ticketTitle: string
-        createdOn: string
-        updatedOn: string
-        editedByName: string
-        editedById: string
-        updateType: AssignmentUpdateType
-        currentAssignment: {
-            name: string
-            id: string
-        } | null
-        previousAssignment: {
-            name: string
-            id: string
-        } | null
-    }
+  export interface AssignedTicketNotificationProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    createdOn: string;
+    updatedOn: string;
+    editedByName: string;
+    editedById: string;
+    updateType: AssignmentUpdateType;
+    currentAssignment: {
+      name: string;
+      id: string;
+    } | null;
+    previousAssignment: {
+      name: string;
+      id: string;
+    } | null;
+  }
 
-    export type AssignmentUpdateType = "added" | "removed" | "created" | "unchanged"
+  export type AssignmentUpdateType =
+    | "added"
+    | "removed"
+    | "created"
+    | "unchanged";
 
-    export interface CategoryAssignmentProps {
-        userUpdate: AssignmentUpdateType
-        categoryName: string
-        categoryDescription?: string
-        marketCenterName?: string
-        marketCenterId?: string
-        userName: string
-        editorName: string
-        editorEmail: string
-    }
+  export interface CategoryAssignmentProps {
+    userUpdate: AssignmentUpdateType;
+    categoryName: string;
+    categoryDescription?: string;
+    marketCenterName?: string;
+    marketCenterId?: string;
+    userName: string;
+    editorName: string;
+    editorEmail: string;
+  }
 
-    export interface CreatedTicketNotificationProps {
-        ticketNumber: string
-        ticketTitle: string
-        creatorName: string
-        creatorId: string
-        createdOn: string
-        dueDate?: string
-        assigneeId?: string
-        assigneeName?: string
-    }
+  export interface CreatedTicketNotificationProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    creatorName: string;
+    creatorId: string;
+    createdOn: string;
+    dueDate?: string;
+    assigneeId?: string;
+    assigneeName?: string;
+  }
 
-    export interface MarketCenterAssignmentProps {
-        userUpdate: AssignmentUpdateType
-        marketCenterName?: string
-        marketCenterId?: string
-        userName: string
-        editorName: string
-        editorEmail: string
-    }
+  export interface MarketCenterAssignmentProps {
+    userUpdate: AssignmentUpdateType;
+    marketCenterName?: string;
+    marketCenterId?: string;
+    userName: string;
+    editorName: string;
+    editorEmail: string;
+  }
 
-    export interface NewCommentNotificationProps {
-        ticketNumber: string
-        ticketTitle: string
-        createdOn: string
-        commenterName: string
-        commenterId: string
-        comment: string
-        isInternal: boolean
-        assignee: {
-            name: string
-            id: string
-        } | null
-    }
+  export interface NewCommentNotificationProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    createdOn: string;
+    commenterName: string;
+    commenterId: string;
+    comment: string;
+    isInternal: boolean;
+    assignee: {
+      name: string;
+      id: string;
+    } | null;
+  }
 
-    export interface NewUserInvitationProps {
-        newUserName: string
-        newUserEmail: string
-        newUserRole: "AGENT" | "STAFF" | "ADMIN"
-        newUserMarketCenter: string | null
-        inviterName: string
-        inviterEmail: string
-    }
+  export interface NewUserInvitationProps {
+    newUserName: string;
+    newUserEmail: string;
+    newUserRole: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
+    newUserMarketCenter: string | null;
+    inviterName: string;
+    inviterEmail: string;
+  }
 
-    export interface QuickEditTicketNotificationProps {
-        ticketNumber: string
-        ticketTitle: string
-        createdOn: string
-        updatedOn: string
-        editedByName: string
-        editedById: string
-        field: string
-        currentData: string
-    }
+  export interface QuickEditTicketNotificationProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    createdOn: string;
+    updatedOn: string;
+    editedByName: string;
+    editedById: string;
+    field: string;
+    currentData: string;
+  }
 
-    export interface UpdatedTicketProps {
-        ticketNumber: string
-        ticketTitle: string
-        createdOn: string
-        updatedOn: string
-        editedByName: string
-        editedById: string
-        changedDetails: ActivityUpdates[]
-    }
+  export interface UpdatedTicketProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    createdOn: string;
+    updatedOn: string;
+    editedByName: string;
+    editedById: string;
+    changedDetails: ActivityUpdates[];
+  }
 }
 
 export namespace history {
-    export interface GetMarketCenterHistoryRequest {
-        orderBy: "asc" | "desc"
-        limit?: number
-        offset?: number
-    }
+  export interface GetMarketCenterHistoryRequest {
+    orderBy: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
 
-    export interface GetMarketCenterHistoryResponse {
-        marketCenterHistory: marketCenters.MarketCenterHistory[]
-        total: number
-    }
+  export interface GetMarketCenterHistoryResponse {
+    marketCenterHistory: marketCenters.MarketCenterHistory[];
+    total: number;
+  }
 
-    export interface GetUserHistoryRequest {
-        orderBy: "asc" | "desc"
-        limit?: number
-        offset?: number
-    }
+  export interface GetUserHistoryRequest {
+    orderBy: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
 
-    export interface GetUserHistoryResponse {
-        userHistory: user.UserHistory[]
-        total: number
-    }
+  export interface GetUserHistoryResponse {
+    userHistory: user.UserHistory[];
+    total: number;
+  }
 
-    export interface GetUserTicketHistoryRequest {
-        orderBy: string
-        limit?: number
-        offset?: number
-    }
+  export interface GetUserTicketHistoryRequest {
+    orderBy: string;
+    limit?: number;
+    offset?: number;
+  }
 
-    export interface GetUserTicketHistoryResponse {
-        ticketHistory: ticket.TicketHistory[]
-        total: number
-    }
+  export interface GetUserTicketHistoryResponse {
+    ticketHistory: ticket.TicketHistory[];
+    total: number;
+  }
 }
 
 export namespace notificationPreferences {
-    export interface ResetNotificationsResponse {
-        reset: boolean
-    }
+  export interface ResetNotificationsResponse {
+    reset: boolean;
+  }
 
-    export interface UpdateNotificationsRequest {
-        /**
-         * userSettingsId: string;
-         */
-        notificationPreferences: user.NotificationPreferences[]
-    }
+  export interface UpdateNotificationsRequest {
+    /**
+     * userSettingsId: string;
+     */
+    notificationPreferences: user.NotificationPreferences[];
+  }
 
-    export interface UpdateNotificationsResponse {
-        updated: boolean
-    }
+  export interface UpdateNotificationsResponse {
+    updated: boolean;
+  }
 }
 
 export namespace ticketCategories {
-    export interface CreateCategoryRequest {
-        name: string
-        description?: string
-        marketCenterId: string
-        defaultAssigneeId?: string
-    }
+  export interface CreateCategoryRequest {
+    name: string;
+    description?: string;
+    marketCenterId: string;
+    defaultAssigneeId?: string;
+  }
 
-    export interface CreateCategoryResponse {
-        category: marketCenters.TicketCategory
-    }
+  export interface CreateCategoryResponse {
+    category: marketCenters.TicketCategory;
+  }
 
-    export interface DeleteCategoryResponse {
-        category: marketCenters.TicketCategory
-    }
+  export interface DeleteCategoryResponse {
+    category: marketCenters.TicketCategory;
+  }
 
-    export interface ListCategoriesRequest {
-        id?: string
-        marketCenterId?: string
-    }
+  export interface ListCategoriesRequest {
+    id?: string;
+    marketCenterId?: string;
+  }
 
-    export interface ListCategoriesResponse {
-        categories: marketCenters.TicketCategory[]
-    }
+  export interface ListCategoriesResponse {
+    categories: marketCenters.TicketCategory[];
+  }
 
-    export interface UpdateCategoryRequest {
-        name?: string
-        description?: string
-        defaultAssigneeId?: string
-    }
+  export interface UpdateCategoryRequest {
+    name?: string;
+    description?: string;
+    defaultAssigneeId?: string;
+  }
 
-    export interface UpdateCategoryResponse {
-        category: marketCenters.TicketCategory
-        usersToNotify: notifications.UsersToNotify[]
-    }
+  export interface UpdateCategoryResponse {
+    category: marketCenters.TicketCategory;
+    usersToNotify: notifications.UsersToNotify[];
+  }
 }
 
-
-
 function encodeQuery(parts: Record<string, string | string[]>): string {
-    const pairs: string[] = []
-    for (const key in parts) {
-        const val = (Array.isArray(parts[key]) ?  parts[key] : [parts[key]]) as string[]
-        for (const v of val) {
-            pairs.push(`${key}=${encodeURIComponent(v)}`)
-        }
+  const pairs: string[] = [];
+  for (const key in parts) {
+    const val = (
+      Array.isArray(parts[key]) ? parts[key] : [parts[key]]
+    ) as string[];
+    for (const v of val) {
+      pairs.push(`${key}=${encodeURIComponent(v)}`);
     }
-    return pairs.join("&")
+  }
+  return pairs.join("&");
 }
 
 // makeRecord takes a record and strips any undefined values from it,
 // and returns the same record with a narrower type.
 // @ts-ignore - TS ignore because makeRecord is not always used
-function makeRecord<K extends string | number | symbol, V>(record: Record<K, V | undefined>): Record<K, V> {
-    for (const key in record) {
-        if (record[key] === undefined) {
-            delete record[key]
-        }
+function makeRecord<K extends string | number | symbol, V>(
+  record: Record<K, V | undefined>
+): Record<K, V> {
+  for (const key in record) {
+    if (record[key] === undefined) {
+      delete record[key];
     }
-    return record as Record<K, V>
+  }
+  return record as Record<K, V>;
 }
 
 function encodeWebSocketHeaders(headers: Record<string, string>) {
-    // url safe, no pad
-    const base64encoded = btoa(JSON.stringify(headers))
-      .replaceAll("=", "")
-      .replaceAll("+", "-")
-      .replaceAll("/", "_");
-    return "encore.dev.headers." + base64encoded;
+  // url safe, no pad
+  const base64encoded = btoa(JSON.stringify(headers))
+    .replaceAll("=", "")
+    .replaceAll("+", "-")
+    .replaceAll("/", "_");
+  return "encore.dev.headers." + base64encoded;
 }
 
 class WebSocketConnection {
-    public ws: WebSocket;
+  public ws: WebSocket;
 
-    private hasUpdateHandlers: (() => void)[] = [];
+  private hasUpdateHandlers: (() => void)[] = [];
 
-    constructor(url: string, headers?: Record<string, string>) {
-        let protocols = ["encore-ws"];
-        if (headers) {
-            protocols.push(encodeWebSocketHeaders(headers))
-        }
-
-        this.ws = new WebSocket(url, protocols)
-
-        this.on("error", () => {
-            this.resolveHasUpdateHandlers();
-        });
-
-        this.on("close", () => {
-            this.resolveHasUpdateHandlers();
-        });
+  constructor(url: string, headers?: Record<string, string>) {
+    let protocols = ["encore-ws"];
+    if (headers) {
+      protocols.push(encodeWebSocketHeaders(headers));
     }
 
-    resolveHasUpdateHandlers() {
-        const handlers = this.hasUpdateHandlers;
-        this.hasUpdateHandlers = [];
+    this.ws = new WebSocket(url, protocols);
 
-        for (const handler of handlers) {
-            handler()
-        }
-    }
+    this.on("error", () => {
+      this.resolveHasUpdateHandlers();
+    });
 
-    async hasUpdate() {
-        // await until a new message have been received, or the socket is closed
-        await new Promise((resolve) => {
-            this.hasUpdateHandlers.push(() => resolve(null))
-        });
-    }
+    this.on("close", () => {
+      this.resolveHasUpdateHandlers();
+    });
+  }
 
-    on(type: "error" | "close" | "message" | "open", handler: (event: any) => void) {
-        this.ws.addEventListener(type, handler);
-    }
+  resolveHasUpdateHandlers() {
+    const handlers = this.hasUpdateHandlers;
+    this.hasUpdateHandlers = [];
 
-    off(type: "error" | "close" | "message" | "open", handler: (event: any) => void) {
-        this.ws.removeEventListener(type, handler);
+    for (const handler of handlers) {
+      handler();
     }
+  }
 
-    close() {
-        this.ws.close();
-    }
+  async hasUpdate() {
+    // await until a new message have been received, or the socket is closed
+    await new Promise((resolve) => {
+      this.hasUpdateHandlers.push(() => resolve(null));
+    });
+  }
+
+  on(
+    type: "error" | "close" | "message" | "open",
+    handler: (event: any) => void
+  ) {
+    this.ws.addEventListener(type, handler);
+  }
+
+  off(
+    type: "error" | "close" | "message" | "open",
+    handler: (event: any) => void
+  ) {
+    this.ws.removeEventListener(type, handler);
+  }
+
+  close() {
+    this.ws.close();
+  }
 }
 
 export class StreamInOut<Request, Response> {
-    public socket: WebSocketConnection;
-    private buffer: Response[] = [];
+  public socket: WebSocketConnection;
+  private buffer: Response[] = [];
 
-    constructor(url: string, headers?: Record<string, string>) {
-        this.socket = new WebSocketConnection(url, headers);
-        this.socket.on("message", (event: any) => {
-            this.buffer.push(JSON.parse(event.data));
-            this.socket.resolveHasUpdateHandlers();
-        });
+  constructor(url: string, headers?: Record<string, string>) {
+    this.socket = new WebSocketConnection(url, headers);
+    this.socket.on("message", (event: any) => {
+      this.buffer.push(JSON.parse(event.data));
+      this.socket.resolveHasUpdateHandlers();
+    });
+  }
+
+  close() {
+    this.socket.close();
+  }
+
+  async send(msg: Request) {
+    if (this.socket.ws.readyState === WebSocket.CONNECTING) {
+      // await that the socket is opened
+      await new Promise((resolve) => {
+        this.socket.ws.addEventListener("open", resolve, { once: true });
+      });
     }
 
-    close() {
-        this.socket.close();
-    }
+    return this.socket.ws.send(JSON.stringify(msg));
+  }
 
-    async send(msg: Request) {
-        if (this.socket.ws.readyState === WebSocket.CONNECTING) {
-            // await that the socket is opened
-            await new Promise((resolve) => {
-                this.socket.ws.addEventListener("open", resolve, { once: true });
-            });
-        }
+  async next(): Promise<Response | undefined> {
+    for await (const next of this) return next;
+    return undefined;
+  }
 
-        return this.socket.ws.send(JSON.stringify(msg));
+  async *[Symbol.asyncIterator](): AsyncGenerator<Response, undefined, void> {
+    while (true) {
+      if (this.buffer.length > 0) {
+        yield this.buffer.shift() as Response;
+      } else {
+        if (this.socket.ws.readyState === WebSocket.CLOSED) return;
+        await this.socket.hasUpdate();
+      }
     }
-
-    async next(): Promise<Response | undefined> {
-        for await (const next of this) return next;
-        return undefined;
-    }
-
-    async *[Symbol.asyncIterator](): AsyncGenerator<Response, undefined, void> {
-        while (true) {
-            if (this.buffer.length > 0) {
-                yield this.buffer.shift() as Response;
-            } else {
-                if (this.socket.ws.readyState === WebSocket.CLOSED) return;
-                await this.socket.hasUpdate();
-            }
-        }
-    }
+  }
 }
 
 export class StreamIn<Response> {
-    public socket: WebSocketConnection;
-    private buffer: Response[] = [];
+  public socket: WebSocketConnection;
+  private buffer: Response[] = [];
 
-    constructor(url: string, headers?: Record<string, string>) {
-        this.socket = new WebSocketConnection(url, headers);
-        this.socket.on("message", (event: any) => {
-            this.buffer.push(JSON.parse(event.data));
-            this.socket.resolveHasUpdateHandlers();
-        });
-    }
+  constructor(url: string, headers?: Record<string, string>) {
+    this.socket = new WebSocketConnection(url, headers);
+    this.socket.on("message", (event: any) => {
+      this.buffer.push(JSON.parse(event.data));
+      this.socket.resolveHasUpdateHandlers();
+    });
+  }
 
-    close() {
-        this.socket.close();
-    }
+  close() {
+    this.socket.close();
+  }
 
-    async next(): Promise<Response | undefined> {
-        for await (const next of this) return next;
-        return undefined;
-    }
+  async next(): Promise<Response | undefined> {
+    for await (const next of this) return next;
+    return undefined;
+  }
 
-    async *[Symbol.asyncIterator](): AsyncGenerator<Response, undefined, void> {
-        while (true) {
-            if (this.buffer.length > 0) {
-                yield this.buffer.shift() as Response;
-            } else {
-                if (this.socket.ws.readyState === WebSocket.CLOSED) return;
-                await this.socket.hasUpdate();
-            }
-        }
+  async *[Symbol.asyncIterator](): AsyncGenerator<Response, undefined, void> {
+    while (true) {
+      if (this.buffer.length > 0) {
+        yield this.buffer.shift() as Response;
+      } else {
+        if (this.socket.ws.readyState === WebSocket.CLOSED) return;
+        await this.socket.hasUpdate();
+      }
     }
+  }
 }
 
 export class StreamOut<Request, Response> {
-    public socket: WebSocketConnection;
-    private responseValue: Promise<Response>;
+  public socket: WebSocketConnection;
+  private responseValue: Promise<Response>;
 
-    constructor(url: string, headers?: Record<string, string>) {
-        let responseResolver: (_: any) => void;
-        this.responseValue = new Promise((resolve) => responseResolver = resolve);
+  constructor(url: string, headers?: Record<string, string>) {
+    let responseResolver: (_: any) => void;
+    this.responseValue = new Promise((resolve) => (responseResolver = resolve));
 
-        this.socket = new WebSocketConnection(url, headers);
-        this.socket.on("message", (event: any) => {
-            responseResolver(JSON.parse(event.data))
-        });
+    this.socket = new WebSocketConnection(url, headers);
+    this.socket.on("message", (event: any) => {
+      responseResolver(JSON.parse(event.data));
+    });
+  }
+
+  async response(): Promise<Response> {
+    return this.responseValue;
+  }
+
+  close() {
+    this.socket.close();
+  }
+
+  async send(msg: Request) {
+    if (this.socket.ws.readyState === WebSocket.CONNECTING) {
+      // await that the socket is opened
+      await new Promise((resolve) => {
+        this.socket.ws.addEventListener("open", resolve, { once: true });
+      });
     }
 
-    async response(): Promise<Response> {
-        return this.responseValue;
-    }
-
-    close() {
-        this.socket.close();
-    }
-
-    async send(msg: Request) {
-        if (this.socket.ws.readyState === WebSocket.CONNECTING) {
-            // await that the socket is opened
-            await new Promise((resolve) => {
-                this.socket.ws.addEventListener("open", resolve, { once: true });
-            });
-        }
-
-        return this.socket.ws.send(JSON.stringify(msg));
-    }
+    return this.socket.ws.send(JSON.stringify(msg));
+  }
 }
 // CallParameters is the type of the parameters to a method call, but require headers to be a Record type
 type CallParameters = Omit<RequestInit, "method" | "body" | "headers"> & {
-    /** Headers to be sent with the request */
-    headers?: Record<string, string>
+  /** Headers to be sent with the request */
+  headers?: Record<string, string>;
 
-    /** Query parameters to be sent with the request */
-    query?: Record<string, string | string[]>
-}
+  /** Query parameters to be sent with the request */
+  query?: Record<string, string | string[]>;
+};
 
 // AuthDataGenerator is a function that returns a new instance of the authentication data required by this API
 export type AuthDataGenerator = () =>
@@ -1980,469 +2334,500 @@ export type Fetcher = typeof fetch;
 const boundFetch = fetch.bind(this);
 
 class BaseClient {
-    readonly baseURL: string
-    readonly fetcher: Fetcher
-    readonly headers: Record<string, string>
-    readonly requestInit: Omit<RequestInit, "headers"> & { headers?: Record<string, string> }
-    readonly authGenerator?: AuthDataGenerator
+  readonly baseURL: string;
+  readonly fetcher: Fetcher;
+  readonly headers: Record<string, string>;
+  readonly requestInit: Omit<RequestInit, "headers"> & {
+    headers?: Record<string, string>;
+  };
+  readonly authGenerator?: AuthDataGenerator;
 
-    constructor(baseURL: string, options: ClientOptions) {
-        this.baseURL = baseURL
-        this.headers = {}
+  constructor(baseURL: string, options: ClientOptions) {
+    this.baseURL = baseURL;
+    this.headers = {};
 
-        // Add User-Agent header if the script is running in the server
-        // because browsers do not allow setting User-Agent headers to requests
-        if (!BROWSER) {
-            this.headers["User-Agent"] = "conductor-ee92-Generated-TS-Client (Encore/v1.51.5)";
-        }
-
-        this.requestInit = options.requestInit ?? {};
-
-        // Setup what fetch function we'll be using in the base client
-        if (options.fetcher !== undefined) {
-            this.fetcher = options.fetcher
-        } else {
-            this.fetcher = boundFetch
-        }
-
-        // Setup an authentication data generator using the auth data token option
-        if (options.auth !== undefined) {
-            const auth = options.auth
-            if (typeof auth === "function") {
-                this.authGenerator = auth
-            } else {
-                this.authGenerator = () => auth
-            }
-        }
+    // Add User-Agent header if the script is running in the server
+    // because browsers do not allow setting User-Agent headers to requests
+    if (!BROWSER) {
+      this.headers["User-Agent"] =
+        "conductor-ee92-Generated-TS-Client (Encore/v1.51.5)";
     }
 
-    async getAuthData(): Promise<CallParameters | undefined> {
-        let authData: auth.AuthParams | undefined;
+    this.requestInit = options.requestInit ?? {};
 
-        // If authorization data generator is present, call it and add the returned data to the request
-        if (this.authGenerator) {
-            const mayBePromise = this.authGenerator();
-            if (mayBePromise instanceof Promise) {
-                authData = await mayBePromise;
-            } else {
-                authData = mayBePromise;
-            }
-        }
-
-        if (authData) {
-            const data: CallParameters = {};
-
-            data.headers = makeRecord<string, string>({
-                authorization: authData.authorization,
-            });
-
-            return data;
-        }
-
-        return undefined;
+    // Setup what fetch function we'll be using in the base client
+    if (options.fetcher !== undefined) {
+      this.fetcher = options.fetcher;
+    } else {
+      this.fetcher = boundFetch;
     }
 
-    // createStreamInOut sets up a stream to a streaming API endpoint.
-    async createStreamInOut<Request, Response>(path: string, params?: CallParameters): Promise<StreamInOut<Request, Response>> {
-        let { query, headers } = params ?? {};
+    // Setup an authentication data generator using the auth data token option
+    if (options.auth !== undefined) {
+      const auth = options.auth;
+      if (typeof auth === "function") {
+        this.authGenerator = auth;
+      } else {
+        this.authGenerator = () => auth;
+      }
+    }
+  }
 
-        // Fetch auth data if there is any
-        const authData = await this.getAuthData();
+  async getAuthData(): Promise<CallParameters | undefined> {
+    let authData: auth.AuthParams | undefined;
 
-        // If we now have authentication data, add it to the request
-        if (authData) {
-            if (authData.query) {
-                query = {...query, ...authData.query};
-            }
-            if (authData.headers) {
-                headers = {...headers, ...authData.headers};
-            }
-        }
-
-        const queryString = query ? '?' + encodeQuery(query) : ''
-        return new StreamInOut(this.baseURL + path + queryString, headers);
+    // If authorization data generator is present, call it and add the returned data to the request
+    if (this.authGenerator) {
+      const mayBePromise = this.authGenerator();
+      if (mayBePromise instanceof Promise) {
+        authData = await mayBePromise;
+      } else {
+        authData = mayBePromise;
+      }
     }
 
-    // createStreamIn sets up a stream to a streaming API endpoint.
-    async createStreamIn<Response>(path: string, params?: CallParameters): Promise<StreamIn<Response>> {
-        let { query, headers } = params ?? {};
+    if (authData) {
+      const data: CallParameters = {};
 
-        // Fetch auth data if there is any
-        const authData = await this.getAuthData();
+      data.headers = makeRecord<string, string>({
+        authorization: authData.authorization,
+      });
 
-        // If we now have authentication data, add it to the request
-        if (authData) {
-            if (authData.query) {
-                query = {...query, ...authData.query};
-            }
-            if (authData.headers) {
-                headers = {...headers, ...authData.headers};
-            }
-        }
-
-        const queryString = query ? '?' + encodeQuery(query) : ''
-        return new StreamIn(this.baseURL + path + queryString, headers);
+      return data;
     }
 
-    // createStreamOut sets up a stream to a streaming API endpoint.
-    async createStreamOut<Request, Response>(path: string, params?: CallParameters): Promise<StreamOut<Request, Response>> {
-        let { query, headers } = params ?? {};
+    return undefined;
+  }
 
-        // Fetch auth data if there is any
-        const authData = await this.getAuthData();
+  // createStreamInOut sets up a stream to a streaming API endpoint.
+  async createStreamInOut<Request, Response>(
+    path: string,
+    params?: CallParameters
+  ): Promise<StreamInOut<Request, Response>> {
+    let { query, headers } = params ?? {};
 
-        // If we now have authentication data, add it to the request
-        if (authData) {
-            if (authData.query) {
-                query = {...query, ...authData.query};
-            }
-            if (authData.headers) {
-                headers = {...headers, ...authData.headers};
-            }
-        }
+    // Fetch auth data if there is any
+    const authData = await this.getAuthData();
 
-        const queryString = query ? '?' + encodeQuery(query) : ''
-        return new StreamOut(this.baseURL + path + queryString, headers);
+    // If we now have authentication data, add it to the request
+    if (authData) {
+      if (authData.query) {
+        query = { ...query, ...authData.query };
+      }
+      if (authData.headers) {
+        headers = { ...headers, ...authData.headers };
+      }
     }
 
-    // callTypedAPI makes an API call, defaulting content type to "application/json"
-    public async callTypedAPI(method: string, path: string, body?: RequestInit["body"], params?: CallParameters): Promise<Response> {
-        return this.callAPI(method, path, body, {
-            ...params,
-            headers: { "Content-Type": "application/json", ...params?.headers }
-        });
+    const queryString = query ? "?" + encodeQuery(query) : "";
+    return new StreamInOut(this.baseURL + path + queryString, headers);
+  }
+
+  // createStreamIn sets up a stream to a streaming API endpoint.
+  async createStreamIn<Response>(
+    path: string,
+    params?: CallParameters
+  ): Promise<StreamIn<Response>> {
+    let { query, headers } = params ?? {};
+
+    // Fetch auth data if there is any
+    const authData = await this.getAuthData();
+
+    // If we now have authentication data, add it to the request
+    if (authData) {
+      if (authData.query) {
+        query = { ...query, ...authData.query };
+      }
+      if (authData.headers) {
+        headers = { ...headers, ...authData.headers };
+      }
     }
 
-    // callAPI is used by each generated API method to actually make the request
-    public async callAPI(method: string, path: string, body?: RequestInit["body"], params?: CallParameters): Promise<Response> {
-        let { query, headers, ...rest } = params ?? {}
-        const init = {
-            ...this.requestInit,
-            ...rest,
-            method,
-            body: body ?? null,
-        }
+    const queryString = query ? "?" + encodeQuery(query) : "";
+    return new StreamIn(this.baseURL + path + queryString, headers);
+  }
 
-        // Merge our headers with any predefined headers
-        init.headers = {...this.headers, ...init.headers, ...headers}
+  // createStreamOut sets up a stream to a streaming API endpoint.
+  async createStreamOut<Request, Response>(
+    path: string,
+    params?: CallParameters
+  ): Promise<StreamOut<Request, Response>> {
+    let { query, headers } = params ?? {};
 
-        // Fetch auth data if there is any
-        const authData = await this.getAuthData();
+    // Fetch auth data if there is any
+    const authData = await this.getAuthData();
 
-        // If we now have authentication data, add it to the request
-        if (authData) {
-            if (authData.query) {
-                query = {...query, ...authData.query};
-            }
-            if (authData.headers) {
-                init.headers = {...init.headers, ...authData.headers};
-            }
-        }
-
-        // Make the actual request
-        const queryString = query ? '?' + encodeQuery(query) : ''
-        const response = await this.fetcher(this.baseURL+path+queryString, init)
-
-        // handle any error responses
-        if (!response.ok) {
-            // try and get the error message from the response body
-            let body: APIErrorResponse = { code: ErrCode.Unknown, message: `request failed: status ${response.status}` }
-
-            // if we can get the structured error we should, otherwise give a best effort
-            try {
-                const text = await response.text()
-
-                try {
-                    const jsonBody = JSON.parse(text)
-                    if (isAPIErrorResponse(jsonBody)) {
-                        body = jsonBody
-                    } else {
-                        body.message += ": " + JSON.stringify(jsonBody)
-                    }
-                } catch {
-                    body.message += ": " + text
-                }
-            } catch (e) {
-                // otherwise we just append the text to the error message
-                body.message += ": " + String(e)
-            }
-
-            throw new APIError(response.status, body)
-        }
-
-        return response
+    // If we now have authentication data, add it to the request
+    if (authData) {
+      if (authData.query) {
+        query = { ...query, ...authData.query };
+      }
+      if (authData.headers) {
+        headers = { ...headers, ...authData.headers };
+      }
     }
+
+    const queryString = query ? "?" + encodeQuery(query) : "";
+    return new StreamOut(this.baseURL + path + queryString, headers);
+  }
+
+  // callTypedAPI makes an API call, defaulting content type to "application/json"
+  public async callTypedAPI(
+    method: string,
+    path: string,
+    body?: RequestInit["body"],
+    params?: CallParameters
+  ): Promise<Response> {
+    return this.callAPI(method, path, body, {
+      ...params,
+      headers: { "Content-Type": "application/json", ...params?.headers },
+    });
+  }
+
+  // callAPI is used by each generated API method to actually make the request
+  public async callAPI(
+    method: string,
+    path: string,
+    body?: RequestInit["body"],
+    params?: CallParameters
+  ): Promise<Response> {
+    let { query, headers, ...rest } = params ?? {};
+    const init = {
+      ...this.requestInit,
+      ...rest,
+      method,
+      body: body ?? null,
+    };
+
+    // Merge our headers with any predefined headers
+    init.headers = { ...this.headers, ...init.headers, ...headers };
+
+    // Fetch auth data if there is any
+    const authData = await this.getAuthData();
+
+    // If we now have authentication data, add it to the request
+    if (authData) {
+      if (authData.query) {
+        query = { ...query, ...authData.query };
+      }
+      if (authData.headers) {
+        init.headers = { ...init.headers, ...authData.headers };
+      }
+    }
+
+    // Make the actual request
+    const queryString = query ? "?" + encodeQuery(query) : "";
+    const response = await this.fetcher(
+      this.baseURL + path + queryString,
+      init
+    );
+
+    // handle any error responses
+    if (!response.ok) {
+      // try and get the error message from the response body
+      let body: APIErrorResponse = {
+        code: ErrCode.Unknown,
+        message: `request failed: status ${response.status}`,
+      };
+
+      // if we can get the structured error we should, otherwise give a best effort
+      try {
+        const text = await response.text();
+
+        try {
+          const jsonBody = JSON.parse(text);
+          if (isAPIErrorResponse(jsonBody)) {
+            body = jsonBody;
+          } else {
+            body.message += ": " + JSON.stringify(jsonBody);
+          }
+        } catch {
+          body.message += ": " + text;
+        }
+      } catch (e) {
+        // otherwise we just append the text to the error message
+        body.message += ": " + String(e);
+      }
+
+      throw new APIError(response.status, body);
+    }
+
+    return response;
+  }
 }
 
 /**
  * APIErrorDetails represents the response from an Encore API in the case of an error
  */
 interface APIErrorResponse {
-    code: ErrCode
-    message: string
-    details?: any
+  code: ErrCode;
+  message: string;
+  details?: any;
 }
 
 function isAPIErrorResponse(err: any): err is APIErrorResponse {
-    return (
-        err !== undefined && err !== null &&
-        isErrCode(err.code) &&
-        typeof(err.message) === "string" &&
-        (err.details === undefined || err.details === null || typeof(err.details) === "object")
-    )
+  return (
+    err !== undefined &&
+    err !== null &&
+    isErrCode(err.code) &&
+    typeof err.message === "string" &&
+    (err.details === undefined ||
+      err.details === null ||
+      typeof err.details === "object")
+  );
 }
 
 function isErrCode(code: any): code is ErrCode {
-    return code !== undefined && Object.values(ErrCode).includes(code)
+  return code !== undefined && Object.values(ErrCode).includes(code);
 }
 
 /**
  * APIError represents a structured error as returned from an Encore application.
  */
 export class APIError extends Error {
-    /**
-     * The HTTP status code associated with the error.
-     */
-    public readonly status: number
+  /**
+   * The HTTP status code associated with the error.
+   */
+  public readonly status: number;
 
-    /**
-     * The Encore error code
-     */
-    public readonly code: ErrCode
+  /**
+   * The Encore error code
+   */
+  public readonly code: ErrCode;
 
-    /**
-     * The error details
-     */
-    public readonly details?: any
+  /**
+   * The error details
+   */
+  public readonly details?: any;
 
-    constructor(status: number, response: APIErrorResponse) {
-        // extending errors causes issues after you construct them, unless you apply the following fixes
-        super(response.message);
+  constructor(status: number, response: APIErrorResponse) {
+    // extending errors causes issues after you construct them, unless you apply the following fixes
+    super(response.message);
 
-        // set error name as constructor name, make it not enumerable to keep native Error behavior
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/new.target#new.target_in_constructors
-        Object.defineProperty(this, 'name', {
-            value:        'APIError',
-            enumerable:   false,
-            configurable: true,
-        })
+    // set error name as constructor name, make it not enumerable to keep native Error behavior
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/new.target#new.target_in_constructors
+    Object.defineProperty(this, "name", {
+      value: "APIError",
+      enumerable: false,
+      configurable: true,
+    });
 
-        // fix the prototype chain
-        if ((Object as any).setPrototypeOf == undefined) {
-            (this as any).__proto__ = APIError.prototype
-        } else {
-            Object.setPrototypeOf(this, APIError.prototype);
-        }
-
-        // capture a stack trace
-        if ((Error as any).captureStackTrace !== undefined) {
-            (Error as any).captureStackTrace(this, this.constructor);
-        }
-
-        this.status = status
-        this.code = response.code
-        this.details = response.details
+    // fix the prototype chain
+    if ((Object as any).setPrototypeOf == undefined) {
+      (this as any).__proto__ = APIError.prototype;
+    } else {
+      Object.setPrototypeOf(this, APIError.prototype);
     }
+
+    // capture a stack trace
+    if ((Error as any).captureStackTrace !== undefined) {
+      (Error as any).captureStackTrace(this, this.constructor);
+    }
+
+    this.status = status;
+    this.code = response.code;
+    this.details = response.details;
+  }
 }
 
 /**
  * Typeguard allowing use of an APIError's fields'
  */
 export function isAPIError(err: any): err is APIError {
-    return err instanceof APIError;
+  return err instanceof APIError;
 }
 
 export enum ErrCode {
-    /**
-     * OK indicates the operation was successful.
-     */
-    OK = "ok",
+  /**
+   * OK indicates the operation was successful.
+   */
+  OK = "ok",
 
-    /**
-     * Canceled indicates the operation was canceled (typically by the caller).
-     *
-     * Encore will generate this error code when cancellation is requested.
-     */
-    Canceled = "canceled",
+  /**
+   * Canceled indicates the operation was canceled (typically by the caller).
+   *
+   * Encore will generate this error code when cancellation is requested.
+   */
+  Canceled = "canceled",
 
-    /**
-     * Unknown error. An example of where this error may be returned is
-     * if a Status value received from another address space belongs to
-     * an error-space that is not known in this address space. Also
-     * errors raised by APIs that do not return enough error information
-     * may be converted to this error.
-     *
-     * Encore will generate this error code in the above two mentioned cases.
-     */
-    Unknown = "unknown",
+  /**
+   * Unknown error. An example of where this error may be returned is
+   * if a Status value received from another address space belongs to
+   * an error-space that is not known in this address space. Also
+   * errors raised by APIs that do not return enough error information
+   * may be converted to this error.
+   *
+   * Encore will generate this error code in the above two mentioned cases.
+   */
+  Unknown = "unknown",
 
-    /**
-     * InvalidArgument indicates client specified an invalid argument.
-     * Note that this differs from FailedPrecondition. It indicates arguments
-     * that are problematic regardless of the state of the system
-     * (e.g., a malformed file name).
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    InvalidArgument = "invalid_argument",
+  /**
+   * InvalidArgument indicates client specified an invalid argument.
+   * Note that this differs from FailedPrecondition. It indicates arguments
+   * that are problematic regardless of the state of the system
+   * (e.g., a malformed file name).
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  InvalidArgument = "invalid_argument",
 
-    /**
-     * DeadlineExceeded means operation expired before completion.
-     * For operations that change the state of the system, this error may be
-     * returned even if the operation has completed successfully. For
-     * example, a successful response from a server could have been delayed
-     * long enough for the deadline to expire.
-     *
-     * The gRPC framework will generate this error code when the deadline is
-     * exceeded.
-     */
-    DeadlineExceeded = "deadline_exceeded",
+  /**
+   * DeadlineExceeded means operation expired before completion.
+   * For operations that change the state of the system, this error may be
+   * returned even if the operation has completed successfully. For
+   * example, a successful response from a server could have been delayed
+   * long enough for the deadline to expire.
+   *
+   * The gRPC framework will generate this error code when the deadline is
+   * exceeded.
+   */
+  DeadlineExceeded = "deadline_exceeded",
 
-    /**
-     * NotFound means some requested entity (e.g., file or directory) was
-     * not found.
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    NotFound = "not_found",
+  /**
+   * NotFound means some requested entity (e.g., file or directory) was
+   * not found.
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  NotFound = "not_found",
 
-    /**
-     * AlreadyExists means an attempt to create an entity failed because one
-     * already exists.
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    AlreadyExists = "already_exists",
+  /**
+   * AlreadyExists means an attempt to create an entity failed because one
+   * already exists.
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  AlreadyExists = "already_exists",
 
-    /**
-     * PermissionDenied indicates the caller does not have permission to
-     * execute the specified operation. It must not be used for rejections
-     * caused by exhausting some resource (use ResourceExhausted
-     * instead for those errors). It must not be
-     * used if the caller cannot be identified (use Unauthenticated
-     * instead for those errors).
-     *
-     * This error code will not be generated by the gRPC core framework,
-     * but expect authentication middleware to use it.
-     */
-    PermissionDenied = "permission_denied",
+  /**
+   * PermissionDenied indicates the caller does not have permission to
+   * execute the specified operation. It must not be used for rejections
+   * caused by exhausting some resource (use ResourceExhausted
+   * instead for those errors). It must not be
+   * used if the caller cannot be identified (use Unauthenticated
+   * instead for those errors).
+   *
+   * This error code will not be generated by the gRPC core framework,
+   * but expect authentication middleware to use it.
+   */
+  PermissionDenied = "permission_denied",
 
-    /**
-     * ResourceExhausted indicates some resource has been exhausted, perhaps
-     * a per-user quota, or perhaps the entire file system is out of space.
-     *
-     * This error code will be generated by the gRPC framework in
-     * out-of-memory and server overload situations, or when a message is
-     * larger than the configured maximum size.
-     */
-    ResourceExhausted = "resource_exhausted",
+  /**
+   * ResourceExhausted indicates some resource has been exhausted, perhaps
+   * a per-user quota, or perhaps the entire file system is out of space.
+   *
+   * This error code will be generated by the gRPC framework in
+   * out-of-memory and server overload situations, or when a message is
+   * larger than the configured maximum size.
+   */
+  ResourceExhausted = "resource_exhausted",
 
-    /**
-     * FailedPrecondition indicates operation was rejected because the
-     * system is not in a state required for the operation's execution.
-     * For example, directory to be deleted may be non-empty, an rmdir
-     * operation is applied to a non-directory, etc.
-     *
-     * A litmus test that may help a service implementor in deciding
-     * between FailedPrecondition, Aborted, and Unavailable:
-     *  (a) Use Unavailable if the client can retry just the failing call.
-     *  (b) Use Aborted if the client should retry at a higher-level
-     *      (e.g., restarting a read-modify-write sequence).
-     *  (c) Use FailedPrecondition if the client should not retry until
-     *      the system state has been explicitly fixed. E.g., if an "rmdir"
-     *      fails because the directory is non-empty, FailedPrecondition
-     *      should be returned since the client should not retry unless
-     *      they have first fixed up the directory by deleting files from it.
-     *  (d) Use FailedPrecondition if the client performs conditional
-     *      REST Get/Update/Delete on a resource and the resource on the
-     *      server does not match the condition. E.g., conflicting
-     *      read-modify-write on the same resource.
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    FailedPrecondition = "failed_precondition",
+  /**
+   * FailedPrecondition indicates operation was rejected because the
+   * system is not in a state required for the operation's execution.
+   * For example, directory to be deleted may be non-empty, an rmdir
+   * operation is applied to a non-directory, etc.
+   *
+   * A litmus test that may help a service implementor in deciding
+   * between FailedPrecondition, Aborted, and Unavailable:
+   *  (a) Use Unavailable if the client can retry just the failing call.
+   *  (b) Use Aborted if the client should retry at a higher-level
+   *      (e.g., restarting a read-modify-write sequence).
+   *  (c) Use FailedPrecondition if the client should not retry until
+   *      the system state has been explicitly fixed. E.g., if an "rmdir"
+   *      fails because the directory is non-empty, FailedPrecondition
+   *      should be returned since the client should not retry unless
+   *      they have first fixed up the directory by deleting files from it.
+   *  (d) Use FailedPrecondition if the client performs conditional
+   *      REST Get/Update/Delete on a resource and the resource on the
+   *      server does not match the condition. E.g., conflicting
+   *      read-modify-write on the same resource.
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  FailedPrecondition = "failed_precondition",
 
-    /**
-     * Aborted indicates the operation was aborted, typically due to a
-     * concurrency issue like sequencer check failures, transaction aborts,
-     * etc.
-     *
-     * See litmus test above for deciding between FailedPrecondition,
-     * Aborted, and Unavailable.
-     */
-    Aborted = "aborted",
+  /**
+   * Aborted indicates the operation was aborted, typically due to a
+   * concurrency issue like sequencer check failures, transaction aborts,
+   * etc.
+   *
+   * See litmus test above for deciding between FailedPrecondition,
+   * Aborted, and Unavailable.
+   */
+  Aborted = "aborted",
 
-    /**
-     * OutOfRange means operation was attempted past the valid range.
-     * E.g., seeking or reading past end of file.
-     *
-     * Unlike InvalidArgument, this error indicates a problem that may
-     * be fixed if the system state changes. For example, a 32-bit file
-     * system will generate InvalidArgument if asked to read at an
-     * offset that is not in the range [0,2^32-1], but it will generate
-     * OutOfRange if asked to read from an offset past the current
-     * file size.
-     *
-     * There is a fair bit of overlap between FailedPrecondition and
-     * OutOfRange. We recommend using OutOfRange (the more specific
-     * error) when it applies so that callers who are iterating through
-     * a space can easily look for an OutOfRange error to detect when
-     * they are done.
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    OutOfRange = "out_of_range",
+  /**
+   * OutOfRange means operation was attempted past the valid range.
+   * E.g., seeking or reading past end of file.
+   *
+   * Unlike InvalidArgument, this error indicates a problem that may
+   * be fixed if the system state changes. For example, a 32-bit file
+   * system will generate InvalidArgument if asked to read at an
+   * offset that is not in the range [0,2^32-1], but it will generate
+   * OutOfRange if asked to read from an offset past the current
+   * file size.
+   *
+   * There is a fair bit of overlap between FailedPrecondition and
+   * OutOfRange. We recommend using OutOfRange (the more specific
+   * error) when it applies so that callers who are iterating through
+   * a space can easily look for an OutOfRange error to detect when
+   * they are done.
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  OutOfRange = "out_of_range",
 
-    /**
-     * Unimplemented indicates operation is not implemented or not
-     * supported/enabled in this service.
-     *
-     * This error code will be generated by the gRPC framework. Most
-     * commonly, you will see this error code when a method implementation
-     * is missing on the server. It can also be generated for unknown
-     * compression algorithms or a disagreement as to whether an RPC should
-     * be streaming.
-     */
-    Unimplemented = "unimplemented",
+  /**
+   * Unimplemented indicates operation is not implemented or not
+   * supported/enabled in this service.
+   *
+   * This error code will be generated by the gRPC framework. Most
+   * commonly, you will see this error code when a method implementation
+   * is missing on the server. It can also be generated for unknown
+   * compression algorithms or a disagreement as to whether an RPC should
+   * be streaming.
+   */
+  Unimplemented = "unimplemented",
 
-    /**
-     * Internal errors. Means some invariants expected by underlying
-     * system has been broken. If you see one of these errors,
-     * something is very broken.
-     *
-     * This error code will be generated by the gRPC framework in several
-     * internal error conditions.
-     */
-    Internal = "internal",
+  /**
+   * Internal errors. Means some invariants expected by underlying
+   * system has been broken. If you see one of these errors,
+   * something is very broken.
+   *
+   * This error code will be generated by the gRPC framework in several
+   * internal error conditions.
+   */
+  Internal = "internal",
 
-    /**
-     * Unavailable indicates the service is currently unavailable.
-     * This is a most likely a transient condition and may be corrected
-     * by retrying with a backoff. Note that it is not always safe to retry
-     * non-idempotent operations.
-     *
-     * See litmus test above for deciding between FailedPrecondition,
-     * Aborted, and Unavailable.
-     *
-     * This error code will be generated by the gRPC framework during
-     * abrupt shutdown of a server process or network connection.
-     */
-    Unavailable = "unavailable",
+  /**
+   * Unavailable indicates the service is currently unavailable.
+   * This is a most likely a transient condition and may be corrected
+   * by retrying with a backoff. Note that it is not always safe to retry
+   * non-idempotent operations.
+   *
+   * See litmus test above for deciding between FailedPrecondition,
+   * Aborted, and Unavailable.
+   *
+   * This error code will be generated by the gRPC framework during
+   * abrupt shutdown of a server process or network connection.
+   */
+  Unavailable = "unavailable",
 
-    /**
-     * DataLoss indicates unrecoverable data loss or corruption.
-     *
-     * This error code will not be generated by the gRPC framework.
-     */
-    DataLoss = "data_loss",
+  /**
+   * DataLoss indicates unrecoverable data loss or corruption.
+   *
+   * This error code will not be generated by the gRPC framework.
+   */
+  DataLoss = "data_loss",
 
-    /**
-     * Unauthenticated indicates the request does not have valid
-     * authentication credentials for the operation.
-     *
-     * The gRPC framework will generate this error code when the
-     * authentication metadata is invalid or a Credentials callback fails,
-     * but also expect authentication middleware to generate it.
-     */
-    Unauthenticated = "unauthenticated",
+  /**
+   * Unauthenticated indicates the request does not have valid
+   * authentication credentials for the operation.
+   *
+   * The gRPC framework will generate this error code when the
+   * authentication metadata is invalid or a Credentials callback fails,
+   * but also expect authentication middleware to generate it.
+   */
+  Unauthenticated = "unauthenticated",
 }

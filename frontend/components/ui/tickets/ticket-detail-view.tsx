@@ -100,13 +100,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     ticket?.creator?.email === currentUser?.email;
 
   const staffCanEditMCTicket =
-    (role === "STAFF" && currentUser?.marketCenterId) ||
+    ((role === "STAFF" || role === "STAFF_LEADER") &&
+      currentUser?.marketCenterId) ||
     (ticket?.assignee &&
       ticket?.assignee?.marketCenterId === currentUser?.marketCenterId) ||
     (ticket?.creator &&
       ticket?.creator?.marketCenterId === currentUser?.marketCenterId);
   const staffCanEditOwnTickets =
-    role === "STAFF" &&
+    (role === "STAFF" || role === "STAFF_LEADER") &&
     !currentUser?.marketCenterId &&
     ((ticket?.creator && ticket?.creator?.email === currentUser?.email) ||
       (ticket?.assignee && ticket?.assignee?.email === currentUser?.email));

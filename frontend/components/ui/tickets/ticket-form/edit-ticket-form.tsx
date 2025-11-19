@@ -90,7 +90,8 @@ export function EditTicketForm({
       setErrors({});
 
       const userMarketCenterId =
-        (role === "STAFF" || role === "AGENT") && currentUser?.marketCenterId
+        (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
+        currentUser?.marketCenterId
           ? currentUser.marketCenterId
           : null;
 

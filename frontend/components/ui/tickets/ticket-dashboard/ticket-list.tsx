@@ -24,6 +24,8 @@ export default function TicketList() {
       return <AdminTicketList />;
     case "STAFF":
       return <StaffTicketList />;
+    case "STAFF_LEADER":
+      return <StaffTicketList />;
     case "AGENT":
       return <AgentTicketList />;
     default:

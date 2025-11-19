@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUser, useAuth } from "@clerk/nextjs";
-import type { PrismaUser } from "@/lib/types";
+import type { PrismaUser, UserRole } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
-
-export type UserRole = "AGENT" | "STAFF" | "ADMIN";
 
 export interface UserPermissions {
   canCreateTicket: boolean;
@@ -49,6 +47,27 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: true,
         canAccessReports: true,
       };
+    case "STAFF_LEADER":
+      return {
+        canCreateTicket: true,
+        canEditAnyTicket: false,
+        canDeleteTicket: true,
+        canReassignTicket: true,
+        canBulkUpdate: true,
+        canViewAllTickets: false,
+        canViewInternalComments: true,
+        canCreateInternalComments: true,
+        canCreateUsers: false,
+        canManageAllUsers: false,
+        canCreateTeam: false,
+        canManageTeam: true,
+        canChangeUserRoles: true,
+        canManageAllMarketCenters: false,
+        canDeactivateMarketCenters: false,
+        canDeactivateUsers: true,
+        canAccessSettings: true,
+        canAccessReports: true,
+      };
     case "STAFF":
       return {
         canCreateTicket: true,
@@ -73,6 +92,27 @@ export function getUserPermissions(role: UserRole): UserPermissions {
     case "AGENT":
       return {
         canCreateTicket: true,
+        canEditAnyTicket: false,
+        canDeleteTicket: false,
+        canReassignTicket: false,
+        canBulkUpdate: false,
+        canViewAllTickets: false,
+        canViewInternalComments: false,
+        canCreateInternalComments: false,
+        canCreateUsers: false,
+        canManageAllUsers: false,
+        canCreateTeam: false,
+        canManageTeam: false,
+        canChangeUserRoles: false,
+        canManageAllMarketCenters: false,
+        canDeactivateMarketCenters: false,
+        canDeactivateUsers: false,
+        canAccessSettings: false,
+        canAccessReports: false,
+      };
+    default:
+      return {
+        canCreateTicket: false,
         canEditAnyTicket: false,
         canDeleteTicket: false,
         canReassignTicket: false,
@@ -139,7 +179,7 @@ export function useUserRole() {
     isLoading: !isLoaded || userLoading,
     error,
     isAdmin: role === "ADMIN",
-    isStaff: role === "STAFF",
+    isStaff: role === "STAFF" || role === "STAFF_LEADER",
     isAgent: role === "AGENT",
   };
 }

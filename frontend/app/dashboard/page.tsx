@@ -4,6 +4,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { AgentDashboard } from "@/components/dashboard/agent-dashboard";
 import { StaffDashboard } from "@/components/dashboard/staff-dashboard";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
+import { StaffLeaderDashboard } from "@/components/dashboard/staff-leader-dashboard";
 
 export default function DashboardPage() {
   const { role, isLoading } = useUserRole();
@@ -23,6 +24,8 @@ export default function DashboardPage() {
       return <AdminDashboard />;
     case "STAFF":
       return <StaffDashboard />;
+    case "STAFF_LEADER":
+      return <StaffLeaderDashboard />;
     case "AGENT":
       return <AgentDashboard />;
     default:
