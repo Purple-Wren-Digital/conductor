@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
+// import { getAuthData } from "~encore/auth";
 import { CommentEvent, commentEventBus } from "./events";
-import { mygw } from "../auth/auth";
+// import { mygw } from "../auth/auth";
 import { getUserContext } from "../auth/user-context";
 import { prisma } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";

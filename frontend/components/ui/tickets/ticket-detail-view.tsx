@@ -323,9 +323,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
-        body: JSON.stringify({
-          assigneeId: newAssigneeId,
-        }),
+        body: JSON.stringify({ assigneeId: newAssigneeId }),
       });
       const data = await res.json();
 
@@ -656,10 +654,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                           users.map((u) => {
                             const staffPermissions =
                               role === "ADMIN" ||
-                              (role === "STAFF" &&
-                                currentUser?.marketCenterId &&
-                                u?.marketCenterId ===
-                                  currentUser?.marketCenterId) ||
+                              role === "STAFF_LEADER" ||
                               (role === "STAFF" &&
                                 !currentUser?.marketCenterId &&
                                 u?.id !== currentUser?.id);
@@ -670,7 +665,12 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                                 value={u.id}
                                 disabled={!staffPermissions}
                               >
-                                {u.name} ({u.role})
+                                {u.name}:{" "}
+                                {u?.role
+                                  ? capitalizeEveryWord(
+                                      u.role.split("_").join(" ")
+                                    )
+                                  : "Unassigned"}
                               </SelectItem>
                             );
                           })}

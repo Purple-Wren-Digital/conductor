@@ -29,7 +29,7 @@ export async function canAccessTicket(
     return false;
   }
 
-  if (userContext.role === "ADMIN") {
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
 
@@ -40,27 +40,13 @@ export async function canAccessTicket(
     return true;
   }
 
-  const isMarketCenter =
-    ticket?.category?.marketCenterId === userContext?.marketCenterId ||
-    ticket?.creator?.marketCenterId === userContext?.marketCenterId;
-  const isStaff =
-    userContext.role === "STAFF" || userContext.role === "STAFF_LEADER";
-
   if (
-    isStaff &&
-    (ticket?.assigneeId === userContext?.userId ||
-      (!ticket?.assigneeId && isMarketCenter))
-  ) {
-    return true;
-  }
-
-  if (userContext.role === "STAFF_LEADER" && isMarketCenter) {
-    return true;
-  }
-
-  if (
-    userContext.role === "STAFF_LEADER" &&
-    ticket?.assignee?.marketCenterId === userContext?.marketCenterId
+    userContext.role === "STAFF" &&
+    (ticket?.category?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.creator?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.creatorId === userContext?.userId ||
+      ticket?.assignee?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.assigneeId === userContext?.userId)
   ) {
     return true;
   }
@@ -110,29 +96,25 @@ export async function canDeleteTicket(
   return await canAccessTicket(userContext, ticketId);
 }
 
-export async function canReassignTicket(
-  userContext: UserContext,
-  ticket: Ticket,
-  newAssigneeId?: string
-): Promise<boolean> {
-  if (!userContext?.role || userContext?.role === "AGENT") {
+export async function canReassignTicket({
+  userContext,
+  newAssigneeId,
+}: {
+  userContext: UserContext;
+  newAssigneeId?: string;
+}): Promise<boolean> {
+  console.log("canReassignTicket", { userContext, newAssigneeId });
+  if (!newAssigneeId || !userContext?.role || userContext?.role === "AGENT") {
     return false;
   }
   if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
-  const isMarketCenter =
-    ticket?.category?.marketCenterId === userContext?.marketCenterId ||
-    ticket?.creator?.marketCenterId === userContext?.marketCenterId;
 
   if (
     userContext.role === "STAFF" &&
-    ticket?.assigneeId === userContext?.userId
+    (newAssigneeId === userContext?.userId || newAssigneeId === "unassigned")
   ) {
-    return true;
-  }
-
-  if (userContext.role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
     return true;
   }
 

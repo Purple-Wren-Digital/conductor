@@ -1,8 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import { getUserContext } from "../auth/user-context";
-import { canReassignTicket, getTicketScopeFilter } from "../auth/permissions";
-import { Ticket } from "./types";
+import { canReassignTicket } from "../auth/permissions";
+import { Prisma } from "@prisma/client";
 
 export interface BulkAssignRequest {
   ticketIds: string[];
@@ -30,27 +30,10 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       );
     }
 
-    // Check if user can reassign tickets
-    let canReassign = false;
-    for (const ticketId of req.ticketIds) {
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: ticketId },
-        include: { assignee: true, creator: true, category: true },
-      });
-      if (ticket) {
-        const safeTicket: Ticket = {
-          ...ticket,
-          status: ticket?.status ?? "CREATED",
-          urgency: ticket?.urgency ?? "LOW",
-        };
-        const canReassignThisTicket = await canReassignTicket(
-          userContext,
-          safeTicket
-        );
-        canReassign = canReassignThisTicket;
-        break;
-      }
-    }
+    let canReassign = await canReassignTicket({
+      userContext: userContext,
+      newAssigneeId: req?.assigneeId,
+    });
 
     if (!canReassign) {
       throw APIError.permissionDenied(
@@ -69,24 +52,48 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
       }
       newAssignee = user;
     }
-    // Get ticket scope filter
-    const scopeFilter = await getTicketScopeFilter(userContext);
+    let where: Prisma.TicketWhereInput = {};
+
+    switch (userContext.role) {
+      case "STAFF":
+      case "STAFF_LEADER":
+        if (!userContext.marketCenterId) {
+          where = {
+            OR: [
+              { assigneeId: userContext.userId },
+              { creatorId: userContext.userId },
+            ],
+          };
+        } else {
+          where = {
+            AND: [{ id: { in: req.ticketIds } }],
+            OR: [
+              { category: { marketCenterId: userContext.marketCenterId } },
+              { creator: { marketCenterId: userContext.marketCenterId } },
+              { assignee: { marketCenterId: userContext.marketCenterId } },
+            ],
+          };
+        }
+        break;
+
+      case "ADMIN":
+        where.AND = [{ id: { in: req.ticketIds } }];
+        break;
+
+      default:
+        throw APIError.permissionDenied("User not permitted to search tickets");
+    }
 
     // First, verify which tickets exist and user has access to
     const tickets = await prisma.ticket.findMany({
-      where: {
-        AND: [
-          {
-            id: { in: req.ticketIds },
-          },
-          scopeFilter,
-        ],
-      },
+      where: where,
       select: {
         id: true,
         assigneeId: true,
-        assignee: true,
         status: true,
+        creator: { select: { id: true, name: true, marketCenterId: true } },
+        assignee: { select: { id: true, name: true, marketCenterId: true } },
+        category: { select: { id: true, marketCenterId: true } },
       },
     });
 

@@ -41,6 +41,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       );
     }
 
+    const canAssign = await canReassignTicket({
+      userContext: userContext,
+      newAssigneeId: req?.assigneeId,
+    });
+
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
       include: { creator: true, assignee: true, category: true },
@@ -54,17 +59,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         "Resolved tickets cannot be modified further"
       );
     }
-    const safeTicket: Ticket = {
-      ...oldTicket,
-      status: oldTicket?.status ?? "CREATED",
-      urgency: oldTicket?.urgency ?? "LOW",
-    };
-
-    const canAssign = await canReassignTicket(
-      userContext,
-      safeTicket,
-      req?.assigneeId
-    );
 
     const unassignTicket = req.assigneeId === "Unassigned";
 

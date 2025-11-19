@@ -26,6 +26,15 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+    const canReassign = await canReassignTicket({
+      userContext: userContext,
+      newAssigneeId: req?.assigneeId,
+    });
+    if (!canReassign) {
+      throw APIError.permissionDenied(
+        "You do not have permission to reassign tickets"
+      );
+    }
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.id },
       include: { assignee: true, creator: true, category: true },
@@ -37,19 +46,6 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
     if (oldTicket && oldTicket.status === "RESOLVED") {
       throw APIError.invalidArgument(
         "Resolved tickets cannot be modified further"
-      );
-    }
-
-    const safeTicket: Ticket = {
-      ...oldTicket,
-      status: oldTicket?.status ?? "CREATED",
-      urgency: oldTicket?.urgency ?? "LOW",
-    };
-
-    const canReassign = await canReassignTicket(userContext, safeTicket);
-    if (!canReassign) {
-      throw APIError.permissionDenied(
-        "You do not have permission to reassign tickets"
       );
     }
 
