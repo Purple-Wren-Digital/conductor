@@ -63,7 +63,7 @@ export function UserListItem({
       onClick={onClick}
       primaryBadges={[
         {
-          label: `${user.role}${user?.staffLeader ? " LEADER" : ""}`,
+          label: `${user.role.split("_").join(" ")}`,
           variant: getRoleColor(user.role),
           style: getRoleBadgeStyle(user.role),
           title: `Role: ${user.role}`,

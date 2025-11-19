@@ -4,6 +4,7 @@ import { getUserContext } from "../auth/user-context";
 import type { ActivityUpdates } from "@/emails/types";
 import type { UsersToNotify } from "../notifications/types";
 import { TicketStatus } from "./types";
+import { canDeleteTicket } from "../auth/permissions";
 
 export interface CloseTicketRequest {
   ticketId: string;
@@ -44,25 +45,11 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
     if (oldTicket && oldTicket.status === "RESOLVED") {
       throw APIError.invalidArgument("Resolved tickets cannot be updated");
     }
-    let canDelete = false;
-    if (userContext.role === "ADMIN") {
-      canDelete = true;
-    }
-
-    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
-      canDelete =
-        userContext?.marketCenterId === oldTicket?.creator?.marketCenterId ||
-        userContext?.marketCenterId === oldTicket?.assignee?.marketCenterId;
-    }
-
-    if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
-      canDelete =
-        oldTicket.creatorId === userContext.userId ||
-        oldTicket.assigneeId === userContext.userId;
-    }
-
-    if (userContext.role === "AGENT") {
-      canDelete = oldTicket.creatorId === userContext.userId;
+    let canClose = await canDeleteTicket(userContext, req.ticketId);
+    if (!canClose) {
+      throw APIError.permissionDenied(
+        "You do not have permission to close this ticket"
+      );
     }
 
     const [ticket] = await prisma.$transaction([

@@ -98,8 +98,9 @@ export function AppSidebar({
                   {currentUser?.email}
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {currentUser?.role && currentUser?.role?.toLowerCase()}
-                  {currentUser?.staffLeader && " Leader"} •{" "}
+                  {currentUser?.role &&
+                    currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
+                  •{" "}
                   {currentUser?.role === "ADMIN"
                     ? "Global"
                     : currentUser?.marketCenter?.name

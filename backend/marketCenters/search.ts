@@ -33,10 +33,11 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-    // AGENT + STAFF
-
+    // AGENT + STAFF + STAFF_LEADER: only return their market center
     if (
-      (userContext.role === "AGENT" || userContext.role === "STAFF") &&
+      (userContext.role === "AGENT" ||
+        userContext.role === "STAFF" ||
+        userContext.role === "STAFF_LEADER") &&
       userContext?.marketCenterId
     ) {
       const marketCenter = await prisma.marketCenter.findUnique({

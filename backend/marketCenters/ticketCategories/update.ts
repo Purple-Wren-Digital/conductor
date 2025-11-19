@@ -29,7 +29,7 @@ export const updateCategory = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    if (userContext?.role === "AGENT") {
+    if (!userContext?.role || userContext?.role === "AGENT") {
       throw APIError.permissionDenied(
         "You do not have permissions to edit ticket categories"
       );

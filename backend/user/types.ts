@@ -10,7 +10,7 @@ import {
   NotificationFrequency,
 } from "../notifications/types";
 
-export type UserRole = "AGENT" | "STAFF" | "ADMIN";
+export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
 export interface User {
   id: string;
@@ -19,7 +19,7 @@ export interface User {
   email: string;
   name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
-  staffLeader: boolean;
+  // staffLeader: boolean;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

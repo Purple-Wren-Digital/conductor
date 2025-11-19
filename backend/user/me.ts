@@ -9,7 +9,6 @@ export interface GetCurrentUserResponse {
   name: string;
   role: string;
   isActive: boolean;
-  staffLeader: boolean;
   marketCenterId: string | null;
   marketCenter?: {
     id: string;
@@ -41,7 +40,6 @@ export const me = api<void, GetCurrentUserResponse>(
       name: user.name ?? "",
       role: user.role,
       isActive: user.isActive,
-      staffLeader: user.staffLeader,
       marketCenterId: user.marketCenterId,
       marketCenter: user.marketCenter
         ? {

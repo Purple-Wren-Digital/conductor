@@ -24,8 +24,34 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+    if (userContext.role === "AGENT") {
+      throw APIError.permissionDenied(
+        "Only staff and admins can bulk update tickets"
+      );
+    }
+
     // Check if user can reassign tickets
-    const canReassign = await canReassignTicket(userContext);
+    let canReassign = false;
+    for (const ticketId of req.ticketIds) {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: { assignee: true, creator: true, category: true },
+      });
+      if (ticket) {
+        const safeTicket: Ticket = {
+          ...ticket,
+          status: ticket?.status ?? "CREATED",
+          urgency: ticket?.urgency ?? "LOW",
+        };
+        const canReassignThisTicket = await canReassignTicket(
+          userContext,
+          safeTicket
+        );
+        canReassign = canReassignThisTicket;
+        break;
+      }
+    }
+
     if (!canReassign) {
       throw APIError.permissionDenied(
         "You do not have permission to bulk assign tickets"
@@ -42,19 +68,6 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
         throw APIError.notFound("New assignee not found");
       }
       newAssignee = user;
-    }
-
-    // For STAFF, ensure they can only assign to users in their market center
-    if (
-      userContext?.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      newAssignee &&
-      newAssignee?.marketCenterId &&
-      newAssignee.marketCenterId !== userContext.marketCenterId
-    ) {
-      throw APIError.permissionDenied(
-        "You can only assign tickets to users in your team"
-      );
     }
     // Get ticket scope filter
     const scopeFilter = await getTicketScopeFilter(userContext);

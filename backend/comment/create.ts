@@ -88,8 +88,8 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         userContext?.userId && ticket?.creatorId && ticket?.assigneeId
           ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
           : userContext?.userId && ticket?.creatorId
-          ? [userContext?.userId, ticket?.creatorId]
-          : [];
+            ? [userContext?.userId, ticket?.creatorId]
+            : [];
 
       // Notification<Partial>
       const notifications: any[] =

@@ -591,7 +591,9 @@ export default function TicketListStaff() {
                               teamMembers.map((user: PrismaUser) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   {user.name}
-                                  {user?.staffLeader ? " (Staff Leader)" : ""}
+                                  {user?.role === "STAFF_LEADER"
+                                    ? " (Staff Leader)"
+                                    : ""}
                                 </SelectItem>
                               ))}
                           </>
@@ -632,7 +634,9 @@ export default function TicketListStaff() {
                           teamMembers.map((user: PrismaUser) => (
                             <SelectItem key={user.id} value={user.id}>
                               {user?.name}
-                              {user?.staffLeader ? " (Staff Leader)" : ""}
+                              {user?.role === "STAFF_LEADER"
+                                ? " (Staff Leader)"
+                                : ""}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -1027,7 +1031,7 @@ export default function TicketListStaff() {
                   teamMembers.map((user: PrismaUser) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
-                      {user?.staffLeader ? " (Staff Leader)" : ""}
+                      {user?.role === "STAFF_LEADER" ? " (Staff Leader)" : ""}
                     </SelectItem>
                   ))}
               </SelectContent>

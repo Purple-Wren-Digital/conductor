@@ -23,7 +23,7 @@ export const deleteCategory = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    if (userContext?.role === "AGENT") {
+    if (!userContext?.role || userContext?.role === "AGENT") {
       throw APIError.permissionDenied(
         "You don't have permission to delete a category"
       );

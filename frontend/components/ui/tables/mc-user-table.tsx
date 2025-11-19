@@ -84,11 +84,7 @@ export default function MarketCenterUserTable({
           variant="outline"
           size="sm"
           onClick={onEdit}
-          disabled={
-            !role ||
-            role === "AGENT" ||
-            (role === "STAFF" && !currentUser?.staffLeader)
-          }
+          disabled={!role || !permissions?.canManageTeam}
           aria-label="Go to user page to edit details"
         >
           <svg
@@ -110,11 +106,7 @@ export default function MarketCenterUserTable({
         <Button
           variant="outline"
           size="sm"
-          disabled={
-            !role ||
-            role === "AGENT" ||
-            (role === "STAFF" && !currentUser?.staffLeader)
-          }
+          disabled={!role || !permissions?.canManageTeam}
           onClick={onDelete}
           aria-label="Remove user from market center"
         >

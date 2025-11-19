@@ -15,7 +15,6 @@ model MarketCenter {
   settings            Json                  @default("{}")
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at")
-  staffLeaderIds      String[]              @map("staff_leader_id")
   marketCenterHistory MarketCenterHistory[]
   teamInvitations     TeamInvitation[]
   ticketCategories    TicketCategory[]
@@ -29,7 +28,6 @@ model User {
   email                String                @unique
   name                 String?
   role                 UserRole              @default(AGENT)
-  staffLeader          Boolean               @default(false)
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at")
   deletedAt            DateTime?
@@ -276,6 +274,7 @@ enum NotificationChannel {
 enum UserRole {
   AGENT
   STAFF
+  STAFF_LEADER
   ADMIN
 }
 

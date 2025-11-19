@@ -128,7 +128,7 @@ export function StaffDashboard() {
 
     acc[member.id] = {
       name: member.name,
-      staffLeader: member.staffLeader,
+      role: member.role,
       assigned: memberTickets.filter((t: any) => t.status !== "RESOLVED")
         .length,
       resolved: memberTickets.filter((t: any) => t.status === "RESOLVED")
@@ -190,9 +190,7 @@ export function StaffDashboard() {
                 teamMembers?.map((member: any) => {
                   return (
                     <SelectItem key={member.id} value={member.id}>
-                      <User
-                        className={`w-4 h-4 ${member.staffLeader ? " text-yellow-500" : ""}`}
-                      />
+                      <User className={`w-4 h-4`} />
                       {member.name}
                     </SelectItem>
                   );
@@ -361,7 +359,9 @@ export function StaffDashboard() {
                           <p className="font-medium ">{stats.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {stats.assigned} active • {stats.resolved} resolved
-                            {stats?.staffLeader ? " • Staff Leader" : ""}
+                            {stats?.role === "STAFF_LEADER"
+                              ? " • Staff Leader"
+                              : ""}
                           </p>
                         </div>
                         <div className="flex gap-2">

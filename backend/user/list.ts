@@ -45,6 +45,12 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     if (req?.role) {
       where.role = req.role;
     }
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
+      where.marketCenterId = userContext.marketCenterId;
+    }
 
     const users = await prisma.user.findMany({
       where,

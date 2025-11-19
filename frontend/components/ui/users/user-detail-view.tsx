@@ -69,7 +69,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     lastName: "",
     email: "",
     role: user?.role ?? "AGENT",
-    staffLeader: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -325,7 +324,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               lastName: user && user?.name ? user?.name.split(" ")?.[1] : "",
               email: user?.email ?? "",
               role: user?.role ?? "AGENT",
-              staffLeader: user?.staffLeader ?? false,
             });
           }}
           className="gap-2"
@@ -401,7 +399,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       user && user?.name ? user?.name.split(" ")?.[1] : "",
                     email: user?.email ?? "",
                     role: value,
-                    staffLeader: user?.staffLeader ?? false,
                   });
                   handleRoleChange();
                 }}
@@ -527,11 +524,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
-                disabled={
-                  !role ||
-                  role === "AGENT" ||
-                  (role === "STAFF" && !currentUser?.staffLeader)
-                }
+                disabled={!role || role === "AGENT"}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -550,39 +543,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   })}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-2 flex items-center justify-end gap-2 h-0.1">
-              <Label
-                className={`text-sm font-medium ${
-                  formData.role !== "STAFF" ||
-                  !role ||
-                  role === "AGENT" ||
-                  (role === "STAFF" && !currentUser?.staffLeader)
-                    ? "opacity-50"
-                    : ""
-                }`}
-              >
-                Staff Leader?
-              </Label>
-              <Checkbox
-                checked={formData.staffLeader}
-                onCheckedChange={(value) => {
-                  setFormData({
-                    ...formData,
-                    staffLeader: value as boolean,
-                  });
-                }}
-                disabled={
-                  formData.role !== "STAFF" ||
-                  !role ||
-                  role === "AGENT" ||
-                  (role === "STAFF" && !currentUser?.staffLeader)
-                }
-                className="border-accent-foreground"
-                // prevent row click
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">

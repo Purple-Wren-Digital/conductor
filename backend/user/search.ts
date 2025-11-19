@@ -37,7 +37,11 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    if (userContext.role === "AGENT") {
+    if (
+      userContext.role === "AGENT" ||
+      ((userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+        !userContext?.marketCenterId)
+    ) {
       const baseWhere = {
         id: userContext?.userId,
         isActive: true,
@@ -88,7 +92,10 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       where = { marketCenterId: req.marketCenterId };
     }
 
-    if (userContext.role === "STAFF" && req?.marketCenterId) {
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
       where = { marketCenterId: userContext.marketCenterId };
     }
 

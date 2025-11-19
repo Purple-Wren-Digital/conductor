@@ -40,7 +40,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         "You do not have permission to modify this ticket"
       );
     }
-    const canAssign = await canReassignTicket(userContext);
 
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
@@ -55,6 +54,17 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         "Resolved tickets cannot be modified further"
       );
     }
+    const safeTicket: Ticket = {
+      ...oldTicket,
+      status: oldTicket?.status ?? "CREATED",
+      urgency: oldTicket?.urgency ?? "LOW",
+    };
+
+    const canAssign = await canReassignTicket(
+      userContext,
+      safeTicket,
+      req?.assigneeId
+    );
 
     const unassignTicket = req.assigneeId === "Unassigned";
 
@@ -70,14 +80,10 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       newAssignee = user;
     }
 
-    // For STAFF, ensure they can only assign to users in their market center
     if (
-      canAssign &&
-      userContext?.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      newAssignee &&
-      newAssignee?.marketCenterId &&
-      newAssignee?.marketCenterId !== userContext.marketCenterId
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      req.assigneeId &&
+      !canAssign
     ) {
       throw APIError.permissionDenied(
         "You can only assign tickets to users in your team"

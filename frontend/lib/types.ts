@@ -137,7 +137,7 @@ export interface Comment {
 }
 
 // USER
-export type UserRole = "AGENT" | "STAFF" | "ADMIN";
+export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
 export interface PrismaUser {
   id: string;
@@ -146,7 +146,7 @@ export interface PrismaUser {
   email: string;
   name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
-  staffLeader: boolean;
+  // staffLeader: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -197,7 +197,6 @@ export interface UserEditFormData {
   email: string;
   role: UserRole;
   marketCenterId?: string;
-  staffLeader: boolean;
 }
 
 export interface UserWithStats extends PrismaUser {

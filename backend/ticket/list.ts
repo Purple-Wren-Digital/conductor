@@ -39,12 +39,18 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       where.creatorId = userContext.userId;
     }
 
-    if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      !userContext?.marketCenterId
+    ) {
       where.assigneeId = userContext.userId;
       where.creatorId = userContext.userId;
     }
 
-    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
       where = {
         OR: [
           {
