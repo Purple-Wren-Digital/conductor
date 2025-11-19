@@ -1,15 +1,39 @@
-import TicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list";
+"use client";
 
-export default function DashboardTicketsPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Ticket Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage and track support tickets efficiently
-        </p>
-      </div>
-      <TicketList />
-    </div>
-  );
+import { useUserRole } from "@/hooks/use-user-role";
+import AdminTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-admin";
+import AgentTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-agent";
+import StaffTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-staff";
+
+export default function TicketList() {
+  const { role, isLoading } = useUserRole();
+
+  if (isLoading) {
+    return (
+      <section className="flex items-center justify-center h-96 space-y-4">
+        <h1 className="text-muted-foreground font-medium text-center w-full">
+          Loading tickets...
+        </h1>
+      </section>
+    );
+  }
+
+  switch (role) {
+    case "ADMIN":
+      return <AdminTicketList />;
+    case "STAFF":
+      return <StaffTicketList />;
+    case "STAFF_LEADER":
+      return <StaffTicketList />;
+    case "AGENT":
+      return <AgentTicketList />;
+    default:
+      return (
+        <section className="flex items-center justify-center h-96 space-y-4">
+          <h1 className="text-muted-foreground font-medium text-center w-full">
+            Unable to determine your role. Please contact support.
+          </h1>
+        </section>
+      );
+  }
 }

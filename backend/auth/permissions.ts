@@ -197,39 +197,55 @@ export async function getTicketScopeFilter(
   if (userContext.role === "ADMIN" && !marketCenterId) {
     return {};
   }
-  if (userContext.role === "ADMIN" && marketCenterId) {
+  if (userContext.role === "ADMIN" && !!marketCenterId) {
     return {
       OR: [
         {
-          creator: {
-            marketCenterId: marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { category: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
         {
-          assignee: {
-            marketCenterId: marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { creator: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
+        { category: { marketCenterId: userContext.marketCenterId } },
+        { creator: { marketCenterId: marketCenterId } },
+        { assignee: { marketCenterId: marketCenterId } },
       ],
     };
   }
 
-  if (
-    (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-    userContext?.marketCenterId
-  ) {
+  if (userContext.role === "STAFF_LEADER" && !!userContext?.marketCenterId) {
     return {
       OR: [
         {
-          creator: {
-            marketCenterId: userContext.marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { category: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
         {
-          assignee: {
-            marketCenterId: userContext.marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { creator: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
+        { creator: { marketCenterId: userContext.marketCenterId } },
+        { assignee: { marketCenterId: userContext.marketCenterId } },
+        { category: { marketCenterId: userContext.marketCenterId } },
+      ],
+    };
+  }
+
+  if (userContext.role === "STAFF" && !!userContext?.marketCenterId) {
+    return {
+      OR: [
+        { AND: [{ assigneeId: null }, { creatorId: userContext.userId }] },
+        { assigneeId: userContext.userId },
       ],
     };
   }
@@ -238,7 +254,12 @@ export async function getTicketScopeFilter(
     (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
     !userContext?.marketCenterId
   ) {
-    return { assigneeId: userContext.userId, creatorId: userContext.userId };
+    return {
+      OR: [
+        { assigneeId: userContext.userId },
+        { creatorId: userContext.userId },
+      ],
+    };
   }
 
   if (userContext.role === "AGENT") {

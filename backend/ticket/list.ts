@@ -3,6 +3,7 @@ import { Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
+import { getTicketScopeFilter } from "../auth/permissions";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -33,89 +34,12 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
-    let where: any = {};
+    const scopeFilter = await getTicketScopeFilter(
+      userContext,
+      req.marketCenterId
+    );
 
-    if (userContext.role === "AGENT") {
-      where.creatorId = userContext.userId;
-    }
-
-    if (
-      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-      !userContext?.marketCenterId
-    ) {
-      where.assigneeId = userContext.userId;
-      where.creatorId = userContext.userId;
-    }
-
-    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
-      where = {
-        OR: [
-          {
-            AND: [
-              { creatorId: userContext.userId },
-              { assigneeId: null },
-              {
-                category: {
-                  marketCenterId: userContext.marketCenterId,
-                },
-              },
-            ],
-          },
-          {
-            assigneeId: userContext.userId,
-          },
-        ],
-      };
-    }
-
-    if (userContext.role === "STAFF_LEADER" && userContext?.marketCenterId) {
-      where = {
-        OR: [
-          {
-            AND: [
-              { assigneeId: null },
-              {
-                category: {
-                  marketCenterId: userContext.marketCenterId,
-                },
-              },
-            ],
-          },
-          {
-            category: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-          {
-            creator: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-          {
-            assignee: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-        ],
-      };
-    }
-
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
-      where = {
-        OR: [
-          {
-            creator: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-          {
-            assignee: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
-        ],
-      };
-    }
+    let where: any = { ...scopeFilter };
 
     if (req.status) where.status = { in: req.status };
     if (req.urgency) where.urgency = { in: req.urgency };
@@ -123,10 +47,8 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
-        include: {
-          _count: true,
-        },
-        orderBy: { createdAt: "desc" },
+        include: { _count: true },
+        orderBy: { updatedAt: "desc" },
         take: limit,
         skip: offset,
       }),

@@ -27,7 +27,7 @@ export function TicketListTable({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
-  const { permissions, role } = useUserRole();
+  const { permissions } = useUserRole();
 
   return (
     <TableRow
@@ -56,11 +56,9 @@ export function TicketListTable({
         </div>
       </TableCell>
 
-      {role !== "AGENT" && (
-        <TableCell className="font-medium">
-          {ticket?.assignee?.name ? ticket.assignee.name : "Unassigned"}
-        </TableCell>
-      )}
+      <TableCell className="font-medium">
+        {ticket?.assignee?.name ? ticket.assignee.name : "Unassigned"}
+      </TableCell>
       <TableCell>
         <Badge
           variant={ticket.status.toLowerCase() as any}

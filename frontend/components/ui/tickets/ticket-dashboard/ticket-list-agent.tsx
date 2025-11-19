@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ import {
   Plus,
   Search,
   User,
+  Users,
   X,
 } from "lucide-react";
 import { API_BASE } from "@/lib/api/utils";
@@ -412,15 +413,12 @@ export default function AgentTicketList() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="space-y-2">
-              <CardTitle className="text-left w-full sm:w-fit">
-                Tickets ({totalTickets})
-              </CardTitle>
-            </div>
-
+      <section className="space-y-4">
+        <div>
+          <div className="flex flex-wrap gap-4 items-center justify-between space-y-0.5">
+            <h1 className="text-xl font-bold text-left w-full sm:w-fit">
+              Tickets ({totalTickets})
+            </h1>
             <div className="flex items-center gap-4 w-full sm:w-fit">
               {permissions?.canCreateTicket && (
                 <Button
@@ -495,9 +493,13 @@ export default function AgentTicketList() {
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All assignees</SelectItem>
-                        <SelectItem value="Unassigned">Unassigned</SelectItem>
-
+                        <SelectItem
+                          value="all"
+                          className="flex items-center gap-2"
+                        >
+                          <Users className="h-4 w-4" />
+                          All Team Members
+                        </SelectItem>
                         {teamMembersAssignedToTickets &&
                           teamMembersAssignedToTickets.length > 0 &&
                           teamMembersAssignedToTickets.map((user) => (
@@ -688,185 +690,184 @@ export default function AgentTicketList() {
               </Card>
             )}
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          <div
-            className={`space-y-4 transition-opacity duration-300 ${
-              ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
-            }`}
-          >
-            <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
-              <p className="text-sm text-muted-foreground">
-                Avg Resolution:{" "}
-                {selectedStatuses.includes("RESOLVED")
-                  ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
-                  : "N/A"}
-              </p>
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="space-y-2 w-full sm:w-fit">
-                  <Select
-                    value={sortBy}
-                    onValueChange={(value: TicketSortBy) => setSortBy(value)}
-                    disabled={
-                      ticketsLoading || !tickets || !tickets.length || isLoading
-                    }
-                  >
-                    <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
-                      <SelectValue placeholder={"Sort by..."} />
-                    </SelectTrigger>
+        <div
+          className={`space-y-4 transition-opacity duration-300 ${
+            ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+          }`}
+        >
+          <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
+            <p className="text-sm text-muted-foreground">
+              Avg Resolution:{" "}
+              {selectedStatuses.includes("RESOLVED")
+                ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
+                : "N/A"}
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: TicketSortBy) => setSortBy(value)}
+                  disabled={
+                    ticketsLoading || !tickets || !tickets.length || isLoading
+                  }
+                >
+                  <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
+                    <SelectValue placeholder={"Sort by..."} />
+                  </SelectTrigger>
 
-                    <SelectContent>
-                      {sortByTicketOptions.map((ticketOption) => (
-                        <SelectItem key={ticketOption} value={ticketOption}>
-                          <div className="flex gap-1 items-center mr-1">
-                            <ArrowDownUp />
-                            <p className="text-sm font-medium">
-                              {formatTicketOptions(ticketOption)}
-                            </p>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 w-full sm:w-fit">
-                  <Select
-                    value={sortDir}
-                    onValueChange={(value: OrderBy) => setSortDir(value)}
-                    disabled={
-                      ticketsLoading || !tickets || !tickets.length || isLoading
-                    }
-                  >
-                    <SelectTrigger aria-label="Order by ascending or descending data">
-                      <SelectValue placeholder={"Order by..."} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {orderByOptions.map((direction) => (
-                        <SelectItem key={direction} value={direction}>
-                          <div className="flex gap-1 items-center mr-1">
-                            {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
-                            <p className="text-sm font-medium">
-                              {formatOrderBy(direction)}
-                            </p>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <SelectContent>
+                    {sortByTicketOptions.map((ticketOption) => (
+                      <SelectItem key={ticketOption} value={ticketOption}>
+                        <div className="flex gap-1 items-center mr-1">
+                          <ArrowDownUp />
+                          <p className="text-sm font-medium">
+                            {formatTicketOptions(ticketOption)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortDir}
+                  onValueChange={(value: OrderBy) => setSortDir(value)}
+                  disabled={
+                    ticketsLoading || !tickets || !tickets.length || isLoading
+                  }
+                >
+                  <SelectTrigger aria-label="Order by ascending or descending data">
+                    <SelectValue placeholder={"Order by..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orderByOptions.map((direction) => (
+                      <SelectItem key={direction} value={direction}>
+                        <div className="flex gap-1 items-center mr-1">
+                          {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
+                          <p className="text-sm font-medium">
+                            {formatOrderBy(direction)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <Table>
-              <TableHeader className="bg-muted">
-                <TableRow className="border rounded">
-                  <TableHead className="text-black">Ticket</TableHead>
-                  <TableHead
-                    className="text-black cursor-pointer"
-                    onClick={() => {
-                      setSortBy("status");
-                      setSortDir(sortDir === "asc" ? "desc" : "asc");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <p className="flex items-center gap-1">
-                      {sortBy === "status" && sortDir === "asc" ? (
-                        <ArrowUp className="size-4" />
-                      ) : sortBy === "status" && sortDir === "desc" ? (
-                        <ArrowDown className="size-4" />
-                      ) : (
-                        <ArrowDownUp className="size-4" />
-                      )}
-                      Status
-                    </p>
-                  </TableHead>
-                  <TableHead
-                    className="text-black cursor-pointer"
-                    onClick={() => {
-                      setSortBy("urgency");
-                      setSortDir(sortDir === "asc" ? "desc" : "asc");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <p className="flex items-center gap-1">
-                      {sortBy === "urgency" && sortDir === "asc" ? (
-                        <ArrowUp className="size-4" />
-                      ) : sortBy === "urgency" && sortDir === "desc" ? (
-                        <ArrowDown className="size-4" />
-                      ) : (
-                        <ArrowDownUp className="size-4" />
-                      )}
-                      Urgency
-                    </p>
-                  </TableHead>
-                  <TableHead className="text-black">Category</TableHead>
-                  <TableHead className="text-black">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="border [&_tr:last-child]:border-0">
-                {ticketsLoading && (
-                  <>
-                    {[...Array(5)].map((_, i) => (
-                      <TableRow
-                        key={i}
-                        className="h-16 w-full bg-muted rounded animate-pulse"
-                      ></TableRow>
-                    ))}
-                  </>
-                )}
-                {ticketsLoading && (
-                  <>
-                    {[...Array(5)].map((_, i) => (
-                      <TableRow
-                        key={i}
-                        className="h-16 w-full bg-muted rounded animate-pulse"
-                      >
-                        <TableCell colSpan={5} className="py-8">
-                          <span className="h-4 w-full bg-muted rounded animate-pulse" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </>
-                )}
-
-                {!ticketsLoading &&
-                  tickets &&
-                  tickets.length > 0 &&
-                  tickets.map((ticket: TicketWithUpdatedAt) => (
-                    <TicketListItemWrapper
-                      key={ticket.id}
-                      ticket={ticket}
-                      onClick={() => handleTicketClick(ticket)}
-                      onEdit={(e: React.MouseEvent) =>
-                        handleQuickEdit(e, ticket)
-                      }
-                      onClose={(e: React.MouseEvent) =>
-                        handleQuickClose(e, ticket)
-                      }
-                    />
-                  ))}
-
-                {!ticketsLoading && (!tickets || !tickets.length) && (
-                  <TableRow className="text-center text-muted-foreground">
-                    <TableCell colSpan={5} className="py-8">
-                      No tickets found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-
-            <PagesAndItemsCount
-              type="tickets"
-              totalItems={totalTickets}
-              itemsPerPage={itemsPerPage}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-              totalPages={totalPages}
-            />
           </div>
-        </CardContent>
-      </Card>
+          <Table>
+            <TableHeader className="bg-muted">
+              <TableRow className="border rounded">
+                <TableHead className="text-black">Ticket</TableHead>
+                <TableHead className="text-black">Assignee</TableHead>
+                <TableHead
+                  className="text-black cursor-pointer"
+                  onClick={() => {
+                    setSortBy("status");
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <p className="flex items-center gap-1">
+                    {sortBy === "status" && sortDir === "asc" ? (
+                      <ArrowUp className="size-4" />
+                    ) : sortBy === "status" && sortDir === "desc" ? (
+                      <ArrowDown className="size-4" />
+                    ) : (
+                      <ArrowDownUp className="size-4" />
+                    )}
+                    Status
+                  </p>
+                </TableHead>
+                <TableHead
+                  className="text-black cursor-pointer"
+                  onClick={() => {
+                    setSortBy("urgency");
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <p className="flex items-center gap-1">
+                    {sortBy === "urgency" && sortDir === "asc" ? (
+                      <ArrowUp className="size-4" />
+                    ) : sortBy === "urgency" && sortDir === "desc" ? (
+                      <ArrowDown className="size-4" />
+                    ) : (
+                      <ArrowDownUp className="size-4" />
+                    )}
+                    Urgency
+                  </p>
+                </TableHead>
+                <TableHead className="text-black">Category</TableHead>
+                <TableHead className="text-center text-black">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="border [&_tr:last-child]:border-0">
+              {ticketsLoading && (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow
+                      key={i}
+                      className="h-16 w-full bg-muted rounded animate-pulse"
+                    ></TableRow>
+                  ))}
+                </>
+              )}
+              {ticketsLoading && (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow
+                      key={i}
+                      className="h-16 w-full bg-muted rounded animate-pulse"
+                    >
+                      <TableCell colSpan={5} className="py-8">
+                        <span className="h-4 w-full bg-muted rounded animate-pulse" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
+
+              {!ticketsLoading &&
+                tickets &&
+                tickets.length > 0 &&
+                tickets.map((ticket: TicketWithUpdatedAt) => (
+                  <TicketListItemWrapper
+                    key={ticket.id}
+                    ticket={ticket}
+                    onClick={() => handleTicketClick(ticket)}
+                    onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
+                    onClose={(e: React.MouseEvent) =>
+                      handleQuickClose(e, ticket)
+                    }
+                  />
+                ))}
+
+              {!ticketsLoading && (!tickets || !tickets.length) && (
+                <TableRow className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-8">
+                    No tickets found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          <PagesAndItemsCount
+            type="tickets"
+            totalItems={totalTickets}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+          />
+        </div>
+      </section>
 
       {/* Edit Ticket Modal */}
       <EditTicketForm
