@@ -163,6 +163,12 @@ export function useCreateComment() {
           marketCenterId: null,
           clerkId: clerkUser?.id || "",
           comments: [],
+          _count: {
+            assignedTickets: 0,
+            createdTickets: 0,
+            comments: 0,
+            defaultForCategories: 0,
+          },
         },
       };
 
