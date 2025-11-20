@@ -524,7 +524,7 @@ export default function UserManagement() {
                           <SelectItem key={role} value={role}>
                             <div className="flex items-center gap-2">
                               {getRoleIcon(role)}
-                              {role}
+                              {role.split("_").join(" ")}
                             </div>
                           </SelectItem>
                         ))}
@@ -772,7 +772,7 @@ export default function UserManagement() {
                     <SelectItem key={role} value={role}>
                       <div className="flex items-center gap-2">
                         {getRoleIcon(role)}
-                        {role}
+                        {role.split("_").join(" ")}
                       </div>
                     </SelectItem>
                   ))}

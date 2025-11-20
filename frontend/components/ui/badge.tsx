@@ -43,15 +43,13 @@ export const badgeVariants = cva(
           "border-transparent bg-[#EFF8FF] text-[#3538CD] font-semibold",
         resolved:
           "border-transparent bg-[#ECFDF3] text-[#027A48] font-semibold",
-        //         created: "border-[#B42318] bg-[#FEF3F2] text-[#B42318] font-semibold",
-        // assigned: "border-[#C18900] bg-[#FFFDDA] text-[#C18900] font-semibold",
-        // unassigned:
-        //   "border-[#C4320A] bg-[#FFF6ED] text-[#C4320A] font-semibold",
-        // awaiting_response:
-        //   "border-[#6B21A8] bg-[#EFF8FF] text-[#6B21A8] font-semibold",
-        // in_progress:
-        //   "border-[#3538CD] bg-[#EFF8FF] text-[#3538CD] font-semibold",
-        // resolved: "border-[#027A48] bg-[#ECFDF3] text-[#027A48] font-semibold",
+
+        admin: "border-[#6B21A8] bg-[#6B21A8] text-[#F9F5FF] font-semibold",
+        staff_leader:
+          "border-[#C4320A] bg-[#C4320A] text-[#FFFFFF] font-semibold",
+        staff: "border-[#C18900] bg-[#C18900] text-[#FFFFFF] font-semibold",
+        agent: "border-[#3538CD] bg-[#3538CD] text-[#FFFFFF] font-semibold",
+        user: "border-[#414651] bg-[#414651] text-[#FFFFFF] font-semibold",
       },
     },
     defaultVariants: {

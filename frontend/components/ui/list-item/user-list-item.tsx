@@ -14,8 +14,6 @@ import {
 import { format } from "date-fns";
 import {
   getCategoryStyle,
-  getRoleBadgeStyle,
-  getRoleColor,
   arrayToCommaSeparatedListWithConjunction,
 } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
@@ -64,8 +62,7 @@ export function UserListItem({
       primaryBadges={[
         {
           label: `${user.role.split("_").join(" ")}`,
-          variant: getRoleColor(user.role),
-          style: getRoleBadgeStyle(user.role),
+          variant: (user.role ? user.role.toLowerCase() : "user") as any,
           title: `Role: ${user.role}`,
         },
         ...(user?.defaultForCategories && user?.defaultForCategories.length > 0

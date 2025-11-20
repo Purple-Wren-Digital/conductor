@@ -3,16 +3,11 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { TableCell, TableRow } from "@/components/ui/table";
-import type { PrismaUser, Ticket } from "@/lib/types";
-import {
-  arrayToCommaSeparatedListWithConjunction,
-  getCategoryStyle,
-} from "@/lib/utils";
-import { CircleMinus, TicketIcon } from "lucide-react";
+import type { PrismaUser, UserRole } from "@/lib/types";
+import { getCategoryStyle, ROLE_ICONS } from "@/lib/utils";
+import { CircleMinus, TicketIcon, User } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useStore } from "@/context/store-provider";
 
 export default function MarketCenterUserTable({
   user,
@@ -30,7 +25,11 @@ export default function MarketCenterUserTable({
   onClick?: () => void;
 }) {
   const { permissions, role } = useUserRole();
-  const { currentUser } = useStore();
+
+  const getRoleIcon = (userRole: UserRole) => {
+    const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
+    return Icon ? <Icon className="h-4 w-4" /> : <User className="h-4 w-4" />;
+  };
 
   return (
     <TableRow
@@ -48,10 +47,6 @@ export default function MarketCenterUserTable({
               {user?._count?.assignedTickets ?? 0} assigned •{" "}
               {user?._count?.createdTickets ?? 0} created{" "}
             </span>
-            {/* <span className="flex items-center gap-1 whitespace-nowrap">
-              <TagIcon className="h-3 w-3" />
-              {`${user?.defaultForCategories && user?.defaultForCategories?.length > 0 && arrayToCommaSeparatedListWithConjunction("and", user?.defaultForCategories?.map((cat) => cat?.name) ?? [])}`}
-            </span> */}
           </div>
         </div>
       </TableCell>
@@ -60,8 +55,12 @@ export default function MarketCenterUserTable({
         {user?.email ?? "N/a"}
       </TableCell>
       <TableCell>
-        <Badge variant={user.role.toLowerCase() as any} className="capitalize">
-          {user.role.split("_").join(" ").toLowerCase()}
+        <Badge
+          variant={(user?.role.toLowerCase() ?? "user") as any}
+          className="text-xs px-2 py-0.5"
+        >
+          {getRoleIcon(user?.role || "AGENT")}
+          {user?.role.split("_").join(" ") ?? "N/a"}
         </Badge>
       </TableCell>
       <TableCell className="max-w-[150px]">
@@ -69,15 +68,14 @@ export default function MarketCenterUserTable({
           ? user?.defaultForCategories?.map((category) => (
               <Badge
                 key={category.id}
-                variant="category"
-                title={`Default for category: ${category.name}`}
+                variant={"category"}
                 style={getCategoryStyle(category.name ?? "Unnamed")}
                 className="text-xs px-2 py-0.5 mr-1 mb-1"
               >
                 {category.name}
               </Badge>
             ))
-          : "-"}
+          : "N/a"}
       </TableCell>
       <TableCell className="flex gap-2 items-center justify-end">
         <Button

@@ -293,7 +293,7 @@ export default function MarketCenterUsers({
                       <SelectItem key={role} value={role}>
                         <div className="flex items-center gap-2">
                           {getRoleIcon(role)}
-                          {role}
+                          {role.split("_").join(" ")}
                         </div>
                       </SelectItem>
                     ))}

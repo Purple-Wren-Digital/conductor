@@ -5,7 +5,6 @@ import { ListItem } from "./base-list-item";
 import type { PrismaUser } from "@/lib/types";
 import { Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 
 export function TeamMemberListItem({
@@ -33,8 +32,7 @@ export function TeamMemberListItem({
       primaryBadges={[
         {
           label: user.role,
-          variant: getRoleColor(user.role),
-          style: getRoleBadgeStyle(user.role),
+          variant: (user.role ? user.role.toLowerCase() : "user") as any,
           title: `Role: ${user.role}`,
         },
       ]}

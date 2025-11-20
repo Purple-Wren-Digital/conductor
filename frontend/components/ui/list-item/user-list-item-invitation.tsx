@@ -42,9 +42,6 @@ export function InvitationUserListItem({
   selected?: boolean;
   onSelect?: (checked: boolean) => void; // onRemove: () => void;
 }) {
-  const { permissions } = useUserRole();
-
-
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
     return <Icon className="h-3 w-3" />;
@@ -71,7 +68,7 @@ export function InvitationUserListItem({
       }}
       metadata={[
         {
-          label: user.user_metadata.role,
+          label: user.user_metadata.role.split("_").join(" ") || "N/a",
           icon: getRoleIcon(user.user_metadata.role),
         },
         { label: user.email, icon: <Mail className="h-3 w-3" /> },

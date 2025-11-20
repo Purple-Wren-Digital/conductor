@@ -7,7 +7,6 @@ import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -35,13 +34,7 @@ import {
   UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
-import {
-  getRoleBadgeStyle,
-  getRoleColor,
-  getRoleDescription,
-  ROLE_ICONS,
-  roleOptions,
-} from "@/lib/utils";
+import { getRoleDescription, ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { ArrowLeft, Building, Edit2, Hash, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -361,17 +354,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  {getRoleIcon(user?.role)}
+                  {getRoleIcon(user?.role ?? "AGENT")}
                   <p className="text-muted-foreground">Role:</p>
                   <ToolTip
                     trigger={
                       <Badge
-                        variant={getRoleColor(user?.role || "AGENT")}
-                        style={getRoleBadgeStyle(user?.role || "AGENT")}
-                        title={user?.role}
+                        variant={
+                          (user?.role ? user.role.toLowerCase() : "user") as any
+                        }
+                        title={user?.role.split("_").join(" ")}
                         className="text-xs px-2 py-0.5"
                       >
-                        {user?.role}
+                        {user?.role.split("_").join(" ") ?? "N/a"}
                       </Badge>
                     }
                     content={getRoleDescription(user?.role)}
@@ -404,7 +398,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }}
                 disabled={
                   currentUser?.id === user?.id ||
-                  !permissions?.canChangeUserRoles ||
+                  !role ||
+                  role === "AGENT" ||
                   isSubmitting ||
                   userLoading
                 }
@@ -413,14 +408,21 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roleOptions.map((option: UserRole) => {
+                    if (
+                      (role === "STAFF" || role === "STAFF_LEADER") &&
+                      option === "ADMIN"
+                    )
+                      return null;
+                    return (
+                      <SelectItem key={option} value={option}>
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(option)}
+                          {option ? option.split("_").join(" ") : "N/A"}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -524,7 +526,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
-                disabled={!role || role === "AGENT"}
+                disabled={
+                  !role || role === "AGENT" || isSubmitting || userLoading
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -538,10 +542,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       return null;
                     return (
                       <SelectItem key={option} value={option}>
-                        <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            (user?.role
+                              ? user.role.toLowerCase()
+                              : "user") as any
+                          }
+                          title={user?.role}
+                          className="text-xs px-2 py-0.5"
+                        >
                           {getRoleIcon(option)}
-                          {option}
-                        </div>
+                          {option ? option.split("_").join(" ") : "N/A"}
+                        </Badge>
                       </SelectItem>
                     );
                   })}

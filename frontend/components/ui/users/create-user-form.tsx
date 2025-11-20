@@ -301,7 +301,7 @@ export default function CreateUser({
                   {roleOptions.map((role) => (
                     <SelectItem key={role} value={role}>
                       {getRoleIcon(role)}
-                      {role}
+                      {role.split("_").join(" ")}
                     </SelectItem>
                   ))}
                 </SelectContent>
