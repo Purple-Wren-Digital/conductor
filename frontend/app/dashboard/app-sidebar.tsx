@@ -209,6 +209,45 @@ export function AppSidebar({
               </SidebarMenuItem>
             )}
 
+            {/* AGENT - MARKET CENTER INFORMATION */}
+            {role === "AGENT" && currentUser?.marketCenterId && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}/team`}
+                  >
+                    <BookMarked className="text-muted-foreground" />
+                    Market Center
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarGroup>
+          <SidebarGroup>
+            {/* NEW NOTIFICATIONS */}
+            <SideBarNewNotification
+              newestNotification={newestNotification}
+              setNewestNotification={setNewestNotification}
+              markAsReadMutation={markAsReadMutation}
+            />
+          </SidebarGroup>
+
+          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
+            {/* NOTIFICATION TEMPLATES */}
+            {permissions?.canManageAllUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/notification-templates">
+                    <Folder className="text-muted-foreground" /> Notification
+                    Templates
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
             {/* SUPPORT/HELP */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
