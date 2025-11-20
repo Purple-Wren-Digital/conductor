@@ -46,6 +46,8 @@ model User {
   assignedTickets      Ticket[]              @relation("TicketAssignee")
   createdTickets       Ticket[]              @relation("TicketCreator")
   marketCenter         MarketCenter?         @relation(fields: [marketCenterId], references: [id])
+  todosCreated         Todo[]                @relation("TodoCreatedBy")
+  todosUpdated         Todo[]                @relation("TodoUpdatedBy")
 
   @@index([marketCenterId])
   @@map("users")
@@ -68,9 +70,11 @@ model Ticket {
   ticketHistory TicketHistory[]
   comments      Comment[]
   attachments   Attachment[]
-  assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  category      TicketCategory? @relation(fields: [categoryId], references: [id])
-  creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
+  todos         Todo[]
+
+  assignee User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  category TicketCategory? @relation(fields: [categoryId], references: [id])
+  creator  User            @relation("TicketCreator", fields: [creatorId], references: [id])
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -98,17 +102,17 @@ model Comment {
 }
 
 model Attachment {
-  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
-  fileName    String   @map("file_name")
-  fileSize    Int      @map("file_size")
-  mimeType    String   @map("mime_type")
-  bucketKey   String   @map("bucket_key") @unique
-  ticketId    String   @map("ticket_id")
-  uploadedBy  String   @map("uploaded_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  uploader    User     @relation(fields: [uploadedBy], references: [id])
+  id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  bucketKey  String   @unique @map("bucket_key")
+  ticketId   String   @map("ticket_id")
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
 
   @@index([ticketId])
   @@index([uploadedBy])
@@ -130,6 +134,27 @@ model TicketCategory {
   @@unique([marketCenterId, name])
   @@index([marketCenterId])
   @@map("ticket_categories")
+}
+
+model Todo {
+  id          String   @id @default(uuid())
+  title       String
+  complete    Boolean
+  ticketId    String   @map("ticket_id")
+  createdById String   @map("created_by_user_id")
+  updatedById String?  @map("updated_by_user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  ticket    Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdBy User       @relation("TodoCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  updatedBy User?      @relation("TodoUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([complete])
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("todos")
 }
 
 model TeamInvitation {
@@ -163,7 +188,7 @@ model TicketHistory {
   changedById   String   @map("changed_by_id")
   action        String   @default("UPDATE")
   changedBy     User     @relation(fields: [changedById], references: [id])
-  ticket        Ticket   @relation(fields: [ticketId], references: [id])
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@index([changedById])

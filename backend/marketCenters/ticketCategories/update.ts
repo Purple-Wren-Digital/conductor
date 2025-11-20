@@ -113,10 +113,10 @@ export const updateCategory = api<
           oldTicketCategory?.defaultAssignee?.name &&
           oldTicketCategory?.defaultAssigneeId
             ? JSON.stringify({
-                name: oldTicketCategory.defaultAssignee.name,
+                name: oldTicketCategory.defaultAssignee.name ?? "N/a",
                 id: oldTicketCategory.defaultAssigneeId,
               })
-            : null,
+            : "Unassigned",
         newValue:
           newDefaultAssignee &&
           newDefaultAssignee?.name &&
@@ -156,32 +156,6 @@ export const updateCategory = api<
         updateType: "removed",
       });
     }
-    // MARKET CENTER ID
-    // if (
-    //   userContext?.role === "ADMIN" &&
-    //   req?.marketCenterId &&
-    //   req?.marketCenterId !== oldTicketCategory.marketCenterId
-    // ) {
-    //   updateCategoryData.marketCenterId = req.marketCenterId;
-    //   marketCenterHistory.push(
-    //     {
-    //       marketCenterId: oldTicketCategory.marketCenterId,
-    //       changedById: userContext.userId,
-    //       action: "DELETE",
-    //       field: "market-center-category",
-    //       previousValue: oldTicketCategory?.marketCenterId ?? "",
-    //       newValue: "-",
-    //     },
-    //     {
-    //       marketCenterId: req.marketCenterId,
-    //       changedById: userContext.userId,
-    //       action: "ADD",
-    //       field: "market-center-category",
-    //       previousValue: "-",
-    //       newValue: req.marketCenterId,
-    //     }
-    //   );
-    // }
 
     if (Object.keys(updateCategoryData).length === 0) {
       throw APIError.invalidArgument("No fields to update");

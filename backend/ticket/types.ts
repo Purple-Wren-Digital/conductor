@@ -1,4 +1,5 @@
-import type { MarketCenter, TicketCategory } from "../marketCenters/types";
+import type { TicketCategory } from "../marketCenters/types";
+import { Todo } from "../todos/types";
 import type { User } from "../user/types";
 
 export type TicketStatus =
@@ -71,6 +72,7 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory?: TicketHistory[];
+  todos?: Todo[];
 }
 
 export interface Comment {
