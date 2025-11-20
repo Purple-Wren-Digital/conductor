@@ -16,15 +16,15 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { cn } from "@/lib/cn";
 import type { Notification } from "@/lib/types";
 import {
-  LayoutDashboard,
+  HomeIcon,
   Users as UsersIcon,
   CircleUserRound,
   Ticket,
   Building2,
   Building,
-  Folder,
-  BookMarked,
   Info,
+  BookMarked,
+  Folder,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -119,7 +119,7 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
-                  <LayoutDashboard /> Dashboard
+                  <HomeIcon className="text-muted-foreground" /> Dashboard
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -127,7 +127,7 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard/tickets">
-                  <Ticket /> Tickets
+                  <Ticket className="text-muted-foreground" /> Tickets
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -136,7 +136,8 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/users?tab=users">
-                    <UsersIcon /> User Management
+                    <UsersIcon className="text-muted-foreground" /> User
+                    Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -146,7 +147,8 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/marketCenters">
-                    <Building2 /> Market Center Management
+                    <Building2 className="text-muted-foreground" /> Market
+                    Centers
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -161,7 +163,47 @@ export function AppSidebar({
                   <Link
                     href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
                   >
-                    <Building /> Market Center Management
+                    <Building className="text-muted-foreground" /> Market Center
+                    Team
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {/* AGENT - MARKET CENTER INFORMATION */}
+            {role === "AGENT" && currentUser?.marketCenterId && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}/team`}
+                  >
+                    <BookMarked className="text-muted-foreground" />
+                    Market Center
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarGroup>
+          <SidebarGroup>
+            {/* NEW NOTIFICATIONS */}
+            <SideBarNewNotification
+              newestNotification={newestNotification}
+              setNewestNotification={setNewestNotification}
+              markAsReadMutation={markAsReadMutation}
+            />
+          </SidebarGroup>
+
+          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
+            {/* NOTIFICATION TEMPLATES */}
+            {permissions?.canManageAllUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/notification-templates">
+                    <Folder className="text-muted-foreground" /> Notification
+                    Templates
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -219,7 +261,8 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
                 <Link href={`/dashboard/account`}>
-                  <CircleUserRound /> Manage Account
+                  <CircleUserRound className="text-muted-foreground" /> Manage
+                  Account
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

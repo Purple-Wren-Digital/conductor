@@ -23,7 +23,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
     const userContext = await getUserContext();
     const scopeFilter = await marketCenterScopeFilter(userContext, req.id);
 
-    if (userContext.role === "AGENT" || !scopeFilter || !scopeFilter?.id) {
+    if (!scopeFilter || !scopeFilter?.id) {
       throw APIError.permissionDenied(
         "Only Admin and Staff can view market centers"
       );

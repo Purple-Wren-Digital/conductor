@@ -13,9 +13,12 @@ module.exports = {
   theme: {
     extend: {
       boxShadow: {
-        focus: "0 0 0 2px #573ba3",
+        focus: "0 0 0 2px #6D1C24",
       },
       colors: {
+        conductorDarker: "#4B1D22",
+        conductor: "#6D1C24",
+        conductorLight: "#8C464D",
         red: "#de2454",
         purple: "#573ba3",
         purpleDarker: "#43206F",
@@ -35,11 +38,47 @@ module.exports = {
         white: "white",
         paper: "#fcf7ee",
 
-        primary_900: "#2b0f42",
-        primary_700: "#461c8c",
-        primary_500: "#7f48d9",
-        primary_300: "#E9E1FE",
-        primary_100: "#F0E5FF",
+        primary_900: "#6D1C24",
+        primary_700: "#7B2F37",
+        primary_500: "#8C464D",
+        primary_300: "#A2646A",
+        primary_100: "#B39194",
+
+        // chartConductor: {
+        //   red: "#6D1C24",
+        //   orange: "#B45309",
+        //   yellow: "#CA8A04",
+        //   green: "#15803D",
+        //   blue: "#1E40AF",
+        //   indigo: "#4338CA",
+        //   purple: "#6B21A8",
+        //   pink: "#BE185D",
+        //   grey: "#2c293b",
+        // },
+
+        chartPrimary: {
+          red: "#B42318",
+          orange: "#C4320A",
+          yellow: "#F7BB00",
+          green: "#027A48",
+          blue: "#175CD3",
+          indigo: "#3538CD",
+          purple: "#6941C6",
+          pink: "#BC2E74",
+          grey: "#9CA3AF",
+        },
+
+        chartSecondary: {
+          red: "#FEF3F2",
+          orange: "#FFF6ED",
+          yellow: "#FFFDDA",
+          green: "#ECFDF3",
+          blue: "#EFF8FF",
+          indigo: "#EEF4FF",
+          purple: "#F9F5FF",
+          pink: "#F5E4ED",
+          grey: "#eae9ed",
+        },
 
         structure: {
           dark: "#2c293b",

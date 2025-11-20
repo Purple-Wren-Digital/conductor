@@ -15,6 +15,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEncoreClient } from "@/lib/api/client-side";
+import { Footer } from "@/components/ui/footer";
+import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
+import Image from "next/image";
 
 export default function DashboardLayout({
   children,
@@ -188,43 +191,59 @@ export default function DashboardLayout({
   }, [clerkUser?.id, invalidateFetchAllUserNotifications, getToken]);
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        props={{ collapsible: "offcanvas" }}
-        newestNotification={newestNotification}
-        setNewestNotification={setNewestNotification}
-        markAsReadMutation={markAsReadMutation}
-      />
+    <>
+      <SidebarProvider>
+        <AppSidebar
+          props={{ collapsible: "offcanvas" }}
+          newestNotification={newestNotification}
+          setNewestNotification={setNewestNotification}
+          markAsReadMutation={markAsReadMutation}
+        />
 
-      <div className="w-full flex flex-col min-h-screen">
-        <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0 bg-background z-10">
-          <SidebarTrigger />
-          <Separator orientation="vertical" />
+        <div className="w-full flex flex-col min-h-screen">
+          <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0  bg-[var(--conductor)] z-10">
+            <SidebarTrigger className="text-muted hover:text-[#A2646A] hover:bg-transparent" />
+            <Separator orientation="vertical" className="text-muted" />
 
-          <div className="grow flex items-center justify-between">
-            <Link href="/dashboard" className="hover:text-muted-foreground">
-              <p className="text-lg font-semibold">Conductor Ticketing</p>
-            </Link>
+            <div className="grow flex items-center justify-between">
+              <Link
+                href="/dashboard"
+                className="hover:text-[#A2646A] flex items-center gap-3"
+              >
+                <div className="size-12 flex items-center justify-center">
+                  <Image src={conductorLogo} alt="Conductor Logo" />
+                </div>
+                <div className="hidden md:flex flex-col leading-tight ">
+                  <h1 className="text-sm font-bold sm:text-xl text-muted">
+                    Conductor
+                  </h1>
+                  <p className="text-xs font-medium sm:text-sm text-muted">
+                    Agent Ticketing System
+                  </p>
+                </div>
+              </Link>
 
-            <div className="flex items-center gap-2">
-              <AllNotifications
-                allNotifications={notifications}
-                unReadNotificationTotal={unReadNotificationTotal}
-                isNotificationsLoading={isNotificationsLoading}
-                newNotification={newestNotification ? true : false}
-                markAsReadMutation={markAsReadMutation}
-              />
-              <div className="w-7 h-7 rounded">
-                <UserButton />
+              <div className="flex items-center gap-2">
+                <AllNotifications
+                  allNotifications={notifications}
+                  unReadNotificationTotal={unReadNotificationTotal}
+                  isNotificationsLoading={isNotificationsLoading}
+                  newNotification={newestNotification ? true : false}
+                  markAsReadMutation={markAsReadMutation}
+                />
+                <div className="w-7 h-7 rounded">
+                  <UserButton />
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="flex-grow container mx-auto p-6 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+          <main className="flex-grow container mx-auto p-6 pb-30 overflow-y-auto">
+            {children}
+          </main>
+        </div>
+      </SidebarProvider>
+      <Footer />
+    </>
   );
 }

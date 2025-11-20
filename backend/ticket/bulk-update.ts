@@ -60,7 +60,7 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
 
     // Get ticket scope filter
     const scopeFilter = await getTicketScopeFilter(userContext);
-    
+
     // First, find which tickets are valid for update
     const whereClause: any = {
       AND: [

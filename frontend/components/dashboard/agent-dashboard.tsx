@@ -1,20 +1,14 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AgentTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-agent";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
-import { Ticket, CheckCircle, Clock, AlertTriangle } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { TicketTabs } from "@/components/ui/tabs/ticket-tabs";
+import type { Ticket } from "@/lib/types";
+import { getResolvedInBusinessDays } from "@/lib/utils";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
@@ -22,35 +16,77 @@ export function AgentDashboard() {
   const { currentUser } = useStore();
 
   const { data: ticketsData, isLoading } = useQuery({
-    queryKey: ["agent-tickets", currentUser?.id],
+    queryKey: ["agent-tickets", currentUser?.email],
     queryFn: async () => {
-      if (!clerkUser?.id) throw new Error("Not authenticated");
+      if (!currentUser) throw new Error("Not logged in");
       const token = await getToken();
       if (!token) throw new Error("No authentication token");
-      const response = await fetch(
-        `${API_BASE}/tickets/search?assigneeId=${currentUser?.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE}/tickets`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch tickets");
-      return response.json();
+      return await response.json();
     },
-    enabled: !!clerkUser,
+    enabled: !!currentUser,
   });
+  const tickets: Ticket[] = useMemo(() => {
+    return ticketsData?.tickets ?? [];
+  }, [ticketsData]);
+  const ticketTotal: number = ticketsData?.total ?? 0;
 
-  const tickets = ticketsData?.tickets || [];
+  const stats = useMemo(() => {
+    const highPriority = tickets.filter(
+      (t: Ticket) => t.urgency === "HIGH"
+    ).length;
 
-  const stats = {
-    assigned: tickets.filter((t: any) => t.status === "ASSIGNED").length,
-    inProgress: tickets.filter((t: any) => t.status === "IN_PROGRESS").length,
-    awaitingResponse: tickets.filter(
-      (t: any) => t.status === "AWAITING_RESPONSE"
-    ).length,
-    resolved: tickets.filter((t: any) => t.status === "RESOLVED").length,
-  };
+    const activeTickets = tickets.filter((t: Ticket) =>
+      ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
+    ).length;
+
+    const resolvedTicketsCount = tickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+
+    const now = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
+
+    let totalBusinessDays = 0;
+    let newTickets = 0;
+
+    tickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
+      }
+    });
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
+      : 0;
+    tickets.forEach((t: Ticket) => {
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      if (createdDate && createdDate >= oneWeekAgo) {
+        newTickets += 1;
+      }
+    });
+
+    return {
+      highPriority,
+      newTickets,
+      activeTickets,
+      resolvedTicketsCount,
+      avgResolutionBusinessDays,
+    };
+  }, [tickets]);
 
   if (isLoading) {
     return (
@@ -70,115 +106,76 @@ export function AgentDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {currentUser?.name}
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+          Welcome, {clerkUser?.firstName}
         </h1>
-        <p className="text-muted-foreground">Here are your assigned tickets</p>
+        <p className="text-muted-foreground">Manage your assigned tickets</p>
       </div>
-
-      <TicketTabs />
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assigned</CardTitle>
-            <Ticket className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.assigned}</div>
-            <p className="text-xs text-muted-foreground">
-              Tickets awaiting action
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.inProgress}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently working on
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Awaiting Response
+          <CardHeader>
+            <CardTitle className="font-medium text-center">
+              All Tickets
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.awaitingResponse}</div>
-            <p className="text-xs text-muted-foreground">
-              Waiting for customer
+            <p className="text-2xl font-bold text-center">{ticketTotal}</p>
+            <p className="text-center text-xs text-muted-foreground">
+              across all time
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="font-medium text-center">
+              New Tickets
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.resolved}</div>
-            <p className="text-xs text-muted-foreground">
-              Completed this month
+            <div className="text-2xl font-bold text-center">
+              {stats.newTickets}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              in the last 7 days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-medium text-center">
+              Active Tickets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-center">
+              {stats.activeTickets}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              {stats.highPriority} high priority
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center font-medium">
+              Ticket Closed within
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-2xl font-bold">
+              {stats.avgResolutionBusinessDays}
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              business days (average)
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Active Tickets</CardTitle>
-          <CardDescription>
-            View and manage your assigned tickets
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {tickets
-              .filter((t: any) => t.status !== "RESOLVED")
-              .slice(0, 5)
-              .map((ticket: any) => (
-                <div
-                  key={ticket.id}
-                  className="flex items-center justify-between p-2 rounded hover:bg-muted"
-                >
-                  <div className="flex-1">
-                    <Link
-                      href={`/dashboard/tickets/${ticket.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {ticket.title}
-                    </Link>
-                    <p className="text-sm text-muted-foreground">
-                      #{ticket.id.substring(0, 8)} •{" "}
-                      {ticket.status.replace("_", " ")}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            {tickets.filter((t: any) => t.status !== "RESOLVED").length ===
-              0 && (
-              <p className="text-muted-foreground text-center py-4">
-                No active tickets
-              </p>
-            )}
-          </div>
-          <div className="mt-4">
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/tickets">View All Tickets</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <AgentTicketList />
     </div>
   );
 }

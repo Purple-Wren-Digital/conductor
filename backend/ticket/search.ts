@@ -43,40 +43,44 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    let scopeFilter = await getTicketScopeFilter(userContext);
+    // let scopeFilter = await getTicketScopeFilter(userContext);
 
     let where: any = {};
 
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
+    if (userContext.role === "AGENT") {
+      where.assigneeId = userContext.userId;
+    }
+
+    if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
+      where.assigneeId = userContext.userId;
+      where.creatorId = userContext.userId;
+    }
+
+    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
       where = {
         OR: [
           {
+            category: {
+              marketCenterId: userContext.marketCenterId,
+            },
+          },
+          {
             creator: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
           {
             assignee: {
-              marketCenterId: req.marketCenterId,
+              marketCenterId: userContext.marketCenterId,
             },
           },
         ],
       };
     }
 
-    if (
-      userContext.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      req?.marketCenterId &&
-      req?.marketCenterId === userContext?.marketCenterId
-    ) {
+    if (userContext.role === "ADMIN" && req.marketCenterId) {
       where = {
         OR: [
-          {
-            category: {
-              marketCenterId: req.marketCenterId,
-            },
-          },
           {
             creator: {
               marketCenterId: req.marketCenterId,
@@ -102,19 +106,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     }
     if (req.categoryId) where.categoryId = { in: req.categoryId };
 
-    if (
-      userContext.role === "AGENT" ||
-      (userContext.role === "STAFF" && !userContext?.marketCenterId)
-    ) {
-      where.assigneeId = userContext.userId;
-      where.creatorId = userContext.userId;
-    } else {
-      if (req.assigneeId)
-        where.assigneeId =
-          req.assigneeId === "Unassigned" ? { equals: null } : req.assigneeId;
-      if (req.creatorId) where.creatorId = req.creatorId;
-    }
-
     if (req.query) {
       const searchCondition = {
         OR: [
@@ -131,8 +122,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       };
 
       if (where.OR) {
-        where.AND = [scopeFilter, searchCondition];
-      } else {
+        //   where.AND = [scopeFilter, searchCondition];
+        // } else {
         where.OR = searchCondition.OR;
       }
     }
@@ -192,13 +183,14 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
           creator: true,
           assignee: true,
           category: true,
-          _count: { select: { comments: true } },
+          _count: { select: { comments: true, attachments: true } },
         },
         orderBy,
         take: limit,
         skip: offset,
       }),
       prisma.ticket.count({ where }),
+      prisma.attachment.count(),
     ]);
 
     const ticketsMapped: Partial<Ticket>[] = tickets.map((r) => ({
@@ -224,8 +216,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
         : null,
 
       commentCount: r._count.comments,
+      attachmentCount: r._count.attachments,
     }));
-
     return {
       tickets: ticketsMapped,
       total,

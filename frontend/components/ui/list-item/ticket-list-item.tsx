@@ -3,13 +3,7 @@
 import * as React from "react";
 import { ListItem } from "@/components/ui/list-item/base-list-item";
 import type { Ticket } from "@/lib/types";
-import {
-  getCategoryStyle,
-  getStatusBadgeStyle,
-  getStatusColor,
-  getUrgencyBadgeStyle,
-  getUrgencyColor,
-} from "@/lib/utils";
+import { getCategoryStyle } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
@@ -35,7 +29,7 @@ export function TicketListItem({
     <ListItem
       id={ticket.id}
       title={ticket?.title ?? "No Title"}
-      subtitle={`#${ticket.id}`}
+      subtitle={`#${ticket.id.slice(0, 8)}`}
       selectable
       selected={selected}
       onSelect={(v) => onSelect?.(!!v)}
@@ -43,13 +37,11 @@ export function TicketListItem({
       primaryBadges={[
         {
           label: ticket.status.replace("_", " "),
-          variant: getStatusColor(ticket.status),
-          style: getStatusBadgeStyle(ticket.status),
+          variant: ticket.status.toLowerCase() as any,
         },
         {
           label: ticket.urgency,
-          variant: getUrgencyColor(ticket.urgency),
-          style: getUrgencyBadgeStyle(ticket.urgency),
+          variant: ticket.urgency.toLowerCase() as any,
         },
       ]}
       secondaryBadges={[

@@ -49,6 +49,12 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    if (oldTicket && oldTicket.status === "RESOLVED") {
+      throw APIError.invalidArgument(
+        "Resolved tickets cannot be modified further"
+      );
+    }
+
     const unassignTicket = req.assigneeId === "Unassigned";
 
     // Check if assignee exists and is in the same market center for STAFF users

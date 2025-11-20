@@ -1,6 +1,6 @@
 import { API_BASE } from "@/lib/api/utils";
 import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
-import {  useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 // GET ALL MARKET CENTERS
@@ -190,7 +190,7 @@ export function useFetchMarketCenterTickets({
         if (!token) throw new Error("Failed to get authentication token");
 
         const response = await fetch(
-          `${API_BASE}/tickets/search?marketCenterId=${marketCenterId}&${queryParams}`,
+          `${API_BASE}/tickets?marketCenterId=${marketCenterId}&${queryParams}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

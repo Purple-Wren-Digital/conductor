@@ -1,10 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo, use } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
@@ -24,6 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import {
   Popover,
@@ -52,6 +60,7 @@ import {
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
+  getResolvedInBusinessDays,
   orderByOptions,
   sortByTicketOptions,
   statusOptions,
@@ -79,11 +88,8 @@ import type {
   TicketCategory,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-export default function TicketListStaff({
-  currentUserId,
-}: {
-  currentUserId: string;
-}) {
+
+export default function TicketListStaff() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { permissions } = useUserRole();
@@ -108,10 +114,10 @@ export default function TicketListStaff({
   const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    currentUser?.marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUser?.name || ""
   );
   const [selectedCreator, setSelectedCreator] = useState<string>(
-    currentUser?.marketCenterId ? "all" : currentUserId
+    currentUser?.marketCenterId ? "all" : currentUser?.name || ""
   );
 
   const [dateFrom, setDateFrom] = useState<Date>();
@@ -158,9 +164,10 @@ export default function TicketListStaff({
     if (selectedCategory !== "all")
       params.append("categoryId", selectedCategory);
 
-    if (selectedAssignee !== "all")
+    if (currentUser?.marketCenterId && selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
-    if (selectedCreator !== "all") params.append("creatorId", selectedCreator);
+    if (currentUser?.marketCenterId && selectedCreator !== "all")
+      params.append("creatorId", selectedCreator);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
@@ -173,14 +180,15 @@ export default function TicketListStaff({
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
+    currentUser?.marketCenterId,
     selectedAssignee,
     selectedCreator,
     dateFrom,
     dateTo,
     sortBy,
     sortDir,
-    currentPage,
     itemsPerPage,
+    currentPage,
   ]);
 
   const queryKeyParams = useMemo(
@@ -195,14 +203,14 @@ export default function TicketListStaff({
 
   const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
     {
-      marketCenterId: marketCenterId,
-      userId: currentUserId,
       queryParams,
       staffTicketsQueryKey,
     }
   );
 
-  const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
+  const tickets: TicketWithUpdatedAt[] = useMemo(() => {
+    return ticketsData?.tickets ?? [];
+  }, [ticketsData]);
 
   const totalTickets: number = ticketsData?.total ?? 0;
   const totalPages = calculateTotalPages({
@@ -312,13 +320,17 @@ export default function TicketListStaff({
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
     setSelectedCategory("all");
-    setSelectedAssignee("all");
-    setSelectedCreator("all");
+    if (marketCenterId) {
+      setSelectedAssignee("all");
+      setSelectedCreator("all");
+    }
     setDateFrom(undefined);
     setDateTo(undefined);
     setOpenFrom(false);
     setOpenTo(false);
     setCurrentPage(1);
+    setSortBy("updatedAt");
+    setSortDir("desc");
   };
 
   const hasActiveFilters =
@@ -348,6 +360,40 @@ export default function TicketListStaff({
     queryClient.setQueryData(["ticket", ticket.id], { ticket });
     router.push(`/dashboard/tickets/${ticket.id}`);
   };
+
+  const stats = useMemo(() => {
+    const resolvedTicketsCount = tickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+
+    const now = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7);
+
+    let totalBusinessDays = 0;
+
+    tickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
+      }
+    });
+
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
+      : 0;
+
+    return {
+      resolvedTicketsCount,
+      avgResolutionBusinessDays,
+    };
+  }, [tickets]);
 
   return (
     <>
@@ -515,7 +561,9 @@ export default function TicketListStaff({
                             htmlFor={`status-${status}`}
                             className="text-sm font-normal"
                           >
-                            {status.replace("_", " ")}
+                            <Badge variant={status.toLowerCase() as any}>
+                              {status.replace("_", " ")}
+                            </Badge>
                           </Label>
                         </div>
                       ))}
@@ -546,7 +594,6 @@ export default function TicketListStaff({
                             setCurrentPage(1);
                             setOpenFrom(false);
                           }}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
@@ -576,7 +623,6 @@ export default function TicketListStaff({
                             setCurrentPage(1);
                             setOpenTo(false);
                           }}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
@@ -607,7 +653,9 @@ export default function TicketListStaff({
                             htmlFor={`urgency-${urgency}`}
                             className="text-sm font-normal"
                           >
-                            {urgency}
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
                           </Label>
                         </div>
                       ))}
@@ -661,28 +709,19 @@ export default function TicketListStaff({
             )}
           </div>
         </CardHeader>
-
         <CardContent>
           <div
             className={`space-y-4 transition-opacity duration-300 ${
               ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
             }`}
           >
-            <div className="flex flex-wrap justify-between items-center pb-2 border-b  gap-4 w-full">
-              {permissions?.canBulkUpdate && (
-                <div className="w-full sm:w-fit h-9 px-4 py-2 has-[>svg]:px-3 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground">
-                  <Checkbox
-                    checked={
-                      selectedTickets.length === tickets.length &&
-                      tickets.length > 0
-                    }
-                    onCheckedChange={(v: boolean | "indeterminate") =>
-                      handleSelectAll(v === true)
-                    }
-                  />
-                  <span className="text-sm font-medium">Select All</span>
-                </div>
-              )}
+            <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
+              <p className="text-sm text-muted-foreground">
+                Avg Resolution:{" "}
+                {selectedStatuses.includes("RESOLVED")
+                  ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
+                  : "N/A"}
+              </p>
               <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
                 {/* SORT BY */}
                 <div className="space-y-2 w-full sm:w-fit">
@@ -742,41 +781,113 @@ export default function TicketListStaff({
               </div>
             </div>
 
-            {ticketsLoading && (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-16 bg-muted rounded animate-pulse"
-                  ></div>
-                ))}
-              </div>
-            )}
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow className="border rounded">
+                  <TableHead className="text-black cursor-pointer">
+                    <Checkbox
+                      className="mr-2 bg-white"
+                      checked={
+                        selectedTickets.length === tickets.length &&
+                        tickets.length > 0
+                      }
+                      onCheckedChange={(v: boolean | "indeterminate") =>
+                        handleSelectAll(v === true)
+                      }
+                    />
+                    Ticket
+                  </TableHead>
+                  <TableHead className="text-black">Assignee</TableHead>
+                  <TableHead
+                    className="text-black cursor-pointer"
+                    onClick={() => {
+                      setSortBy("status");
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <p className="flex items-center gap-1">
+                      {sortBy === "status" && sortDir === "asc" ? (
+                        <ArrowUp className="size-4" />
+                      ) : sortBy === "status" && sortDir === "desc" ? (
+                        <ArrowDown className="size-4" />
+                      ) : (
+                        <ArrowDownUp className="size-4" />
+                      )}
+                      Status
+                    </p>
+                  </TableHead>
+                  <TableHead
+                    className="text-black cursor-pointer"
+                    onClick={() => {
+                      setSortBy("urgency");
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <p className="flex items-center gap-1">
+                      {sortBy === "urgency" && sortDir === "asc" ? (
+                        <ArrowUp className="size-4" />
+                      ) : sortBy === "urgency" && sortDir === "desc" ? (
+                        <ArrowDown className="size-4" />
+                      ) : (
+                        <ArrowDownUp className="size-4" />
+                      )}
+                      Urgency
+                    </p>
+                  </TableHead>
+                  <TableHead className="text-black">Category</TableHead>
+                  <TableHead className="text-center text-black">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="border [&_tr:last-child]:border-0">
+                {ticketsLoading && (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow
+                        key={i}
+                        className="h-16 w-full bg-muted rounded animate-pulse"
+                      >
+                        <TableCell colSpan={5} className="py-8">
+                          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                )}
 
-            {!ticketsLoading &&
-              tickets &&
-              tickets.length > 0 &&
-              tickets.map((ticket: TicketWithUpdatedAt) => (
-                <TicketListItemWrapper
-                  key={ticket.id}
-                  ticket={ticket}
-                  selected={selectedTickets.includes(ticket.id)}
-                  onSelect={(checked: boolean) =>
-                    handleSelectTicket(ticket.id, checked)
-                  }
-                  onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
-                  onClose={(e: React.MouseEvent) =>
-                    handleQuickClose(e, ticket.id)
-                  }
-                  onClick={() => handleTicketClick(ticket)}
-                />
-              ))}
+                {!ticketsLoading &&
+                  tickets &&
+                  tickets.length > 0 &&
+                  tickets.map((ticket: TicketWithUpdatedAt) => (
+                    <TicketListItemWrapper
+                      key={ticket.id}
+                      ticket={ticket}
+                      selected={selectedTickets.includes(ticket.id)}
+                      onSelect={(checked: boolean) =>
+                        handleSelectTicket(ticket.id, checked)
+                      }
+                      onEdit={(e: React.MouseEvent) =>
+                        handleQuickEdit(e, ticket)
+                      }
+                      onClose={(e: React.MouseEvent) =>
+                        handleQuickClose(e, ticket.id)
+                      }
+                      onClick={() => handleTicketClick(ticket)}
+                    />
+                  ))}
 
-            {!ticketsLoading && (!tickets || !tickets.length) && (
-              <div className="text-center py-8 text-muted-foreground">
-                No tickets found.
-              </div>
-            )}
+                {!ticketsLoading && (!tickets || !tickets.length) && (
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
+                      No tickets found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
 
             <PagesAndItemsCount
               type="tickets"

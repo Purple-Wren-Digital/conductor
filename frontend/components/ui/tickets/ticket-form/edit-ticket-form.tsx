@@ -9,13 +9,13 @@ import type {
   Urgency,
   UsersToNotify,
 } from "@/lib/types";
-
 import { API_BASE } from "@/lib/api/utils";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { createAndSendNotification } from "@/lib/utils/notifications";
+import { toast } from "sonner";
 
 type EditTicketFormProps = {
   ticket: Ticket | null;
@@ -54,6 +54,9 @@ export function EditTicketForm({
   const { getToken } = useAuth();
 
   useEffect(() => {
+    if (ticket?.status === "RESOLVED") {
+      return;
+    }
     const fetchTemplates = async () => {
       try {
         const token = await getToken();
@@ -211,7 +214,14 @@ export function EditTicketForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate() || !ticket?.id) return;
+    if (ticket?.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
+    if (!validate() || !ticket?.id) {
+      toast.error("Invalid input(s)");
+      return;
+    }
     setLoading(true);
     try {
       const token = await getToken();
@@ -277,6 +287,7 @@ export function EditTicketForm({
       selectedTemplateId={selectedTemplateId}
       onChangeTemplateId={handleTemplateChange}
       marketCenterId={marketCenterId}
+      disabled={ticket?.status === "RESOLVED"}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,6 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
 import {
   Popover,
@@ -31,6 +40,7 @@ import {
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
+  getResolvedInBusinessDays,
   orderByOptions,
   sortByTicketOptions,
   statusOptions,
@@ -60,11 +70,7 @@ import PagesAndItemsCount from "../../pagination/page-and-items-count";
 import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
 import { RadioGroup, RadioGroupItem } from "../../radio-group";
 
-export default function AgentTicketList({
-  currentUserId,
-}: {
-  currentUserId: string;
-}) {
+export default function AgentTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
@@ -139,16 +145,20 @@ export default function AgentTicketList({
     [queryKeyParams]
   );
 
+  const queryInvalidator = () =>
+    queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey });
+
   const {
     data: ticketsData,
     isFetching: ticketsLoading,
   }: UseQueryResult<TicketsResponse, Error> = useFetchAgentTickets({
     queryParams,
     agentTicketsQueryKey,
-    userId: currentUserId,
   });
+  const tickets: TicketWithUpdatedAt[] = useMemo(() => {
+    return ticketsData?.tickets ?? [];
+  }, [ticketsData]);
 
-  const tickets: TicketWithUpdatedAt[] = ticketsData?.tickets ?? [];
   const totalTickets = tickets?.length ?? 0;
   const totalPages = calculateTotalPages({
     totalItems: totalTickets,
@@ -189,12 +199,46 @@ export default function AgentTicketList({
     router.push(`/dashboard/tickets/${ticket.id}`);
   };
 
+  const stats = useMemo(() => {
+    const resolvedTicketsCount = tickets.filter(
+      (t: Ticket) => t.status === "RESOLVED"
+    ).length;
+
+    const now = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7);
+
+    let totalBusinessDays = 0;
+
+    tickets.forEach((t: Ticket) => {
+      const status = t.status;
+      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+
+      if (status === "RESOLVED" && createdDate && resolvedDate) {
+        totalBusinessDays += getResolvedInBusinessDays(
+          createdDate,
+          resolvedDate
+        );
+      }
+    });
+
+    const avgResolutionBusinessDays = resolvedTicketsCount
+      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
+      : 0;
+
+    return {
+      resolvedTicketsCount,
+      avgResolutionBusinessDays,
+    };
+  }, [tickets]);
+
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 items-center justify-between sm:flex-row">
           <CardTitle className="space-y-2 text-left w-full sm:w-fit">
-            Assigned Tickets ({totalTickets})
+            Tickets ({totalTickets})
           </CardTitle>
         </div>
 
@@ -276,7 +320,6 @@ export default function AgentTicketList({
                           setCurrentPage(1);
                           setOpenFrom(false);
                         }}
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -306,7 +349,6 @@ export default function AgentTicketList({
                           setCurrentPage(1);
                           setOpenTo(false);
                         }}
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -334,7 +376,9 @@ export default function AgentTicketList({
                           htmlFor={`status-${status}`}
                           className="text-sm font-normal"
                         >
-                          {status.replace("_", " ")}
+                          <Badge variant={status.toLowerCase() as any}>
+                            {status.replace("_", " ")}
+                          </Badge>{" "}
                         </Label>
                       </div>
                     ))}
@@ -366,7 +410,9 @@ export default function AgentTicketList({
                           htmlFor={`urgency-${urgency}`}
                           className="text-sm font-normal"
                         >
-                          {urgency}
+                          <Badge variant={urgency.toLowerCase() as any}>
+                            {urgency}
+                          </Badge>
                         </Label>
                       </div>
                     ))}
@@ -426,80 +472,154 @@ export default function AgentTicketList({
             ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="flex flex-wrap items-center pb-2 border-b space-x-2 gap-4 w-full">
-            <div className="space-y-2 w-full sm:w-fit">
-              <Select
-                value={sortBy}
-                onValueChange={(value: TicketSortBy) => setSortBy(value)}
-                disabled={ticketsLoading || !tickets || !tickets.length}
-              >
-                <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
-                  <SelectValue placeholder={"Sort by..."} />
-                </SelectTrigger>
+          <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
+            <p className="text-sm text-muted-foreground">
+              Avg Resolution:{" "}
+              {selectedStatuses.includes("RESOLVED")
+                ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
+                : "N/A"}
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: TicketSortBy) => setSortBy(value)}
+                  disabled={ticketsLoading || !tickets || !tickets.length}
+                >
+                  <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
+                    <SelectValue placeholder={"Sort by..."} />
+                  </SelectTrigger>
 
-                <SelectContent>
-                  {sortByTicketOptions.map((ticketOption) => (
-                    <SelectItem key={ticketOption} value={ticketOption}>
-                      <div className="flex gap-1 items-center mr-1">
-                        <ArrowDownUp />
-                        <p className="text-sm font-medium">
-                          {formatTicketOptions(ticketOption)}
-                        </p>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 w-full sm:w-fit">
-              <Select
-                value={sortDir}
-                onValueChange={(value: OrderBy) => setSortDir(value)}
-                disabled={ticketsLoading || !tickets || !tickets.length}
-              >
-                <SelectTrigger aria-label="Order by ascending or descending data">
-                  <SelectValue placeholder={"Order by..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {orderByOptions.map((direction) => (
-                    <SelectItem key={direction} value={direction}>
-                      <div className="flex gap-1 items-center mr-1">
-                        {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
-                        <p className="text-sm font-medium">
-                          {formatOrderBy(direction)}
-                        </p>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectContent>
+                    {sortByTicketOptions.map((ticketOption) => (
+                      <SelectItem key={ticketOption} value={ticketOption}>
+                        <div className="flex gap-1 items-center mr-1">
+                          <ArrowDownUp />
+                          <p className="text-sm font-medium">
+                            {formatTicketOptions(ticketOption)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortDir}
+                  onValueChange={(value: OrderBy) => setSortDir(value)}
+                  disabled={ticketsLoading || !tickets || !tickets.length}
+                >
+                  <SelectTrigger aria-label="Order by ascending or descending data">
+                    <SelectValue placeholder={"Order by..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orderByOptions.map((direction) => (
+                      <SelectItem key={direction} value={direction}>
+                        <div className="flex gap-1 items-center mr-1">
+                          {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
+                          <p className="text-sm font-medium">
+                            {formatOrderBy(direction)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
+          <Table>
+            <TableHeader className="bg-muted">
+              <TableRow className="border rounded">
+                <TableHead className="text-black">Ticket</TableHead>
+                <TableHead
+                  className="text-black cursor-pointer"
+                  onClick={() => {
+                    setSortBy("status");
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <p className="flex items-center gap-1">
+                    {sortBy === "status" && sortDir === "asc" ? (
+                      <ArrowUp className="size-4" />
+                    ) : sortBy === "status" && sortDir === "desc" ? (
+                      <ArrowDown className="size-4" />
+                    ) : (
+                      <ArrowDownUp className="size-4" />
+                    )}
+                    Status
+                  </p>
+                </TableHead>
+                <TableHead
+                  className="text-black cursor-pointer"
+                  onClick={() => {
+                    setSortBy("urgency");
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <p className="flex items-center gap-1">
+                    {sortBy === "urgency" && sortDir === "asc" ? (
+                      <ArrowUp className="size-4" />
+                    ) : sortBy === "urgency" && sortDir === "desc" ? (
+                      <ArrowDown className="size-4" />
+                    ) : (
+                      <ArrowDownUp className="size-4" />
+                    )}
+                    Urgency
+                  </p>
+                </TableHead>
+                <TableHead className="text-black">Category</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="border [&_tr:last-child]:border-0">
+              {ticketsLoading && (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow
+                      key={i}
+                      className="h-16 w-full bg-muted rounded animate-pulse"
+                    ></TableRow>
+                  ))}
+                </>
+              )}
+              {ticketsLoading && (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow
+                      key={i}
+                      className="h-16 w-full bg-muted rounded animate-pulse"
+                    >
+                      <TableCell colSpan={5} className="py-8">
+                        <span className="h-4 w-full bg-muted rounded animate-pulse" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
 
-          {ticketsLoading && (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded animate-pulse" />
-              ))}
-            </div>
-          )}
+              {!ticketsLoading &&
+                tickets &&
+                tickets.length > 0 &&
+                tickets.map((ticket: TicketWithUpdatedAt) => (
+                  <TicketListItemWrapper
+                    key={ticket.id}
+                    ticket={ticket}
+                    onClick={() => handleTicketClick(ticket)}
+                  />
+                ))}
 
-          {!ticketsLoading &&
-            tickets &&
-            tickets.length > 0 &&
-            tickets.map((ticket: TicketWithUpdatedAt) => (
-              <TicketListItemWrapper
-                key={ticket.id}
-                ticket={ticket}
-                onClick={() => handleTicketClick(ticket)}
-              />
-            ))}
-
-          {!ticketsLoading && (!tickets || !tickets.length) && (
-            <div className="text-center py-8 text-muted-foreground">
-              No tickets found.
-            </div>
-          )}
+              {!ticketsLoading && (!tickets || !tickets.length) && (
+                <TableRow className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-8">
+                    No tickets found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
 
           <PagesAndItemsCount
             type="tickets"

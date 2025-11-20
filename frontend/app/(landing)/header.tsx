@@ -9,20 +9,14 @@ import {
   useAuth,
 } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { PrismaUser } from "@/lib/types";
-import { ArrowRight, House } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/context/store-provider";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api/utils";
+import conductorIcon from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
+import Image from "next/image";
 
 export function Header() {
   const router = useRouter();
@@ -72,73 +66,38 @@ export function Header() {
   }, [clerkUser, isLoaded, setCurrentUser, getToken]);
 
   return (
-    <header className="border-b">
-      <div className="container flex flex-wrap items-center justify-center gap-4 md:justify-between py-2">
-        <Link href="/" className="text-xl font-bold flex items-center">
-          <House className="size-5 mr-1" strokeWidth={2.5} /> Conductor
-          Ticketing
+    <header className="border-b bg-[var(--conductor)]">
+      <div className="px-5 sm:px-10 flex items-center gap-4 justify-between py-2">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="size-12 flex items-center justify-center">
+            <Image
+              src={conductorIcon}
+              alt="Conductor Logo"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+          <div className="hidden md:flex flex-col leading-tight">
+            <h1 className="text-sm font-bold sm:text-xl text-muted">
+              Conductor
+            </h1>
+            <p className="text-xs font-medium sm:text-sm text-muted">
+              Agent Ticketing System
+            </p>
+          </div>
         </Link>
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Features</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="w-80">
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <a href="https://stripe.com">
-                        <p className="font-medium leading-none">Stripe</p>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Get paid easily
-                        </p>
-                      </a>
-                    </NavigationMenuLink>
-                  </li>
 
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <a href="https://clerk.com">
-                        <p className="font-medium leading-none">Clerk</p>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Auth is already setup
-                        </p>
-                      </a>
-                    </NavigationMenuLink>
-                  </li>
-
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <a href="https://ui.shadcn.com">
-                        <p className="font-medium leading-none">shadcn</p>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Uses shadcn/ui for components
-                        </p>
-                      </a>
-                    </NavigationMenuLink>
-                  </li>
-                </ul>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <Link href="/company" legacyBehavior passHref>
-                <NavigationMenuLink>Company</NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <Link href="/pricing" legacyBehavior passHref>
-                <NavigationMenuLink>Pricing</NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           {clerkUser && currentUser ? (
             <>
               <Button
                 variant="outline"
                 onClick={() => router.push("/dashboard")}
+                // size={"sm"}
+                className="text-xs sm:text-md bg-[#faf8f9] border-[#faf8f9] hover:opacity-90"
               >
                 Dashboard <ArrowRight />
               </Button>
@@ -147,10 +106,12 @@ export function Header() {
           ) : (
             <>
               <SignInButton mode="modal">
-                <Button variant="secondary">Log in</Button>
+                <Button variant="secondary" size={"sm"}>
+                  Log in
+                </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button>Sign up</Button>
+                <Button size={"sm"}>Sign up</Button>
               </SignUpButton>
             </>
           )}

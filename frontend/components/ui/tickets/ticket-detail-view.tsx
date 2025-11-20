@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   Card,
   CardContent,
@@ -53,14 +54,11 @@ import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
 import { AttachmentsList } from "./attachments-list";
 import { FileUpload } from "./file-upload";
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
   capitalizeEveryWord,
   getCategoryStyle,
-  getStatusColor,
-  getUrgencyColor,
   parseJsonSafe,
   statusOptions,
   urgencyOptions,
@@ -221,7 +219,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   };
 
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
-    if (!ticket) return;
+    if (!ticket) throw new Error("No ticket loaded");
+    if (ticket && ticket.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
 
     const prev = ticket;
     setTicket({ ...ticket, [field]: value });
@@ -268,7 +270,10 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
 
   const handleAssigneeChange = async (newAssigneeId: string) => {
     if (!ticket) return;
-
+    if (ticket && ticket.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
     const prev = ticket;
     const nextAssignee =
       newAssigneeId === "unassigned"
@@ -329,17 +334,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
-  const getStatusIcon = (status: TicketStatus) => {
-    switch (status) {
-      case "RESOLVED":
-        return <CheckCircle className="h-4 w-4" />;
-      case "IN_PROGRESS":
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <AlertTriangle className="h-4 w-4" />;
-    }
-  };
-
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
       case "CREATE":
@@ -397,7 +391,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           </Button>
         )}
         <div className="flex items-center gap-2">
-          {getStatusIcon(ticket.status)}
           <h1 className="text-2xl font-bold">#{ticket.id.substring(0, 8)}</h1>
         </div>
         <div className="flex items-center gap-4">
@@ -410,18 +403,20 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               <History className="h-4 w-4" /> View History
             </Button>
           </div>
-          {(permissions?.canReassignTicket ||
-            (role === "AGENT" && ticket.assigneeId === currentUser?.id)) && (
-            <div className="ml-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowEditForm(true)}
-                className="gap-2"
-              >
-                <Edit className="h-4 w-4" /> Edit Ticket
-              </Button>
-            </div>
-          )}
+          {ticket.status !== "RESOLVED" ||
+            permissions?.canReassignTicket ||
+            (role === "AGENT" && ticket.assigneeId === currentUser?.id && (
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditForm(true)}
+                  className="gap-2"
+                  disabled={ticket.status === "RESOLVED"}
+                >
+                  <Edit className="h-4 w-4" /> Edit Ticket
+                </Button>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -456,10 +451,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 <div className="space-y-2">
                   <CardTitle className="text-xl">{ticket.title}</CardTitle>
                   <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <Badge variant={getStatusColor(ticket.status)}>
-                      {ticket.status.replace("_", " ")}
+                    <Badge
+                      variant={ticket.status.toLowerCase() as any}
+                      className="capitalize"
+                    >
+                      {ticket.status.split("_").join(" ").toLowerCase()}
                     </Badge>
-                    <Badge variant={getUrgencyColor(ticket.urgency)}>
+                    <Badge variant={ticket.urgency.toLowerCase() as any}>
                       {ticket.urgency}
                     </Badge>
                     <Badge
@@ -584,9 +582,11 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions.map((status) => (
+                      {statusOptions.map((status: TicketStatus) => (
                         <SelectItem key={status} value={status}>
-                          {status.replace("_", " ")}
+                          <Badge variant={status.toLowerCase() as any}>
+                            {status.replace("_", " ")}
+                          </Badge>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -608,7 +608,9 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                       <SelectContent>
                         {urgencyOptions.map((urgency) => (
                           <SelectItem key={urgency} value={urgency}>
-                            {urgency}
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
                           </SelectItem>
                         ))}
                       </SelectContent>

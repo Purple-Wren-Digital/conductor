@@ -38,6 +38,9 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
     if (!ticket) {
       throw APIError.notFound("Ticket not found");
     }
+    if (ticket && ticket.status === "RESOLVED") {
+      throw APIError.invalidArgument("Resolved tickets cannot be deleted");
+    }
 
     // const history = await prisma.ticketHistory.create({
     //   data: {
