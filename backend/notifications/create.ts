@@ -3,17 +3,21 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../ticket/db";
 import { broadcastNotification } from "./stream";
 import { sendEmailNotification } from "./channels/email/email";
-import type { NotificationCategory, NotificationData } from "./types";
-import { getUserContext } from "../auth/user-context";
+import type {
+  NotificationCategory,
+  NotificationChannel,
+  NotificationData,
+  Notification,
+} from "./types";
 import { Urgency } from "../ticket/types";
-
 export interface CreateNotificationRequest {
   userId: string;
   category: NotificationCategory;
-  type: string; // NotificationTypes;
+  type: string;
+  templateName?: string;
   title: string;
   body: string;
-  data?: NotificationData;
+  data: NotificationData;
   priority?: Urgency;
 }
 
@@ -44,112 +48,83 @@ export const create = api<CreateNotificationRequest>(
     if (!user || !user?.id || !user?.clerkId) {
       throw APIError.notFound("User not found");
     }
-    // const notificationPreference =
-    //   user.userSettings?.notificationPreferences &&
-    //   user?.userSettings?.notificationPreferences.find((pref) => {
-    //     pref.type.toLocaleUpperCase() === req.type.toLocaleUpperCase();
-    //   });
+    // USER PREFERENCE CHECKING
+    const notificationTypeSettings =
+      user.userSettings?.notificationPreferences?.find(
+        (preference) => preference.type === req.type
+      );
 
-    // let notificationsToCreate: any = [];
+    let notificationsToCreate: any[] = [];
 
-    // if (notificationPreference && notificationPreference?.inApp) {
-    // notificationsToCreate.push({
-    //   userId: user.id,
-    //   channel: "IN_APP",
-    //   category: req.category,
-    //   type: req.type,
-    //   title: req.title,
-    //   body: req.body,
-    //   data: req.data,
-    //   priority: req?.priority ?? "MEDIUM",
-    // });
-    // }
+    if (notificationTypeSettings && notificationTypeSettings.inApp === true) {
+      notificationsToCreate.push({
+        userId: user.id,
+        channel: "IN_APP" as NotificationChannel,
+        category: req.category,
+        type: req.type,
+        title: req.title,
+        body: req.body,
+        data: req?.data ? (req?.data as Prisma.InputJsonValue) : undefined,
+        priority: req?.priority ? (req.priority as Urgency) : "LOW",
+        deliveredAt: null,
+      });
+    }
+    if (notificationTypeSettings && notificationTypeSettings.email === true) {
+      notificationsToCreate.push({
+        userId: user.id,
+        channel: "EMAIL" as NotificationChannel,
+        category: req.category,
+        type: req.type,
+        title: req.title,
+        body: req.body,
+        data: req?.data ? (req?.data as Prisma.InputJsonValue) : undefined,
+        priority: req?.priority ? (req.priority as Urgency) : "LOW",
+        deliveredAt: null,
+      });
+    }
 
-    // if (notificationPreference && notificationPreference?.email) {
-    // notificationsToCreate.push({
-    //   userId: user.id,
-    //   channel: "EMAIL",
-    //   category: req.category,
-    //   type: req.type,
-    //   title: req.title,
-    //   body: req.body,
-    //   data: req.data,
-    //   priority: req?.priority ?? "MEDIUM",
-    // });
-    // }
-    // if (notificationPreference && notificationPreference?.push) {
-    //   notificationsToCreate.push({
-    //     userId: user.id,
-    //     channel: "PUSH",
-    //     category: req.category,
-    //     type: req.type,
-    //     title: req.title,
-    //     body: req.body,
-    //     data: req.data,
-    //     priority: req?.priority ?? "MEDIUM",
-    //   });
-    // }
+    if (notificationsToCreate.length === 0) {
+      console.log(
+        `User ${user.id} has opted out of all channels for notification type ${req.type}. Skipping notification creation.`
+      );
+      return { success: true };
+    }
 
-    // if (!notificationsToCreate || !notificationsToCreate.length) {
-    //   throw APIError.permissionDenied(
-    //     `All Notifications for "${req.type}" are disabled for this user`
-    //   );
-    // }
-
-    // const created = await Promise.all(
-    //   notificationsToCreate.map((notification: any) =>
-    //     prisma.notification.create({ data: notification })
-    //   )
-    // );
     const createdNotifications = await prisma.notification.createManyAndReturn({
-      data: [
-        {
-          userId: user.id,
-          channel: "EMAIL",
-          category: req.category,
-          type: req.type,
-          title: req.title,
-          body: req.body,
-          data: req?.data as Prisma.InputJsonValue,
-          priority: req?.priority ?? "LOW",
-        },
-        {
-          userId: user.id,
-          channel: "IN_APP",
-          category: req.category,
-          type: req.type,
-          title: req.title,
-          body: req.body,
-          data: req?.data as Prisma.InputJsonValue,
-          priority: req?.priority ?? "LOW",
-        },
-      ],
+      data: notificationsToCreate,
     });
-
-    console.log("Created Notifications for user", createdNotifications);
 
     if (!createdNotifications || !createdNotifications.length) {
       throw APIError.internal("Failed to create notification(s)");
     }
     await Promise.all(
       createdNotifications.map(async (notification) => {
-        switch (notification.channel) {
+        const safeNotification: Notification = {
+          ...notification,
+          priority: notification?.priority ?? "LOW",
+          data:
+            typeof notification.data === "object" && notification.data !== null
+              ? (notification.data as NotificationData)
+              : undefined,
+        };
+
+        switch (safeNotification.channel) {
           case "EMAIL":
             if (user?.email) {
               await sendEmailNotification({
                 userEmail: "delivered@resend.dev", //TODO-PROD user.email
                 notification: {
-                  ...notification,
-                  type: notification?.type,
-                  priority: notification.priority ?? undefined,
-                  data: notification?.data as NotificationData,
+                  ...safeNotification,
+                  type: safeNotification?.type,
+                  priority: safeNotification?.priority ?? undefined,
+                  data: safeNotification?.data as NotificationData,
                 },
               });
             }
             break;
 
           case "IN_APP":
-            await broadcastNotification(user?.clerkId, notification);
+            await broadcastNotification(user?.clerkId, safeNotification);
             break;
 
           // case "PUSH":

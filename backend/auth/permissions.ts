@@ -1,6 +1,7 @@
 import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { prisma } from "../ticket/db";
+import { UserRole } from "../user/types";
 
 export async function requireRole(
   userContext: UserContext,
@@ -19,7 +20,7 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
-  if (userContext.role === "ADMIN" || userContext.role === "STAFF") {
+  if (userContext.role === "ADMIN") {
     return true;
   }
 
@@ -121,6 +122,16 @@ export async function canViewInternalComments(
   userContext: UserContext
 ): Promise<boolean> {
   return userContext.role === "STAFF" || userContext.role === "ADMIN";
+}
+
+export async function canBeNotifiedAboutComments(
+  role: UserRole,
+  isInternal: boolean
+): Promise<boolean> {
+  if (!isInternal) {
+    return true;
+  }
+  return role === "ADMIN" || role === "STAFF";
 }
 
 export async function canCreateInternalComments(

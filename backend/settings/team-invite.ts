@@ -1,101 +1,101 @@
-import { api, APIError } from "encore.dev/api";
-import { getPrisma } from "./db";
-import { TeamInviteRequest } from "./types";
-import crypto from "crypto";
-import { getUserContext } from "../auth/user-context";
-import { canManageTeam } from "../auth/permissions";
+// import { api, APIError } from "encore.dev/api";
+// import { getPrisma } from "./db";
+// import { TeamInviteRequest } from "./types";
+// import crypto from "crypto";
+// import { getUserContext } from "../auth/user-context";
+// import { canManageTeam } from "../auth/permissions";
 
-export const inviteTeamMember = api(
-  { method: "POST", path: "/settings/team/invite", auth: true },
-  async ({
-    email,
-    role,
-  }: TeamInviteRequest): Promise<{
-    success: boolean;
-    invitationId: string;
-  }> => {
-    const userContext = await getUserContext();
-    const prisma = getPrisma();
+// export const inviteTeamMember = api(
+//   { method: "POST", path: "/settings/team/invite", auth: true },
+//   async ({
+//     email,
+//     role,
+//   }: TeamInviteRequest): Promise<{
+//     success: boolean;
+//     invitationId: string;
+//   }> => {
+//     const userContext = await getUserContext();
+//     const prisma = getPrisma();
 
-    // Check if user can manage team
-    const canManage = await canManageTeam(userContext);
-    if (!canManage) {
-      throw APIError.permissionDenied(
-        "You do not have permission to invite team members"
-      );
-    }
+//     // Check if user can manage team
+//     const canManage = await canManageTeam(userContext);
+//     if (!canManage) {
+//       throw APIError.permissionDenied(
+//         "You do not have permission to invite team members"
+//       );
+//     }
 
-    // Find the user and their market center
-    const user = await prisma.user.findUnique({
-      where: { id: userContext.userId },
-      include: { marketCenter: true },
-    });
+//     // Find the user and their market center
+//     const user = await prisma.user.findUnique({
+//       where: { id: userContext.userId },
+//       include: { marketCenter: true },
+//     });
 
-    if (!user) {
-      throw APIError.notFound("User not found");
-    }
+//     if (!user) {
+//       throw APIError.notFound("User not found");
+//     }
 
-    if (!user.marketCenter) {
-      throw APIError.notFound("Market center not found");
-    }
+//     if (!user.marketCenter) {
+//       throw APIError.notFound("Market center not found");
+//     }
 
-    // Check if user already exists or has pending invitation
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+//     // Check if user already exists or has pending invitation
+//     const existingUser = await prisma.user.findUnique({
+//       where: { email },
+//     });
 
-    if (existingUser && existingUser.marketCenterId === user.marketCenterId) {
-      throw APIError.aborted("User is already a team member");
-    }
+//     if (existingUser && existingUser.marketCenterId === user.marketCenterId) {
+//       throw APIError.aborted("User is already a team member");
+//     }
 
-    const existingInvitation = await prisma.teamInvitation.findUnique({
-      where: {
-        marketCenterId_email: {
-          marketCenterId: user.marketCenterId!,
-          email,
-        },
-      },
-    });
+//     const existingInvitation = await prisma.teamInvitation.findUnique({
+//       where: {
+//         marketCenterId_email: {
+//           marketCenterId: user.marketCenterId!,
+//           email,
+//         },
+//       },
+//     });
 
-    if (existingInvitation && existingInvitation.status === "PENDING") {
-      throw APIError.aborted("Invitation already exists for this email");
-    }
+//     if (existingInvitation && existingInvitation.status === "PENDING") {
+//       throw APIError.aborted("Invitation already exists for this email");
+//     }
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+//     // Generate secure token
+//     const token = crypto.randomBytes(32).toString("hex");
+//     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Create invitation record
-    const invitation = await prisma.teamInvitation.create({
-      data: {
-        email,
-        role,
-        token,
-        expiresAt,
-        marketCenterId: user.marketCenterId!,
-        invitedBy: user.id,
-      },
-    });
+//     // Create invitation record
+//     const invitation = await prisma.teamInvitation.create({
+//       data: {
+//         email,
+//         role,
+//         token,
+//         expiresAt,
+//         marketCenterId: user.marketCenterId!,
+//         invitedBy: user.id,
+//       },
+//     });
 
-    // TODO: Implement email invitation system
-    // This would typically use an email service like SendGrid or Resend
-    // to send an invitation email with the token
-    // console.log(`Invitation created for ${email} with token: ${token}`);
+//     // TODO: Implement email invitation system
+//     // This would typically use an email service like SendGrid or Resend
+//     // to send an invitation email with the token
+//     // console.log(`Invitation created for ${email} with token: ${token}`);
 
-    // Log the invitation in audit trail
-    await prisma.settingsAuditLog.create({
-      data: {
-        marketCenterId: user.marketCenterId!,
-        userId: user.id,
-        action: "invite",
-        section: "team",
-        newValue: { email, role, invitationId: invitation.id },
-      },
-    });
+//     // Log the invitation in audit trail
+//     await prisma.settingsAuditLog.create({
+//       data: {
+//         marketCenterId: user.marketCenterId!,
+//         userId: user.id,
+//         action: "invite",
+//         section: "team",
+//         newValue: { email, role, invitationId: invitation.id },
+//       },
+//     });
 
-    return {
-      success: true,
-      invitationId: invitation.id,
-    };
-  }
-);
+//     return {
+//       success: true,
+//       invitationId: invitation.id,
+//     };
+//   }
+// );

@@ -104,22 +104,19 @@ export default function EditMarketCenter({
   };
 
   const handleSendMarketCenterNotifications = async ({
+    templateName,
     trigger,
     receivingUser,
     data,
   }: MarketCenterNotificationCallback) => {
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName: templateName,
         trigger: trigger,
         receivingUser: receivingUser,
         data: data,
       });
-      console.log("MarketCenterManagement - Notification - Response", response);
     } catch (error) {
       console.error(
         "MarketCenterManagement - Unable to generate notifications",
@@ -168,6 +165,7 @@ export default function EditMarketCenter({
           data.usersToNotify.map(
             async (user) =>
               await handleSendMarketCenterNotifications({
+                templateName: `Market Center User ${user.updateType === "added" ? "Added" : "Removed"}`,
                 trigger: "Market Center Assignment",
                 receivingUser: {
                   id: user.id,
