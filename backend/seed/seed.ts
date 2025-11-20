@@ -1,7 +1,8 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Prisma } from "@prisma/client";
-import { defaultNotificationPreferences } from "../utils";
+import { notificationTemplatesDefault } from "../notifications/templates/utils";
+// import { defaultNotificationPreferences } from "../utils";
 
 export interface SeedResponse {
   message: string;
@@ -26,10 +27,12 @@ export const seedData = api<void, SeedResponse>(
     // await prisma.teamInvitation.deleteMany({});
 
     await prisma.userHistory.deleteMany({});
-    await prisma.notification.deleteMany({});
-    await prisma.notificationPreferences.deleteMany({});
     await prisma.userSettings.deleteMany({});
     await prisma.user.deleteMany({});
+
+    await prisma.notification.deleteMany({});
+    await prisma.notificationPreferences.deleteMany({});
+    await prisma.notificationTemplate.deleteMany({});
 
     await prisma.marketCenterHistory.deleteMany({});
     await prisma.marketCenter.deleteMany({});
@@ -442,6 +445,14 @@ export const seedData = api<void, SeedResponse>(
         });
       }
     }
+
+    // await prisma.notificationPreferences.createMany({
+    //   data: defaultNotificationPreferences,
+    // });
+
+    await prisma.notificationTemplate.createMany({
+      data: notificationTemplatesDefault,
+    });
 
     await prisma.comment.createMany({ data: comments });
 

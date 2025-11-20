@@ -24,6 +24,7 @@ import {
   Building,
   Info,
   BookMarked,
+  Folder,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -200,6 +201,18 @@ export function AppSidebar({
           </SidebarGroup>
 
           <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
+            {/* NOTIFICATION TEMPLATES */}
+            {permissions?.canManageAllUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/notification-templates">
+                    <Folder className="text-muted-foreground" /> Notification
+                    Templates
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
             {/* SUPPORT/HELP */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>

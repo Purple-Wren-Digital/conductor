@@ -142,17 +142,15 @@ export default function MarketCenterTicketCategories({
 
   const handleSendMarketCenterNotifications = useCallback(
     async ({
+      templateName,
       trigger,
       receivingUser,
       data,
     }: MarketCenterNotificationCallback) => {
       try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Failed to get authentication token");
-        }
         const response = await createAndSendNotification({
-          authToken: token,
+          getToken: getToken,
+          templateName: templateName,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
@@ -215,6 +213,7 @@ export default function MarketCenterTicketCategories({
         await Promise.all(
           data.usersToNotify.map(async (user) => {
             await handleSendMarketCenterNotifications({
+              templateName: `Category Assignment - ${user.updateType === "added" ? "Added" : "Removed"}`,
               trigger: "Category Assignment",
               receivingUser: {
                 id: user?.id,
@@ -294,6 +293,7 @@ export default function MarketCenterTicketCategories({
       toast.success(`${categoryFormData?.name} was created`);
       if (data?.defaultAssigneeId && data?.defaultAssignee) {
         await handleSendMarketCenterNotifications({
+          templateName: `Category Assignment - Added`,
           trigger: "Category Assignment",
           receivingUser: {
             id: data?.defaultAssigneeId,
@@ -383,6 +383,8 @@ export default function MarketCenterTicketCategories({
         categoryToRemove?.defaultAssignee
       ) {
         await handleSendMarketCenterNotifications({
+          templateName: `Category Assignment - Removed`,
+
           trigger: "Category Assignment",
           receivingUser: {
             id: categoryToRemove?.defaultAssigneeId,

@@ -55,7 +55,6 @@ export async function PATCH(req: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    console.log("********** CLERK UPDATE USER NAME RESPONSE **********");
     if (!response.ok) {
       const text = await response.text();
       return NextResponse.json(

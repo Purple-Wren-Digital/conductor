@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import {
   Accordion,
@@ -91,7 +91,13 @@ export default function NotificationPreferences({
     return updatedPreferences;
   };
 
-  const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
+  const hasNotificationPreferenceUpdates = useMemo(() => {
+    return formatUpdatedPreferences();
+  }, [updateNotificationPreferences, oldNotificationPreferences]);
+  console.log(
+    "Has Notification Preference Updates:",
+    hasNotificationPreferenceUpdates
+  );
 
   const notificationPermissions =
     updateNotificationPreferences && updateNotificationPreferences.length > 0
@@ -126,7 +132,6 @@ export default function NotificationPreferences({
     }
 
     setIsSubmitting(true);
-    // const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
 
     if (
       !hasNotificationPreferenceUpdates ||
@@ -162,7 +167,7 @@ export default function NotificationPreferences({
       console.error("Failed to save notifications", error);
     } finally {
       await invalidateUserSettingsQuery;
-      await invalidateUserQuery;
+      // await invalidateUserQuery;
       setIsSubmitting(false);
     }
   };
@@ -265,7 +270,7 @@ export default function NotificationPreferences({
       toast.error("Error: Preferences were not reset");
     } finally {
       await invalidateUserSettingsQuery;
-      await invalidateUserQuery;
+      // await invalidateUserQuery;
       setIsSubmitting(false);
     }
   };

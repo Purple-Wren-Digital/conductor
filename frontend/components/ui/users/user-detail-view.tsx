@@ -170,12 +170,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const handleSendUserNotifications = useCallback(
     async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
       try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Failed to get authentication token");
-        }
         const response = await createAndSendNotification({
-          authToken: token,
+          getToken: getToken,
+          templateName: "Account Information",
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,

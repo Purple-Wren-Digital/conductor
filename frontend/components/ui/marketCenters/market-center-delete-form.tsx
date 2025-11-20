@@ -105,6 +105,7 @@ export default function DeleteMarketCenter({
         await Promise.all(
           marketCenterToDelete?.users.map(async (user: PrismaUser) => {
             await handleSendMarketCenterNotifications({
+              templateName: "Market Center User Removed",
               trigger: "Market Center Assignment",
               receivingUser: {
                 id: user?.id,

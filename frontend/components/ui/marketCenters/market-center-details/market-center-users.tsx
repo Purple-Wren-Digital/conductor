@@ -69,6 +69,7 @@ export default function MarketCenterUsers({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
   handleSendMarketCenterNotifications: ({
+    templateName,
     trigger,
     receivingUser,
     data,
@@ -195,6 +196,7 @@ export default function MarketCenterUsers({
     onSuccess: async (user: PrismaUser) => {
       toast.success(`${user?.name} was removed`);
       await handleSendMarketCenterNotifications({
+        templateName: "Market Center User Removed",
         trigger: "Market Center Assignment",
         receivingUser: {
           id: user?.id,

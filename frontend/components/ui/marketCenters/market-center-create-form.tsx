@@ -121,6 +121,7 @@ export default function CreateMarketCenter({
         await Promise.all(
           data?.marketCenter?.users.map(async (user: PrismaUser) => {
             await handleSendMarketCenterNotifications({
+              templateName: "Market Center User Added",
               trigger: "Market Center Assignment",
               receivingUser: {
                 id: user?.id,

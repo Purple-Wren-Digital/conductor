@@ -27,7 +27,6 @@ export async function sendEmailNotification({
   userEmail,
   notification,
 }: SendEmailNotification) {
-  console.log("******** Sending Email Notification ********");
   try {
     const emailContent: React.ReactElement | null =
       formatEmailNotification(notification);

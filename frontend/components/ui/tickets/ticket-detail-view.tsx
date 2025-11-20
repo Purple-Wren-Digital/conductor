@@ -186,12 +186,14 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       userToNotify.updateType === "removed";
 
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName:
+          notifyAssigneeChanges && userToNotify.updateType === "added"
+            ? "Ticket Assignment - Added"
+            : notifyAssigneeChanges && userToNotify.updateType === "removed"
+              ? "Ticket Assignment - Removed"
+              : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
@@ -206,8 +208,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                   ticketTitle: ticket?.title ?? "No title provided",
                   createdOn: ticket?.createdAt,
                   updatedOn: ticket?.updatedAt,
-                  editedByName: currentUser?.name ?? "Unknown",
-                  editedById: currentUser?.id ?? "",
+                  editorName: currentUser?.name ?? "Unknown",
+                  editorId: currentUser?.id ?? "",
                   changedDetails: changedDetails,
                 }
               : undefined,
@@ -217,8 +219,8 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 ticketTitle: title,
                 createdOn: ticket?.createdAt,
                 updatedOn: ticket?.createdAt,
-                editedByName: currentUser?.name ?? "Unknown",
-                editedById: currentUser?.id ?? "",
+                editorName: currentUser?.name ?? "Unknown",
+                editorId: currentUser?.id ?? "",
                 updateType: userToNotify.updateType,
                 currentAssignment: {
                   id: userToNotify?.id,
@@ -268,8 +270,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
-        console.log("Notifying users....", data?.usersToNotify);
-
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({

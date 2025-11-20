@@ -6,9 +6,11 @@ import { processCommentContent } from "./sanitize";
 import { getUserContext } from "../auth/user-context";
 import {
   canAccessTicket,
+  canBeNotifiedAboutComments,
   canCreateInternalComments,
 } from "../auth/permissions";
 import { CommentEventPublisher } from "./publisher";
+import type { UsersToNotify } from "../notifications/types";
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -18,6 +20,8 @@ export interface CreateCommentRequest {
 
 export interface CreateCommentResponse {
   comment: Comment;
+  usersToNotify: UsersToNotify[];
+  ticketTitle: string;
 }
 
 export const create = api<CreateCommentRequest, CreateCommentResponse>(
@@ -53,10 +57,69 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
+      include: {
+        assignee: true,
+        creator: true,
+      },
     });
 
     if (!ticket) {
       throw APIError.notFound("ticket not found");
+    }
+    const usersToNotify: UsersToNotify[] = [];
+
+    if (
+      ticket?.assigneeId &&
+      ticket?.assignee &&
+      (await canBeNotifiedAboutComments(
+        ticket.assignee.role,
+        req.internal || false
+      ))
+    ) {
+      usersToNotify.push({
+        id: ticket.assigneeId,
+        name: ticket.assignee?.name || "",
+        email: ticket.assignee?.email || "",
+        updateType: "created",
+      });
+    }
+
+    if (
+      !ticket?.assigneeId &&
+      ticket.creatorId &&
+      ticket?.creator &&
+      (await canBeNotifiedAboutComments(
+        ticket.creator.role,
+        req.internal || false
+      ))
+    ) {
+      usersToNotify.push({
+        id: ticket.creatorId,
+        name: ticket.creator?.name || "",
+        email: ticket.creator?.email || "",
+        updateType: "created",
+      });
+    }
+    const previousComments = await prisma.comment.findMany({
+      where: { ticketId: req.ticketId },
+      include: { user: true },
+    });
+
+    const notifiedUserIds = new Set(usersToNotify.map((user) => user.id));
+
+    for (const comment of previousComments) {
+      const commenter = comment.user;
+      const alreadyNotified = notifiedUserIds.has(commenter.id);
+      const canAccess = await canAccessTicket(userContext, req.ticketId);
+      if (!alreadyNotified && canAccess) {
+        usersToNotify.push({
+          id: commenter.id,
+          name: commenter.name || "",
+          email: commenter.email || "",
+          updateType: "created",
+        });
+        notifiedUserIds.add(commenter.id);
+      }
     }
 
     const result = await prisma.$transaction(async (p) => {
@@ -133,6 +196,10 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     // Publish comment created event for real-time updates
     await CommentEventPublisher.publishCommentCreated(safeComment);
 
-    return { comment: safeComment };
+    return {
+      comment: safeComment,
+      usersToNotify: usersToNotify,
+      ticketTitle: ticket?.title || "Untitled Ticket",
+    };
   }
 );
