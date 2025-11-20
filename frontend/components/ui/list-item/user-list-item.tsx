@@ -61,9 +61,9 @@ export function UserListItem({
       onClick={onClick}
       primaryBadges={[
         {
-          label: `${user.role.split("_").join(" ")}`,
-          variant: (user.role ? user.role.toLowerCase() : "user") as any,
-          title: `Role: ${user.role}`,
+          label: `${user?.role ? user.role.split("_").join(" ") : "N/A"}`,
+          variant: (user?.role ? user.role.toLowerCase() : "user") as any,
+          title: `Role: ${user?.role ? user.role.split("_").join(" ") : "N/A"}`,
         },
         ...(user?.defaultForCategories && user?.defaultForCategories.length > 0
           ? user?.defaultForCategories?.map((category) => ({

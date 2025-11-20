@@ -143,11 +143,17 @@ export default function MarketCenterAgentView({
                                     ? user.role.toLowerCase()
                                     : "user") as any
                                 }
-                                title={user?.role.split("_").join(" ")}
+                                title={
+                                  user?.role
+                                    ? user?.role.split("_").join(" ")
+                                    : "N/A"
+                                }
                                 className="text-xs px-2 py-0.5"
                               >
                                 {getRoleIcon(user?.role)}
-                                {user?.role.split("_").join(" ")}
+                                {user?.role
+                                  ? user?.role.split("_").join(" ")
+                                  : "N/A"}
                               </Badge>
                             }
                             content={getRoleDescription(user?.role)}
