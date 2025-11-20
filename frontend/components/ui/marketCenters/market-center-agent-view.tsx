@@ -44,13 +44,7 @@ export default function MarketCenterAgentView({
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
-    return Icon ? (
-      <Icon
-        className={`h-4 w-4 ${userRole === "AGENT" ? "text-black" : "text-white"}`}
-      />
-    ) : (
-      <User className="h-4 w-4 text-black" />
-    );
+    return Icon ? <Icon className={`h-4 w-4`} /> : <User className="h-4 w-4" />;
   };
 
   return (
