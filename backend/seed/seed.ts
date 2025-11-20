@@ -1,7 +1,8 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Prisma } from "@prisma/client";
-import { defaultNotificationPreferences } from "../utils";
+import { notificationTemplatesDefault } from "../notifications/templates/utils";
+// import { defaultNotificationPreferences } from "../utils";
 
 export interface SeedResponse {
   message: string;
@@ -26,10 +27,12 @@ export const seedData = api<void, SeedResponse>(
     // await prisma.teamInvitation.deleteMany({});
 
     await prisma.userHistory.deleteMany({});
-    await prisma.notification.deleteMany({});
-    await prisma.notificationPreferences.deleteMany({});
     await prisma.userSettings.deleteMany({});
     await prisma.user.deleteMany({});
+
+    await prisma.notification.deleteMany({});
+    await prisma.notificationPreferences.deleteMany({});
+    await prisma.notificationTemplate.deleteMany({});
 
     await prisma.marketCenterHistory.deleteMany({});
     await prisma.marketCenter.deleteMany({});
@@ -404,13 +407,13 @@ export const seedData = api<void, SeedResponse>(
             t.status === "CREATED"
               ? undefined
               : category?.defaultAssigneeId
-              ? category.defaultAssigneeId
-              : undefined,
+                ? category.defaultAssigneeId
+                : undefined,
 
           createdAt: t.createdAt,
           dueDate: t.dueDate ?? null,
           resolvedAt:
-            t.status === "RESOLVED" ? t.resolvedAt ?? subDays(now, 1) : null,
+            t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null,
         };
         return base;
       }
@@ -449,6 +452,14 @@ export const seedData = api<void, SeedResponse>(
       }
     }
 
+    // await prisma.notificationPreferences.createMany({
+    //   data: defaultNotificationPreferences,
+    // });
+
+    await prisma.notificationTemplate.createMany({
+      data: notificationTemplatesDefault,
+    });
+
     await prisma.comment.createMany({ data: comments });
 
     // Create attachments for some tickets
@@ -462,13 +473,39 @@ export const seedData = api<void, SeedResponse>(
 
       for (let i = 0; i < numAttachments; i++) {
         const fileTypes = [
-          { name: 'contract.pdf', mimeType: 'application/pdf', size: 1024 * 256 },
-          { name: 'property-photo.jpg', mimeType: 'image/jpeg', size: 1024 * 1024 * 2 },
-          { name: 'inspection-report.pdf', mimeType: 'application/pdf', size: 1024 * 512 },
-          { name: 'floorplan.png', mimeType: 'image/png', size: 1024 * 800 },
-          { name: 'disclosure.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024 * 128 },
-          { name: 'hoa-bylaws.pdf', mimeType: 'application/pdf', size: 1024 * 384 },
-          { name: 'budget.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 1024 * 96 },
+          {
+            name: "contract.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 256,
+          },
+          {
+            name: "property-photo.jpg",
+            mimeType: "image/jpeg",
+            size: 1024 * 1024 * 2,
+          },
+          {
+            name: "inspection-report.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 512,
+          },
+          { name: "floorplan.png", mimeType: "image/png", size: 1024 * 800 },
+          {
+            name: "disclosure.docx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            size: 1024 * 128,
+          },
+          {
+            name: "hoa-bylaws.pdf",
+            mimeType: "application/pdf",
+            size: 1024 * 384,
+          },
+          {
+            name: "budget.xlsx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            size: 1024 * 96,
+          },
         ];
 
         const fileInfo = rand(fileTypes);
@@ -481,7 +518,9 @@ export const seedData = api<void, SeedResponse>(
           bucketKey: `${ticket.id}/${timestamp}_${fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
           ticketId: ticket.id,
           uploadedBy: rand([...staff, ...agents]).id,
-          createdAt: new Date(ticket.createdAt.getTime() + Math.random() * 86400000), // Random time after ticket creation
+          createdAt: new Date(
+            ticket.createdAt.getTime() + Math.random() * 86400000
+          ), // Random time after ticket creation
         });
       }
     }

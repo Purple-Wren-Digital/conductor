@@ -128,22 +128,19 @@ export default function MarketCenterDetailView({
 
   const handleSendMarketCenterNotifications = useCallback(
     async ({
+      templateName,
       trigger,
       receivingUser,
       data,
     }: MarketCenterNotificationCallback) => {
       try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Failed to get authentication token");
-        }
         const response = await createAndSendNotification({
-          authToken: token,
+          getToken: getToken,
+          templateName: templateName,
           trigger: trigger,
           receivingUser: receivingUser,
           data: data,
         });
-        console.log("MarketCenterDetail - Notification - Response", response);
       } catch (error) {
         console.error(
           "MarketCenterDetailPage - Unable to generate notifications",

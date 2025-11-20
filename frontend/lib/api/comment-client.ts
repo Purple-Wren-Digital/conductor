@@ -1,6 +1,6 @@
 "use client";
 
-import type { Comment } from "@/lib/types";
+import type { Comment, UsersToNotify } from "@/lib/types";
 import { API_BASE } from "./utils";
 
 async function parseJsonSafe<T>(res: Response): Promise<T> {
@@ -45,6 +45,8 @@ interface ListCommentsResponse {
 
 interface CommentResponse {
   comment: Comment;
+  usersToNotify?: UsersToNotify[];
+  ticketTitle?: string;
 }
 
 class CommentApiClient {

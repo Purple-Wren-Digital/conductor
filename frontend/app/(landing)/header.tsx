@@ -56,7 +56,6 @@ export function Header() {
 
         if (response.ok) {
           const data = await response.json();
-          // console.log("LANDING HEADER: ", data);
           if (data) {
             setCurrentUser(data as PrismaUser);
             return;

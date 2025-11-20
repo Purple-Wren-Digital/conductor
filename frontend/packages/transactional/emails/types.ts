@@ -65,8 +65,8 @@ export type CreatedTicketNotificationProps = {
   ticketTitle: string;
   creatorName: string;
   creatorId: string;
-  createdOn: Date;
-  dueDate?: Date;
+  createdOn: Date | string;
+  dueDate?: Date | string;
   assigneeId?: string;
   assigneeName?: string;
 };
@@ -74,34 +74,23 @@ export type CreatedTicketNotificationProps = {
 export type UpdatedTicketProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedByName: string;
-  editedById: string;
-  changedDetails: ActivityUpdates[];
+  createdOn: Date | string;
+  updatedOn: Date | string;
+  editorName: string;
+  editorId: string;
+  changedDetails: ActivityUpdates[] | string;
 };
 
 export type AssignedTicketNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedByName: string;
-  editedById: string;
+  createdOn: Date | string;
+  updatedOn: Date | string;
+  editorName: string;
+  editorId: string;
   updateType: AssignmentUpdateType;
   currentAssignment: { name: string; id: string } | null;
   previousAssignment: { name: string; id: string } | null;
-};
-
-export type QuickEditTicketNotificationProps = {
-  ticketNumber: string;
-  ticketTitle: string;
-  createdOn: Date;
-  updatedOn: Date;
-  editedByName: string;
-  editedById: string;
-  field: string; // "urgency" or "status"
-  currentData: string;
 };
 
 // COMMENTS
@@ -109,10 +98,9 @@ export type QuickEditTicketNotificationProps = {
 export type NewCommentNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
-  createdOn: Date;
+  createdOn: Date | string;
   commenterName: string;
   commenterId: string;
   comment: string;
   isInternal: boolean;
-  assignee: { name: string; id: string } | null;
 };

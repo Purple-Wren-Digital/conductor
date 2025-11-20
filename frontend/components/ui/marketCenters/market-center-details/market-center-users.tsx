@@ -37,6 +37,7 @@ export default function MarketCenterUsers({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
   handleSendMarketCenterNotifications: ({
+    templateName,
     trigger,
     receivingUser,
     data,
@@ -88,6 +89,7 @@ export default function MarketCenterUsers({
     onSuccess: async (user: PrismaUser) => {
       toast.success(`${user?.name} was removed`);
       await handleSendMarketCenterNotifications({
+        templateName: "Market Center User Removed",
         trigger: "Market Center Assignment",
         receivingUser: {
           id: user?.id,
@@ -146,7 +148,7 @@ export default function MarketCenterUsers({
         </CardHeader>
         <CardContent>
           <div
-            className={`space-y-4 transition-opacity duration-300 
+            className={`space-y-4 transition-opacity duration-300
               ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
           >
             {isLoading && (
