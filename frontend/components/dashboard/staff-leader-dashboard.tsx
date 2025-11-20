@@ -209,7 +209,7 @@ export function StaffLeaderDashboard() {
       ticketsByStatus,
       ticketsByUser: Object.values(ticketsByUser),
     };
-  }, [filteredTickets, teamMembers, tickets]);
+  }, [filteredTickets, teamMembers]);
 
   const teamStats = teamMembers.reduce((acc: any, member: any) => {
     const memberTickets = tickets.filter(
@@ -268,7 +268,7 @@ export function StaffLeaderDashboard() {
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
             Welcome, {clerkUser?.firstName}
           </h1>
           <p className="text-muted-foreground">

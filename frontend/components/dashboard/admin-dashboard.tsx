@@ -157,16 +157,21 @@ export function AdminDashboard() {
           (u: any) => u.id === ticket.assigneeId
         );
 
+        // Force all unassigned tickets under the same key
+        const isUnassigned = !assignee?.marketCenterId;
+        const key = isUnassigned ? "unassigned" : assignee.marketCenterId;
+
         const mcId = assignee?.marketCenterId || "unassigned";
         const marketCenter = marketCenters.find(
-          (mc: MarketCenter) => mc.id === mcId
+          (mc: MarketCenter) => mc.id === key
         );
+        const mcName = isUnassigned
+          ? "Unassigned"
+          : marketCenter?.name || "Name Not Found";
 
-        const mcName = marketCenter?.name || "Unassigned";
-
-        // Initialize a static color index tracker outside reduce (via closure)
+        // Determine color
         let color: string;
-        if (mcName === "Unassigned") {
+        if (isUnassigned) {
           color = chartColors.grey;
         } else {
           if (!colorMap[mcId]) {
@@ -287,7 +292,7 @@ export function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
             Welcome, {clerkUser?.firstName}
           </h1>
           <p className="text-muted-foreground">

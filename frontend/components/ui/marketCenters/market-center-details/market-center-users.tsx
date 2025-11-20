@@ -27,6 +27,7 @@ import MarketCenterUserTable from "@/components/ui/tables/mc-user-table";
 import {
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -413,9 +414,18 @@ export default function MarketCenterUsers({
               </TableHeader>
               <TableBody>
                 {isLoading && (
-                  <p className="text-muted-foreground">
-                    Loading team members...{" "}
-                  </p>
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow
+                        key={i}
+                        className="h-16 w-full bg-muted rounded animate-pulse"
+                      >
+                        <TableCell colSpan={5} className="py-8">
+                          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
                 )}
                 {teamMembers &&
                   teamMembers.length > 0 &&
@@ -451,10 +461,13 @@ export default function MarketCenterUsers({
                     );
                   })}
                 {!isLoading && (!teamMembers || !teamMembers.length) && (
-                  <p className="text-muted-foreground">
-                    No team members found. Contact Admin if you haven&apos;t
-                    been assigned a team.
-                  </p>
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
+                      {" "}
+                      No team members found. Contact Admin if you haven&apos;t
+                      been assigned a team.
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>

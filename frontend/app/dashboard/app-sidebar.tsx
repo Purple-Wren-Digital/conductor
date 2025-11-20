@@ -190,11 +190,14 @@ export function AppSidebar({
             )}
           </SidebarGroup>
 
-          <SideBarNewNotification
-            newestNotification={newestNotification}
-            setNewestNotification={setNewestNotification}
-            markAsReadMutation={markAsReadMutation}
-          />
+          <SidebarGroup>
+            {/* NEW NOTIFICATIONS */}
+            <SideBarNewNotification
+              newestNotification={newestNotification}
+              setNewestNotification={setNewestNotification}
+              markAsReadMutation={markAsReadMutation}
+            />
+          </SidebarGroup>
 
           <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
             {/* SUPPORT/HELP */}
