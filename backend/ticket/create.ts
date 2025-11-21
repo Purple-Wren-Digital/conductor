@@ -6,6 +6,7 @@ import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";
 import { UsersToNotify } from "../notifications/types";
+import { create as createNotification } from "../notifications/create";
 
 export interface CreateTicketRequest {
   title: string;

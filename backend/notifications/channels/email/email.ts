@@ -38,7 +38,7 @@ export async function sendEmailNotification({
 
     const resendClient = getResendClient();
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <onboarding@resend.dev>",
+      from: "Conductor Ticketing <noreply@reply.conductorticket.com>",
       to: [userEmail],
       subject: `Conductor: ${notification.title}`,
       react: emailContent,
