@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useCallback, useMemo, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   Accordion,
   AccordionContent,
@@ -45,14 +45,16 @@ export default function NotificationPreferences({
   const invalidateUserSettingsQuery = queryClient.invalidateQueries({
     queryKey: notificationsQueryKey,
   });
-  const oldNotificationPreferences: NotificationPreferences[] =
-    userSettingsData?.settings?.notificationPreferences ?? [];
+  const oldNotificationPreferences: NotificationPreferences[] = useMemo(
+    () => userSettingsData?.settings?.notificationPreferences ?? [],
+    [userSettingsData]
+  );
 
   const [updateNotificationPreferences, setUpdateNotificationPreferences] =
     useState<NotificationPreferences[] | []>(oldNotificationPreferences);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const formatUpdatedPreferences = (): NotificationPreferences[] => {
+  const formatUpdatedPreferences = useCallback(() => {
     if (
       !updateNotificationPreferences ||
       !updateNotificationPreferences.length
@@ -89,9 +91,15 @@ export default function NotificationPreferences({
       }
     });
     return updatedPreferences;
-  };
+  }, [updateNotificationPreferences, oldNotificationPreferences]);
 
-  const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
+  const hasNotificationPreferenceUpdates = useMemo(() => {
+    return formatUpdatedPreferences();
+  }, [formatUpdatedPreferences]);
+  console.log(
+    "Has Notification Preference Updates:",
+    hasNotificationPreferenceUpdates
+  );
 
   const notificationPermissions =
     updateNotificationPreferences && updateNotificationPreferences.length > 0
