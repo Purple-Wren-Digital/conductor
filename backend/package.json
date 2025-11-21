@@ -10,7 +10,9 @@
     "postinstall": "npx prisma generate --schema=ticket/schema.prisma",
     "migrate": "npx prisma migrate dev --schema=ticket/schema.prisma",
     "studio": "npx prisma studio --schema=ticket/schema.prisma",
-    "seed": "npx prisma seed seed/seed.ts"
+    "seed": "npx prisma seed seed/seed.ts",
+    "reset": "./scripts/reset-dev.sh",
+    "dev": "encore run"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

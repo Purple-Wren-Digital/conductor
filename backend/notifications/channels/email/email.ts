@@ -45,7 +45,7 @@ export async function sendEmailNotification({
 
     const resendClient = getResendClient();
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <noreply@conductorticket.com>",
+      from: "Conductor Ticketing <noreply@reply.conductorticket.com>",
       to: [userEmail],
       replyTo: replyTo, // Dynamic reply-to for ticket emails
       subject: `Conductor: ${notification.title}`,
