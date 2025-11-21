@@ -51,6 +51,7 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory: TicketHistory[];
+  emailMessageId?: string | null;
   todos?: Todo[];
 }
 
