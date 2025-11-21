@@ -53,6 +53,8 @@ export type TicketFormValues = {
   categoryId: string;
   dueDate?: Date;
   assigneeId?: string;
+  marketCenterId?: string;
+  todos: string[];
 };
 
 export type BaseTicketFormProps = {

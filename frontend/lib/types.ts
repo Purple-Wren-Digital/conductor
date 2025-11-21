@@ -125,10 +125,14 @@ export interface TicketSearchParams {
 export interface TicketTemplate {
   id: string;
   name: string;
+  description: string;
   title: string;
   ticketDescription: string;
-  category: string;
-  urgency: Urgency;
+  category?: string;
+  urgency?: Urgency;
+  tags?: string[];
+  isActive: boolean;
+  todos: string[];
 }
 
 export interface BulkAssignRequest {

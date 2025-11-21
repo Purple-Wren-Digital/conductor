@@ -14,6 +14,7 @@ export interface CreateTicketRequest {
   urgency: Urgency;
   dueDate?: Date;
   assigneeId?: string;
+  todos?: string[];
 }
 
 export interface CreateTicketResponse {
@@ -75,6 +76,18 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
             _count: { select: { comments: true } },
           },
         });
+
+        if (req.todos && req.todos.length > 0) {
+          const subtasks = await tx.todo.createMany({
+            data: req.todos?.map((todo) => ({
+              title: todo,
+              ticketId: ticket.id,
+              complete: false,
+              createdById: userContext.userId,
+              createdAt: ticket.createdAt,
+            })),
+          });
+        }
 
         const history = await tx.ticketHistory.create({
           data: {
