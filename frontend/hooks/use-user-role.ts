@@ -8,6 +8,7 @@ export interface UserPermissions {
   canEditAnyTicket: boolean;
   canDeleteTicket: boolean;
   canReassignTicket: boolean;
+  canUnassignTicket: boolean;
   canBulkUpdate: boolean;
   canViewAllTickets: boolean;
   canViewInternalComments: boolean;
@@ -32,6 +33,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canEditAnyTicket: true,
         canDeleteTicket: true,
         canReassignTicket: true,
+        canUnassignTicket: true,
         canBulkUpdate: true,
         canViewAllTickets: true,
         canViewInternalComments: true,
@@ -53,6 +55,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canEditAnyTicket: false,
         canDeleteTicket: true,
         canReassignTicket: true,
+        canUnassignTicket: true,
         canBulkUpdate: true,
         canViewAllTickets: false,
         canViewInternalComments: true,
@@ -74,6 +77,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canEditAnyTicket: false,
         canDeleteTicket: true,
         canReassignTicket: true,
+        canUnassignTicket: false,
         canBulkUpdate: true,
         canViewAllTickets: false,
         canViewInternalComments: true,
@@ -95,6 +99,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canEditAnyTicket: false,
         canDeleteTicket: false,
         canReassignTicket: false,
+        canUnassignTicket: false,
         canBulkUpdate: false,
         canViewAllTickets: false,
         canViewInternalComments: false,
@@ -116,6 +121,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canEditAnyTicket: false,
         canDeleteTicket: false,
         canReassignTicket: false,
+        canUnassignTicket: false,
         canBulkUpdate: false,
         canViewAllTickets: false,
         canViewInternalComments: false,

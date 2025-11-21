@@ -275,8 +275,6 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
-        console.log("Notifying users....", data?.usersToNotify);
-
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({
@@ -601,6 +599,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           </Card>
         </div>
         <div className="lg:col-span-1 space-y-6">
+          {/* ACTIONS */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -670,27 +669,35 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                        <SelectItem
+                          value="Unassigned"
+                          disabled={!permissions?.canUnassignTicket}
+                        >
+                          Unassigned
+                        </SelectItem>
                         {users &&
                           users.length > 0 &&
-                          users.map((u) => {
-                            const staffPermissions =
-                              role === "ADMIN" ||
-                              role === "STAFF_LEADER" ||
-                              (role === "STAFF" &&
-                                !currentUser?.marketCenterId &&
-                                u?.id !== currentUser?.id);
+                          users.map((user) => {
+                            const assignmentPermissions =
+                              permissions?.canReassignTicket &&
+                              (role === "ADMIN" ||
+                                (role === "STAFF_LEADER" &&
+                                  currentUser?.marketCenterId &&
+                                  user?.marketCenterId ===
+                                    currentUser?.marketCenterId) ||
+                                (role === "STAFF" &&
+                                  user?.id === currentUser?.id));
 
                             return (
                               <SelectItem
-                                key={u.id}
-                                value={u.id}
-                                disabled={!staffPermissions}
+                                key={user.id}
+                                value={user.id}
+                                disabled={!assignmentPermissions}
                               >
-                                {u.name}:{" "}
-                                {u?.role
+                                {user.name}:{" "}
+                                {user?.role
                                   ? capitalizeEveryWord(
-                                      u.role.split("_").join(" ")
+                                      user.role.split("_").join(" ")
                                     )
                                   : "Unassigned"}
                               </SelectItem>
