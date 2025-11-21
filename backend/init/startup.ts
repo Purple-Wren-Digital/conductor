@@ -1,8 +1,4 @@
-import { Service } from "encore.dev/service";
 import { prisma } from "../ticket/db";
-
-// Create the init service
-const service = new Service("init");
 
 // This runs when the service starts
 async function initialize() {
@@ -43,5 +39,3 @@ async function initialize() {
 
 // Run initialization on startup
 initialize().catch(console.error);
-
-export default service;

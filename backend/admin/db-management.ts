@@ -36,7 +36,7 @@ export const softReset = api<ResetDatabaseRequest>(
     }
 
     if (!req.confirmReset) {
-      throw APIError.badRequest("Must confirm reset");
+      throw APIError.invalidArgument("Must confirm reset");
     }
 
     console.log("⚠️  SOFT RESET initiated by admin");
@@ -75,6 +75,13 @@ export const softReset = api<ResetDatabaseRequest>(
 );
 
 // Check migration status
+interface MigrationStatusResponse {
+  migrations?: any[];
+  tableCount?: number;
+  status: string;
+  error?: string;
+}
+
 export const migrationStatus = api(
   {
     expose: true,
@@ -82,30 +89,30 @@ export const migrationStatus = api(
     path: "/admin/db/migration-status",
     auth: false,
   },
-  async (): Promise<any> => {
+  async (): Promise<MigrationStatusResponse> => {
     try {
       const migrations = await prisma.$queryRaw`
         SELECT version, dirty, applied_at
         FROM schema_migrations
         ORDER BY version DESC
         LIMIT 10
-      `;
+      ` as any[];
 
       const tableCount = await prisma.$queryRaw`
         SELECT COUNT(*) as count
         FROM information_schema.tables
         WHERE table_schema = 'public'
-      `;
+      ` as any[];
 
       return {
         migrations,
-        tableCount: tableCount[0]?.count || 0,
+        tableCount: parseInt(tableCount[0]?.count || "0"),
         status: "healthy",
       };
     } catch (error) {
       return {
         status: "error",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

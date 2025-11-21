@@ -65,7 +65,7 @@ export const getMigrationStatus = api(
         actualEnums,
       };
     } catch (error) {
-      throw APIError.internal(`Failed to get status: ${error.message}`);
+      throw APIError.internal(`Failed to get status: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
@@ -155,7 +155,7 @@ export const forceSyncMigrations = api<{ adminSecret: string; dryRun?: boolean }
           : "Migrations synced successfully",
       };
     } catch (error) {
-      throw APIError.internal(`Sync failed: ${error.message}`);
+      throw APIError.internal(`Sync failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
@@ -229,7 +229,7 @@ export const cleanupMigrations = api<{
         message: "Cleanup complete",
       };
     } catch (error) {
-      throw APIError.internal(`Cleanup failed: ${error.message}`);
+      throw APIError.internal(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
@@ -281,7 +281,7 @@ export const baselineSchema = api<{ adminSecret: string }>(
         warning: "Future migrations will apply on top of current schema",
       };
     } catch (error) {
-      throw APIError.internal(`Baseline failed: ${error.message}`);
+      throw APIError.internal(`Baseline failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
