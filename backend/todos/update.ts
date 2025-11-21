@@ -1,12 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-// import { getUserContext } from "../auth/user-context";
-// import {
-//   canAccessTicket,
-//   canCreateInternalComments,
-// } from "../auth/permissions";
-// import type { UsersToNotify } from "../notifications/types";
-import type { Todo } from "./types";
+import { getUserContext } from "../auth/user-context";
+import { canAccessTicket } from "../auth/permissions";
 
 export interface UpdateTodoRequest {
   ticketId: string;
@@ -17,27 +12,27 @@ export interface UpdateTodoRequest {
 
 export interface UpdateTodoResponse {
   success: boolean;
-  // TODO:  usersToNotify?: UsersToNotify[];
 }
-// , CreateTodoResponse
+
 export const update = api<UpdateTodoRequest, UpdateTodoResponse>(
   {
     expose: true,
     method: "PUT",
     path: "/tickets/:ticketId/todos/:todoId",
-    auth: false,
+    auth: true,
   },
   async (req) => {
-    // const userContext = await getUserContext();
+    const userContext = await getUserContext();
 
-    // const hasAccess = await canAccessTicket(userContext, req.ticketId);
-    // if (!hasAccess) {
-    //   throw APIError.permissionDenied(
-    //     "You do not have permission to add todos to this ticket"
-    //   );
-    // }
+    const hasAccess = await canAccessTicket(userContext, req.ticketId);
+    if (!hasAccess || !userContext?.userId) {
+      throw APIError.permissionDenied(
+        "You do not have permission to add subtasks to this ticket"
+      );
+    }
     let updateData: any = {
-      updatedById: "f06139b7-bee8-49aa-98de-86a5371118b9",
+      updatedById: userContext.userId,
+      updatedAt: new Date(),
     };
     if (req.title !== undefined) {
       updateData.title = req.title;
