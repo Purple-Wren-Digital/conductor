@@ -51,7 +51,7 @@ EXCEPTION
 END $$;
 
 -- CreateTable
-CREATE TABLE "public"."market_centers" (
+CREATE TABLE IF NOT EXISTS "public"."market_centers" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "name" TEXT NOT NULL,
     "settings" JSONB NOT NULL DEFAULT '{}',
@@ -62,7 +62,7 @@ CREATE TABLE "public"."market_centers" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."users" (
+CREATE TABLE IF NOT EXISTS "public"."users" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "email" TEXT NOT NULL,
     "name" TEXT,
@@ -78,7 +78,7 @@ CREATE TABLE "public"."users" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."tickets" (
+CREATE TABLE IF NOT EXISTS "public"."tickets" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "title" TEXT,
     "description" TEXT,
@@ -98,7 +98,7 @@ CREATE TABLE "public"."tickets" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."comments" (
+CREATE TABLE IF NOT EXISTS "public"."comments" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "content" TEXT NOT NULL,
     "ticket_id" TEXT NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE "public"."comments" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."attachments" (
+CREATE TABLE IF NOT EXISTS "public"."attachments" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "file_name" TEXT NOT NULL,
     "file_size" INTEGER NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE "public"."attachments" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."ticket_categories" (
+CREATE TABLE IF NOT EXISTS "public"."ticket_categories" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -141,7 +141,7 @@ CREATE TABLE "public"."ticket_categories" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."team_invitations" (
+CREATE TABLE IF NOT EXISTS "public"."team_invitations" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "email" TEXT NOT NULL,
     "role" "public"."UserRole" NOT NULL DEFAULT 'AGENT',
@@ -158,7 +158,7 @@ CREATE TABLE "public"."team_invitations" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."TicketHistory" (
+CREATE TABLE IF NOT EXISTS "public"."TicketHistory" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "ticket_id" TEXT NOT NULL,
     "field" TEXT,
@@ -173,7 +173,7 @@ CREATE TABLE "public"."TicketHistory" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."UserHistory" (
+CREATE TABLE IF NOT EXISTS "public"."UserHistory" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "market_center_id" TEXT,
     "field" TEXT,
@@ -189,7 +189,7 @@ CREATE TABLE "public"."UserHistory" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."MarketCenterHistory" (
+CREATE TABLE IF NOT EXISTS "public"."MarketCenterHistory" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "market_center_id" TEXT NOT NULL,
     "field" TEXT,
@@ -204,7 +204,7 @@ CREATE TABLE "public"."MarketCenterHistory" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."UserSettings" (
+CREATE TABLE IF NOT EXISTS "public"."UserSettings" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE "public"."UserSettings" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."NotificationPreferences" (
+CREATE TABLE IF NOT EXISTS "public"."NotificationPreferences" (
     "id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "email" BOOLEAN NOT NULL DEFAULT true,
@@ -229,7 +229,7 @@ CREATE TABLE "public"."NotificationPreferences" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."Notification" (
+CREATE TABLE IF NOT EXISTS "public"."Notification" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "channel" "public"."NotificationChannel" NOT NULL,
@@ -247,7 +247,7 @@ CREATE TABLE "public"."Notification" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."NotificationTemplate" (
+CREATE TABLE IF NOT EXISTS "public"."NotificationTemplate" (
     "id" TEXT NOT NULL,
     "templateName" TEXT NOT NULL,
     "templateDescription" TEXT NOT NULL,
@@ -264,158 +264,218 @@ CREATE TABLE "public"."NotificationTemplate" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "public"."users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "public"."users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_auth0Id_key" ON "public"."users"("clerk_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_auth0Id_key" ON "public"."users"("clerk_id");
 
 -- CreateIndex
-CREATE INDEX "users_market_center_id_idx" ON "public"."users"("market_center_id");
+CREATE INDEX IF NOT EXISTS "users_market_center_id_idx" ON "public"."users"("market_center_id");
 
 -- CreateIndex
-CREATE INDEX "tickets_creator_id_idx" ON "public"."tickets"("creator_id");
+CREATE INDEX IF NOT EXISTS "tickets_creator_id_idx" ON "public"."tickets"("creator_id");
 
 -- CreateIndex
-CREATE INDEX "tickets_assignee_id_idx" ON "public"."tickets"("assignee_id");
+CREATE INDEX IF NOT EXISTS "tickets_assignee_id_idx" ON "public"."tickets"("assignee_id");
 
 -- CreateIndex
-CREATE INDEX "tickets_category_id_idx" ON "public"."tickets"("category_id");
+CREATE INDEX IF NOT EXISTS "tickets_category_id_idx" ON "public"."tickets"("category_id");
 
 -- CreateIndex
-CREATE INDEX "tickets_status_idx" ON "public"."tickets"("status");
+CREATE INDEX IF NOT EXISTS "tickets_status_idx" ON "public"."tickets"("status");
 
 -- CreateIndex
-CREATE INDEX "tickets_urgency_idx" ON "public"."tickets"("urgency");
+CREATE INDEX IF NOT EXISTS "tickets_urgency_idx" ON "public"."tickets"("urgency");
 
 -- CreateIndex
-CREATE INDEX "tickets_created_at_idx" ON "public"."tickets"("created_at");
+CREATE INDEX IF NOT EXISTS "tickets_created_at_idx" ON "public"."tickets"("created_at");
 
 -- CreateIndex
-CREATE INDEX "comments_ticket_id_idx" ON "public"."comments"("ticket_id");
+CREATE INDEX IF NOT EXISTS "comments_ticket_id_idx" ON "public"."comments"("ticket_id");
 
 -- CreateIndex
-CREATE INDEX "comments_created_at_idx" ON "public"."comments"("created_at");
+CREATE INDEX IF NOT EXISTS "comments_created_at_idx" ON "public"."comments"("created_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "attachments_bucket_key_key" ON "public"."attachments"("bucket_key");
+CREATE UNIQUE INDEX IF NOT EXISTS "attachments_bucket_key_key" ON "public"."attachments"("bucket_key");
 
 -- CreateIndex
-CREATE INDEX "attachments_ticket_id_idx" ON "public"."attachments"("ticket_id");
+CREATE INDEX IF NOT EXISTS "attachments_ticket_id_idx" ON "public"."attachments"("ticket_id");
 
 -- CreateIndex
-CREATE INDEX "attachments_uploaded_by_idx" ON "public"."attachments"("uploaded_by");
+CREATE INDEX IF NOT EXISTS "attachments_uploaded_by_idx" ON "public"."attachments"("uploaded_by");
 
 -- CreateIndex
-CREATE INDEX "ticket_categories_market_center_id_idx" ON "public"."ticket_categories"("market_center_id");
+CREATE INDEX IF NOT EXISTS "ticket_categories_market_center_id_idx" ON "public"."ticket_categories"("market_center_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ticket_categories_market_center_id_name_key" ON "public"."ticket_categories"("market_center_id", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "ticket_categories_market_center_id_name_key" ON "public"."ticket_categories"("market_center_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "team_invitations_token_key" ON "public"."team_invitations"("token");
+CREATE UNIQUE INDEX IF NOT EXISTS "team_invitations_token_key" ON "public"."team_invitations"("token");
 
 -- CreateIndex
-CREATE INDEX "team_invitations_token_idx" ON "public"."team_invitations"("token");
+CREATE INDEX IF NOT EXISTS "team_invitations_token_idx" ON "public"."team_invitations"("token");
 
 -- CreateIndex
-CREATE INDEX "team_invitations_expires_at_idx" ON "public"."team_invitations"("expires_at");
+CREATE INDEX IF NOT EXISTS "team_invitations_expires_at_idx" ON "public"."team_invitations"("expires_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "team_invitations_market_center_id_email_key" ON "public"."team_invitations"("market_center_id", "email");
+CREATE UNIQUE INDEX IF NOT EXISTS "team_invitations_market_center_id_email_key" ON "public"."team_invitations"("market_center_id", "email");
 
 -- CreateIndex
-CREATE INDEX "TicketHistory_ticket_id_idx" ON "public"."TicketHistory"("ticket_id");
+CREATE INDEX IF NOT EXISTS "TicketHistory_ticket_id_idx" ON "public"."TicketHistory"("ticket_id");
 
 -- CreateIndex
-CREATE INDEX "TicketHistory_changed_by_id_idx" ON "public"."TicketHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "TicketHistory_changed_by_id_idx" ON "public"."TicketHistory"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX "UserHistory_userId_idx" ON "public"."UserHistory"("userId");
+CREATE INDEX IF NOT EXISTS "UserHistory_userId_idx" ON "public"."UserHistory"("userId");
 
 -- CreateIndex
-CREATE INDEX "UserHistory_changed_by_id_idx" ON "public"."UserHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "UserHistory_changed_by_id_idx" ON "public"."UserHistory"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX "MarketCenterHistory_changed_by_id_idx" ON "public"."MarketCenterHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "MarketCenterHistory_changed_by_id_idx" ON "public"."MarketCenterHistory"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX "MarketCenterHistory_market_center_id_idx" ON "public"."MarketCenterHistory"("market_center_id");
+CREATE INDEX IF NOT EXISTS "MarketCenterHistory_market_center_id_idx" ON "public"."MarketCenterHistory"("market_center_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserSettings_id_key" ON "public"."UserSettings"("id");
+CREATE UNIQUE INDEX IF NOT EXISTS "UserSettings_id_key" ON "public"."UserSettings"("id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserSettings_userId_key" ON "public"."UserSettings"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "UserSettings_userId_key" ON "public"."UserSettings"("userId");
 
 -- CreateIndex
-CREATE INDEX "UserSettings_userId_idx" ON "public"."UserSettings"("userId");
+CREATE INDEX IF NOT EXISTS "UserSettings_userId_idx" ON "public"."UserSettings"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "NotificationPreferences_id_key" ON "public"."NotificationPreferences"("id");
+CREATE UNIQUE INDEX IF NOT EXISTS "NotificationPreferences_id_key" ON "public"."NotificationPreferences"("id");
 
 -- CreateIndex
-CREATE INDEX "NotificationPreferences_userSettingsId_idx" ON "public"."NotificationPreferences"("userSettingsId");
+CREATE INDEX IF NOT EXISTS "NotificationPreferences_userSettingsId_idx" ON "public"."NotificationPreferences"("userSettingsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "NotificationTemplate_templateName_key" ON "public"."NotificationTemplate"("templateName");
+CREATE UNIQUE INDEX IF NOT EXISTS "NotificationTemplate_templateName_key" ON "public"."NotificationTemplate"("templateName");
 
--- AddForeignKey
-ALTER TABLE "public"."users" ADD CONSTRAINT "users_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey (with IF NOT EXISTS handling)
+DO $$ BEGIN
+    ALTER TABLE "public"."users" ADD CONSTRAINT "users_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_assignee_id_fkey" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_assignee_id_fkey" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."ticket_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."ticket_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."tickets" ADD CONSTRAINT "tickets_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."comments" ADD CONSTRAINT "comments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."comments" ADD CONSTRAINT "comments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."comments" ADD CONSTRAINT "comments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."comments" ADD CONSTRAINT "comments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."attachments" ADD CONSTRAINT "attachments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."attachments" ADD CONSTRAINT "attachments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."attachments" ADD CONSTRAINT "attachments_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."attachments" ADD CONSTRAINT "attachments_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."ticket_categories" ADD CONSTRAINT "ticket_categories_default_assignee_id_fkey" FOREIGN KEY ("default_assignee_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."ticket_categories" ADD CONSTRAINT "ticket_categories_default_assignee_id_fkey" FOREIGN KEY ("default_assignee_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."ticket_categories" ADD CONSTRAINT "ticket_categories_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."ticket_categories" ADD CONSTRAINT "ticket_categories_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."team_invitations" ADD CONSTRAINT "team_invitations_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."team_invitations" ADD CONSTRAINT "team_invitations_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."UserSettings" ADD CONSTRAINT "UserSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."UserSettings" ADD CONSTRAINT "UserSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."NotificationPreferences" ADD CONSTRAINT "NotificationPreferences_userSettingsId_fkey" FOREIGN KEY ("userSettingsId") REFERENCES "public"."UserSettings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "public"."NotificationPreferences" ADD CONSTRAINT "NotificationPreferences_userSettingsId_fkey" FOREIGN KEY ("userSettingsId") REFERENCES "public"."UserSettings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "public"."Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
+DO $$ BEGIN
+    ALTER TABLE "public"."Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
