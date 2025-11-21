@@ -330,12 +330,9 @@ export default function AdminTicketList() {
     changedDetails: ActivityUpdates;
   }) => {
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
       const response = await createAndSendNotification({
-        authToken: token,
+        getToken: getToken,
+        templateName: "Ticket Updated",
         trigger: "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
@@ -348,8 +345,8 @@ export default function AdminTicketList() {
             ticketTitle: ticket?.title ?? "No title provided",
             createdOn: ticket?.createdAt,
             updatedOn: ticket?.updatedOn,
-            editedByName: currentUser?.name ?? "Unknown",
-            editedById: currentUser?.id ?? "",
+            editorName: currentUser?.name ?? "Unknown",
+            editorId: currentUser?.id ?? "",
             changedDetails: [changedDetails],
           },
         },

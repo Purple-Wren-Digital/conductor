@@ -21,7 +21,8 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
-  if (userContext.role === "ADMIN") {
+
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
 
@@ -34,9 +35,6 @@ export async function canAccessTicket(
     return false;
   }
 
-  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
-    return true;
-  }
 
   if (
     userContext.role === "AGENT" &&
@@ -144,16 +142,6 @@ export async function canBeNotifiedAboutComments(
     return true;
   }
   return role === "ADMIN" || role === "STAFF" || role === "STAFF_LEADER";
-}
-
-export async function canBeNotifiedAboutComments(
-  role: UserRole,
-  isInternal: boolean
-): Promise<boolean> {
-  if (!isInternal) {
-    return true;
-  }
-  return role === "ADMIN" || role === "STAFF";
 }
 
 export async function canCreateInternalComments(
