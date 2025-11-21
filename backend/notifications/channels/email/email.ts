@@ -36,12 +36,24 @@ export async function sendEmailNotification({
       return;
     }
 
+    // Generate reply-to address if this is a ticket-related notification
+    let replyTo: string | undefined;
+    if (notification.metadata?.ticketId) {
+      // Use subdomain for receiving replies - configure this in Resend dashboard
+      replyTo = `ticket-${notification.metadata.ticketId}@reply.conductorticket.com`;
+    }
+
     const resendClient = getResendClient();
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <onboarding@resend.dev>",
+      from: "Conductor Ticketing <noreply@conductorticket.com>",
       to: [userEmail],
+      replyTo: replyTo, // Dynamic reply-to for ticket emails
       subject: `Conductor: ${notification.title}`,
       react: emailContent,
+      headers: notification.metadata?.ticketId ? {
+        'X-Ticket-ID': String(notification.metadata.ticketId),
+        'X-Entity-Ref': `ticket-${notification.metadata.ticketId}@conductorticket.com`,
+      } : undefined,
     });
 
     if (response.error) {

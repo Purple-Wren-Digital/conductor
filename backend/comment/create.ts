@@ -129,6 +129,10 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
           ticketId: req.ticketId,
           userId: userContext.userId,
           internal: req.internal || false,
+          source: 'WEB',  // Add source field for email tracking
+          metadata: {      // Add metadata field for future email tracking
+            source: 'WEB'
+          },
         },
         include: {
           user: true,
@@ -147,7 +151,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       });
       // TODO: notifications based on user preference
       // TODO: notifications based on
-      const usersToNotify: string[] =
+      const usersToNotifyForNotifications: string[] =
         userContext?.userId && ticket?.creatorId && ticket?.assigneeId
           ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
           : userContext?.userId && ticket?.creatorId
@@ -156,8 +160,8 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
 
       // Notification<Partial>
       const notifications: any[] =
-        usersToNotify && usersToNotify.length > 0
-          ? usersToNotify.map((userId) => {
+        usersToNotifyForNotifications && usersToNotifyForNotifications.length > 0
+          ? usersToNotifyForNotifications.map((userId) => {
               return {
                 userId: userId, // notifications for commenter and assignee
                 channel: "IN_APP",
