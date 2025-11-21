@@ -125,16 +125,12 @@ export interface BulkUpdateRequest {
 }
 
 // COMMENTS
-export type CommentSource = "WEB" | "EMAIL" | "API";
-
 export interface Comment {
   id: string;
   content: string;
   ticketId: string;
   userId: string;
   internal: boolean;
-  source?: CommentSource;
-  metadata?: any; // JSON field for email ID and other metadata
   createdAt: Date;
   updatedAt?: Date;
   user?: PrismaUser;
