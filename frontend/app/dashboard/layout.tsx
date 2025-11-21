@@ -201,7 +201,7 @@ export default function DashboardLayout({
         />
 
         <div className="w-full flex flex-col min-h-screen">
-          <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0  bg-[var(--conductor)] z-10">
+          <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0 bg-[#6D1C24] z-10">
             <SidebarTrigger className="text-muted hover:text-[#A2646A] hover:bg-transparent" />
             <Separator orientation="vertical" className="text-muted" />
 
@@ -210,7 +210,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-12 flex items-center justify-center">
+                <div className="size-10 flex items-center justify-center">
                   <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
                 <div className="hidden md:flex flex-col leading-tight ">

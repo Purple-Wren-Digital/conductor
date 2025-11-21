@@ -38,14 +38,8 @@ import {
   UserEditFormData,
   UserRole,
 } from "@/lib/types";
-import {
-  getRoleBadgeStyle,
-  getRoleColor,
-  getRoleDescription,
-  ROLE_ICONS,
-  roleOptions,
-} from "@/lib/utils";
-import { Building, Edit2, Hash, Mail, User } from "lucide-react";
+import { getRoleDescription, ROLE_ICONS, roleOptions } from "@/lib/utils";
+import { Building, Hash, Mail, User } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchOneUser } from "@/hooks/use-users";
@@ -221,8 +215,9 @@ export default function UserProfileLayout() {
                   <ToolTip
                     trigger={
                       <Badge
-                        variant={getRoleColor(user?.role || "AGENT")}
-                        style={getRoleBadgeStyle(user?.role || "AGENT")}
+                        variant={
+                          (user?.role ? user.role.toLowerCase() : "user") as any
+                        }
                         title={user?.role}
                         className="text-xs px-2 py-0.5"
                       >
@@ -344,7 +339,7 @@ export default function UserProfileLayout() {
                     <SelectItem key={role} value={role}>
                       <div className="flex items-center gap-2">
                         {getRoleIcon(role)}
-                        {role}
+                        {role.split("_").join(" ")}
                       </div>
                     </SelectItem>
                   ))}

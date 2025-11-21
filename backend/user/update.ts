@@ -28,20 +28,23 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const userContext = await getUserContext();
 
     // Permission checks
-    const isEditingSelf = userContext?.userId === req.id;
-    const canModifyUsers = await canManageTeam(userContext);
-    if (!isEditingSelf && !canModifyUsers) {
-      throw APIError.permissionDenied(
-        "Insufficient permissions to update other users"
-      );
-    }
-
     const existingUser = await prisma.user.findUnique({
       where: { id: req.id },
     });
 
     if (!existingUser) {
       throw APIError.notFound("User not found");
+    }
+    const isEditingSelf = userContext.userId === req.id;
+    const canModifyUsers = await canManageTeam(
+      userContext,
+      req.id,
+      req.marketCenterId
+    );
+    if (!canModifyUsers) {
+      throw APIError.permissionDenied(
+        "Insufficient permissions to update other users"
+      );
     }
 
     // Build update data object + user history

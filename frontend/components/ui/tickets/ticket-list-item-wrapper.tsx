@@ -25,25 +25,57 @@ export function TicketListItemWrapper({
   onClick?: () => void;
 }) {
   const { currentUser } = useStore();
-  const { permissions } = useUserRole();
+  const { permissions, role } = useUserRole();
 
   const canEdit = React.useMemo(() => {
-    if (!permissions) return false;
-    if (permissions.canReassignTicket) return true;
-    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id) {
+    if (!role || !permissions) return false;
+
+    if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
+      return true;
+    }
+    if (role === "STAFF_LEADER") {
+      return true;
+    }
+    const isMarketCenter =
+      ticket?.category?.marketCenterId === currentUser?.marketCenterId ||
+      ticket?.creator?.marketCenterId === currentUser?.marketCenterId;
+
+    if (role === "STAFF" && ticket?.assigneeId === currentUser?.id) {
+      return true;
+    }
+
+    if (role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
+      return true;
+    }
+
+    return permissions.canEditAnyTicket;
+  }, [permissions, currentUser, role, ticket]);
+
+  const canClose = React.useMemo(() => {
+    if (!permissions) {
+      return false;
+    }
+    if (role === "ADMIN" || role === "STAFF_LEADER") {
+      return true;
+    }
+
+    const isMarketCenter =
+      ticket?.category?.marketCenterId === currentUser?.marketCenterId ||
+      ticket?.creator?.marketCenterId === currentUser?.marketCenterId;
+
+    if (role === "STAFF" && ticket?.assigneeId === currentUser?.id) {
+      return true;
+    }
+
+    if (role === "STAFF" && !ticket?.assigneeId && isMarketCenter) {
+      return true;
+    }
+
+    if (role === "AGENT" && ticket?.creator?.email === currentUser?.email) {
       return true;
     }
     return false;
-  }, [permissions, currentUser, ticket.assigneeId]);
-
-  const canClose = React.useMemo(() => {
-    if (!permissions) return false;
-    if (currentUser?.role === "ADMIN" || currentUser?.role === "STAFF")
-      return true;
-    if (currentUser?.role === "AGENT" && ticket.assigneeId === currentUser.id)
-      return true;
-    return false;
-  }, [permissions, currentUser, ticket.assigneeId]);
+  }, [permissions, currentUser, role, ticket]);
 
   const showCheckbox = permissions?.canBulkUpdate || false;
 

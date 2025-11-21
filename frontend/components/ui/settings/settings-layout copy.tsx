@@ -63,7 +63,7 @@
 //             <Settings className="h-4 w-4" />
 //             General
 //           </TabsTrigger>
-//           {role === "STAFF" && (
+//           {(role === "STAFF" || role === "STAFF_LEADER") && (
 //             <TabsTrigger value="team" className="flex items-center gap-2">
 //               <Building className="h-4 w-4" />
 //               Team

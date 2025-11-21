@@ -145,7 +145,43 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
           changedById: userContext.userId,
         },
       });
+      // TODO: notifications based on user preference
+      // TODO: notifications based on
+      const usersToNotify: string[] =
+        userContext?.userId && ticket?.creatorId && ticket?.assigneeId
+          ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
+          : userContext?.userId && ticket?.creatorId
+            ? [userContext?.userId, ticket?.creatorId]
+            : [];
 
+      // Notification<Partial>
+      const notifications: any[] =
+        usersToNotify && usersToNotify.length > 0
+          ? usersToNotify.map((userId) => {
+              return {
+                userId: userId, // notifications for commenter and assignee
+                channel: "IN_APP",
+                category: "ACTIVITY",
+                type: "Ticket New Comment",
+                title: `${
+                  comment?.user && comment?.user?.name
+                    ? `${comment.user.name} commented on`
+                    : "New comment on"
+                } ticket: "${ticket?.title}"`,
+                body: comment?.content,
+                data: {
+                  ticketId: ticket?.id,
+                  commentId: comment?.id,
+                },
+              };
+            })
+          : [];
+      const notificationData = notifications.filter(Boolean);
+      if (notificationData && notificationData.length > 0) {
+        const notification = await p.notification.createMany({
+          data: notificationData,
+        });
+      }
       return { comment, history };
     });
 

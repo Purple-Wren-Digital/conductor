@@ -2,7 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canModifyTicket } from "../auth/permissions";
+import { canModifyTicket, canReassignTicket } from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";
 import { TicketHistory } from "@prisma/client";
 import { UsersToNotify } from "../notifications/types";
@@ -41,6 +41,11 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       );
     }
 
+    const canAssign = await canReassignTicket({
+      userContext: userContext,
+      newAssigneeId: req?.assigneeId,
+    });
+
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
       include: { creator: true, assignee: true, category: true },
@@ -59,7 +64,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
     // Check if assignee exists and is in the same market center for STAFF users
     let newAssignee = null;
-    if (req.assigneeId && !unassignTicket) {
+    if (canAssign && req.assigneeId && !unassignTicket) {
       const user = await prisma.user.findUnique({
         where: { id: req.assigneeId },
       });
@@ -69,13 +74,10 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       newAssignee = user;
     }
 
-    // For STAFF, ensure they can only assign to users in their market center
     if (
-      userContext?.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      newAssignee &&
-      newAssignee?.marketCenterId &&
-      newAssignee?.marketCenterId !== userContext.marketCenterId
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      req.assigneeId &&
+      !canAssign
     ) {
       throw APIError.permissionDenied(
         "You can only assign tickets to users in your team"
@@ -194,7 +196,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           ? "No name listed"
           : "Unassigned";
 
-    if (unassignTicket && !!oldTicket?.assigneeId) {
+    if (canAssign && unassignTicket && !!oldTicket?.assigneeId) {
       updateData.assigneeId = null;
       updateData.status = "UNASSIGNED";
       usersToNotify.push({
@@ -227,7 +229,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         }
       );
     }
-    if (reassignTicket && !!newAssignee?.id) {
+    if (canAssign && reassignTicket && !!newAssignee?.id) {
       updateData.assigneeId = req.assigneeId;
       updateData.status = "ASSIGNED";
       usersToNotify.push(
@@ -273,7 +275,12 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
-    } else if (!unassignTicket && !reassignTicket && !!oldTicket?.assigneeId) {
+    } else if (
+      canAssign &&
+      !unassignTicket &&
+      !reassignTicket &&
+      !!oldTicket?.assigneeId
+    ) {
       usersToNotify.push({
         id: oldTicket?.assigneeId,
         name: oldTicket?.assignee?.name ?? "No name listed",

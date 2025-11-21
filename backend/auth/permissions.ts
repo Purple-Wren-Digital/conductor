@@ -1,6 +1,7 @@
 import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { prisma } from "../ticket/db";
+import { Ticket } from "../ticket/types";
 import { UserRole } from "../user/types";
 
 export async function requireRole(
@@ -20,45 +21,37 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
-  if (userContext.role === "ADMIN") {
+
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { creator: true },
+    include: { creator: true, assignee: true, category: true },
   });
 
   if (!ticket) {
     return false;
   }
 
-  if (userContext.role === "AGENT") {
-    return ticket.assigneeId === userContext.userId;
+
+  if (
+    userContext.role === "AGENT" &&
+    ticket?.creatorId === userContext?.userId
+  ) {
+    return true;
   }
 
-  if (userContext.role === "STAFF") {
-    if (!userContext.marketCenterId) {
-      return false;
-    }
-
-    if (
-      ticket.creator &&
-      ticket.creator.marketCenterId === userContext.marketCenterId
-    ) {
-      return true;
-    }
-
-    if (ticket.assigneeId) {
-      const assignee = await prisma.user.findUnique({
-        where: { id: ticket.assigneeId },
-      });
-      if (assignee && assignee.marketCenterId === userContext.marketCenterId) {
-        return true;
-      }
-    }
-
-    return false;
+  if (
+    userContext.role === "STAFF" &&
+    (ticket?.category?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.creator?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.creatorId === userContext?.userId ||
+      ticket?.assignee?.marketCenterId === userContext?.marketCenterId ||
+      ticket?.assigneeId === userContext?.userId)
+  ) {
+    return true;
   }
 
   return false;
@@ -76,10 +69,10 @@ export async function canModifyTicket(
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
     });
-    return ticket?.assigneeId === userContext.userId;
+    return ticket?.creatorId === userContext.userId;
   }
 
-  if (userContext.role === "STAFF") {
+  if (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") {
     return await canAccessTicket(userContext, ticketId);
   }
 
@@ -93,35 +86,52 @@ export async function canViewTicket(
   return canAccessTicket(userContext, ticketId);
 }
 
-export async function canUpdateTicket(
-  userContext: UserContext,
-  ticketId: string
-): Promise<boolean> {
-  return canModifyTicket(userContext, ticketId);
-}
-
 export async function canCreateTicket(
-  userContext: UserContext
+  userContext?: UserContext
 ): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return userContext && userContext?.role ? true : false;
 }
 
 export async function canDeleteTicket(
-  userContext: UserContext
+  userContext: UserContext,
+  ticketId: string
 ): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return await canAccessTicket(userContext, ticketId);
 }
 
-export async function canReassignTicket(
-  userContext: UserContext
-): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+export async function canReassignTicket({
+  userContext,
+  newAssigneeId,
+}: {
+  userContext: UserContext;
+  newAssigneeId?: string;
+}): Promise<boolean> {
+  console.log("canReassignTicket", { userContext, newAssigneeId });
+  if (!newAssigneeId || !userContext?.role || userContext?.role === "AGENT") {
+    return false;
+  }
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
+    return true;
+  }
+
+  if (
+    userContext.role === "STAFF" &&
+    (newAssigneeId === userContext?.userId || newAssigneeId === "unassigned")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function canViewInternalComments(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return (
+    userContext.role === "STAFF" ||
+    userContext.role === "STAFF_LEADER" ||
+    userContext.role === "ADMIN"
+  );
 }
 
 export async function canBeNotifiedAboutComments(
@@ -131,19 +141,42 @@ export async function canBeNotifiedAboutComments(
   if (!isInternal) {
     return true;
   }
-  return role === "ADMIN" || role === "STAFF";
+  return role === "ADMIN" || role === "STAFF" || role === "STAFF_LEADER";
 }
 
 export async function canCreateInternalComments(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "STAFF" || userContext.role === "ADMIN";
+  return (
+    userContext.role === "STAFF" ||
+    userContext.role === "STAFF_LEADER" ||
+    userContext.role === "ADMIN"
+  );
 }
 
 export async function canManageTeam(
-  userContext: UserContext
+  userContext: UserContext,
+  userId?: string,
+  marketCenterId?: string
 ): Promise<boolean> {
-  return userContext.role === "ADMIN" || userContext.role === "STAFF";
+  if (userContext?.role === "ADMIN") {
+    return true;
+  }
+
+  if (userContext?.role && userContext?.userId === userId) {
+    return true;
+  }
+
+  if (
+    (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+    userContext?.marketCenterId &&
+    marketCenterId &&
+    marketCenterId === userContext.marketCenterId
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function canChangeUserRoles(
@@ -159,45 +192,73 @@ export async function getTicketScopeFilter(
   if (userContext.role === "ADMIN" && !marketCenterId) {
     return {};
   }
-  if (userContext.role === "ADMIN" && marketCenterId) {
+  if (userContext.role === "ADMIN" && !!marketCenterId) {
     return {
       OR: [
         {
-          creator: {
-            marketCenterId: marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { category: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
         {
-          assignee: {
-            marketCenterId: marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { creator: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
+        { category: { marketCenterId: userContext.marketCenterId } },
+        { creator: { marketCenterId: marketCenterId } },
+        { assignee: { marketCenterId: marketCenterId } },
       ],
     };
   }
 
-  if (userContext.role === "STAFF" && userContext?.marketCenterId) {
+  if (userContext.role === "STAFF_LEADER" && !!userContext?.marketCenterId) {
     return {
       OR: [
         {
-          creator: {
-            marketCenterId: userContext.marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { category: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
         {
-          assignee: {
-            marketCenterId: userContext.marketCenterId,
-          },
+          AND: [
+            { assigneeId: null },
+            { creator: { marketCenterId: userContext.marketCenterId } },
+          ],
         },
+        { creator: { marketCenterId: userContext.marketCenterId } },
+        { assignee: { marketCenterId: userContext.marketCenterId } },
+        { category: { marketCenterId: userContext.marketCenterId } },
+      ],
+    };
+  }
+
+  if (userContext.role === "STAFF" && !!userContext?.marketCenterId) {
+    return {
+      OR: [
+        { AND: [{ assigneeId: null }, { creatorId: userContext.userId }] },
+        { assigneeId: userContext.userId },
       ],
     };
   }
 
   if (
-    userContext.role === "AGENT" ||
-    (userContext.role === "STAFF" && !userContext?.marketCenterId)
+    (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+    !userContext?.marketCenterId
   ) {
-    return { assigneeId: userContext.userId };
+    return {
+      OR: [
+        { assigneeId: userContext.userId },
+        { creatorId: userContext.userId },
+      ],
+    };
+  }
+
+  if (userContext.role === "AGENT") {
+    return { creatorId: userContext.userId };
   }
 
   return { id: "impossible-id" };
@@ -209,7 +270,10 @@ export async function getUserScopeFilter(userContext: UserContext) {
     return {};
   }
 
-  if (userContext.role === "STAFF" && userContext.marketCenterId) {
+  if (
+    (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+    userContext?.marketCenterId
+  ) {
     return { marketCenterId: userContext.marketCenterId };
   }
 
@@ -262,7 +326,10 @@ export async function marketCenterScopeFilter(
     return { id: marketCenterId };
   }
 
-  if (userContext.role === "STAFF" && userContext?.marketCenterId) {
+  if (
+    (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+    userContext?.marketCenterId
+  ) {
     return { id: userContext.marketCenterId };
   }
 

@@ -82,6 +82,7 @@ import type {
   TicketWithUpdatedAt,
   UsersResponse,
   TicketCategory,
+  UsersToNotify,
 } from "@/lib/types";
 import {
   useQuery,
@@ -89,12 +90,17 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { createAndSendNotification } from "@/lib/utils/notifications";
+import { ActivityUpdates } from "@/packages/transactional/emails/types";
+import { toast } from "sonner";
 
 export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = useUserRole();
   const { currentUser } = useStore();
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -235,7 +241,7 @@ export default function AdminTicketList() {
   );
   const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
 
-  const queryInvalidator = () =>
+  const adminTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
 
   const bulkAssignMutation = useMutation({
@@ -258,10 +264,10 @@ export default function AdminTicketList() {
       if (!res.ok) throw new Error("Failed to bulk assign tickets");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSelectedTickets([]);
       setIsAssignModalOpen(false);
-      queryInvalidator();
+      await adminTicketsQueryInvalidator();
     },
   });
 
@@ -292,32 +298,11 @@ export default function AdminTicketList() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSelectedTickets([]);
       setIsUpdateStatusModalOpen(false);
-      queryInvalidator();
+      await adminTicketsQueryInvalidator();
     },
-  });
-
-  const closeTicketMutation = useMutation({
-    mutationFn: async (ticketId: string) => {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
-      });
-      if (!res.ok) throw new Error("Failed to close ticket");
-      return res.json();
-    },
-    onSuccess: queryInvalidator,
   });
 
   const handleSelectTicket = (ticketId: string, checked: boolean) => {
@@ -328,6 +313,118 @@ export default function AdminTicketList() {
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedTickets(checked ? tickets.map((t) => t.id) : []);
+  };
+
+  const handleSendTicketNotifications = async ({
+    ticket,
+    userToNotify,
+    changedDetails,
+  }: {
+    ticket: {
+      id: string;
+      title: string;
+      createdAt: Date;
+      updatedOn: Date;
+    };
+    userToNotify: UsersToNotify;
+    changedDetails: ActivityUpdates;
+  }) => {
+    try {
+      const response = await createAndSendNotification({
+        getToken: getToken,
+        templateName: "Ticket Updated",
+        trigger: "Ticket Updated",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          updatedTicket: {
+            ticketNumber: ticket.id,
+            ticketTitle: ticket?.title ?? "No title provided",
+            createdOn: ticket?.createdAt,
+            updatedOn: ticket?.updatedOn,
+            editorName: currentUser?.name ?? "Unknown",
+            editorId: currentUser?.id ?? "",
+            changedDetails: [changedDetails],
+          },
+        },
+      });
+    } catch (error) {
+      console.error(
+        "AgentTicketList - Unable to generate notifications for closed ticket:",
+        error
+      );
+    }
+  };
+
+  const closeTicketMutation = useMutation({
+    mutationFn: async (ticket: Ticket) => {
+      setIsLoading(true);
+      if (!ticket || !ticket?.id) {
+        throw new Error("Ticket ID is required to close a ticket");
+      }
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(`${API_BASE}/tickets/close/${ticket.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to close ticket");
+      const data = await res.json();
+      if (
+        !data ||
+        !data?.usersToNotify ||
+        !data?.usersToNotify.length ||
+        !data?.changedDetails
+      )
+        throw new Error("No data returned from close ticket");
+      return { ...data, ticket: ticket };
+    },
+    onSuccess: async (data: {
+      usersToNotify: UsersToNotify[];
+      changedDetails: ActivityUpdates;
+      ticket: Ticket;
+    }) => {
+      const { usersToNotify, changedDetails, ticket } = data;
+      await Promise.all(
+        usersToNotify.map((user) =>
+          handleSendTicketNotifications({
+            ticket: {
+              id: ticket.id,
+              title: ticket?.title ?? "No title provided",
+              createdAt: ticket.createdAt,
+              updatedOn: new Date(),
+            },
+            userToNotify: user,
+            changedDetails,
+          })
+        )
+      );
+
+      toast.success("Ticket closed successfully.");
+    },
+    onError: (error) => {
+      console.error("Failed to close ticket:", error);
+      toast.error("Error: Failed to close ticket. Please try again.");
+    },
+    onSettled: async () => {
+      await adminTicketsQueryInvalidator();
+      setIsLoading(false);
+    },
+  });
+
+  const handleQuickClose = (e: React.MouseEvent, ticket: Ticket) => {
+    e.stopPropagation();
+    closeTicketMutation.mutate(ticket);
   };
 
   const clearFilters = () => {
@@ -364,11 +461,6 @@ export default function AdminTicketList() {
     e.stopPropagation();
     setEditingTicket(ticket);
     setIsEditOpen(true);
-  };
-
-  const handleQuickClose = (e: React.MouseEvent, ticketId: string) => {
-    e.stopPropagation();
-    closeTicketMutation.mutate(ticketId);
   };
 
   const handleTicketClick = (ticket: Ticket) => {
@@ -529,7 +621,7 @@ export default function AdminTicketList() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:row-span-2">
                     <Label>Status</Label>
                     <div className="flex flex-wrap gap-2">
                       {statusOptions.map((status) => (
@@ -617,42 +709,9 @@ export default function AdminTicketList() {
                     </Popover>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Urgency</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {urgencyOptions.map((urgency) => (
-                        <div
-                          key={urgency}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`urgency-${urgency}`}
-                            checked={selectedUrgencies.includes(urgency)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedUrgencies((prev) =>
-                                checked
-                                  ? [...prev, urgency]
-                                  : prev.filter((u) => u !== urgency)
-                              );
-                              setCurrentPage(1);
-                            }}
-                          />
-                          <Label
-                            htmlFor={`urgency-${urgency}`}
-                            className="text-sm font-normal"
-                          >
-                            <Badge variant={urgency.toLowerCase() as any}>
-                              {urgency}
-                            </Badge>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                   {selectedMarketCenterId &&
                     selectedMarketCenterId !== "all" && (
-                      <div className="space-y-2 lg:col-span-3">
+                      <div className="space-y-2 lg:col-span-2 lg:row-span-2">
                         <Label>Category</Label>
                         <RadioGroup
                           value={selectedCategory}
@@ -695,6 +754,40 @@ export default function AdminTicketList() {
                         </RadioGroup>
                       </div>
                     )}
+
+                  <div className="space-y-2">
+                    <Label>Urgency</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {urgencyOptions.map((urgency) => (
+                        <div
+                          key={urgency}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`urgency-${urgency}`}
+                            checked={selectedUrgencies.includes(urgency)}
+                            onCheckedChange={(v: boolean | "indeterminate") => {
+                              const checked = v === true;
+                              setSelectedUrgencies((prev) =>
+                                checked
+                                  ? [...prev, urgency]
+                                  : prev.filter((u) => u !== urgency)
+                              );
+                              setCurrentPage(1);
+                            }}
+                          />
+                          <Label
+                            htmlFor={`urgency-${urgency}`}
+                            className="text-sm font-normal"
+                          >
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </Card>
             )}
@@ -865,7 +958,7 @@ export default function AdminTicketList() {
                           handleQuickEdit(e, ticket)
                         }
                         onClose={(e: React.MouseEvent) =>
-                          handleQuickClose(e, ticket.id)
+                          handleQuickClose(e, ticket)
                         }
                         onClick={() => handleTicketClick(ticket)}
                       />
@@ -1034,6 +1127,7 @@ export default function AdminTicketList() {
 
       {/* Quick Edit Modal */}
       <EditTicketForm
+        disabled={isLoading}
         ticket={editingTicket}
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
@@ -1056,7 +1150,7 @@ export default function AdminTicketList() {
           }
           setIsEditOpen(false);
           setEditingTicket(null);
-          await queryInvalidator();
+          await adminTicketsQueryInvalidator();
         }}
       />
 
@@ -1066,7 +1160,7 @@ export default function AdminTicketList() {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={async (created) => {
           setIsCreateOpen(false);
-          await queryInvalidator();
+          await adminTicketsQueryInvalidator();
         }}
       />
     </>

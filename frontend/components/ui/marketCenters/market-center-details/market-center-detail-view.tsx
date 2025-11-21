@@ -248,7 +248,8 @@ export default function MarketCenterDetailView({
         <TabsContent value="team">
           {marketCenter && (
             <MarketCenterUsers
-              marketCenter={marketCenter}
+              marketCenterId={marketCenter.id}
+              marketCenterName={marketCenter.name}
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
               invalidateMarketCenter={invalidateMarketCenter}
@@ -263,6 +264,7 @@ export default function MarketCenterDetailView({
           {marketCenter && (
             <MarketCenterTicketCategories
               marketCenter={marketCenter}
+              // marketCenterId={marketCenter.id}
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
               invalidateMarketCenter={invalidateMarketCenter}

@@ -1,9 +1,8 @@
-import { api, Query } from "encore.dev/api";
+import { api, APIError, Query } from "encore.dev/api";
 import { prisma } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
-import { getTicketScopeFilter } from "../auth/permissions";
 
 export interface SearchTicketsRequest {
   query?: Query<string>;
@@ -39,60 +38,93 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    console.log("User CONTEXT:", userContext);
 
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
-    // let scopeFilter = await getTicketScopeFilter(userContext);
+    let where: Prisma.TicketWhereInput = {};
 
-    let where: any = {};
+    switch (userContext.role) {
+      case "STAFF":
+      case "STAFF_LEADER":
+        if (!userContext.marketCenterId) {
+          where = {
+            OR: [
+              { assigneeId: userContext.userId },
+              { creatorId: userContext.userId },
+            ],
+          };
+        } else {
+          const baseScope: Prisma.TicketWhereInput = {
+            OR: [
+              { category: { marketCenterId: userContext.marketCenterId } },
+              { creator: { marketCenterId: userContext.marketCenterId } },
+              { assignee: { marketCenterId: userContext.marketCenterId } },
+            ],
+          };
 
-    if (userContext.role === "AGENT") {
-      where.assigneeId = userContext.userId;
-    }
+          where = baseScope;
 
-    if (userContext.role === "STAFF" && !userContext?.marketCenterId) {
-      where.assigneeId = userContext.userId;
-      where.creatorId = userContext.userId;
-    }
+          if (req.creatorId) {
+            where.AND = [{ creatorId: req.creatorId }];
+          }
 
-    if (userContext.role === "STAFF" && userContext?.marketCenterId) {
-      where = {
-        OR: [
-          {
-            category: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-          {
-            creator: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-          {
-            assignee: {
-              marketCenterId: userContext.marketCenterId,
-            },
-          },
-        ],
-      };
-    }
+          if (req.assigneeId) {
+            where.AND = [
+              {
+                assigneeId:
+                  req.assigneeId === "Unassigned" ? null : req.assigneeId,
+              },
+            ];
+          }
 
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
-      where = {
-        OR: [
-          {
-            creator: {
-              marketCenterId: req.marketCenterId,
+          if (req.categoryId && req.categoryId.length > 0) {
+            where.AND = [{ categoryId: { in: req.categoryId } }];
+          }
+        }
+        break;
+
+      case "AGENT":
+        const baseScopeAgent: Prisma.TicketWhereInput = {
+          creatorId: userContext.userId,
+        };
+        where = baseScopeAgent;
+
+        if (req.creatorId && req.creatorId !== "none") {
+          where.AND = [{ creatorId: req.creatorId }];
+        }
+        if (req.assigneeId) {
+          where.AND = [
+            {
+              assigneeId:
+                req.assigneeId === "Unassigned" ? null : req.assigneeId,
             },
-          },
-          {
-            assignee: {
-              marketCenterId: req.marketCenterId,
+          ];
+        }
+        break;
+
+      case "ADMIN":
+        const baseScopeAdmin: Prisma.TicketWhereInput = {};
+
+        where = baseScopeAdmin;
+
+        if (req.creatorId) {
+          where.AND = [{ creatorId: req.creatorId }];
+        }
+
+        if (req.assigneeId) {
+          where.AND = [
+            {
+              assigneeId:
+                req.assigneeId === "Unassigned" ? null : req.assigneeId,
             },
-          },
-        ],
-      };
+          ];
+        }
+        break;
+
+      default:
+        throw APIError.permissionDenied("User not permitted to search tickets");
     }
 
     if (!req.status || (Array.isArray(req.status) && req.status.length === 0)) {
@@ -104,7 +136,7 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.urgency && req.urgency.length > 0) {
       where.urgency = { in: req.urgency as Urgency[] };
     }
-    if (req.categoryId) where.categoryId = { in: req.categoryId };
+    if (req.categoryId) where.AND = [{ categoryId: { in: req.categoryId } }];
 
     if (req.query) {
       const searchCondition = {

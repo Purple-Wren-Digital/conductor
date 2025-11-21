@@ -2,7 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { ticketAttachments } from "./bucket";
 import { prisma } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
-import { canUpdateTicket } from "../auth/permissions";
+import { canModifyTicket } from "../auth/permissions";
 
 export interface DeleteAttachmentRequest {
   attachmentId: string;
@@ -42,7 +42,10 @@ export const deleteAttachment = api<
       }
 
       // Check if user has permission to update the ticket (only those who can update can delete attachments)
-      const hasPermission = await canUpdateTicket(userContext, attachment.ticketId);
+      const hasPermission = await canModifyTicket(
+        userContext,
+        attachment.ticketId
+      );
       if (!hasPermission) {
         // Also allow the uploader to delete their own attachments
         if (attachment.uploadedBy !== userContext.userId) {

@@ -42,18 +42,9 @@ export const seedData = api<void, SeedResponse>(
     // 3-5 Market Centers
     const mc = await prisma.marketCenter.createManyAndReturn({
       data: [
-        {
-          name: "Keller Williams Downtown",
-          settings: {},
-        },
-        {
-          name: "Keller Williams Simpsonville",
-          settings: {},
-        },
-        {
-          name: "Keller Williams Travelers Rest",
-          settings: {},
-        },
+        { name: "Downtown Greenville" },
+        { name: "Simpsonville" },
+        { name: "Travelers Rest" },
       ],
     });
 
@@ -69,7 +60,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "bob.staff@kw.com",
           name: "Bob Smith",
-          role: "STAFF",
+          role: "STAFF_LEADER",
           clerkId: "seed-02",
           marketCenterId: mc[0]?.id,
         },
@@ -97,7 +88,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "frank.agent@kw.com",
           name: "Frank Miller",
-          role: "AGENT",
+          role: "STAFF",
           clerkId: "seed-06",
           marketCenterId: mc[1]?.id,
         },
@@ -111,7 +102,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "henry.agent@kw.com",
           name: "Henry Clark",
-          role: "AGENT",
+          role: "STAFF_LEADER",
           clerkId: "seed-08",
           marketCenterId: mc[2]?.id,
         },
@@ -125,7 +116,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "jack.agent@kw.com",
           name: "Jack Lee",
-          role: "AGENT",
+          role: "STAFF_LEADER",
           clerkId: "seed-10",
           marketCenterId: mc[2]?.id,
         },
@@ -136,56 +127,59 @@ export const seedData = api<void, SeedResponse>(
           clerkId: "seed-11",
           marketCenterId: undefined,
         },
+        {
+          email: "lawrence.david@kw.com",
+          name: "Larry David",
+          role: "AGENT",
+          clerkId: "seed-12",
+          marketCenterId: undefined,
+        },
+        {
+          email: "m.organa@kw.com",
+          name: "Morgan Organa",
+          role: "ADMIN",
+          clerkId: "seed-13",
+          marketCenterId: undefined,
+        },
       ],
     });
     const agents = createdUsers.filter((u) => u.role === "AGENT");
-    const staff = createdUsers.filter((u) => u.role === "STAFF");
+    const staff = createdUsers.filter(
+      (u) => u.role === "STAFF" || u.role === "STAFF_LEADER"
+    )!;
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
 
     // Create User Default settings
-    // const setUpUserSettings = createdUsers.forEach(async (user, index) => {
-    //   await prisma.user.update({
-    //     where: { id: user?.id },
-    //     data: {
-    //       userSettings: {
-    //         create: {
-    //           notificationPreferences: {
-    //             create: defaultNotificationPreferences,
-    //           },
-    //         },
-    //       },
-    //     },
-    //     include: {
-    //       userSettings: true,
-    //     },
-    //   });
+    createdUsers.forEach(async (user, index) => {
+      await prisma.user.update({
+        where: { id: user?.id },
+        data: {
+          userSettings: {
+            create: {
+              notificationPreferences: {
+                create: defaultNotificationPreferences,
+              },
+            },
+          },
+        },
+        include: {
+          userSettings: true,
+        },
+      });
 
-    //   await prisma.notification.create({
-    //     data: {
-    //       userId: user?.id,
-    //       channel: "IN_APP",
-    //       category: "ACCOUNT",
-    //       priority: "HIGH",
-    //       type: "General",
-    //       title: "Welcome to Conductor",
-    //       body: "Take a moment to look around and get familiar",
-    //       deliveredAt: new Date(),
-    //     },
-    //   });
-
-    // await prisma.notification.create({
-    //   data: {
-    //     userId: user?.id,
-    //     channel: "EMAIL",
-    //     category: "ACCOUNT",
-    //     priority: "HIGH",
-    //     type: "General",
-    //     title: "Welcome to Conductor",
-    //     body: "Take a moment to look around and get familiar",
-    //     deliveredAt: new Date(),
-    //   },
-    // });
-    // });
+      await prisma.notification.create({
+        data: {
+          userId: user?.id,
+          channel: "IN_APP",
+          category: "ACCOUNT",
+          priority: "HIGH",
+          type: "General",
+          title: "Welcome to Conductor",
+          body: "Hello " + user.name + ", we're excited to have you on board.",
+          deliveredAt: new Date(),
+        },
+      });
+    });
 
     // Create ticket categories
     const categoryNames = [
@@ -234,7 +228,7 @@ export const seedData = api<void, SeedResponse>(
       {
         title: "Contract deadline for 123 Maple St",
         description:
-          "Financing contingency expires tomorrow, awaiting appraisal report.",
+          "Financing contingency expires tomorrow, awaiting appraisal report",
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
         categoryName: "Contracts",
@@ -243,7 +237,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Showing feedback for 456 Oak Ave",
-        description: "Client viewed property; need follow-up on feedback.",
+        description: "Client viewed property; need follow-up on feedback",
         status: "AWAITING_RESPONSE",
         urgency: "MEDIUM",
         categoryName: "Showing Request",
@@ -252,7 +246,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Listing photos for 789 Pine Ln",
-        description: "Photos completed and ready for MLS upload.",
+        description: "Photos completed and ready for MLS upload",
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
@@ -261,8 +255,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Client complaint about agent",
-        description:
-          "Mr. Smith reports unresponsive agent on inspection issue.",
+        description: "Mr. Smith reports unresponsive agent on inspection issue",
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
         categoryName: "Compliance",
@@ -271,7 +264,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Schedule pest inspection for 333 Birch Rd",
-        description: "Agreement requires pest inspection within 5 days.",
+        description: "Agreement requires pest inspection within 5 days",
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
@@ -281,7 +274,7 @@ export const seedData = api<void, SeedResponse>(
       {
         title: "Document Request: HOA bylaws",
         description:
-          "Buyer for 555 Cedar Ct requested HOA bylaws and statements.",
+          "Buyer for 555 Cedar Ct requested HOA bylaws and statements",
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Documents",
@@ -289,7 +282,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Price reduction update for 999 Spruce Ave",
-        description: "Update MLS from $450,000 to $435,000.",
+        description: "Update MLS from $450,000 to $435,000",
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
@@ -298,7 +291,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Repair: Leaky faucet at 111 Willow Way",
-        description: "Tenant reports leak in master bathroom faucet.",
+        description: "Tenant reports leak in master bathroom faucet",
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Maintenance",
@@ -306,7 +299,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Commission split clarification",
-        description: "Clarify co-agent commission split for 888 Redwood Dr.",
+        description: "Clarify co-agent commission split for 888 Redwood Dr",
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
@@ -314,16 +307,17 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Marketing for Open House at 777 Magnolia Blvd",
-        description: "Need flyers, social posts, and email blast.",
-        status: "AWAITING_RESPONSE",
+        description: "Need flyers, social posts, and email blast",
+        status: "RESOLVED",
         urgency: "HIGH",
         categoryName: "Marketing",
         createdAt: subDays(now, 3),
         dueDate: addDays(now, 2),
+        resolvedAt: addDays(now, 1),
       },
       {
         title: "Compliance check: Advertising copy",
-        description: "Review 'Find Your Dream Home' campaign for compliance.",
+        description: "Review 'Find Your Dream Home' campaign for compliance",
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
@@ -331,7 +325,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Onboard new agent Sarah Jenkins",
-        description: "Prepare welcome kit, access, and training schedule.",
+        description: "Prepare welcome kit, access, and training schedule",
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Onboarding",
@@ -340,7 +334,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Update website with sold properties",
-        description: "Mark Main, Broad, and Church properties as sold.",
+        description: "Mark Main, Broad, and Church properties as sold",
         status: "RESOLVED",
         urgency: "LOW",
         categoryName: "Marketing",
@@ -349,7 +343,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Schedule appraisal for 222 Elm St",
-        description: "Appraisal needed within 7 days per lender.",
+        description: "Appraisal needed within 7 days per lender",
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Appraisals",
@@ -358,7 +352,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Client question about loan options",
-        description: "Provide breakdown of FHA vs Conventional.",
+        description: "Provide breakdown of FHA vs Conventional",
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
@@ -366,7 +360,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Inspection results review",
-        description: "Review inspection report with client for 101 Maple St.",
+        description: "Review inspection report with client for 101 Maple St",
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
@@ -374,7 +368,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Request for virtual staging photos",
-        description: "Client wants virtual staging before MLS listing.",
+        description: "Client wants virtual staging before MLS listing",
         status: "ASSIGNED",
         urgency: "LOW",
         categoryName: "Listings",
@@ -382,7 +376,7 @@ export const seedData = api<void, SeedResponse>(
       },
       {
         title: "Annual compliance training reminder",
-        description: "Ensure all agents complete compliance training.",
+        description: "Ensure all agents complete compliance training",
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
@@ -402,7 +396,7 @@ export const seedData = api<void, SeedResponse>(
           status: t.status,
           urgency: t.urgency,
           categoryId: category.id,
-          creatorId: rand(staff).id,
+          creatorId: rand(agents).id,
           assigneeId:
             t.status === "CREATED"
               ? undefined
@@ -429,14 +423,14 @@ export const seedData = api<void, SeedResponse>(
         {
           ticketId: ticket.id,
           userId: ticket.assigneeId ?? rand(staff).id,
-          content: `Initial update on "${ticket.title}".`,
+          content: `Initial update on "${ticket.title}"`,
           internal: false,
           createdAt: subDays(now, 1),
         },
         {
           ticketId: ticket.id,
           userId: ticket.creatorId,
-          content: `Follow-up for "${ticket.title}". Progress noted.`,
+          content: `Follow-up for "${ticket.title}". Progress noted`,
           internal: false,
           createdAt: now,
         }
@@ -445,7 +439,7 @@ export const seedData = api<void, SeedResponse>(
         comments.push({
           ticketId: ticket.id,
           userId: admin.id,
-          content: `Internal note by admin for "${ticket.title}".`,
+          content: `Internal note for "${ticket.title}".`,
           internal: true,
           createdAt: now,
         });
@@ -527,11 +521,11 @@ export const seedData = api<void, SeedResponse>(
 
     await prisma.attachment.createMany({ data: attachments });
 
-    console.log("Seed completed.");
+    console.log("Seed completed");
 
     return {
       message:
-        "🌲 Seeded multiple market centers, users, tickets, categories, comments and attachments.",
+        "🌲 Seeded multiple market centers, users, tickets, categories, comments and attachments",
     };
   }
 );

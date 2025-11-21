@@ -15,8 +15,6 @@ import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import type { MarketCenter, UserRole } from "@/lib/types";
 import {
   arrayToCommaSeparatedListWithConjunction,
-  getRoleBadgeStyle,
-  getRoleColor,
   getRoleDescription,
   ROLE_ICONS,
 } from "@/lib/utils";
@@ -46,13 +44,7 @@ export default function MarketCenterAgentView({
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
-    return Icon ? (
-      <Icon
-        className={`h-4 w-4 ${userRole === "AGENT" ? "text-black" : "text-white"}`}
-      />
-    ) : (
-      <User className="h-4 w-4 text-black" />
-    );
+    return Icon ? <Icon className={`h-4 w-4`} /> : <User className="h-4 w-4" />;
   };
 
   return (
@@ -146,13 +138,16 @@ export default function MarketCenterAgentView({
                           <ToolTip
                             trigger={
                               <Badge
-                                variant={getRoleColor(user?.role || "AGENT")}
-                                style={getRoleBadgeStyle(user?.role || "AGENT")}
-                                title={user?.role}
+                                variant={
+                                  (user?.role
+                                    ? user.role.toLowerCase()
+                                    : "user") as any
+                                }
+                                title={user?.role.split("_").join(" ")}
                                 className="text-xs px-2 py-0.5"
                               >
                                 {getRoleIcon(user?.role)}
-                                {user?.role}
+                                {user?.role.split("_").join(" ")}
                               </Badge>
                             }
                             content={getRoleDescription(user?.role)}

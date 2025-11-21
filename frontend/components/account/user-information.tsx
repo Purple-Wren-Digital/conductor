@@ -9,12 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
-import {
-  getRoleBadgeStyle,
-  getRoleColor,
-  getRoleDescription,
-  ROLE_ICONS,
-} from "@/lib/utils";
+import { getRoleDescription, ROLE_ICONS } from "@/lib/utils";
 import { PrismaUser, UserRole } from "@/lib/types";
 import { Building, Hash, Mail, User } from "lucide-react";
 
@@ -69,8 +64,7 @@ export default function UserInformation({
           <ToolTip
             trigger={
               <Badge
-                variant={getRoleColor(user?.role || "AGENT")}
-                style={getRoleBadgeStyle(user?.role || "AGENT")}
+                variant={(user?.role ? user.role.toLowerCase() : "user") as any}
                 title={user?.role || "AGENT"}
                 className="text-xs px-2 py-0.5"
               >

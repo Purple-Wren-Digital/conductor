@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { getPrisma } from "./db";
+import { prisma } from "../ticket/db";
 import { TeamMember } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { getUserScopeFilter } from "../auth/permissions";
@@ -8,11 +8,10 @@ export const getTeamMembers = api(
   { method: "GET", path: "/settings/team/members", auth: true },
   async (): Promise<{ members: TeamMember[]; invitations: any[] }> => {
     const userContext = await getUserContext();
-    const prisma = getPrisma();
     // TODO: member id
 
     // Only STAFF and ADMIN can view team members
-    if (userContext.role === "AGENT") {
+    if (!userContext?.role || userContext?.role === "AGENT") {
       throw APIError.permissionDenied(
         "Insufficient permissions to view team members"
       );

@@ -8,9 +8,14 @@ import {
   CalendarIcon,
   CircleMinus,
   ArrowRightCircle,
+  TagIcon,
+  Ticket,
 } from "lucide-react";
 import { format } from "date-fns";
-import { getRoleBadgeStyle, getRoleColor } from "@/lib/utils";
+import {
+  getCategoryStyle,
+  arrayToCommaSeparatedListWithConjunction,
+} from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 
@@ -40,11 +45,11 @@ export function UserListItem({
     <ListItem
       id={user.id}
       title={`${user.name}`}
-      subtitle={
+      subtitle={`${
         marketCenter?.name
           ? `${marketCenter.name} Market Center${marketCenter?.id && ` (#${marketCenter?.id.slice(0, 8)})`}`
           : "No Assigned Market Center"
-      }
+      }`}
       avatar={{
         fallback: user?.name
           ? user?.name
@@ -56,20 +61,36 @@ export function UserListItem({
       onClick={onClick}
       primaryBadges={[
         {
-          label: user.role,
-          variant: getRoleColor(user.role),
-          style: getRoleBadgeStyle(user.role),
+          label: `${user.role.split("_").join(" ")}`,
+          variant: (user.role ? user.role.toLowerCase() : "user") as any,
           title: `Role: ${user.role}`,
         },
+        ...(user?.defaultForCategories && user?.defaultForCategories.length > 0
+          ? user?.defaultForCategories?.map((category) => ({
+              label: category.name,
+              variant: "category",
+              title: `Default for category: ${category.name}`,
+              style: getCategoryStyle(category.name ?? "Unnamed"),
+            }))
+          : []),
       ]}
       metadata={[
         { label: user.email, icon: <Mail className="h-3 w-3" /> },
-
-        { label: `${user?.ticketsAssigned ?? 0} assigned` },
-        { label: `${user?.ticketsCreated ?? 0} created` },
         {
           label: `Created ${format(new Date(user.createdAt), "MMM d, yyyy")}`,
           icon: <CalendarIcon className="h-3 w-3" />,
+        },
+        {
+          label: `${user?._count?.assignedTickets ?? 0} assigned • ${user?._count?.createdTickets ?? 0} created`,
+          icon: <Ticket className="h-3 w-3" />,
+        },
+        {
+          label: `${user?._count?.defaultForCategories ?? 0} ${(user?._count?.defaultForCategories ?? 0) === 1 ? "category" : "categories"}`,
+          icon: <TagIcon className="h-3 w-3" />,
+          tooltip: {
+            enabled: (user?._count?.defaultForCategories ?? 0) > 0,
+            content: `${user?.defaultForCategories && user?.defaultForCategories?.length > 0 && arrayToCommaSeparatedListWithConjunction("and", user?.defaultForCategories?.map((cat) => cat?.name) ?? [])}`,
+          },
         },
       ]}
       actions={[

@@ -18,6 +18,7 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { toast } from "sonner";
 
 type EditTicketFormProps = {
+  disabled: boolean;
   ticket: Ticket | null;
   isOpen: boolean;
   onClose: () => void;
@@ -30,10 +31,11 @@ const emptyValues: TicketFormValues = {
   urgency: "MEDIUM" as Urgency,
   categoryId: "",
   dueDate: undefined,
-  assigneeId: undefined,
+  assigneeId: "",
 };
 
 export function EditTicketForm({
+  disabled,
   ticket,
   isOpen,
   onClose,
@@ -76,28 +78,22 @@ export function EditTicketForm({
       }
     };
 
-    if (isOpen && ticket) {
+    if (ticket) {
       setValues({
         title: ticket.title ?? "",
         description: ticket.description ?? "",
         urgency: ticket.urgency as Urgency,
-        categoryId: ticket.categoryId ?? "",
+        categoryId: ticket?.categoryId ?? "",
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
-        assigneeId: ticket.assigneeId ?? "Unassigned",
+        assigneeId: ticket?.assigneeId ? ticket.assigneeId : "Unassigned",
       });
       setErrors({});
 
-      const ticketMarketCenter =
-        ticket?.category?.marketCenterId ||
-        ticket?.assignee?.marketCenterId ||
-        null;
-
       const userMarketCenterId =
-        role === "ADMIN"
-          ? ticketMarketCenter
-          : role === "STAFF" && currentUser?.marketCenterId
-            ? currentUser.marketCenterId
-            : null;
+        (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
+        currentUser?.marketCenterId
+          ? currentUser.marketCenterId
+          : null;
 
       setMarketCenterId(userMarketCenterId);
       setSelectedTemplateId("");
@@ -121,6 +117,7 @@ export function EditTicketForm({
         urgency: t.urgency,
         categoryId: t.category,
         dueDate: undefined,
+        assigneeId: "Unassigned",
       });
     }
   };
@@ -287,7 +284,7 @@ export function EditTicketForm({
       selectedTemplateId={selectedTemplateId}
       onChangeTemplateId={handleTemplateChange}
       marketCenterId={marketCenterId}
-      disabled={ticket?.status === "RESOLVED"}
+      disabled={ticket?.status === "RESOLVED" || disabled}
     />
   );
 }

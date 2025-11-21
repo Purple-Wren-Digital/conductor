@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
-import type { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
+import { useState } from "react";
+import type { MarketCenter, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -301,7 +301,7 @@ export default function CreateUser({
                   {roleOptions.map((role) => (
                     <SelectItem key={role} value={role}>
                       {getRoleIcon(role)}
-                      {role}
+                      {role.split("_").join(" ")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -323,7 +323,9 @@ export default function CreateUser({
                 onValueChange={(value) => {
                   setSelectedMarketCenterId(value);
                 }}
-                disabled={isLoading || role === "STAFF"}
+                disabled={
+                  isLoading || role === "STAFF" || role === "STAFF_LEADER"
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a team" />

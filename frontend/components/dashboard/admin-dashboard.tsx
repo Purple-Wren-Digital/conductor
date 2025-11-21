@@ -157,16 +157,21 @@ export function AdminDashboard() {
           (u: any) => u.id === ticket.assigneeId
         );
 
+        // Force all unassigned tickets under the same key
+        const isUnassigned = !assignee?.marketCenterId;
+        const key = isUnassigned ? "unassigned" : assignee.marketCenterId;
+
         const mcId = assignee?.marketCenterId || "unassigned";
         const marketCenter = marketCenters.find(
-          (mc: MarketCenter) => mc.id === mcId
+          (mc: MarketCenter) => mc.id === key
         );
+        const mcName = isUnassigned
+          ? "Unassigned"
+          : marketCenter?.name || "Name Not Found";
 
-        const mcName = marketCenter?.name || "Unassigned";
-
-        // Initialize a static color index tracker outside reduce (via closure)
+        // Determine color
         let color: string;
-        if (mcName === "Unassigned") {
+        if (isUnassigned) {
           color = chartColors.grey;
         } else {
           if (!colorMap[mcId]) {
@@ -287,7 +292,7 @@ export function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
             Welcome, {clerkUser?.firstName}
           </h1>
           <p className="text-muted-foreground">
@@ -378,7 +383,7 @@ export function AdminDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* MARKET CENTERS */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader>
             <CardTitle>Market Centers</CardTitle>
             <CardDescription>
@@ -446,7 +451,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY MARKET CENTER */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">
               Open Tickets by Market Center
@@ -518,7 +523,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* TICKETS BY STATUS */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <div className="flex flex-col gap-1">
               <CardTitle>Tickets by Status</CardTitle>
@@ -590,7 +595,7 @@ export function AdminDashboard() {
         </Card>
 
         {/* RECENT TICKET ACTIVITY */}
-        <Card className="max-w-[62%] sm:max-w-full">
+        <Card className="max-w-2xs sm:max-w-full">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
 import { useStore } from "@/context/store-provider";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 
 export interface BaseAction {
   label: string;
@@ -42,6 +43,7 @@ export interface BaseListItemProps {
   metadata: Array<{
     label: string;
     icon?: React.ReactNode;
+    tooltip?: { enabled: boolean; content: string };
   }>;
   actions: BaseAction[];
   selectable?: boolean;
@@ -160,12 +162,27 @@ export function ListItem({
         </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-          {metadata.map((m, i) => (
-            <span key={i} className="flex items-center gap-1 whitespace-nowrap">
-              {m.icon}
-              {m.label}
-            </span>
-          ))}
+          {metadata &&
+            metadata.map((m, i) => (
+              <React.Fragment key={`${i}-meta-${m.label}`}>
+                {m.tooltip?.enabled ? (
+                  <ToolTip
+                    content={m.tooltip.content}
+                    trigger={
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        {m.icon}
+                        {m.label}
+                      </span>
+                    }
+                  />
+                ) : (
+                  <span className="flex items-center gap-1 whitespace-nowrap">
+                    {m.icon}
+                    {m.label}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
         </div>
       </div>
 

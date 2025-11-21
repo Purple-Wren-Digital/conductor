@@ -80,14 +80,11 @@ export function CreateTicketForm({
       setErrors({});
       setSelectedTemplateId("");
       fetchTemplates();
-      setValues(initialValues);
-      setErrors({});
-      setSelectedTemplateId("");
-      fetchTemplates();
     }
 
     const userMarketCenterId =
-      role === "STAFF" && currentUser?.marketCenterId
+      (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
+      currentUser?.marketCenterId
         ? currentUser.marketCenterId
         : null;
 
@@ -110,6 +107,7 @@ export function CreateTicketForm({
         urgency: t.urgency,
         categoryId: t.category,
         dueDate: undefined,
+        assigneeId: "Unassigned",
       });
     }
   };

@@ -106,7 +106,7 @@ export function AgentDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+        <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
           Welcome, {clerkUser?.firstName}
         </h1>
         <p className="text-muted-foreground">Manage your assigned tickets</p>

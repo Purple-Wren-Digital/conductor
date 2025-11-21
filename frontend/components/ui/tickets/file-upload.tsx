@@ -10,6 +10,7 @@ import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 
 interface FileUploadProps {
+  disabled: boolean;
   ticketId: string;
   onUploadComplete?: (attachment: any) => void;
   maxFileSize?: number; // in MB
@@ -29,6 +30,7 @@ const DEFAULT_ACCEPTED_FILE_TYPES = [
 ];
 
 export function FileUpload({
+  disabled,
   ticketId,
   onUploadComplete,
   maxFileSize = DEFAULT_MAX_FILE_SIZE,
@@ -144,12 +146,13 @@ export function FileUpload({
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      if (disabled) return;
       setIsDragging(false);
 
       const files = Array.from(e.dataTransfer.files);
       handleFiles(files);
     },
-    [handleFiles]
+    [handleFiles, disabled]
   );
 
   const handleFileSelect = useCallback(
@@ -183,6 +186,7 @@ export function FileUpload({
             accept={acceptedFileTypes.join(",")}
             onChange={handleFileSelect}
             className="hidden"
+            disabled={disabled}
           />
 
           <div className="flex flex-col items-center justify-center space-y-2 text-center">
@@ -192,6 +196,7 @@ export function FileUpload({
                 variant="link"
                 className="p-0 h-auto font-semibold"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={disabled}
               >
                 Click to upload
               </Button>{" "}

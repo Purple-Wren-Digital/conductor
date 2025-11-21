@@ -31,7 +31,7 @@ export type AccountInformationProps = {
 export type NewUserInvitationProps = {
   newUserName: string;
   newUserEmail: string;
-  newUserRole: "AGENT" | "STAFF" | "ADMIN";
+  newUserRole: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
   newUserMarketCenter: string | null;
   inviterName: string;
   inviterEmail: string;

@@ -137,7 +137,7 @@ export interface Comment {
 }
 
 // USER
-export type UserRole = "AGENT" | "STAFF" | "ADMIN";
+export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
 export interface PrismaUser {
   id: string;
@@ -146,6 +146,8 @@ export interface PrismaUser {
   email: string;
   name: string | null; // Prisma: String? === TypeScript: string | null
   role: UserRole;
+  // staffLeader: boolean;
+
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
@@ -166,6 +168,13 @@ export interface PrismaUser {
   userSettings?: UserSettings;
 
   notifications?: Notification[];
+
+  _count: {
+    assignedTickets?: number;
+    comments?: number;
+    createdTickets?: number;
+    defaultForCategories?: number;
+  };
 }
 export interface UserHistory {
   id: string;
@@ -246,6 +255,7 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
   totalTickets?: number;
+  staffLeaderIds?: string[];
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 
@@ -272,13 +282,13 @@ export interface TeamMember {
   id: string;
   email: string;
   name: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
   isActive: boolean;
   createdAt: Date;
 }
 
 export interface UpdateMemberRequest {
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 
 // MARKET CENTER SETTINGS
@@ -348,7 +358,7 @@ export interface SettingsAuditLogEntry {
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 export interface TeamInviteRequest {
   email: string;
-  role: "AGENT" | "STAFF" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 export interface TeamInvitation {
   id: string;
@@ -368,7 +378,7 @@ export interface TeamInvitation {
 // SEARCH FILTERS
 export type OrderBy = "asc" | "desc";
 
-export type UserSortBy = "updatedAt" | "createdAt" | "name";
+export type UserSortBy = "updatedAt" | "createdAt" | "name" | "role";
 export type UsersResponse = { users: PrismaUser[]; total: number };
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";

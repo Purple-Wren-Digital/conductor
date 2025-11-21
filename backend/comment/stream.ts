@@ -1,9 +1,10 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
+// import { getAuthData } from "~encore/auth";
 import { CommentEvent, commentEventBus } from "./events";
-import { mygw } from "../auth/auth";
+// import { mygw } from "../auth/auth";
 import { getUserContext } from "../auth/user-context";
 import { prisma } from "../ticket/db";
+import { canAccessTicket } from "../auth/permissions";
 
 // Define handshake type to specify which ticket to subscribe to
 interface CommentStreamHandshake {
@@ -17,13 +18,19 @@ interface CommentStreamMessage {
 
 // Store active streams by ticketId
 // Each ticketId maps to a Map of userId -> stream
-const activeStreams = new Map<string, Map<string, api.StreamOut<CommentStreamHandshake, CommentStreamMessage>>>();
+const activeStreams = new Map<
+  string,
+  Map<string, api.StreamOut<CommentStreamHandshake, CommentStreamMessage>>
+>();
 
 /**
  * Streaming endpoint for real-time comment events
  * Clients connect to this endpoint to receive live comment updates for a specific ticket
  */
-export const commentStream = api.streamOut<CommentStreamHandshake, CommentStreamMessage>(
+export const commentStream = api.streamOut<
+  CommentStreamHandshake,
+  CommentStreamMessage
+>(
   {
     expose: true,
     auth: true,
@@ -48,18 +55,16 @@ export const commentStream = api.streamOut<CommentStreamHandshake, CommentStream
       }
 
       // Check permissions (user can see ticket if they created it, are assigned to it, or are STAFF/ADMIN)
-      const hasAccess =
-        ticket.creatorId === userContext.userId ||
-        ticket.assigneeId === userContext.userId ||
-        userContext.role === "STAFF" ||
-        userContext.role === "ADMIN";
+      const hasAccess = await canAccessTicket(userContext, ticketId);
 
       if (!hasAccess) {
         throw APIError.permissionDenied("You don't have access to this ticket");
       }
 
       const userId = userContext.userId;
-      console.log(`💬 Comment stream connected: User ${userId} for ticket ${ticketId}`);
+      console.log(
+        `💬 Comment stream connected: User ${userId} for ticket ${ticketId}`
+      );
 
       // Initialize ticket stream map if it doesn't exist
       if (!activeStreams.has(ticketId)) {
@@ -76,9 +81,14 @@ export const commentStream = api.streamOut<CommentStreamHandshake, CommentStream
         if (event.ticketId === ticketId) {
           try {
             await stream.send({ event });
-            console.log(`✅ Comment event sent to user ${userId} for ticket ${ticketId}: ${event.type}`);
+            console.log(
+              `✅ Comment event sent to user ${userId} for ticket ${ticketId}: ${event.type}`
+            );
           } catch (error) {
-            console.warn(`⚠️ Failed to send comment event to user ${userId}:`, error);
+            console.warn(
+              `⚠️ Failed to send comment event to user ${userId}:`,
+              error
+            );
             ticketStreams.delete(userId);
             if (ticketStreams.size === 0) {
               activeStreams.delete(ticketId);
@@ -100,7 +110,9 @@ export const commentStream = api.streamOut<CommentStreamHandshake, CommentStream
           if (ticketStreams.size === 0) {
             activeStreams.delete(ticketId);
           }
-          console.log(`❌ Comment stream disconnected: User ${userId} for ticket ${ticketId}`);
+          console.log(
+            `❌ Comment stream disconnected: User ${userId} for ticket ${ticketId}`
+          );
 
           // Note: We're not unsubscribing from the event bus here because
           // the same handler might be used by multiple streams
@@ -115,7 +127,10 @@ export const commentStream = api.streamOut<CommentStreamHandshake, CommentStream
           if (ticketStreams.size === 0) {
             activeStreams.delete(ticketId);
           }
-          console.error(`⚠️ Comment stream error for user ${userId} on ticket ${ticketId}:`, error);
+          console.error(
+            `⚠️ Comment stream error for user ${userId} on ticket ${ticketId}:`,
+            error
+          );
           reject(error);
         });
       });
@@ -130,7 +145,9 @@ export const commentStream = api.streamOut<CommentStreamHandshake, CommentStream
  * Broadcast a comment event to all users watching a specific ticket
  * This is called internally when comments are created/updated/deleted
  */
-export async function broadcastCommentEvent(event: CommentEvent): Promise<void> {
+export async function broadcastCommentEvent(
+  event: CommentEvent
+): Promise<void> {
   const ticketStreams = activeStreams.get(event.ticketId);
 
   if (!ticketStreams || ticketStreams.size === 0) {
@@ -139,15 +156,22 @@ export async function broadcastCommentEvent(event: CommentEvent): Promise<void> 
   }
 
   // Broadcast to all users watching this ticket
-  const broadcastPromises = Array.from(ticketStreams.entries()).map(async ([userId, stream]) => {
-    try {
-      await stream.send({ event });
-      console.log(`✅ Comment event broadcast to user ${userId}: ${event.type}`);
-    } catch (error) {
-      console.warn(`⚠️ Failed to broadcast comment event to user ${userId}:`, error);
-      ticketStreams.delete(userId);
+  const broadcastPromises = Array.from(ticketStreams.entries()).map(
+    async ([userId, stream]) => {
+      try {
+        await stream.send({ event });
+        console.log(
+          `✅ Comment event broadcast to user ${userId}: ${event.type}`
+        );
+      } catch (error) {
+        console.warn(
+          `⚠️ Failed to broadcast comment event to user ${userId}:`,
+          error
+        );
+        ticketStreams.delete(userId);
+      }
     }
-  });
+  );
 
   await Promise.all(broadcastPromises);
 

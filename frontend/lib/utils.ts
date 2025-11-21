@@ -2,6 +2,7 @@ import {
   Crown,
   LucideProps,
   Shield,
+  ShieldHalf,
   User,
   UserCheck,
   UserX,
@@ -17,23 +18,6 @@ import {
 } from "./types";
 import { ForwardRefExoticComponent, RefAttributes } from "react";
 
-// export const categoryOptions = [
-//   "Appraisals",
-//   "Client Comments",
-//   "Compliance",
-//   "Contracts",
-//   "Documents",
-//   "Feature Request",
-//   "Financial",
-//   "Inspections",
-//   "Listings",
-//   "Maintenance",
-//   "Marketing",
-//   "Onboarding",
-//   "Showing Request",
-//   "Technical",
-//   "Other",
-// ];
 
 // USERS
 export const ROLE_COLORS = {
@@ -49,25 +33,36 @@ export const ROLE_ICONS: {
   STAFF: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
+  STAFF_LEADER: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
   AGENT: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
 } = {
   ADMIN: Crown,
+  STAFF_LEADER: ShieldHalf,
   STAFF: Shield,
   AGENT: User,
 };
 
-export const roleOptions: UserRole[] = ["AGENT", "STAFF", "ADMIN"];
+export const roleOptions: UserRole[] = [
+  "ADMIN",
+  "STAFF_LEADER",
+  "STAFF",
+  "AGENT",
+];
 
 export const ROLE_DESCRIPTIONS: {
   ADMIN: string;
+  STAFF_LEADER: string;
   STAFF: string;
   AGENT: string;
 } = {
   ADMIN: "Full access to all settings and data",
-  STAFF: "Can create, view and manage their team and tickets",
-  AGENT: "Can view and manage assigned tickets",
+  STAFF_LEADER: "Manage all tickets and team members",
+  STAFF: "Manage all assigned tickets and assist other team members",
+  AGENT: "View and manage created tickets",
 };
 
 export const getRoleDescription = (userRole: UserRole) => {
@@ -75,43 +70,7 @@ export const getRoleDescription = (userRole: UserRole) => {
   return description;
 };
 
-export const getRoleColor = (role: string) => {
-  switch (role) {
-    case "ADMIN":
-      return "destructive";
-    case "STAFF":
-      return "default";
-    case "USER":
-      return "secondary";
-    default:
-      return "secondary";
-  }
-};
-
-export function getRoleBadgeStyle(
-  role: string
-): React.CSSProperties | undefined {
-  switch (role) {
-    case "ADMIN":
-      return {
-        backgroundColor: "#ef4444",
-        color: "white",
-        borderColor: "#dc2626",
-      };
-    case "STAFF":
-      return undefined;
-    case "USER":
-      return {
-        backgroundColor: "#e5e7eb",
-        color: "#111827",
-        borderColor: "#d1d5db",
-      };
-    default:
-      return undefined;
-  }
-}
 // TICKETS
-
 function hashString(str: string) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -148,6 +107,28 @@ export const statusOptions: TicketStatus[] = [
   "RESOLVED",
 ];
 export const urgencyOptions: Urgency[] = ["HIGH", "MEDIUM", "LOW"];
+type UrgencyKey = (typeof urgencyOptions)[number];
+
+const URGENCY_COLORS: Record<UrgencyKey, string> = {
+  HIGH: "#B42318",
+  MEDIUM: "#C18900",
+  LOW: "#175CD3",
+};
+
+export const urgencyChartConfig: Record<
+  Urgency,
+  { label: string; color: string }
+> = {
+  HIGH: { label: "High", color: URGENCY_COLORS.HIGH },
+  MEDIUM: { label: "Medium", color: URGENCY_COLORS.MEDIUM },
+  LOW: { label: "Low", color: URGENCY_COLORS.LOW },
+};
+
+// export const formatUrgency = (urgency: Urgency) => {
+//   return URGENCY_LABELS[urgency] ?? urgency;
+// };
+
+// SORTING & PAGINATION
 
 export const orderByOptions: OrderBy[] = ["asc", "desc"];
 export const orderByLabels: Record<OrderBy, string> = {
@@ -180,12 +161,14 @@ export const sortByUserOptions: UserSortBy[] = [
   "updatedAt",
   "createdAt",
   "name",
+  "role",
 ];
 
 const userOptionLabels: Record<UserSortBy, string> = {
   updatedAt: "Updated At",
   createdAt: "Created At",
   name: "Name",
+  role: "Role",
 };
 
 export const formatUserOptions = (option: UserSortBy) => {

@@ -288,6 +288,7 @@ enum NotificationChannel {
 enum UserRole {
   AGENT
   STAFF
+  STAFF_LEADER
   ADMIN
 }
 

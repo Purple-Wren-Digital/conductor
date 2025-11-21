@@ -41,7 +41,9 @@ export function TeamSwitcher({
         handleMarketCenterSelected &&
           handleMarketCenterSelected(selectedMarketCenter);
       }}
-      disabled={isLoading || role === "STAFF"}
+      disabled={
+        isLoading || !role || role === "STAFF" || role === "STAFF_LEADER"
+      }
     >
       <SelectTrigger>
         <SelectValue placeholder="Select a team" />

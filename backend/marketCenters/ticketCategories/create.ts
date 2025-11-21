@@ -30,7 +30,9 @@ export const createCategory = api<
     const marketCenterId =
       userContext?.role === "ADMIN"
         ? req.marketCenterId
-        : userContext?.marketCenterId;
+        : userContext?.role === "STAFF" || userContext?.role === "STAFF_LEADER"
+          ? userContext?.marketCenterId
+          : undefined;
 
     if (!req || !marketCenterId || !req.name) {
       throw APIError.invalidArgument("Missing ticket category information");

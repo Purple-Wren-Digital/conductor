@@ -16,6 +16,7 @@ import {
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -33,13 +34,7 @@ import {
   UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
-import {
-  getRoleBadgeStyle,
-  getRoleColor,
-  getRoleDescription,
-  ROLE_ICONS,
-  roleOptions,
-} from "@/lib/utils";
+import { getRoleDescription, ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { ArrowLeft, Building, Edit2, Hash, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +67,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { currentUser } = useStore();
-  const { permissions } = useUserRole();
+  const { role, permissions } = useUserRole();
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
@@ -105,7 +100,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     //   errors.email = "Invalid email format";
     // }
 
-    if (!formData.role) errors.role = "Role is required";
+    if (!formData?.role) errors.role = "Role is required";
 
     if (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
       errors.general = "No changes made";
@@ -356,17 +351,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  {getRoleIcon(user?.role)}
+                  {getRoleIcon(user?.role ?? "AGENT")}
                   <p className="text-muted-foreground">Role:</p>
                   <ToolTip
                     trigger={
                       <Badge
-                        variant={getRoleColor(user?.role || "AGENT")}
-                        style={getRoleBadgeStyle(user?.role || "AGENT")}
-                        title={user?.role}
+                        variant={
+                          (user?.role ? user.role.toLowerCase() : "user") as any
+                        }
+                        title={user?.role.split("_").join(" ")}
                         className="text-xs px-2 py-0.5"
                       >
-                        {user?.role}
+                        {user?.role.split("_").join(" ") ?? "N/a"}
                       </Badge>
                     }
                     content={getRoleDescription(user?.role)}
@@ -383,7 +379,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
+              <Label className="text-sm font-medium">Role *</Label>
               <Select
                 value={user?.role}
                 onValueChange={(value: UserRole) => {
@@ -399,7 +395,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }}
                 disabled={
                   currentUser?.id === user?.id ||
-                  !permissions?.canChangeUserRoles ||
+                  !role ||
+                  role === "AGENT" ||
                   isSubmitting ||
                   userLoading
                 }
@@ -408,26 +405,24 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roleOptions.map((option: UserRole) => {
+                    if (
+                      (role === "STAFF" || role === "STAFF_LEADER") &&
+                      option === "ADMIN"
+                    )
+                      return null;
+                    return (
+                      <SelectItem key={option} value={option}>
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(option)}
+                          {option ? option.split("_").join(" ") : "N/A"}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
-            {/* <div className="space-y-2">
-                    <label className="text-sm font-medium">Market Center</label>
-                    <TeamSwitcher
-                      type="User Profile"
-                      selectedMarketCenterId={selectedMarketCenterId}
-                      setSelectedMarketCenterId={setSelectedMarketCenterId}
-                      handleUpdateMarketCenter={handleUpdateMarketCenter}
-                    />
-              </div>*/}
           </CardContent>
         </Card>
 
@@ -456,9 +451,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </DialogHeader>
           <form onSubmit={handleSubmitEditUserForm} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="firstName" className="text-sm font-medium">
+              <Label htmlFor="firstName" className="text-sm font-medium">
                 First Name *
-              </label>
+              </Label>
               <Input
                 id="firstName"
                 value={formData?.firstName}
@@ -478,9 +473,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="lastName" className="text-sm font-medium">
+              <Label htmlFor="lastName" className="text-sm font-medium">
                 Last Name *
-              </label>
+              </Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -499,9 +494,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-medium">
                 Email Address *
-              </label>
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -522,26 +517,43 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
+              <Label className="text-sm font-medium">Role *</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
-                disabled={!permissions?.canChangeUserRoles}
+                disabled={
+                  !role || role === "AGENT" || isSubmitting || userLoading
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roleOptions.map((option: UserRole) => {
+                    if (
+                      (role === "STAFF" || role === "STAFF_LEADER") &&
+                      option === "ADMIN"
+                    )
+                      return null;
+                    return (
+                      <SelectItem key={option} value={option}>
+                        <Badge
+                          variant={
+                            (user?.role
+                              ? user.role.toLowerCase()
+                              : "user") as any
+                          }
+                          title={user?.role}
+                          className="text-xs px-2 py-0.5"
+                        >
+                          {getRoleIcon(option)}
+                          {option ? option.split("_").join(" ") : "N/A"}
+                        </Badge>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

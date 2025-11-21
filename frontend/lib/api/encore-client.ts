@@ -842,6 +842,7 @@ export namespace notifications {
 
     updatedTicket?: emails.UpdatedTicketProps;
     ticketAssignment?: emails.AssignedTicketNotificationProps;
+    quickEditTicket?: emails.QuickEditTicketNotificationProps;
     newComment?: emails.NewCommentNotificationProps;
   }
 
@@ -1662,7 +1663,7 @@ export namespace user {
     user?: User;
   }
 
-  export type UserRole = "AGENT" | "STAFF" | "ADMIN";
+  export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
   export interface UserSettings {
     id: string;
@@ -1992,10 +1993,21 @@ export namespace emails {
   export interface NewUserInvitationProps {
     newUserName: string;
     newUserEmail: string;
-    newUserRole: "AGENT" | "STAFF" | "ADMIN";
+    newUserRole: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
     newUserMarketCenter: string | null;
     inviterName: string;
     inviterEmail: string;
+  }
+
+  export interface QuickEditTicketNotificationProps {
+    ticketNumber: string;
+    ticketTitle: string;
+    createdOn: string;
+    updatedOn: string;
+    editedByName: string;
+    editedById: string;
+    field: string;
+    currentData: string;
   }
 
   export interface UpdatedTicketProps {

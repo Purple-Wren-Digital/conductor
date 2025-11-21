@@ -25,7 +25,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
 
     if (!scopeFilter || !scopeFilter?.id) {
       throw APIError.permissionDenied(
-        "Only Admin and Staff can view market centers"
+        "You do not have permission to view this market center"
       );
     }
 

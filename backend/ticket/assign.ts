@@ -26,10 +26,26 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    const canReassign = await canReassignTicket(userContext);
+    const canReassign = await canReassignTicket({
+      userContext: userContext,
+      newAssigneeId: req?.assigneeId,
+    });
     if (!canReassign) {
       throw APIError.permissionDenied(
         "You do not have permission to reassign tickets"
+      );
+    }
+    const oldTicket = await prisma.ticket.findUnique({
+      where: { id: req.id },
+      include: { assignee: true, creator: true, category: true },
+    });
+    if (!oldTicket) {
+      throw APIError.notFound("Ticket not found");
+    }
+
+    if (oldTicket && oldTicket.status === "RESOLVED") {
+      throw APIError.invalidArgument(
+        "Resolved tickets cannot be modified further"
       );
     }
 
@@ -37,6 +53,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
 
     // Check if assignee exists and is in the same market center for STAFF users
     let newAssignee = null;
+
     if (!unassignTicket) {
       const user = await prisma.user.findUnique({
         where: { id: req.assigneeId },
@@ -48,31 +65,17 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
     }
 
     // For STAFF, ensure they can only assign to users in their market center
-    if (
-      userContext?.role === "STAFF" &&
-      userContext?.marketCenterId &&
-      newAssignee &&
-      newAssignee?.marketCenterId &&
-      newAssignee?.marketCenterId !== userContext.marketCenterId
-    ) {
-      throw APIError.permissionDenied(
-        "You can only assign tickets to users in your team"
-      );
-    }
-
-    const oldTicket = await prisma.ticket.findUnique({
-      where: { id: req.id },
-      include: { assignee: true, creator: true },
-    });
-    if (!oldTicket) {
-      throw APIError.notFound("Ticket not found");
-    }
-
-    if (oldTicket && oldTicket.status === "RESOLVED") {
-      throw APIError.invalidArgument(
-        "Resolved tickets cannot be modified further"
-      );
-    }
+    // if (
+    //   userContext?.role === "STAFF" &&
+    //   userContext?.marketCenterId &&
+    //   newAssignee &&
+    //   newAssignee?.marketCenterId &&
+    //   newAssignee?.marketCenterId !== userContext.marketCenterId
+    // ) {
+    //   throw APIError.permissionDenied(
+    //     "You can only assign tickets to users in your team"
+    //   );
+    // }
 
     const assignTicket =
       newAssignee && newAssignee?.id !== oldTicket?.assigneeId;
@@ -153,7 +156,13 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
                 ? previousAssigneeName
                 : "Unassigned",
               newValue: unassignTicket ? "Unassigned" : newAssigneeName,
-              snapshot: oldTicket,
+              snapshot: {
+                ...oldTicket,
+                comments: [],
+                assignee: undefined,
+                category: undefined,
+                creator: undefined,
+              }, // Omit comments for snapshot
               changedAt: new Date(),
               changedById: userContext.userId,
             },
@@ -163,7 +172,13 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
               field: "status",
               previousValue: oldTicket?.status ?? "CREATED",
               newValue: unassignTicket ? "UNASSIGNED" : "ASSIGNED",
-              snapshot: oldTicket,
+              snapshot: {
+                ...oldTicket,
+                comments: [],
+                assignee: undefined,
+                category: undefined,
+                creator: undefined,
+              }, // Omit comments for snapshot
               changedAt: new Date(),
               changedById: userContext.userId,
             },

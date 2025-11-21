@@ -4,6 +4,7 @@ import { getUserContext } from "../auth/user-context";
 
 export interface GetCurrentUserResponse {
   // user: User;
+  id: string;
   email: string;
   name: string;
   role: string;
@@ -33,7 +34,6 @@ export const me = api<void, GetCurrentUserResponse>(
     if (!user || !user?.id) {
       throw APIError.notFound("User not found");
     }
-
     return {
       id: user.id,
       email: user.email,
