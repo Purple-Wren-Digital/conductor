@@ -52,26 +52,25 @@ model User {
 }
 
 model Ticket {
-  id               String          @id @default(dbgenerated("(gen_random_uuid())::text"))
-  title            String?
-  description      String?
-  status           TicketStatus?   @default(CREATED)
-  urgency          Urgency?        @default(MEDIUM)
-  creatorId        String          @map("creator_id")
-  assigneeId       String?         @map("assignee_id")
-  dueDate          DateTime?       @map("due_date")
-  resolvedAt       DateTime?       @map("resolved_at")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at")
-  publishedAt      DateTime?
-  categoryId       String?         @map("category_id")
-  emailMessageId   String?         @map("email_message_id") // Track original email Message-ID for threading
-  ticketHistory    TicketHistory[]
-  comments         Comment[]
-  attachments      Attachment[]
-  assignee         User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  category         TicketCategory? @relation(fields: [categoryId], references: [id])
-  creator          User            @relation("TicketCreator", fields: [creatorId], references: [id])
+  id            String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  title         String?
+  description   String?
+  status        TicketStatus?   @default(CREATED)
+  urgency       Urgency?        @default(MEDIUM)
+  creatorId     String          @map("creator_id")
+  assigneeId    String?         @map("assignee_id")
+  dueDate       DateTime?       @map("due_date")
+  resolvedAt    DateTime?       @map("resolved_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
+  publishedAt   DateTime?
+  categoryId    String?         @map("category_id")
+  ticketHistory TicketHistory[]
+  comments      Comment[]
+  attachments   Attachment[]
+  assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  category      TicketCategory? @relation(fields: [categoryId], references: [id])
+  creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -83,17 +82,15 @@ model Ticket {
 }
 
 model Comment {
-  id        String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id        String   @id @default(dbgenerated("(gen_random_uuid())::text"))
   content   String
-  ticketId  String        @map("ticket_id")
-  userId    String        @map("user_id")
-  internal  Boolean       @default(false)
-  source    CommentSource @default(WEB)     // Track where comment came from
-  metadata  Json?         @default("{}")     // Store email ID and other metadata
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
-  ticket    Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id])
+  ticketId  String   @map("ticket_id")
+  userId    String   @map("user_id")
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@index([ticketId])
   @@index([createdAt])
@@ -316,10 +313,4 @@ enum InvitationStatus {
   ACCEPTED
   EXPIRED
   CANCELLED
-}
-
-enum CommentSource {
-  WEB     // Created through the web interface
-  EMAIL   // Created from email reply
-  API     // Created through API
 }

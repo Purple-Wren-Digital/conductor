@@ -10,7 +10,7 @@ import { Textarea } from "../textarea";
 import { Badge } from "../badge";
 import { SafeHtml } from "../safe-html";
 import { formatDistanceToNow } from "date-fns";
-import { Edit2, Trash2, Check, X, Mail } from "lucide-react";
+import { Edit2, Trash2, Check, X } from "lucide-react";
 import { useStore } from "@/context/store-provider";
 
 interface CommentItemProps {
@@ -92,12 +92,6 @@ export function CommentItem({ comment, ticketId }: CommentItemProps) {
           {comment.internal && (
             <Badge variant="secondary" className="text-xs">
               Internal
-            </Badge>
-          )}
-          {comment.source === "EMAIL" && (
-            <Badge variant="outline" className="text-xs">
-              <Mail className="w-3 h-3 mr-1" />
-              via email
             </Badge>
           )}
         </div>
