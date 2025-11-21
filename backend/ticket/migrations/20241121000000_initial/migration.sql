@@ -1,29 +1,54 @@
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
--- CreateEnum
-CREATE TYPE "public"."NotificationCategory" AS ENUM ('ACCOUNT', 'ACTIVITY', 'MARKETING', 'PRODUCT', 'PERMISSIONS');
+-- CreateEnum (with IF NOT EXISTS handling)
+DO $$ BEGIN
+    CREATE TYPE "public"."NotificationCategory" AS ENUM ('ACCOUNT', 'ACTIVITY', 'MARKETING', 'PRODUCT', 'PERMISSIONS');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."NotificationFrequency" AS ENUM ('NONE', 'INSTANT', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY');
+DO $$ BEGIN
+    CREATE TYPE "public"."NotificationFrequency" AS ENUM ('NONE', 'INSTANT', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."NotificationChannel" AS ENUM ('EMAIL', 'PUSH', 'IN_APP', 'SMS');
+DO $$ BEGIN
+    CREATE TYPE "public"."NotificationChannel" AS ENUM ('EMAIL', 'PUSH', 'IN_APP', 'SMS');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."UserRole" AS ENUM ('AGENT', 'STAFF', 'STAFF_LEADER', 'ADMIN');
+DO $$ BEGIN
+    CREATE TYPE "public"."UserRole" AS ENUM ('AGENT', 'STAFF', 'STAFF_LEADER', 'ADMIN');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."TicketStatus" AS ENUM ('ASSIGNED', 'AWAITING_RESPONSE', 'IN_PROGRESS', 'RESOLVED', 'DRAFT', 'CREATED', 'UNASSIGNED');
+DO $$ BEGIN
+    CREATE TYPE "public"."TicketStatus" AS ENUM ('ASSIGNED', 'AWAITING_RESPONSE', 'IN_PROGRESS', 'RESOLVED', 'DRAFT', 'CREATED', 'UNASSIGNED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."Urgency" AS ENUM ('HIGH', 'MEDIUM', 'LOW');
+DO $$ BEGIN
+    CREATE TYPE "public"."Urgency" AS ENUM ('HIGH', 'MEDIUM', 'LOW');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."InvitationStatus" AS ENUM ('PENDING', 'ACCEPTED', 'EXPIRED', 'CANCELLED');
+DO $$ BEGIN
+    CREATE TYPE "public"."InvitationStatus" AS ENUM ('PENDING', 'ACCEPTED', 'EXPIRED', 'CANCELLED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "public"."CommentSource" AS ENUM ('WEB', 'EMAIL', 'API');
+DO $$ BEGIN
+    CREATE TYPE "public"."CommentSource" AS ENUM ('WEB', 'EMAIL', 'API');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable
 CREATE TABLE "public"."market_centers" (
