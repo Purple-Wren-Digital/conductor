@@ -2,6 +2,7 @@ import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { prisma } from "../ticket/db";
 import { Ticket } from "../ticket/types";
+import { UserRole } from "../user/types";
 
 export async function requireRole(
   userContext: UserContext,
@@ -20,6 +21,11 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
+
+  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
+    return true;
+  }
+
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     include: { creator: true, assignee: true, category: true },
@@ -29,9 +35,6 @@ export async function canAccessTicket(
     return false;
   }
 
-  if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
-    return true;
-  }
 
   if (
     userContext.role === "AGENT" &&
@@ -129,6 +132,16 @@ export async function canViewInternalComments(
     userContext.role === "STAFF_LEADER" ||
     userContext.role === "ADMIN"
   );
+}
+
+export async function canBeNotifiedAboutComments(
+  role: UserRole,
+  isInternal: boolean
+): Promise<boolean> {
+  if (!isInternal) {
+    return true;
+  }
+  return role === "ADMIN" || role === "STAFF" || role === "STAFF_LEADER";
 }
 
 export async function canCreateInternalComments(

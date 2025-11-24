@@ -495,18 +495,22 @@ export interface UsersToNotify {
 }
 
 export interface CreateNotificationPayload {
-  authToken?: string;
   userId: string;
-  // trigger: NotificationTrigger;
+  templateName?: string;
   category: NotificationCategory;
   type: string;
-  title: string;
-  body: string;
+  title?: string;
+  body?: string;
   data?: NotificationData;
   priority?: Urgency;
 }
 
 export type MarketCenterNotificationCallback = {
+  templateName:
+    | "Market Center User Removed"
+    | "Market Center User Added"
+    | "Category Assignment - Added"
+    | "Category Assignment - Removed";
   trigger: "Market Center Assignment" | "Category Assignment";
   receivingUser: {
     id: string;
@@ -558,3 +562,22 @@ export type UserNotificationCallback = {
     invitation?: NewUserInvitationProps;
   };
 };
+
+export interface NotificationTemplate {
+  id: string;
+  templateName: string;
+  templateDescription: string;
+  category: NotificationCategory;
+  channel: NotificationChannel;
+  type: string;
+  subject: string;
+  body: string;
+  isDefault: boolean;
+  createdAt: Date;
+  variables: any;
+}
+
+export interface NotificationTemplateFormData {
+  subject: string;
+  body: string;
+}

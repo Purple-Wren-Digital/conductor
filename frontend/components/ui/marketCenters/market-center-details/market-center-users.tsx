@@ -69,6 +69,7 @@ export default function MarketCenterUsers({
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   invalidateMarketCenter: Promise<void>;
   handleSendMarketCenterNotifications: ({
+    templateName,
     trigger,
     receivingUser,
     data,
@@ -195,6 +196,7 @@ export default function MarketCenterUsers({
     onSuccess: async (user: PrismaUser) => {
       toast.success(`${user?.name} was removed`);
       await handleSendMarketCenterNotifications({
+        templateName: "Market Center User Removed",
         trigger: "Market Center Assignment",
         receivingUser: {
           id: user?.id,
@@ -414,14 +416,18 @@ export default function MarketCenterUsers({
               </TableHeader>
               <TableBody>
                 {isLoading && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
-                    >
-                      Loading team members...
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow
+                        key={i}
+                        className="h-16 w-full bg-muted rounded animate-pulse"
+                      >
+                        <TableCell colSpan={5} className="py-8">
+                          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
                 )}
                 {teamMembers &&
                   teamMembers.length > 0 &&
@@ -441,11 +447,8 @@ export default function MarketCenterUsers({
                     );
                   })}
                 {!isLoading && (!teamMembers || !teamMembers.length) && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
-                    >
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
                       No team members found. Contact Admin if you haven&apos;t
                       been assigned a team.
                     </TableCell>

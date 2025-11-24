@@ -134,7 +134,6 @@ export default function NotificationPreferences({
     }
 
     setIsSubmitting(true);
-    // const hasNotificationPreferenceUpdates = formatUpdatedPreferences();
 
     if (
       !hasNotificationPreferenceUpdates ||
@@ -170,7 +169,7 @@ export default function NotificationPreferences({
       console.error("Failed to save notifications", error);
     } finally {
       await invalidateUserSettingsQuery;
-      await invalidateUserQuery;
+      // await invalidateUserQuery;
       setIsSubmitting(false);
     }
   };
@@ -273,7 +272,7 @@ export default function NotificationPreferences({
       toast.error("Error: Preferences were not reset");
     } finally {
       await invalidateUserSettingsQuery;
-      await invalidateUserQuery;
+      // await invalidateUserQuery;
       setIsSubmitting(false);
     }
   };

@@ -4,24 +4,67 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog/base-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog/base-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tag, Plus, Edit3, Trash2, User, Settings } from "lucide-react";
-import { 
-  useTicketCategories, 
-  useCreateTicketCategory, 
-  useUpdateTicketCategory, 
+import {
+  useTicketCategories,
+  useCreateTicketCategory,
+  useUpdateTicketCategory,
   useDeleteTicketCategory,
-  useListTeamMembers 
+  useListTeamMembers,
 } from "@/hooks/use-settings";
 import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
@@ -35,12 +78,13 @@ type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
 export default function TicketCategories() {
   const { user: clerkUser } = useUser();
-  const { data: categoriesData, isLoading: categoriesLoading } = useTicketCategories(clerkUser?.id);
+  const { data: categoriesData, isLoading: categoriesLoading } =
+    useTicketCategories(clerkUser?.id);
   const { data: teamData } = useListTeamMembers(clerkUser?.id);
   const createCategory = useCreateTicketCategory(clerkUser?.id);
   const updateCategory = useUpdateTicketCategory(clerkUser?.id);
   const deleteCategory = useDeleteTicketCategory(clerkUser?.id);
-  
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
 
@@ -72,7 +116,7 @@ export default function TicketCategories() {
 
   const onEditSubmit = async (data: CategoryFormData) => {
     if (!editingCategory) return;
-    
+
     try {
       await updateCategory.mutateAsync({
         id: editingCategory.id,
@@ -88,13 +132,19 @@ export default function TicketCategories() {
     }
   };
 
-  const handleToggleActive = async (categoryId: string, isActive: boolean, categoryName: string) => {
+  const handleToggleActive = async (
+    categoryId: string,
+    isActive: boolean,
+    categoryName: string
+  ) => {
     try {
       await updateCategory.mutateAsync({
         id: categoryId,
         data: { isActive },
       });
-      toast.success(`Category "${categoryName}" has been ${isActive ? "activated" : "deactivated"}`);
+      toast.success(
+        `Category "${categoryName}" has been ${isActive ? "activated" : "deactivated"}`
+      );
     } catch (error) {
       toast.error("Failed to update category status");
     }
@@ -119,7 +169,7 @@ export default function TicketCategories() {
 
   const getAssigneeName = (assigneeId: string | undefined) => {
     if (!assigneeId) return "Unassigned";
-    const assignee = teamData?.members.find(m => m.id === assigneeId);
+    const assignee = teamData?.members.find((m) => m.id === assigneeId);
     return assignee ? assignee.name : "Unknown User";
   };
 
@@ -166,7 +216,10 @@ export default function TicketCategories() {
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...createForm}>
-                  <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={createForm.handleSubmit(onCreateSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={createForm.control}
                       name="name"
@@ -174,7 +227,10 @@ export default function TicketCategories() {
                         <FormItem>
                           <FormLabel>Category Name</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="e.g., Technical Support, Billing" />
+                            <Input
+                              {...field}
+                              placeholder="e.g., Technical Support, Billing"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -186,25 +242,35 @@ export default function TicketCategories() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Default Assignee (Optional)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select default assignee" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No default assignee</SelectItem>
-                              {teamData?.members.filter(m => m.isActive).map((member) => (
-                                <SelectItem key={member.id} value={member.id}>
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    <span>{member.name}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {member.role}
-                                    </Badge>
-                                  </div>
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="">
+                                No default assignee
+                              </SelectItem>
+                              {teamData?.members
+                                .filter((m) => m.isActive)
+                                .map((member) => (
+                                  <SelectItem key={member.id} value={member.id}>
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4" />
+                                      <span>{member.name}</span>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {member.role}
+                                      </Badge>
+                                    </div>
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -219,11 +285,10 @@ export default function TicketCategories() {
                       >
                         Cancel
                       </Button>
-                      <Button 
-                        type="submit" 
-                        disabled={createCategory.isPending}
-                      >
-                        {createCategory.isPending ? "Creating..." : "Create Category"}
+                      <Button type="submit" disabled={createCategory.isPending}>
+                        {createCategory.isPending
+                          ? "Creating..."
+                          : "Create Category"}
                       </Button>
                     </div>
                   </form>
@@ -239,11 +304,13 @@ export default function TicketCategories() {
         <CardHeader>
           <CardTitle>Current Categories</CardTitle>
           <CardDescription>
-            {categoriesData?.categories?.length || 0} ticket categories configured
+            {categoriesData?.categories?.length || 0} ticket categories
+            configured
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {categoriesData?.categories && categoriesData.categories.length > 0 ? (
+          {categoriesData?.categories &&
+          categoriesData.categories.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -255,6 +322,20 @@ export default function TicketCategories() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {categoriesLoading && (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow
+                        key={i}
+                        className="h-16 w-full bg-muted rounded animate-pulse"
+                      >
+                        <TableCell colSpan={5} className="py-8">
+                          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                )}
                 {categoriesData.categories.map((category) => (
                   <TableRow key={category.id}>
                     <TableCell>
@@ -273,12 +354,18 @@ export default function TicketCategories() {
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={category.isActive}
-                          onCheckedChange={(checked) => 
-                            handleToggleActive(category.id, checked, category.name)
+                          onCheckedChange={(checked) =>
+                            handleToggleActive(
+                              category.id,
+                              checked,
+                              category.name
+                            )
                           }
                           disabled={updateCategory.isPending}
                         />
-                        <Badge variant={category.isActive ? "default" : "secondary"}>
+                        <Badge
+                          variant={category.isActive ? "default" : "secondary"}
+                        >
                           {category.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
@@ -288,9 +375,11 @@ export default function TicketCategories() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Dialog 
-                          open={editingCategory?.id === category.id} 
-                          onOpenChange={(open) => !open && setEditingCategory(null)}
+                        <Dialog
+                          open={editingCategory?.id === category.id}
+                          onOpenChange={(open) =>
+                            !open && setEditingCategory(null)
+                          }
                         >
                           <DialogTrigger asChild>
                             <Button
@@ -309,7 +398,10 @@ export default function TicketCategories() {
                               </DialogDescription>
                             </DialogHeader>
                             <Form {...editForm}>
-                              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                              <form
+                                onSubmit={editForm.handleSubmit(onEditSubmit)}
+                                className="space-y-4"
+                              >
                                 <FormField
                                   control={editForm.control}
                                   name="name"
@@ -317,7 +409,10 @@ export default function TicketCategories() {
                                     <FormItem>
                                       <FormLabel>Category Name</FormLabel>
                                       <FormControl>
-                                        <Input {...field} placeholder="Category name" />
+                                        <Input
+                                          {...field}
+                                          placeholder="Category name"
+                                        />
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>
@@ -329,25 +424,38 @@ export default function TicketCategories() {
                                   render={({ field }) => (
                                     <FormItem>
                                       <FormLabel>Default Assignee</FormLabel>
-                                      <Select onValueChange={field.onChange} value={field.value}>
+                                      <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                      >
                                         <FormControl>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select default assignee" />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          <SelectItem value="">No default assignee</SelectItem>
-                                          {teamData?.members.filter(m => m.isActive).map((member) => (
-                                            <SelectItem key={member.id} value={member.id}>
-                                              <div className="flex items-center gap-2">
-                                                <User className="h-4 w-4" />
-                                                <span>{member.name}</span>
-                                                <Badge variant="outline" className="text-xs">
-                                                  {member.role}
-                                                </Badge>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
+                                          <SelectItem value="">
+                                            No default assignee
+                                          </SelectItem>
+                                          {teamData?.members
+                                            .filter((m) => m.isActive)
+                                            .map((member) => (
+                                              <SelectItem
+                                                key={member.id}
+                                                value={member.id}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <User className="h-4 w-4" />
+                                                  <span>{member.name}</span>
+                                                  <Badge
+                                                    variant="outline"
+                                                    className="text-xs"
+                                                  >
+                                                    {member.role}
+                                                  </Badge>
+                                                </div>
+                                              </SelectItem>
+                                            ))}
                                         </SelectContent>
                                       </Select>
                                       <FormMessage />
@@ -362,23 +470,24 @@ export default function TicketCategories() {
                                   >
                                     Cancel
                                   </Button>
-                                  <Button 
-                                    type="submit" 
+                                  <Button
+                                    type="submit"
                                     disabled={updateCategory.isPending}
                                   >
-                                    {updateCategory.isPending ? "Updating..." : "Update Category"}
+                                    {updateCategory.isPending
+                                      ? "Updating..."
+                                      : "Update Category"}
                                   </Button>
                                 </div>
                               </form>
                             </Form>
                           </DialogContent>
                         </Dialog>
-                        
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -386,16 +495,22 @@ export default function TicketCategories() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Delete Category
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete the &quot;{category.name}&quot; category?
-                                This action cannot be undone and may affect existing tickets.
+                                Are you sure you want to delete the &quot;
+                                {category.name}&quot; category? This action
+                                cannot be undone and may affect existing
+                                tickets.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => handleDelete(category.id, category.name)}
+                                onClick={() =>
+                                  handleDelete(category.id, category.name)
+                                }
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete Category
@@ -410,9 +525,11 @@ export default function TicketCategories() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No ticket categories configured. Create your first category to get started.
-            </div>
+            <TableRow className="text-center text-muted-foreground">
+              <TableCell colSpan={5} className="py-8">
+                No ticket categories found. Add a new category to get started.
+              </TableCell>
+            </TableRow>
           )}
         </CardContent>
       </Card>
@@ -432,10 +549,22 @@ export default function TicketCategories() {
           <div className="p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium mb-2">How Auto-routing Works</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• When a ticket is created with a specific category, it will be automatically assigned to the category&apos;s default assignee (if configured)</li>
-              <li>• If no default assignee is set for a category, tickets will remain unassigned and can be manually assigned later</li>
-              <li>• Only active categories will appear in the ticket creation form</li>
-              <li>• Auto-routing requires the &quot;Auto Assignment&quot; setting to be enabled in General Settings</li>
+              <li>
+                • When a ticket is created with a specific category, it will be
+                automatically assigned to the category&apos;s default assignee
+                (if configured)
+              </li>
+              <li>
+                • If no default assignee is set for a category, tickets will
+                remain unassigned and can be manually assigned later
+              </li>
+              <li>
+                • Only active categories will appear in the ticket creation form
+              </li>
+              <li>
+                • Auto-routing requires the &quot;Auto Assignment&quot; setting
+                to be enabled in General Settings
+              </li>
             </ul>
           </div>
         </CardContent>

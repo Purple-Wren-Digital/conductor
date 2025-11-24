@@ -16,8 +16,8 @@ const TicketAssignment = ({
   ticketTitle,
   createdOn,
   updatedOn,
-  editedByName,
-  editedById,
+  editorName,
+  editorId,
   currentAssignment,
   previousAssignment,
   updateType,
@@ -59,8 +59,8 @@ const TicketAssignment = ({
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
-              Assigned By: {editedByName}
-              {editedById && ` #${editedById.slice(0, 8)})`}
+              Assigned By: {editorName}
+              {editorId && ` #${editorId.slice(0, 8)})`}
             </Text>
           </Section>
 

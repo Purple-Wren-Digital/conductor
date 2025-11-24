@@ -1,6 +1,7 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { Prisma } from "@prisma/client";
+import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
 import { ticket } from "~encore/clients";
 
@@ -28,17 +29,22 @@ export const seedData = api<void, SeedResponse>(
       data: { assigneeId: null },
     });
     await prisma.ticket.deleteMany({});
+
+    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
+    await prisma.notificationPreferences.deleteMany({});
+    await prisma.notificationTemplate.deleteMany({});
+
     await prisma.ticketCategory.deleteMany({});
 
     // await prisma.teamInvitation.deleteMany({});
 
     await prisma.userHistory.deleteMany({});
-    await prisma.notification.deleteMany({});
-    await prisma.notificationPreferences.deleteMany({});
     await prisma.userSettings.deleteMany({});
-    await prisma.user.deleteMany({});
 
     await prisma.marketCenterHistory.deleteMany({});
+
+    // Delete parent records last
+    await prisma.user.deleteMany({});
     await prisma.marketCenter.deleteMany({});
 
     const now = new Date();
@@ -533,6 +539,14 @@ export const seedData = api<void, SeedResponse>(
         });
       }
     }
+
+    // await prisma.notificationPreferences.createMany({
+    //   data: defaultNotificationPreferences,
+    // });
+
+    await prisma.notificationTemplate.createMany({
+      data: notificationTemplatesDefault,
+    });
 
     await prisma.comment.createMany({ data: comments });
 

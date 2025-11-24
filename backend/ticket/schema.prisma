@@ -7,6 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model MarketCenter {
@@ -269,6 +270,20 @@ model Notification {
   deliveredAt DateTime?
   createdAt   DateTime             @default(now())
   user        User                 @relation(fields: [userId], references: [id])
+}
+
+model NotificationTemplate {
+  id                     String                  @id @default(cuid())
+  templateName           String                  @unique
+  templateDescription    String
+  category               NotificationCategory
+  channel                NotificationChannel
+  type                   String
+  subject                String
+  body                   String
+  isDefault              Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  variables              Json?
 }
 
 enum NotificationCategory {

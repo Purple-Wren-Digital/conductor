@@ -66,7 +66,7 @@ export function Header() {
   }, [clerkUser, isLoaded, setCurrentUser, getToken]);
 
   return (
-    <header className="border-b bg-[var(--conductor)]">
+    <header className="border-b bg-[#6D1C24]">
       <div className="px-5 sm:px-10 flex items-center gap-4 justify-between py-2">
         <Link href="/" className="flex items-center gap-3">
           <div className="size-12 flex items-center justify-center">

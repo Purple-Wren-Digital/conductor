@@ -121,7 +121,7 @@ export default function AllNotifications({
                 className={`
                   absolute -top-0.25 -right-0.25 p-1 leading-none rounded-full
                   motion-safe:animate-conductor-ping
-                  border-[var(--conductor)] bg-[#de2454] shadow-[0_0_3px_#A2646A]
+                  border-[#6D1C24] bg-[#de2454] shadow-[0_0_3px_#A2646A]
                 `}
               />
             ) : null}

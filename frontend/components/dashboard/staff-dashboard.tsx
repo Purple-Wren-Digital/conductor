@@ -84,7 +84,7 @@ export function StaffDashboard() {
       : selectedTeamMemberId === "Unassigned"
         ? tickets.filter((t: Ticket) => !t.assigneeId)
         : tickets;
-  }, [selectedTeamMemberId, tickets]);
+  }, [currentUser?.id, selectedTeamMemberId, tickets]);
 
   const stats = useMemo(() => {
     const totalTickets = filteredTickets.length;
@@ -162,7 +162,7 @@ export function StaffDashboard() {
       ticketsByStatus,
       ticketsByUrgency,
     };
-  }, [filteredTickets, tickets]);
+  }, [filteredTickets]);
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -201,7 +201,7 @@ export function StaffDashboard() {
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--conductor)]">
+          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
             Welcome, {clerkUser?.firstName}
           </h1>
           <p className="text-muted-foreground">
