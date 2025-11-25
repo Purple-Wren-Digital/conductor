@@ -226,8 +226,49 @@ export function useFetchTicketSurveyResults(
   });
 }
 
+export function useListAllRatings(
+  queryKey: readonly [string, string],
+  role?: string
+) {
+  const { getToken } = useAuth();
+
+  return useQuery<any, Error, any>({
+    queryKey: queryKey,
+    queryFn: async () => {
+      if (!role || role !== "ADMIN") {
+        throw new Error("You do not have permission to access this data");
+      }
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const res = await fetch(`${API_BASE}/surveys/ratings/all`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+        console.log("useFetchRatingsByAssignee - response", res);
+        if (!res.ok) {
+          throw new Error("Failed to fetch survey data");
+        }
+        const data = await res.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching ticket survey results:", error);
+        throw error;
+      }
+    },
+    enabled: !!role && role === "ADMIN",
+    placeholderData: null,
+  });
+}
+
 export function useFetchRatingsByAssignee(
   queryKey: readonly [string, string],
+  shouldFetchRatings: boolean,
   assigneeId?: string
 ) {
   const { getToken } = useAuth();
@@ -258,14 +299,56 @@ export function useFetchRatingsByAssignee(
           throw new Error("Failed to fetch survey data");
         }
         const data = await res.json();
-        console.log("useFetchRatingsByAssignee - data", data);
         return data;
       } catch (error) {
         console.error("Error fetching ticket survey results:", error);
         throw error;
       }
     },
-    enabled: !!assigneeId,
+    enabled: !!shouldFetchRatings && !!assigneeId,
+    placeholderData: null,
+  });
+}
+
+export function useFetchRatingsByMarketCenter(
+  queryKeyRatingsByMarketCenter: string[],
+  marketCenterId?: string
+) {
+  const { getToken } = useAuth();
+
+  return useQuery<any, Error, any>({
+    queryKey: queryKeyRatingsByMarketCenter,
+    queryFn: async () => {
+      if (!marketCenterId) {
+        throw new Error("No market center ID provided");
+      }
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const res = await fetch(
+          `${API_BASE}/surveys/ratings/byMarketCenter/${marketCenterId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+        console.log("useFetchRatingsByAssignee - response", res);
+        if (!res.ok) {
+          throw new Error("Failed to fetch survey data");
+        }
+        const data = await res.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching ticket survey results:", error);
+        throw error;
+      }
+    },
+    enabled: !!marketCenterId,
     placeholderData: null,
   });
 }

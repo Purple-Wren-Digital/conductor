@@ -71,13 +71,15 @@ export function StaffDashboard() {
 
   const { user: clerkUser } = useUser();
 
+  const shouldFetchRatings = (currentUser?._count?.assignedTickets ?? 0) > 0;
+
   const { data: userRatingsData, isLoading: ratingsLoading } =
     useFetchRatingsByAssignee(
       ["ratings-by-assignee", currentUser?.id || ""],
+      shouldFetchRatings,
       currentUser?.id || ""
     );
 
-  console.log("User Ratings Data:", userRatingsData);
   const userAvgRatings: SurveyResults = useMemo(() => {
     return userRatingsData;
   }, [userRatingsData]);
@@ -266,12 +268,12 @@ export function StaffDashboard() {
 
         <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
           <ToolTip
-            content="Ratings are based on your resolved tickets via their survey responses"
+            content="Ratings are based on your resolved tickets via survey responses"
             trigger={<InfoIcon className="size-3 text-primary" />}
           />
           <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
             <span className="flex items-center gap-1">
-              {clerkUser?.firstName ? `${clerkUser?.firstName}'s` : "Your"}{" "}
+              {clerkUser?.firstName ? `${clerkUser?.firstName}'s` : "Your"} Avg{" "}
               Rating:
               <StarRating
                 rating={userAvgRatings?.assigneeAverageRating || 0}

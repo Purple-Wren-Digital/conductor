@@ -37,7 +37,6 @@ import {
   ArrowDown,
   ArrowDownUp,
   ArrowUp,
-  Building,
   Filter,
   Plus,
   Search,
@@ -298,12 +297,11 @@ export default function MarketCenterManagement() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <section>
         <CardHeader>
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
+              <CardTitle className="text-2xl flex items-center gap-2">
                 Market Center Management ({totalMarketCenters})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -318,8 +316,10 @@ export default function MarketCenterManagement() {
               Add Market Center
             </Button>
           </div>
+        </CardHeader>
 
-          <div className="space-y-4 mt-4">
+        <CardContent>
+          <div className="space-y-4 my-4">
             {/* SEARCH USERS + FILTER BUTTON */}
             <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
               {/* SEARCH USERS */}
@@ -525,9 +525,6 @@ export default function MarketCenterManagement() {
               </Card>
             )}
           </div>
-        </CardHeader>
-
-        <CardContent>
           <div
             className={`space-y-4 transition-opacity duration-300 ${marketCentersLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
           >
@@ -574,7 +571,7 @@ export default function MarketCenterManagement() {
             />
           </div>
         </CardContent>
-      </Card>
+      </section>
 
       {/* CREATE MARKET CENTER */}
       <CreateMarketCenter

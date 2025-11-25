@@ -432,9 +432,6 @@ export default function MarketCenterUsers({
                 {teamMembers &&
                   teamMembers.length > 0 &&
                   teamMembers.map((member, index) => {
-                    // const self = member.id === currentUser?.id;
-                    // const cannotUpdateAdmin =
-                    //   member.role === "ADMIN" && currentUser?.role !== "ADMIN";
                     return (
                       <MarketCenterUserTable
                         key={member.id + index}
@@ -442,24 +439,11 @@ export default function MarketCenterUsers({
                         onEdit={() =>
                           router.push(`/dashboard/users/${member.id}`)
                         }
-                        // deleteLabel="Remove"
                         onClick={() =>
                           router.push(`/dashboard/users/${member.id}`)
                         }
                         onDelete={() => openRemoveUserModal(member)}
                       />
-                      // <UserListItem
-                      //   key={member.id + index}
-                      //   user={member}
-                      //   onEdit={() =>
-                      //     router.push(`/dashboard/users/${member.id}`)
-                      //   }
-                      //   deleteLabel="Remove"
-                      //   onClick={() =>
-                      //     router.push(`/dashboard/users/${member.id}`)
-                      //   }
-                      //   onDelete={() => openRemoveUserModal(member)}
-                      // />
                     );
                   })}
                 {!isLoading && (!teamMembers || !teamMembers.length) && (

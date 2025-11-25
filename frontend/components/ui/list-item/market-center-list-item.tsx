@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useMemo } from "react";
 import { ListItem } from "./base-list-item";
-import type { MarketCenter } from "@/lib/types";
+import type { MarketCenter, SurveyResults } from "@/lib/types";
 import { Calendar, CircleMinus, Tags, Ticket, Users } from "lucide-react";
 import { format } from "date-fns";
+import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
 
 export function MarketCenterListItem({
   marketCenter,
@@ -23,11 +25,24 @@ export function MarketCenterListItem({
   onClose: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
+  const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
+    useFetchRatingsByMarketCenter(
+      ["ratings-by-market-center", marketCenter.id],
+      marketCenter.id
+    );
+
+  const marketCenterRatings: SurveyResults = useMemo(() => {
+    return ratingsData;
+  }, [ratingsData]);
   return (
     <ListItem
       id={marketCenter.id}
       title={marketCenter.name}
-      subtitle={`#${marketCenter.id.slice(0, 8)}`}
+      subtitle={`#${marketCenter.id.slice(0, 8)} | Avg Rating: ${
+        marketCenterRatings?.marketCenterAverageRating
+          ? marketCenterRatings.marketCenterAverageRating.toFixed(2)
+          : "N/A"
+      }`}
       selectable={selectable}
       selected={selected}
       onSelect={(v) => onSelect?.(!!v)}

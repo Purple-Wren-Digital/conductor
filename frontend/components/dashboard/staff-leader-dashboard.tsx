@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
   useFetchMarketCenter,
@@ -62,7 +63,7 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import { StarRating } from "../ui/ratingInput/star-rating-static";
+import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
 
 export function StaffLeaderDashboard() {
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
@@ -77,14 +78,24 @@ export function StaffLeaderDashboard() {
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
 
+  const queryKeyRatingsByMarketCenter = [
+    "staff-leader-dashboard-ratings-by-market-center",
+    marketCenterId,
+  ];
+  const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
+    useFetchRatingsByMarketCenter(
+      queryKeyRatingsByMarketCenter,
+      marketCenterId
+    );
+
+  const marketCenterRatings: SurveyResults = useMemo(() => {
+    return ratingsData;
+  }, [ratingsData]);
+
   const teamMembers: PrismaUser[] = useMemo(() => {
     return marketCenter?.users && marketCenter?.users.length > 0
       ? marketCenter?.users
       : [];
-  }, [marketCenter]);
-
-  const marketCenterAverages: SurveyResults = useMemo(() => {
-    return marketCenter?.averages;
   }, [marketCenter]);
 
   const { data: ticketsData, isLoading: ticketsLoading } =
@@ -318,28 +329,28 @@ export function StaffLeaderDashboard() {
         </div>
         <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
           <ToolTip
-            content="Ratings are based on your market center's resolved tickets via their survey responses"
+            content="Ratings are based on resolved tickets within this market center via survey responses"
             trigger={<InfoIcon className="size-3 text-primary" />}
           />
           <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
             <span className="flex items-center gap-1">
               {marketCenter?.name || "Market Center"}:
               <StarRating
-                rating={marketCenterAverages?.marketCenterAverageRating || 0}
+                rating={marketCenterRatings?.marketCenterAverageRating || 0}
                 size={16}
               />
             </span>
             <span className="flex items-center gap-1">
               All Team Members:
               <StarRating
-                rating={marketCenterAverages?.assigneeAverageRating || 0}
+                rating={marketCenterRatings?.assigneeAverageRating || 0}
                 size={16}
               />
             </span>
             <span className="flex items-center gap-1">
               All Tickets:
               <StarRating
-                rating={marketCenterAverages?.overallAverageRating || 0}
+                rating={marketCenterRatings?.overallAverageRating || 0}
                 size={16}
               />
             </span>

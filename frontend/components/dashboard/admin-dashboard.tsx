@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useListAdminTickets } from "@/hooks/use-tickets";
+import { useListAdminTickets, useListAllRatings } from "@/hooks/use-tickets";
 import {
   chartColors,
   getResolvedInBusinessDays,
@@ -36,7 +36,7 @@ import {
   StatusKey,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
-import type { MarketCenter, SurveyResults, Ticket } from "@/lib/types";
+import type { MarketCenter, Ticket } from "@/lib/types";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import {
   Bar,
@@ -106,7 +106,11 @@ export function AdminDashboard() {
     return marketCentersData?.marketCenters ?? [];
   }, [marketCentersData]);
   const totalMarketCenters = marketCentersData?.total || 0;
-  const globalAverages: SurveyResults = marketCentersData?.globalAverages;
+
+  const { data: globalAverages } = useListAllRatings(
+    ["admin-dashboard-global-ratings", role ?? "AGENT"],
+    role
+  );
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
@@ -305,7 +309,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
           <ToolTip
-            content="Ratings are based on all resolved tickets via their survey responses"
+            content="Ratings are based on all resolved tickets via survey responses"
             trigger={<InfoIcon className="size-3 text-primary" />}
           />
           <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">

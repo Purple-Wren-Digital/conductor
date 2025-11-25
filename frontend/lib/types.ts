@@ -198,15 +198,15 @@ export interface PrismaUser {
 
   notifications?: Notification[];
 
-  _count: {
+  _count?: {
     assignedTickets?: number;
-    comments?: number;
     createdTickets?: number;
+    comments?: number;
     defaultForCategories?: number;
   };
   responseSurveys?: Survey[];
   receivedSurveys?: Survey[];
-  averages?: SurveyResults;
+  // averages?: SurveyResults;
 }
 export interface UserHistory {
   id: string;

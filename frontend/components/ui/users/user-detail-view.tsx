@@ -17,6 +17,7 @@ import UserHistoryTable from "@/components/history-tables/user/history-table-use
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import {
   Select,
   SelectContent,
@@ -35,10 +36,19 @@ import {
   UserRole,
 } from "@/lib/types";
 import { getRoleDescription, ROLE_ICONS, roleOptions } from "@/lib/utils";
-import { ArrowLeft, Building, Edit2, Hash, Mail, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Building,
+  Edit2,
+  Hash,
+  InfoIcon,
+  Mail,
+  User,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 import { useFetchOneUser } from "@/hooks/use-users";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 
@@ -52,7 +62,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: id,
   });
-  const user: PrismaUser = userData ?? {};
+  const user: PrismaUser = userData?.user ?? {};
   const marketCenter: MarketCenter = user?.marketCenter ?? ({} as MarketCenter);
 
   // EDIT USER STATES
@@ -298,6 +308,13 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     });
   };
 
+  const { data: userRatingsData } = useFetchRatingsByAssignee(
+    ["user-profile-ratings-by-assignee", user?.id],
+    (userData?.resolvedTicketsCount ?? 0) > 0,
+    user?.id
+  );
+  console.log("USER RATINGS DATA", userRatingsData);
+
   return (
     <div className="space-y-6">
       {/* TOP INFO */}
@@ -324,9 +341,38 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
       <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] justify-center">
         {/* USER INFO */}
-        <Card className="lg:col-span-2 ">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-xl">{user?.name}</CardTitle>
+            <CardTitle className="text-xl flex items-center justify-between gap-2">
+              {user?.name}
+              <ToolTip
+                content="Ratings are based on assigned and resolved tickets via survey responses"
+                trigger={<InfoIcon className="size-3.5 text-primary" />}
+              />
+            </CardTitle>
+            <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
+              <span className="flex items-center gap-1">
+                Avg User Rating:
+                <StarRating
+                  rating={userRatingsData?.assigneeAverageRating ?? 0}
+                  size={16}
+                />
+              </span>
+              <span className="flex items-center gap-2 text-sm">
+                Avg Ticket Rating:
+                <StarRating
+                  rating={userRatingsData?.overallAverageRating ?? 0}
+                  size={16}
+                />
+              </span>
+              <span className="flex items-center gap-2 text-sm">
+                Avg Market Center Rating:
+                <StarRating
+                  rating={userRatingsData?.marketCenterAverageRating ?? 0}
+                  size={16}
+                />
+              </span>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -359,10 +405,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                         variant={
                           (user?.role ? user.role.toLowerCase() : "user") as any
                         }
-                        title={user?.role.split("_").join(" ")}
                         className="text-xs px-2 py-0.5"
                       >
-                        {user?.role.split("_").join(" ") ?? "N/a"}
+                        {user?.role ? user?.role.split("_").join(" ") : "N/a"}
                       </Badge>
                     }
                     content={getRoleDescription(user?.role)}

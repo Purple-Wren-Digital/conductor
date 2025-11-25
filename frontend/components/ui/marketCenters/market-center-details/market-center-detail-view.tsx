@@ -28,10 +28,10 @@ import type {
 } from "@/lib/types";
 import {
   ArrowLeft,
-  Building,
   Edit2,
   Hash,
   History,
+  InfoIcon,
   Tags,
   Ticket,
   Users,
@@ -46,6 +46,9 @@ import MarketCenterHistory from "./market-center-history";
 import MarketCenterTicketCategories from "./market-center-ticket-categories";
 import MarketCenterUsers from "./market-center-users";
 import { createAndSendNotification } from "@/lib/utils/notifications";
+import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 
 interface MarketCenterDetailProps {
   marketCenterId: string;
@@ -84,6 +87,12 @@ export default function MarketCenterDetailView({
   const invalidateMarketCenter = queryClient.invalidateQueries({
     queryKey: ["get-market-center", marketCenterId],
   });
+
+  const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
+    useFetchRatingsByMarketCenter(
+      ["market-center-details-ratings", marketCenterId],
+      marketCenterId
+    );
 
   const handleTabChange = (newTab: string) => {
     const params = new URLSearchParams(searchParams);
@@ -176,17 +185,36 @@ export default function MarketCenterDetailView({
       {/* MARKET CENTER INFO */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 md:text-xl">
-                <Building className="h-5 w-5" />
-                {marketCenter && marketCenter?.name && `${marketCenter.name} `}
-                Market Center
-              </CardTitle>
-              <CardDescription className="font-medium">
-                Manage settings and team
-              </CardDescription>
-            </div>
+          <CardTitle className="flex items-center justify-between  gap-2 md:text-xl">
+            {marketCenter && marketCenter?.name && `${marketCenter.name} `}
+            Market Center
+            <ToolTip
+              content="Ratings are based on resolved tickets within this market center via survey responses"
+              trigger={<InfoIcon className="size-3.5 text-primary" />}
+            />
+          </CardTitle>
+          <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
+            <span className="flex items-center gap-2 text-sm">
+              Avg Market Center Rating:
+              <StarRating
+                rating={ratingsData?.marketCenterAverageRating ?? 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              Avg User Rating:
+              <StarRating
+                rating={ratingsData?.assigneeAverageRating ?? 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-2 text-sm">
+              Avg Ticket Rating:
+              <StarRating
+                rating={ratingsData?.overallAverageRating ?? 0}
+                size={16}
+              />
+            </span>
           </div>
         </CardHeader>
         <CardContent>

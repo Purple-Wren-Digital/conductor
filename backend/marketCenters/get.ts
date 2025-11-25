@@ -50,16 +50,6 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
       throw APIError.notFound("Market Center not found");
     }
 
-    const surveyData = await prisma.survey.aggregate({
-      where: { marketCenterId: marketCenter.id, completed: true },
-      _avg: {
-        overallRating: true,
-        assigneeRating: true,
-        marketCenterRating: true,
-      },
-      _count: true,
-    });
-
     const totalTickets = await prisma.ticket.count({
       where: { category: { marketCenterId: req.id } },
     });
@@ -81,18 +71,6 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
           ticketCount: category._count?.tickets ?? 0,
         })
       ),
-      averages: {
-        totalSurveys: surveyData?._count ?? 0,
-        overallAverageRating: surveyData?._avg?.overallRating
-          ? Number(surveyData._avg.overallRating)
-          : 0,
-        assigneeAverageRating: surveyData?._avg?.assigneeRating
-          ? Number(surveyData._avg.assigneeRating)
-          : 0,
-        marketCenterAverageRating: surveyData?._avg?.marketCenterRating
-          ? Number(surveyData._avg.marketCenterRating)
-          : 0,
-      },
     };
 
     return {
