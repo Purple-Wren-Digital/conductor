@@ -1,4 +1,5 @@
-import { User, UserRole } from "../user/types";
+import type { Survey } from "../surveys/types";
+import type { User, UserRole } from "../user/types";
 
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 
@@ -15,6 +16,7 @@ export interface MarketCenter {
 
   totalTickets?: number;
   totalUsers?: number;
+
   // settingsAuditLogs?: SettingsAuditLog[];
 }
 export interface MarketCenterHistory {
@@ -28,6 +30,9 @@ export interface MarketCenterHistory {
   changedById: string;
   marketCenter?: MarketCenter;
   changedBy?: User;
+
+  teamSurveys?: Survey | null;
+  teamAverageRating?: string | null;
 }
 
 export interface TeamInvitation {

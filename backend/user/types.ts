@@ -9,6 +9,7 @@ import {
   NotificationCategory,
   NotificationFrequency,
 } from "../notifications/types";
+import { Survey } from "../surveys/types";
 
 export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
@@ -42,6 +43,9 @@ export interface User {
 
   assignedTicketsCount?: number;
   createdTicketsCount?: number;
+
+  responseSurveys?: Survey[];
+  receivedSurveys?: Survey[];
 }
 
 export interface UserHistory {

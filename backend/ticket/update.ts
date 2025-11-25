@@ -182,6 +182,23 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       });
       if (req.status === "RESOLVED") {
         updateData.resolvedAt = new Date();
+        const marketCenterId =
+          oldTicket.assignee?.marketCenterId ||
+          oldTicket.category?.marketCenterId ||
+          oldTicket.creator?.marketCenterId ||
+          null;
+
+        if (marketCenterId) {
+          const survey = await prisma.survey.create({
+            data: {
+              ticketId: req.ticketId,
+              surveyorId: oldTicket.creatorId,
+              assigneeId: oldTicket.assigneeId || null,
+              marketCenterId: marketCenterId,
+            },
+          });
+          updateData.surveyId = survey.id;
+        }
       }
     }
 

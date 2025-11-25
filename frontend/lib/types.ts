@@ -51,6 +51,8 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory: TicketHistory[];
+  surveyId?: string | null;
+  survey?: Survey | null;
 }
 
 export interface Attachment {
@@ -124,6 +126,26 @@ export interface BulkUpdateRequest {
   urgency?: Urgency;
 }
 
+// SURVEY
+export interface Survey {
+  id: string;
+  ticketId: string;
+  surveyorId: string;
+  assigneeId?: string | null;
+  completed: boolean;
+  marketCenterId: string | null;
+  overallRating: number | null;
+  assigneeRating: number | null;
+  marketCenterRating: number | null;
+  comment: string | null;
+  createdAt: Date;
+  updatedAt?: Date;
+  ticket?: Ticket;
+  surveyor?: PrismaUser;
+  assignee?: PrismaUser;
+  marketCenter?: MarketCenter;
+}
+
 // COMMENTS
 export interface Comment {
   id: string;
@@ -175,6 +197,8 @@ export interface PrismaUser {
     createdTickets?: number;
     defaultForCategories?: number;
   };
+  responseSurveys?: Survey[];
+  receivedSurveys?: Survey[];
 }
 export interface UserHistory {
   id: string;

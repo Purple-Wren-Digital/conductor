@@ -5,8 +5,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DB_URL")
+  provider          = "postgresql"
+  url               = env("DB_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -20,6 +20,7 @@ model MarketCenter {
   teamInvitations     TeamInvitation[]
   ticketCategories    TicketCategory[]
   users               User[]
+  surveys             Survey[]
 
   @@map("market_centers")
 }
@@ -48,6 +49,9 @@ model User {
   createdTickets       Ticket[]              @relation("TicketCreator")
   marketCenter         MarketCenter?         @relation(fields: [marketCenterId], references: [id])
 
+  givenSurveys         Survey[]              @relation("UserGivenRatings")
+  receivedSurveys      Survey[]              @relation("UserReceivedRatings")
+
   @@index([marketCenterId])
   @@map("users")
 }
@@ -73,12 +77,16 @@ model Ticket {
   category      TicketCategory? @relation(fields: [categoryId], references: [id])
   creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
 
+  surveyId String? @map("survey_id")
+  Survey   Survey?
+
   @@index([creatorId])
   @@index([assigneeId])
   @@index([categoryId])
   @@index([status])
   @@index([urgency])
   @@index([createdAt])
+  @@index([surveyId])
   @@map("tickets")
 }
 
@@ -99,17 +107,17 @@ model Comment {
 }
 
 model Attachment {
-  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
-  fileName    String   @map("file_name")
-  fileSize    Int      @map("file_size")
-  mimeType    String   @map("mime_type")
-  bucketKey   String   @map("bucket_key") @unique
-  ticketId    String   @map("ticket_id")
-  uploadedBy  String   @map("uploaded_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  uploader    User     @relation(fields: [uploadedBy], references: [id])
+  id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  bucketKey  String   @unique @map("bucket_key")
+  ticketId   String   @map("ticket_id")
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
 
   @@index([ticketId])
   @@index([uploadedBy])
@@ -152,6 +160,32 @@ model TeamInvitation {
   @@index([expiresAt])
   @@map("team_invitations")
 }
+
+model Survey {
+  id                 String        @unique @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ticketId           String        @unique @map("ticket_id")
+  surveyorId         String        @map("surveyor_id")
+  assigneeId         String?       @map("assignee_id")
+  marketCenterId     String?       @map("market_center_id")
+  completed          Boolean       @default(false)
+  overallRating      Decimal?      @db.Decimal(3,2)
+  assigneeRating     Decimal?      @db.Decimal(3,2)
+  marketCenterRating Decimal?      @db.Decimal(3,2)
+  comment            String?
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime?     @updatedAt @map("updated_at")
+
+  ticket       Ticket?             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  surveyor     User                @relation("UserGivenRatings", fields: [surveyorId], references: [id], onDelete: Cascade)
+  assignee     User?               @relation("UserReceivedRatings", fields: [assigneeId], references: [id], onDelete: Cascade)
+  marketCenter MarketCenter?       @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+
+  @@index([surveyorId])
+  @@index([assigneeId])
+  @@index([marketCenterId])
+  @@map("ticket_ratings")
+}
+
 
 model TicketHistory {
   id            String   @id @default(dbgenerated("(gen_random_uuid())::text"))
@@ -248,17 +282,17 @@ model Notification {
 }
 
 model NotificationTemplate {
-  id                     String                  @id @default(cuid())
-  templateName           String                  @unique
-  templateDescription    String
-  category               NotificationCategory
-  channel                NotificationChannel
-  type                   String
-  subject                String
-  body                   String
-  isDefault              Boolean                 @default(true)
-  createdAt              DateTime                @default(now())
-  variables              Json?
+  id                  String               @id @default(cuid())
+  templateName        String               @unique
+  templateDescription String
+  category            NotificationCategory
+  channel             NotificationChannel
+  type                String
+  subject             String
+  body                String
+  isDefault           Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  variables           Json?
 }
 
 enum NotificationCategory {

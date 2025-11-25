@@ -1,5 +1,6 @@
-import type { MarketCenter, TicketCategory } from "../marketCenters/types";
+import type { TicketCategory } from "../marketCenters/types";
 import type { User } from "../user/types";
+import type { Survey } from "../surveys/types";
 
 export type TicketStatus =
   | "DRAFT"
@@ -71,6 +72,9 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory?: TicketHistory[];
+
+  surveyId?: string | null;
+  survey?: Survey | null;
 }
 
 export interface Comment {
