@@ -20,3 +20,10 @@ export interface Survey {
   assignee?: User;
   marketCenter?: MarketCenter;
 }
+
+export interface SurveyResults {
+  totalSurveys?: number;
+  overallAverageRating?: number;
+  assigneeAverageRating?: number;
+  marketCenterAverageRating?: number;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,18 +15,28 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useQuery } from "@tanstack/react-query";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
+import { TeamSwitcher } from "@/components//ui/team-switcher";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import { BarChartIcon, Building2, TrendingUp } from "lucide-react";
+import { BarChartIcon, Building2, InfoIcon, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMemo, useState } from "react";
-import { TicketTabs } from "../ui/tabs/ticket-tabs";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useListAdminTickets } from "@/hooks/use-tickets";
-import { TeamSwitcher } from "../ui/team-switcher";
+import {
+  chartColors,
+  getResolvedInBusinessDays,
+  STATUS_COLORS,
+  STATUS_LABELS,
+  STATUS_ORDER,
+  StatusKey,
+  ticketByStatusChartConfig,
+} from "@/lib/utils";
+import type { MarketCenter, SurveyResults, Ticket } from "@/lib/types";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import {
   Bar,
@@ -38,16 +49,6 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import {
-  chartColors,
-  getResolvedInBusinessDays,
-  STATUS_COLORS,
-  STATUS_LABELS,
-  STATUS_ORDER,
-  StatusKey,
-  ticketByStatusChartConfig,
-} from "@/lib/utils";
-import type { MarketCenter, Ticket } from "@/lib/types";
 
 export function AdminDashboard() {
   const { user: clerkUser } = useUser();
@@ -100,9 +101,12 @@ export function AdminDashboard() {
 
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
     useFetchAllMarketCenters(role);
-  const marketCenters = useMemo(() => {
+
+  const marketCenters: MarketCenter[] = useMemo(() => {
     return marketCentersData?.marketCenters ?? [];
   }, [marketCentersData]);
+  const totalMarketCenters = marketCentersData?.total || 0;
+  const globalAverages: SurveyResults = marketCentersData?.globalAverages;
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
@@ -273,50 +277,65 @@ export function AdminDashboard() {
     ) as ChartConfig;
   }, [stats]);
 
-  if (ticketsLoading) {
-    return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-muted rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
-            Welcome, {clerkUser?.firstName}
-          </h1>
-          <p className="text-muted-foreground">
-            System-wide overview and management
-          </p>
-        </div>
-        <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-          <div className="space-y-2 w-fit">
-            <TeamSwitcher
-              selectedMarketCenterId={selectedMarketCenterId}
-              setSelectedMarketCenterId={setSelectedMarketCenterId}
-            />
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
+              Welcome, {clerkUser?.firstName}
+            </h1>
+            <p className="text-muted-foreground">
+              System-wide overview and management
+            </p>
           </div>
-          <Button asChild className="w-full sm:w-fit">
-            <Link href="/dashboard/reports">
-              <BarChartIcon className="mr-2 h-4 w-4" /> View Reports
-            </Link>
-          </Button>
+          <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
+            <div className="space-y-2 w-fit">
+              <TeamSwitcher
+                selectedMarketCenterId={selectedMarketCenterId}
+                setSelectedMarketCenterId={setSelectedMarketCenterId}
+              />
+            </div>
+            <Button asChild className="w-full sm:w-fit">
+              <Link href="/dashboard/reports">
+                <BarChartIcon className="mr-2 h-4 w-4" /> View Reports
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+        <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
+          <ToolTip
+            content="Ratings are based on all resolved tickets via their survey responses"
+            trigger={<InfoIcon className="size-3 text-primary" />}
+          />
+          <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
+            <span className="flex items-center gap-1">
+              All Market Centers:
+              <StarRating
+                rating={globalAverages?.marketCenterAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Users:
+              <StarRating
+                rating={globalAverages?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Tickets:
+              <StarRating
+                rating={globalAverages?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
+          </div>
+        </div>
+      </section>
 
-      <TicketTabs />
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* TOP STATS */}
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
@@ -379,22 +398,21 @@ export function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2">
         {/* MARKET CENTERS */}
         <Card className="max-w-2xs sm:max-w-full">
           <CardHeader>
             <CardTitle>Market Centers</CardTitle>
             <CardDescription>
-              {marketCenters?.length ?? "0"} market centers • {stats.totalUsers}{" "}
-              users
+              {totalMarketCenters} market centers • {stats.totalUsers} users
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="space-y-4 md:h-50 overflow-y-auto">
               {!isLoadingMarketCenters &&
-                (!marketCenters || !marketCenters?.length) && (
+                (!marketCenters || !totalMarketCenters) && (
                   <p className="space-y-4 text-sm text-muted-foreground font-medium">
                     No market centers found
                   </p>
@@ -402,7 +420,7 @@ export function AdminDashboard() {
 
               {!isLoadingMarketCenters &&
                 marketCenters &&
-                marketCenters?.length > 0 &&
+                totalMarketCenters > 0 &&
                 marketCenters?.map((mc: any) => {
                   const isViewingStats = selectedMarketCenterId === mc?.id;
                   const categoriesTotal = mc?.ticketCategories
@@ -644,7 +662,9 @@ export function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </section>
+
+      {/* SYSTEM HEALTH */}
 
       <Card>
         <CardHeader>
@@ -683,9 +703,7 @@ export function AdminDashboard() {
             <div>
               <p className="text-sm font-medium">Active Teams</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">
-                  {marketCenters?.length || 0}
-                </span>
+                <span className="text-2xl font-bold">{totalMarketCenters}</span>
                 <Building2 className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>

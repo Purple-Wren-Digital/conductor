@@ -3,7 +3,8 @@ import { Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
-import { MarketCenter } from "./types";
+import type { MarketCenter } from "./types";
+import type { SurveyResults } from "../surveys/types";
 
 export interface ListMarketCentersRequest {
   id?: Query<string>;
@@ -22,6 +23,57 @@ export interface ListMarketCentersRequest {
 export interface ListMarketCentersResponse {
   marketCenters: MarketCenter[];
   total: number;
+  globalAverages?: SurveyResults;
+}
+
+async function getSurveyAverages(marketCenterId: string) {
+  const result = await prisma.survey.aggregate({
+    where: { marketCenterId, completed: true },
+    _avg: {
+      overallRating: true,
+      assigneeRating: true,
+      marketCenterRating: true,
+    },
+    _count: true,
+  });
+
+  return {
+    totalSurveys: result?._count ?? 0,
+    overallAverageRating: result?._avg?.overallRating
+      ? Number(result._avg.overallRating)
+      : 0,
+    assigneeAverageRating: result?._avg?.assigneeRating
+      ? Number(result._avg.assigneeRating)
+      : 0,
+    marketCenterAverageRating: result?._avg?.marketCenterRating
+      ? Number(result._avg.marketCenterRating)
+      : 0,
+  };
+}
+
+async function getGlobalSurveyAverages() {
+  const result = await prisma.survey.aggregate({
+    where: { completed: true },
+    _avg: {
+      overallRating: true,
+      assigneeRating: true,
+      marketCenterRating: true,
+    },
+    _count: true,
+  });
+
+  return {
+    totalSurveys: result?._count ?? 0,
+    overallAverageRating: result?._avg?.overallRating
+      ? Number(result._avg.overallRating)
+      : 0,
+    assigneeAverageRating: result?._avg?.assigneeRating
+      ? Number(result._avg.assigneeRating)
+      : 0,
+    marketCenterAverageRating: result?._avg?.marketCenterRating
+      ? Number(result._avg.marketCenterRating)
+      : 0,
+  };
 }
 
 export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
@@ -53,11 +105,14 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
         where: { category: { marketCenterId: marketCenter.id } },
       });
 
+      const averages = await getSurveyAverages(marketCenter.id);
+
       return {
         marketCenters: [
           {
             ...marketCenter,
             totalTickets,
+            averages,
             users: marketCenter.users.map((user) => ({
               ...user,
               name: user.name ?? "",
@@ -142,10 +197,11 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
             },
           },
         });
-
+        const averages = await getSurveyAverages(mc.id);
         return {
           ...mc,
           totalTickets,
+          averages,
           users: mc.users.map((user) => ({
             ...user,
             name: user.name ?? "",
@@ -153,6 +209,12 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
         };
       })
     );
-    return { marketCenters: formattedMarketCenters, total: total };
+
+    const globalAverages = await getGlobalSurveyAverages();
+    return {
+      marketCenters: formattedMarketCenters,
+      total: total,
+      globalAverages: globalAverages,
+    };
   }
 );

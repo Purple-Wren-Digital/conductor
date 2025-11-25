@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import type { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
+// import type { SurveyResults } from "../surveys/types"; // TODO
 
 export interface GetUserRequest {
   id: string;

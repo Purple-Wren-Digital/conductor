@@ -29,7 +29,7 @@ export function useFetchAllMarketCenters(role: UserRole | undefined) {
       if (!response.ok) return { marketCenters: [] };
 
       const data = await response.json();
-      return { marketCenters: data?.marketCenters };
+      return data;
     },
     enabled: !!role,
   });

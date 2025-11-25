@@ -25,13 +25,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
   useFetchMarketCenter,
   useFetchMarketCenterTickets,
 } from "@/hooks/use-market-center";
-import { Users, Plus, User, TrendingUp, TicketIcon, UserX } from "lucide-react";
+import {
+  Users,
+  Plus,
+  User,
+  TrendingUp,
+  TicketIcon,
+  UserX,
+  InfoIcon,
+} from "lucide-react";
 import Link from "next/link";
-import type { Ticket } from "@/lib/types";
+import type { SurveyResults, Ticket } from "@/lib/types";
 import {
   getResolvedInBusinessDays,
   STATUS_COLORS,
@@ -53,12 +62,25 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
+import { StarRating } from "../ui/ratingInput/star-rating-static";
+import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 
 export function StaffDashboard() {
   const { currentUser } = useStore();
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
 
   const { user: clerkUser } = useUser();
+
+  const { data: userRatingsData, isLoading: ratingsLoading } =
+    useFetchRatingsByAssignee(
+      ["ratings-by-assignee", currentUser?.id || ""],
+      currentUser?.id || ""
+    );
+
+  console.log("User Ratings Data:", userRatingsData);
+  const userAvgRatings: SurveyResults = useMemo(() => {
+    return userRatingsData;
+  }, [userRatingsData]);
 
   const marketCenterId = currentUser?.marketCenterId
     ? currentUser?.marketCenterId
@@ -199,47 +221,73 @@ export function StaffDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
-            Welcome, {clerkUser?.firstName}
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your support tickets within {marketCenter?.name ?? "your"}{" "}
-            market center
-          </p>
-        </div>
-        <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-          <Select
-            value={selectedTeamMemberId}
-            onValueChange={(value) => setSelectedTeamMemberId(value)}
-          >
-            <SelectTrigger className="w-full sm:w-[250px]">
-              <SelectValue placeholder="Select Team" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">
-                <Users className="w-4 h-4" />
-                All
-              </SelectItem>
-              <SelectItem value={currentUser?.id ?? "impossible-id"}>
-                <User className={`w-4 h-4`} />
-                {currentUser?.name}
-              </SelectItem>
-              <SelectItem value={"Unassigned"}>
-                <UserX className={`w-4 h-4`} />
-                Unassigned
-              </SelectItem>
-            </SelectContent>
-          </Select>
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
+              Welcome, {clerkUser?.firstName}
+            </h1>
+            <p className="text-muted-foreground">
+              Managing your tickets within {marketCenter?.name ?? "your"} market
+              center
+            </p>
+          </div>
+          <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
+            <Select
+              value={selectedTeamMemberId}
+              onValueChange={(value) => setSelectedTeamMemberId(value)}
+            >
+              <SelectTrigger className="w-full sm:w-[250px]">
+                <SelectValue placeholder="Select Team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">
+                  <Users className="w-4 h-4" />
+                  All
+                </SelectItem>
+                <SelectItem value={currentUser?.id ?? "impossible-id"}>
+                  <User className={`w-4 h-4`} />
+                  {currentUser?.name}
+                </SelectItem>
+                <SelectItem value={"Unassigned"}>
+                  <UserX className={`w-4 h-4`} />
+                  Unassigned
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Button asChild className="w-full sm:w-fit">
-            <Link href="/dashboard/tickets">
-              <Plus className="mr-2 h-4 w-4" /> Create Ticket
-            </Link>
-          </Button>
+            <Button asChild className="w-full sm:w-fit">
+              <Link href="/dashboard/tickets">
+                <Plus className="mr-2 h-4 w-4" /> Create Ticket
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+
+        <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
+          <ToolTip
+            content="Ratings are based on your resolved tickets via their survey responses"
+            trigger={<InfoIcon className="size-3 text-primary" />}
+          />
+          <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
+            <span className="flex items-center gap-1">
+              {clerkUser?.firstName ? `${clerkUser?.firstName}'s` : "Your"}{" "}
+              Rating:
+              <StarRating
+                rating={userAvgRatings?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              Tickets Overall:
+              <StarRating
+                rating={userAvgRatings?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

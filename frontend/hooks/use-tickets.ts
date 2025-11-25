@@ -225,3 +225,47 @@ export function useFetchTicketSurveyResults(
     placeholderData: null,
   });
 }
+
+export function useFetchRatingsByAssignee(
+  queryKey: readonly [string, string],
+  assigneeId?: string
+) {
+  const { getToken } = useAuth();
+
+  return useQuery<any, Error, any>({
+    queryKey: queryKey,
+    queryFn: async () => {
+      if (!assigneeId) {
+        throw new Error("No assignee ID provided");
+      }
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const res = await fetch(
+          `${API_BASE}/surveys/ratings/byAssignee/${assigneeId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+        console.log("useFetchRatingsByAssignee - response", res);
+        if (!res.ok) {
+          throw new Error("Failed to fetch survey data");
+        }
+        const data = await res.json();
+        console.log("useFetchRatingsByAssignee - data", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching ticket survey results:", error);
+        throw error;
+      }
+    },
+    enabled: !!assigneeId,
+    placeholderData: null,
+  });
+}

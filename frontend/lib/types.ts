@@ -146,6 +146,13 @@ export interface Survey {
   marketCenter?: MarketCenter;
 }
 
+export interface SurveyResults {
+  totalSurveys: number;
+  overallAverageRating: number;
+  assigneeAverageRating: number;
+  marketCenterAverageRating: number;
+}
+
 // COMMENTS
 export interface Comment {
   id: string;
@@ -199,6 +206,7 @@ export interface PrismaUser {
   };
   responseSurveys?: Survey[];
   receivedSurveys?: Survey[];
+  averages?: SurveyResults;
 }
 export interface UserHistory {
   id: string;
@@ -279,8 +287,11 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
   totalTickets?: number;
+  totalUsers?: number;
   staffLeaderIds?: string[];
   // settingsAuditLogs?: SettingsAuditLog[];
+
+  averages?: SurveyResults;
 }
 
 export interface MarketCenterHistory {
