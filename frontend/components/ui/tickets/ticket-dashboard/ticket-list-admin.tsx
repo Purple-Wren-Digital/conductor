@@ -1087,13 +1087,16 @@ export default function AdminTicketList() {
                 <SelectValue placeholder="Select a status..." />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    <Badge variant={status.toLowerCase() as any}>
-                      {status.replace("_", " ")}
-                    </Badge>
-                  </SelectItem>
-                ))}
+                {statusOptions.map((status) => {
+                  if (status === "RESOLVED") return null;
+                  return (
+                    <SelectItem key={status} value={status}>
+                      <Badge variant={status.toLowerCase() as any}>
+                        {status.replace("_", " ")}
+                      </Badge>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

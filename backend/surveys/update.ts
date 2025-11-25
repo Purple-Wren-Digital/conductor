@@ -22,7 +22,7 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
     auth: false,
   },
   async (req) => {
-    await getUserContext();
+    const userContext = await getUserContext();
 
     if (!req.ticketId) {
       throw APIError.invalidArgument("Ticket ID is required");
@@ -32,8 +32,14 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
       where: { ticketId: req.ticketId },
     });
 
-    if (!survey) {
+    if (!survey || !survey?.surveyorId) {
       throw APIError.notFound("Survey not found for the given Ticket ID");
+    }
+
+    if (survey?.surveyorId !== userContext?.userId) {
+      throw APIError.permissionDenied(
+        "You do not have permission to update this survey"
+      );
     }
 
     await prisma.survey.update({

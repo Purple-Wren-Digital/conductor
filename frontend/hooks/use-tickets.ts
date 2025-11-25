@@ -1,6 +1,11 @@
 import { useAuth } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import { TicketsResponse, UserRole } from "@/lib/types";
+import type {
+  Survey,
+  TicketsResponse,
+  TicketStatus,
+  UserRole,
+} from "@/lib/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 type AgentSearchTicketsQuery = {
@@ -175,5 +180,48 @@ export function useListAdminTickets({
     enabled: role === "ADMIN",
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
+  });
+}
+
+export function useFetchTicketSurveyResults(
+  ticketStatus?: TicketStatus,
+  surveyId?: string
+) {
+  const { getToken } = useAuth();
+
+  return useQuery<any, Error, any>({
+    queryKey: ["ticket-survey", surveyId],
+    queryFn: async () => {
+      if (!surveyId) {
+        throw new Error("No survey ID provided");
+      }
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const res = await fetch(`${API_BASE}/surveys/${surveyId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          throw new Error("Failed to fetch survey data");
+        }
+        const data = await res.json();
+        // console.log("Fetched survey data:", data);
+        if (!data || !data?.survey) {
+          throw new Error("No survey data found");
+        }
+        return data.survey as Survey;
+      } catch (error) {
+        console.error("Error fetching ticket survey results:", error);
+        throw error;
+      }
+    },
+    enabled: ticketStatus === "RESOLVED" && !!surveyId,
+    placeholderData: null,
   });
 }
