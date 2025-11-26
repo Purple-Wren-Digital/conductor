@@ -10,6 +10,7 @@ import { SubscriptionStatus, SubscriptionPlan, InvoiceStatus } from "./types";
 // Setup Stripe client
 const stripeSecretKey = secret("StripeSecretKey");
 const stripeWebhookSigningSecret = secret("StripeWebhookSigningSecret");
+const frontendUrl = secret("FRONTEND_URL");
 
 const stripe = new Stripe(stripeSecretKey());
 
@@ -464,8 +465,8 @@ export const createCheckoutSession = api(
       customer: stripeCustomerId,
       line_items: lineItems,
       mode: "subscription",
-      success_url: `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard/subscription?success=true`,
-      cancel_url: `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard/subscription?canceled=true`,
+      success_url: `${frontendUrl()}/dashboard/subscription?success=true`,
+      cancel_url: `${frontendUrl()}/dashboard/subscription?canceled=true`,
       subscription_data: {
         metadata: {
           marketCenterId, // Use the marketCenterId we determined earlier
@@ -520,7 +521,7 @@ export const createPortalSession = api(
 
     const session = await stripe.billingPortal.sessions.create({
       customer: user.marketCenter.subscription.stripeCustomerId,
-      return_url: `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard/subscription`,
+      return_url: `${frontendUrl()}/dashboard/subscription`,
     });
 
     return { url: session.url };

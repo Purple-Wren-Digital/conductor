@@ -1,10 +1,14 @@
 import { clientSideEnv } from "@/lib/env/client-side";
 import { useAuth } from "@clerk/nextjs";
-import Client, { Environment, Local, PreviewEnv } from "./encore-client";
+import Client, { Environment, Local, PreviewEnv, BaseURL } from "./encore-client";
 
 // Get the correct encore environment
-let environment = Local;
-if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
+let environment: BaseURL = Local;
+
+// Use NEXT_PUBLIC_API_URL if it's set (for production/staging)
+if (process.env.NEXT_PUBLIC_API_URL) {
+  environment = process.env.NEXT_PUBLIC_API_URL as BaseURL;
+} else if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
   environment = Environment("staging");
 } else if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "preview") {
   if (!clientSideEnv.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID) {

@@ -1,10 +1,14 @@
 import { serverSideEnv } from "@/lib/env/server-side";
 import { auth } from "@clerk/nextjs/server";
-import Client, { Environment, Local, PreviewEnv } from "./encore-client";
+import Client, { Environment, Local, PreviewEnv, BaseURL } from "./encore-client";
 
 // Get the correct encore environment
-let environment = Local;
-if (serverSideEnv.VERCEL_ENV === "production") {
+let environment: BaseURL = Local;
+
+// Use NEXT_PUBLIC_API_URL if it's set (for production/staging)
+if (process.env.NEXT_PUBLIC_API_URL) {
+  environment = process.env.NEXT_PUBLIC_API_URL as BaseURL;
+} else if (serverSideEnv.VERCEL_ENV === "production") {
   environment = Environment("staging");
 } else if (serverSideEnv.VERCEL_ENV === "preview") {
   // For PR previews, use the PR-specific environment
