@@ -61,6 +61,19 @@ export interface TicketCategory {
   ticketCount?: number;
 }
 
+export type DefaultCategories =
+  | "Appraisals"
+  | "Compliance"
+  | "Contracts"
+  | "Documents"
+  | "Financial"
+  | "Inspections"
+  | "Listings"
+  | "Maintenance"
+  | "Marketing"
+  | "Onboarding"
+  | "Showing Request";
+
 // export interface SettingsAuditLog {
 //   id: string;
 //   marketCenterId: string;

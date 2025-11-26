@@ -68,7 +68,9 @@ export function InvitationUserListItem({
       }}
       metadata={[
         {
-          label: user.user_metadata.role.split("_").join(" ") || "N/a",
+          label: user?.user_metadata?.role
+            ? user.user_metadata.role.split("_").join(" ")
+            : "N/A",
           icon: getRoleIcon(user.user_metadata.role),
         },
         { label: user.email, icon: <Mail className="h-3 w-3" /> },

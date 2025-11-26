@@ -16,6 +16,7 @@ export interface UpdateTicketRequest {
   categoryId?: string;
   dueDate?: Date;
   assigneeId?: string;
+  todos?: string[];
 }
 
 export interface UpdateTicketResponse {
@@ -327,6 +328,19 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           data: ticketHistoryData,
         }),
       ]);
+      if (req.todos && req.todos.length > 0) {
+        const subtasks = await prisma.todo.createMany({
+          data: req.todos?.map((todo) => ({
+            title: todo,
+            ticketId: ticket.id,
+            complete: false,
+            createdById: userContext.userId,
+            updatedById: userContext.userId,
+            createdAt: ticket.updatedAt,
+            updatedAt: ticket.updatedAt,
+          })),
+        });
+      }
 
       const formattedTicket: Ticket = {
         ...ticket,

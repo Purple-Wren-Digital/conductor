@@ -449,7 +449,6 @@ export default function MarketCenterUsers({
                 {!isLoading && (!teamMembers || !teamMembers.length) && (
                   <TableRow className="text-center text-muted-foreground">
                     <TableCell colSpan={5} className="py-8">
-                      {" "}
                       No team members found. Contact Admin if you haven&apos;t
                       been assigned a team.
                     </TableCell>

@@ -1,4 +1,5 @@
 import type { TicketCategory } from "../marketCenters/types";
+import { Todo } from "../todos/types";
 import type { User } from "../user/types";
 import type { Survey } from "../surveys/types";
 
@@ -72,6 +73,8 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory?: TicketHistory[];
+  emailMessageId?: string | null;
+  todos?: Todo[];
 
   surveyId?: string | null;
   survey?: Survey | null;

@@ -3,6 +3,7 @@ import { prisma } from "../ticket/db";
 import { Prisma } from "@prisma/client";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
+import { ticket } from "~encore/clients";
 
 export interface SeedResponse {
   message: string;
@@ -19,19 +20,24 @@ export const seedData = api<void, SeedResponse>(
   async () => {
     console.log("Seeding database...");
 
-    // Clean up in correct order (respect foreign key constraints)
-    // Delete dependent records first
+    // Clean up in correct order
+    await prisma.ticketHistory.deleteMany({});
     await prisma.comment.deleteMany({});
     await prisma.attachment.deleteMany({});
-    await prisma.ticketHistory.deleteMany({});
+    await prisma.todo.deleteMany({});
+    await prisma.ticket.updateMany({
+      data: { assigneeId: null },
+    });
     await prisma.survey.deleteMany({});
     await prisma.ticket.deleteMany({});
 
+    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
     await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
     await prisma.notificationPreferences.deleteMany({});
     await prisma.notificationTemplate.deleteMany({});
 
     await prisma.ticketCategory.deleteMany({});
+
     // await prisma.teamInvitation.deleteMany({});
 
     await prisma.userHistory.deleteMany({});
@@ -63,14 +69,14 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "alice.agent@kw.com",
           name: "Alice Johnson",
-          role: "AGENT",
+          role: "STAFF_LEADER",
           clerkId: "seed-01",
           marketCenterId: mc[0]?.id,
         },
         {
           email: "bob.staff@kw.com",
           name: "Bob Smith",
-          role: "STAFF_LEADER",
+          role: "STAFF",
           clerkId: "seed-02",
           marketCenterId: mc[0]?.id,
         },
@@ -98,7 +104,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "frank.agent@kw.com",
           name: "Frank Miller",
-          role: "STAFF",
+          role: "STAFF_LEADER",
           clerkId: "seed-06",
           marketCenterId: mc[1]?.id,
         },
@@ -112,14 +118,14 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "henry.agent@kw.com",
           name: "Henry Clark",
-          role: "STAFF_LEADER",
+          role: "STAFF",
           clerkId: "seed-08",
           marketCenterId: mc[2]?.id,
         },
         {
           email: "isla.staff@kw.com",
           name: "Isla Martinez",
-          role: "STAFF",
+          role: "AGENT",
           clerkId: "seed-09",
           marketCenterId: mc[2]?.id,
         },
@@ -133,23 +139,30 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "kathryn.hann@kw.com",
           name: "Kathryn Hann",
-          role: "ADMIN",
+          role: "STAFF",
           clerkId: "seed-11",
           marketCenterId: undefined,
         },
         {
           email: "lawrence.david@kw.com",
           name: "Larry David",
-          role: "AGENT",
+          role: "STAFF",
           clerkId: "seed-12",
           marketCenterId: mc[2]?.id,
         },
         {
           email: "m.organa@kw.com",
           name: "Morgan Organa",
-          role: "ADMIN",
+          role: "STAFF",
           clerkId: "seed-13",
           marketCenterId: undefined,
+        },
+        {
+          email: "nathan.lane@kw.com",
+          name: "Nathan Agent",
+          role: "AGENT",
+          clerkId: "seed-14",
+          marketCenterId: mc[0]?.id,
         },
       ],
     });
@@ -159,7 +172,6 @@ export const seedData = api<void, SeedResponse>(
     )!;
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
 
-    // Create User Default settings
     createdUsers.forEach(async (user, index) => {
       await prisma.user.update({
         where: { id: user?.id },
@@ -315,6 +327,7 @@ export const seedData = api<void, SeedResponse>(
     const templates: Array<
       Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId"> & {
         categoryName: string;
+        marketCenterId?: string;
         dueDate?: Date | null;
         resolvedAt?: Date | null;
       }
@@ -325,9 +338,10 @@ export const seedData = api<void, SeedResponse>(
           "Financing contingency expires tomorrow, awaiting appraisal report",
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
-        categoryName: "Contracts",
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 1),
+        categoryName: "Contracts",
+        marketCenterId: mc[0]?.id,
       },
       {
         title: "Showing feedback for 456 Oak Ave",
@@ -335,6 +349,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "MEDIUM",
         categoryName: "Showing Request",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 3),
         dueDate: subDays(now, 1),
       },
@@ -344,6 +359,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 10),
         resolvedAt: subDays(now, 8),
       },
@@ -353,6 +369,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
         categoryName: "Compliance",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 2),
       },
@@ -362,6 +379,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 3),
       },
@@ -372,7 +390,9 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Documents",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 3),
+        dueDate: addDays(now, 4),
       },
       {
         title: "Price reduction update for 999 Spruce Ave",
@@ -380,6 +400,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 15),
         resolvedAt: subDays(now, 14),
       },
@@ -389,6 +410,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Maintenance",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 1),
       },
       {
@@ -397,6 +419,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 6),
       },
       {
@@ -405,6 +428,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "HIGH",
         categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 3),
         dueDate: addDays(now, 2),
         resolvedAt: addDays(now, 1),
@@ -415,6 +439,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 4),
       },
       {
@@ -423,8 +448,9 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Onboarding",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 2),
-        dueDate: addDays(now, 4),
+        dueDate: addDays(now, 5),
       },
       {
         title: "Update website with sold properties",
@@ -432,6 +458,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "LOW",
         categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 20),
         resolvedAt: subDays(now, 18),
       },
@@ -441,6 +468,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Appraisals",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 7),
       },
@@ -450,14 +478,18 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 2),
+        dueDate: addDays(now, 4),
       },
+
       {
         title: "Inspection results review",
         description: "Review inspection report with client for 101 Maple St",
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 1),
       },
       {
@@ -465,7 +497,8 @@ export const seedData = api<void, SeedResponse>(
         description: "Client wants virtual staging before MLS listing",
         status: "ASSIGNED",
         urgency: "LOW",
-        categoryName: "Listings",
+        categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 3),
       },
       {
@@ -474,6 +507,7 @@ export const seedData = api<void, SeedResponse>(
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
+        marketCenterId: mc[1]?.id,
         createdAt: now,
         dueDate: addDays(now, 10),
       },
@@ -569,7 +603,7 @@ export const seedData = api<void, SeedResponse>(
       comments.push(
         {
           ticketId: ticket.id,
-          userId: ticket.assigneeId ?? rand(staff).id,
+          userId: ticket?.assigneeId ?? ticket?.creatorId ?? admin.id,
           content: `Initial update on "${ticket.title}"`,
           internal: false,
           createdAt: subDays(now, 1),
@@ -598,6 +632,24 @@ export const seedData = api<void, SeedResponse>(
     });
 
     await prisma.comment.createMany({ data: comments });
+
+    // Create todos for tickets that have templates with todos
+    // const todos: Prisma.TodoCreateManyInput[] = [];
+    // tickets.forEach((ticket, i) => {
+    //   console.log(i, "Creating todo for ticket:", ticket);
+    //   if (ticket && ticket?.id && ticket?.categoryId)
+    //     todos.push({
+    //       title: "Subtask",
+    //       complete: false,
+    //       ticketId: ticket.id,
+    //       createdById: ticket.categoryId,
+    //       createdAt: ticket.createdAt,
+    //     });
+    // });
+
+    // if (todos.length > 0) {
+    // await prisma.todo.createMany({ data: todos });
+    // }
 
     // Create attachments for some tickets
     const attachments: Prisma.AttachmentCreateManyInput[] = [];

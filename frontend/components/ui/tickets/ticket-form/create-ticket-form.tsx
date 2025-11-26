@@ -32,6 +32,7 @@ const initialValues: TicketFormValues = {
   categoryId: "",
   dueDate: undefined,
   assigneeId: "Unassigned",
+  todos: [],
 };
 
 export function CreateTicketForm({
@@ -104,10 +105,11 @@ export function CreateTicketForm({
       setValues({
         title: t.title,
         description: t.ticketDescription,
-        urgency: t.urgency,
-        categoryId: t.category,
+        urgency: t?.urgency || "MEDIUM",
+        categoryId: t?.category || "",
         dueDate: undefined,
         assigneeId: "Unassigned",
+        todos: [...t.todos],
       });
     }
   };

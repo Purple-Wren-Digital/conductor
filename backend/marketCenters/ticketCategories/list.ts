@@ -1,4 +1,3 @@
-// TODO: List all ticket categories for a specific market center
 import { api, Query } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";

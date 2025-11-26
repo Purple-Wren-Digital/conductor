@@ -20,10 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { AttachmentsList } from "@/components/ui/tickets/attachments-list";
+import { FileUpload } from "@/components/ui/tickets/file-upload";
+import { TicketTodos } from "@/components/ui/tickets/ticket-subtask";
+import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import TicketSurveyModal from "@/components/ui/tickets/survey/ticket-survey-modal";
 import TicketHistoryTable from "@/components/history-tables/tickets/history-table-ticket";
+import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import {
+  ArrowLeft,
   ArrowRightLeft,
   CalendarIcon,
   CircleMinus,
@@ -35,6 +41,7 @@ import {
   History,
   Mailbox,
   MessageSquare,
+  Paperclip,
   SquarePen,
   Trash2,
   User,
@@ -48,17 +55,16 @@ import type {
   Urgency,
   TicketHistory,
   UsersToNotify,
+  UserRole,
 } from "@/lib/types";
-import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
-import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
-import { AttachmentsList } from "@/components/ui/tickets/attachments-list";
-import { FileUpload } from "@/components/ui/tickets/file-upload";
+
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
   capitalizeEveryWord,
   getCategoryStyle,
   parseJsonSafe,
+  ROLE_ICONS,
   statusOptions,
   urgencyOptions,
 } from "@/lib/utils";
@@ -70,6 +76,11 @@ import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+interface TicketDetailViewProps {
+  ticketId: string;
+  onClose?: () => void;
+}
 
 export const ticketDetailQueryParams = new URLSearchParams(
   "orderBy=desc&limit=5"
@@ -89,6 +100,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
 
+  const router = useRouter();
   const { currentUser } = useStore();
   const { permissions, role } = useUserRole();
   const queryClient = useQueryClient();
@@ -452,6 +464,15 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
     }
   };
 
+  const getRoleIcon = (userRole: UserRole) => {
+    const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
+    return Icon ? (
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    ) : (
+      <User className="h-4 w-4 text-muted-foreground" />
+    );
+  };
+
   if (!ticket) {
     return (
       <div className="text-center py-8">
@@ -465,47 +486,39 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center flex-col justify-center gap-4  sm:flex-row sm:justify-between ">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">
-            {isLoading ? "Loading ticket..." : `#${ticket.id.substring(0, 8)}`}
-          </h1>
-        </div>
+        <Button variant="ghost" onClick={() => router.back()} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
         <div className="flex items-center gap-4">
-          <div className="ml-auto">
-            <Button
-              variant="outline"
-              onClick={() => setShowHistoryModal(!showHistoryModal)}
-              className="gap-2"
-              disabled={isHistoryLoading || isLoading}
-            >
-              <History className="h-4 w-4" /> View History
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowHistoryModal(!showHistoryModal)}
+            className="gap-2 w-full sm:w-fit"
+            disabled={isHistoryLoading || isLoading}
+          >
+            <History className="h-4 w-4" /> View History
+          </Button>
           {canEditTicket && (
-            <div className="ml-auto">
-              <Button
-                onClick={() => setShowEditForm(true)}
-                className="gap-2"
-                disabled={isHistoryLoading || isLoading}
-              >
-                <Edit className="h-4 w-4" /> Edit Ticket
-              </Button>
-            </div>
+            <Button
+              onClick={() => setShowEditForm(true)}
+              className="gap-2 w-full sm:w-fit"
+              disabled={ticket.status === "RESOLVED"}
+            >
+              <Edit className="h-4 w-4" /> Edit Ticket
+            </Button>
           )}
           {canTakeSurvey && (
-            <div className="ml-auto">
-              <Button
-                variant={"destructive"}
-                onClick={() => setShowSurveyModal(true)}
-                disabled={
-                  isLoading || isSurveyLoading || surveyData?.completed === true
-                }
-                className="gap-2"
-              >
-                <ClipboardListIcon className="h-4 w-4" />
-                Take Survey
-              </Button>
-            </div>
+            <Button
+              variant={"destructive"}
+              onClick={() => setShowSurveyModal(true)}
+              disabled={
+                isLoading || isSurveyLoading || surveyData?.completed === true
+              }
+              className="gap-2"
+            >
+              <ClipboardListIcon className="h-4 w-4" />
+              Take Survey
+            </Button>
           )}
         </div>
       </div>
@@ -538,90 +551,106 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <CardTitle className="text-xl">{ticket.title}</CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <Badge
-                      variant={ticket.status.toLowerCase() as any}
-                      className="capitalize"
-                    >
-                      {ticket.status.split("_").join(" ").toLowerCase()}
-                    </Badge>
-                    <Badge variant={ticket.urgency.toLowerCase() as any}>
-                      {ticket.urgency}
-                    </Badge>
-                    <Badge
-                      variant="category"
-                      style={getCategoryStyle(
-                        ticket?.category?.name ?? "Missing Category"
-                      )}
-                      title={ticket?.category?.name ?? "Missing Category"}
-                      className="text-xs px-2 py-0.5"
-                    >
-                      {ticket?.category?.name ?? "Missing Category"}
-                    </Badge>
-                  </div>
+              <div className="w-full space-y-2">
+                {/* TITLE, BADGES */}
+                <CardTitle className="text-xl">
+                  {isLoading
+                    ? "Loading ticket..."
+                    : ticket?.title
+                      ? ticket.title
+                      : "Ticket"}
+                </CardTitle>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CardDescription className="text-sm text-muted-foreground font-md">
+                    Ticket{" "}
+                    {ticket?.id
+                      ? `#${ticket.id.substring(0, 8)}`
+                      : "Unknown"}{" "}
+                  </CardDescription>
+                  <Badge
+                    variant={ticket.status.toLowerCase() as any}
+                    className="capitalize"
+                  >
+                    {ticket.status.split("_").join(" ").toLowerCase()}
+                  </Badge>
+                  <Badge variant={ticket.urgency.toLowerCase() as any}>
+                    {ticket.urgency}
+                  </Badge>
+                  <Badge
+                    variant="category"
+                    style={getCategoryStyle(
+                      ticket?.category?.name ?? "Missing Category"
+                    )}
+                    title={ticket?.category?.name ?? "Missing Category"}
+                    className="text-xs px-2 py-0.5"
+                  >
+                    {ticket?.category?.name ?? "Missing Category"}
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Description</h4>
-
-                  <p className="text-muted-foreground leading-relaxed">
-                    {ticket.description}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground hover:underline">
-                      <Link href={`#comments-section-${ticketId}`}>
-                        Comments: {commentTotal}
-                      </Link>
-                    </p>
-                    <p className="text-sm text-muted-foreground"> • </p>
-                    <p className="text-sm text-muted-foreground hover:underline">
-                      <Link href={`#attachments-section-${ticketId}`}>
-                        Attachments: {attachmentTotal}
-                      </Link>
-                    </p>
+            <CardContent className="space-y-4">
+              {/* CREATED, ASSIGNED, DUE, COMMENTS, ATTACHMENTS */}
+              <div className="py-2 grid gap-4 md:grid-cols-3">
+                {ticket.assignee && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {getRoleIcon(ticket.assignee?.role ?? "AGENT")}
+                    <span className="text-muted-foreground">Assigned to:</span>
+                    <span className="font-medium">{ticket.assignee.name}</span>
                   </div>
+                )}
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Created by:</span>
+                  <span className="font-medium">{ticket.creator?.name}</span>
                 </div>
-                <Separator />
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Created:</span>
+                  <span className="font-medium">
+                    {format(new Date(ticket.createdAt), "PPP")}
+                  </span>
+                </div>
+                {ticket.dueDate && (
                   <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Created by:</span>
-                    <span className="font-medium">{ticket.creator?.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Created:</span>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Due date:</span>
                     <span className="font-medium">
-                      {format(new Date(ticket.createdAt), "PPP")}
+                      {format(new Date(ticket.dueDate), "PPP")}
                     </span>
                   </div>
-                  {ticket.assignee && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        Assigned to:
-                      </span>
-                      <span className="font-medium">
-                        {ticket.assignee.name}
-                      </span>
-                    </div>
-                  )}
-                  {ticket.dueDate && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Due date:</span>
-                      <span className="font-medium">
-                        {format(new Date(ticket.dueDate), "PPP")}
-                      </span>
-                    </div>
-                  )}
+                )}
+                <Link
+                  href={`#attachments-section-${ticketId}`}
+                  className="flex items-center gap-2 text-sm  hover:underline"
+                >
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Attachments:</span>
+                  <span className="font-medium">{attachmentTotal}</span>
+                </Link>
+                <Link
+                  href={`#attachments-section-${ticketId}`}
+                  className="flex items-center gap-2 text-sm  hover:underline"
+                >
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Comments:</span>
+                  <span className="font-medium">{commentTotal}</span>
+                </Link>
+              </div>
+              <Separator />
+              {/* DESCRIPTION, TASKS */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-lg font-semibold">Ticket Details</h4>
                 </div>
+                <div className="space-y-2">
+                  <p className="font-medium leading-relaxed text-muted-foreground">
+                    {ticket.description}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <TicketTodos ticketId={ticket.id} />
               </div>
             </CardContent>
           </Card>
@@ -811,32 +840,41 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
+
                         <SelectContent>
-                          <SelectItem value="Unassigned">Unassigned</SelectItem>
+                          <SelectItem
+                            value="Unassigned"
+                            disabled={!permissions?.canUnassignTicket}
+                          >
+                            Unassigned
+                          </SelectItem>
                           {users &&
                             users.length > 0 &&
-                            users.map((u) => {
-                              const staffPermissions =
-                                role === "ADMIN" ||
-                                role === "STAFF_LEADER" ||
-                                (role === "STAFF" &&
-                                  !currentUser?.marketCenterId &&
-                                  u?.id !== currentUser?.id);
+                            users.map((user) => {
+                              const assignmentPermissions =
+                                permissions?.canReassignTicket &&
+                                (role === "ADMIN" ||
+                                  (role === "STAFF_LEADER" &&
+                                    currentUser?.marketCenterId &&
+                                    user?.marketCenterId ===
+                                      currentUser?.marketCenterId) ||
+                                  (role === "STAFF" &&
+                                    user?.id === currentUser?.id));
 
                               return (
                                 <SelectItem
-                                  key={u.id}
-                                  value={u.id}
+                                  key={user.id}
+                                  value={user.id}
                                   disabled={
-                                    !staffPermissions ||
+                                    !assignmentPermissions ||
                                     isLoading ||
                                     isHistoryLoading
                                   }
                                 >
-                                  {u.name}:{" "}
-                                  {u?.role
+                                  {user.name}:{" "}
+                                  {user?.role
                                     ? capitalizeEveryWord(
-                                        u.role.split("_").join(" ")
+                                        user.role.split("_").join(" ")
                                       )
                                     : "Unassigned"}
                                 </SelectItem>
@@ -851,7 +889,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
             </div>
           )}
 
-          {/* RECENT ACTIVITY */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -911,7 +948,9 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                                 "truncate max-w-[100px] xs:max-w-[350px] lg:max-w-[175px]"
                               }`}
                             >
-                              {log?.newValue}
+                              {log?.newValue
+                                ? log.newValue.split("_").join(" ")
+                                : ""}
                             </p>
                           </div>
                           <div className="flex gap-1 flex-wrap items-center text-muted-foreground">
