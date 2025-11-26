@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,7 +35,7 @@ interface SubscriptionData {
   features: any;
 }
 
-export default function SubscriptionPage() {
+function SubscriptionPageContent() {
   const searchParams = useSearchParams();
   const success = searchParams.get("success");
   const canceled = searchParams.get("canceled");
@@ -47,23 +47,13 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null
   );
-  const [selectedPlan, setSelectedPlan] = useState(plans[0].stripePriceId);
+  const [selectedPlan, setSelectedPlan] = useState<string>(plans[0].stripePriceId);
   const [additionalSeats, setAdditionalSeats] = useState(0);
   const [organizationName, setOrganizationName] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  // Fetch current subscription
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetchCurrentSubscription();
-    } else if (isLoaded && !isSignedIn) {
-      // User is not signed in, loading is done but no subscription to fetch
-      setLoading(false);
-    }
-  }, [isLoaded, isSignedIn]);
-
-  const fetchCurrentSubscription = async () => {
+  const fetchCurrentSubscription = useCallback(async () => {
     try {
       const response = await fetchWithAuth("/subscription/current");
       if (response.ok) {
@@ -80,7 +70,17 @@ export default function SubscriptionPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
+
+  // Fetch current subscription
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      fetchCurrentSubscription();
+    } else if (isLoaded && !isSignedIn) {
+      // User is not signed in, loading is done but no subscription to fetch
+      setLoading(false);
+    }
+  }, [isLoaded, isSignedIn, fetchCurrentSubscription]);
 
   const handleCreateCheckoutSession = async () => {
     setCheckoutLoading(true);
@@ -214,7 +214,7 @@ export default function SubscriptionPage() {
               <div>
                 <CardTitle>Current Subscription</CardTitle>
                 <CardDescription>
-                  Your organization's subscription details
+                  Your organization&apos;s subscription details
                 </CardDescription>
               </div>
               {getStatusBadge(subscription.status)}
@@ -286,7 +286,7 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle>Choose Your Plan</CardTitle>
             <CardDescription>
-              Select the plan that best fits your team's needs
+              Select the plan that best fits your team&apos;s needs
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -305,7 +305,7 @@ export default function SubscriptionPage() {
                 className="mt-2"
               />
               <p className="text-sm text-muted-foreground mt-1">
-                If left blank, we'll create one based on your account name
+                If left blank, we&apos;ll create one based on your account name
               </p>
             </div>
 
@@ -338,7 +338,7 @@ export default function SubscriptionPage() {
                             <div>
                               <h3 className="text-lg font-semibold flex items-center gap-2">
                                 {plan.name}
-                                {plan.popular && (
+                                {"popular" in plan && plan.popular && (
                                   <Badge variant="secondary">Popular</Badge>
                                 )}
                               </h3>
@@ -436,5 +436,13 @@ export default function SubscriptionPage() {
         </Card>
       )}
     </main>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SubscriptionPageContent />
+    </Suspense>
   );
 }
