@@ -17,10 +17,11 @@ model MarketCenter {
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at")
   marketCenterHistory MarketCenterHistory[]
+  subscription        Subscription?
   teamInvitations     TeamInvitation[]
   ticketCategories    TicketCategory[]
-  users               User[]
   surveys             Survey[]
+  users               User[]
 
   @@map("market_centers")
 }
@@ -42,17 +43,16 @@ model User {
   otherUsersChanges    UserHistory[]         @relation("ChangedBy")
   userHistory          UserHistory[]         @relation("UpdatedUser")
   userSettings         UserSettings?         @relation("UserToUserSettings")
-  comments             Comment[]
   attachments          Attachment[]
+  comments             Comment[]
   defaultForCategories TicketCategory[]
+  receivedSurveys      Survey[]              @relation("UserReceivedRatings")
+  givenSurveys         Survey[]              @relation("UserGivenRatings")
   assignedTickets      Ticket[]              @relation("TicketAssignee")
   createdTickets       Ticket[]              @relation("TicketCreator")
-  marketCenter         MarketCenter?         @relation(fields: [marketCenterId], references: [id])
   todosCreated         Todo[]                @relation("TodoCreatedBy")
   todosUpdated         Todo[]                @relation("TodoUpdatedBy")
-
-  givenSurveys         Survey[]              @relation("UserGivenRatings")
-  receivedSurveys      Survey[]              @relation("UserReceivedRatings")
+  marketCenter         MarketCenter?         @relation(fields: [marketCenterId], references: [id])
 
   @@index([marketCenterId])
   @@map("users")
@@ -72,17 +72,15 @@ model Ticket {
   updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
   publishedAt   DateTime?
   categoryId    String?         @map("category_id")
+  surveyId      String?         @map("survey_id")
   ticketHistory TicketHistory[]
-  comments      Comment[]
   attachments   Attachment[]
+  comments      Comment[]
+  Survey        Survey?
+  assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  category      TicketCategory? @relation(fields: [categoryId], references: [id])
+  creator       User            @relation("TicketCreator", fields: [creatorId], references: [id])
   todos         Todo[]
-
-  assignee User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  category TicketCategory? @relation(fields: [categoryId], references: [id])
-  creator  User            @relation("TicketCreator", fields: [creatorId], references: [id])
-
-  surveyId String? @map("survey_id")
-  Survey   Survey?
 
   @@index([creatorId])
   @@index([assigneeId])
@@ -150,14 +148,15 @@ model Todo {
   title       String
   complete    Boolean
   ticketId    String   @map("ticket_id")
-  createdById String   @map("created_by_user_id")
-  updatedById String?  @map("updated_by_user_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  ticket    Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  createdBy User       @relation("TodoCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
-  updatedBy User?      @relation("TodoUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
+  createdById String   @map("created_by_user_id")
+  updatedById String?  @map("updated_by_user_id")
+  created_by  Json     @default("{}")
+  updated_by  Json?
+  createdBy   User     @relation("TodoCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  updatedBy   User?    @relation("TodoUpdatedBy", fields: [updatedById], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@index([complete])
@@ -187,30 +186,28 @@ model TeamInvitation {
 }
 
 model Survey {
-  id                 String        @unique @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id                 String        @id @unique @default(dbgenerated("(gen_random_uuid())::text"))
   ticketId           String        @unique @map("ticket_id")
-  surveyorId         String        @map("surveyor_id")
-  assigneeId         String?       @map("assignee_id")
-  marketCenterId     String?       @map("market_center_id")
-  completed          Boolean       @default(false)
-  overallRating      Decimal?      @db.Decimal(3,2)
-  assigneeRating     Decimal?      @db.Decimal(3,2)
-  marketCenterRating Decimal?      @db.Decimal(3,2)
   comment            String?
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime?     @updatedAt @map("updated_at")
-
-  ticket       Ticket?             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  surveyor     User                @relation("UserGivenRatings", fields: [surveyorId], references: [id], onDelete: Cascade)
-  assignee     User?               @relation("UserReceivedRatings", fields: [assigneeId], references: [id], onDelete: Cascade)
-  marketCenter MarketCenter?       @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  surveyorId         String        @map("surveyor_id")
+  assigneeRating     Decimal?      @db.Decimal(3, 2)
+  marketCenterRating Decimal?      @db.Decimal(3, 2)
+  overallRating      Decimal?      @db.Decimal(3, 2)
+  assigneeId         String?       @map("assignee_id")
+  marketCenterId     String?       @map("market_center_id")
+  completed          Boolean       @default(false)
+  assignee           User?         @relation("UserReceivedRatings", fields: [assigneeId], references: [id], onDelete: Cascade)
+  marketCenter       MarketCenter? @relation(fields: [marketCenterId], references: [id], onDelete: Cascade)
+  surveyor           User          @relation("UserGivenRatings", fields: [surveyorId], references: [id], onDelete: Cascade)
+  ticket             Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([surveyorId])
   @@index([assigneeId])
   @@index([marketCenterId])
   @@map("ticket_ratings")
 }
-
 
 model TicketHistory {
   id            String   @id @default(dbgenerated("(gen_random_uuid())::text"))
@@ -320,6 +317,78 @@ model NotificationTemplate {
   variables           Json?
 }
 
+model Subscription {
+  id                   String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  stripeSubscriptionId String                @unique @map("stripe_subscription_id")
+  stripeCustomerId     String                @map("stripe_customer_id")
+  marketCenterId       String                @unique @map("market_center_id")
+  status               SubscriptionStatus
+  planType             SubscriptionPlan
+  priceId              String                @map("price_id")
+  includedSeats        Int                   @default(5) @map("included_seats")
+  additionalSeats      Int                   @default(0) @map("additional_seats")
+  seatPrice            Decimal               @default(10.00) @map("seat_price") @db.Decimal(10, 2)
+  currentPeriodStart   DateTime              @map("current_period_start")
+  currentPeriodEnd     DateTime              @map("current_period_end")
+  cancelAt             DateTime?             @map("cancel_at")
+  canceledAt           DateTime?             @map("canceled_at")
+  trialEnd             DateTime?             @map("trial_end")
+  features             Json                  @default("{}")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  invoices             SubscriptionInvoice[]
+  usageRecords         SubscriptionUsage[]
+  marketCenter         MarketCenter          @relation(fields: [marketCenterId], references: [id])
+
+  @@index([marketCenterId])
+  @@index([stripeCustomerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model SubscriptionUsage {
+  id             String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  subscriptionId String       @map("subscription_id")
+  month          DateTime     @map("month")
+  activeSeats    Int          @map("active_seats")
+  ticketsCreated Int          @default(0) @map("tickets_created")
+  storageUsedMb  Int          @default(0) @map("storage_used_mb")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@unique([subscriptionId, month])
+  @@index([subscriptionId])
+  @@index([month])
+  @@map("subscription_usage")
+}
+
+model SubscriptionInvoice {
+  id              String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  subscriptionId  String        @map("subscription_id")
+  stripeInvoiceId String        @unique @map("stripe_invoice_id")
+  amountDue       Decimal       @map("amount_due") @db.Decimal(10, 2)
+  amountPaid      Decimal       @map("amount_paid") @db.Decimal(10, 2)
+  currency        String        @default("usd")
+  status          InvoiceStatus
+  lineItems       Json          @map("line_items")
+  periodStart     DateTime      @map("period_start")
+  periodEnd       DateTime      @map("period_end")
+  dueDate         DateTime?     @map("due_date")
+  paidAt          DateTime?     @map("paid_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("subscription_invoices")
+}
+
+model schema_migrations {
+  version BigInt  @id
+  dirty   Boolean
+}
+
 enum NotificationCategory {
   ACCOUNT
   ACTIVITY
@@ -336,6 +405,32 @@ enum NotificationFrequency {
   MONTHLY
   QUARTERLY
   ANNUALLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  PAST_DUE
+  PAUSED
+  TRIALING
+  UNPAID
+}
+
+enum SubscriptionPlan {
+  STARTER
+  TEAM
+  BUSINESS
+  ENTERPRISE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  UNCOLLECTIBLE
+  VOID
 }
 
 enum NotificationChannel {
@@ -373,4 +468,10 @@ enum InvitationStatus {
   ACCEPTED
   EXPIRED
   CANCELLED
+}
+
+enum CommentSource {
+  WEB
+  EMAIL
+  API
 }

@@ -6,7 +6,8 @@ import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";
 import { UsersToNotify } from "../notifications/types";
-import { create as createNotification } from "../notifications/create";
+import { checkCanCreateTicket } from "../auth/subscription-check";
+import { trackUsage } from "../subscription/subscription";
 
 export interface CreateTicketRequest {
   title: string;
@@ -40,6 +41,11 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         throw APIError.permissionDenied(
           "You do not have permission to create tickets"
         );
+      }
+
+      // Check subscription limits
+      if (userContext.marketCenterId) {
+        await checkCanCreateTicket(userContext.marketCenterId);
       }
 
       // Apply auto-assignment (checks category defaults first, then rules)
@@ -101,6 +107,11 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
 
         return { ticket, history };
       });
+
+      // Track usage for billing
+      if (userContext.marketCenterId) {
+        await trackUsage(userContext.marketCenterId, "tickets");
+      }
 
       const usersToNotify: UsersToNotify[] = [
         {
