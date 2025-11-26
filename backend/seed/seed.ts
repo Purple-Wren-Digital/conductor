@@ -3,6 +3,7 @@ import { prisma } from "../ticket/db";
 import type { Prisma } from "@prisma/client";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
+import { ticket } from "~encore/clients";
 
 export interface SeedResponse {
   message: string;
@@ -19,18 +20,22 @@ export const seedData = api<void, SeedResponse>(
   async () => {
     console.log("Seeding database...");
 
-    // Clean up in correct order (respect foreign key constraints)
-    // Delete dependent records first
+    // Clean up in correct order
+    await prisma.ticketHistory.deleteMany({});
     await prisma.comment.deleteMany({});
     await prisma.attachment.deleteMany({});
-    await prisma.ticketHistory.deleteMany({});
+    await prisma.todo.deleteMany({});
+    await prisma.ticket.updateMany({
+      data: { assigneeId: null },
+    });
     await prisma.ticket.deleteMany({});
 
-    await prisma.notification.deleteMany({});  // Delete notifications BEFORE users
+    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
     await prisma.notificationPreferences.deleteMany({});
     await prisma.notificationTemplate.deleteMany({});
 
     await prisma.ticketCategory.deleteMany({});
+
     // await prisma.teamInvitation.deleteMany({});
 
     await prisma.userHistory.deleteMany({});
@@ -58,14 +63,14 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "alice.agent@kw.com",
           name: "Alice Johnson",
-          role: "AGENT",
+          role: "STAFF_LEADER",
           clerkId: "seed-01",
           marketCenterId: mc[0]?.id,
         },
         {
           email: "bob.staff@kw.com",
           name: "Bob Smith",
-          role: "STAFF_LEADER",
+          role: "STAFF",
           clerkId: "seed-02",
           marketCenterId: mc[0]?.id,
         },
@@ -93,7 +98,7 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "frank.agent@kw.com",
           name: "Frank Miller",
-          role: "STAFF",
+          role: "STAFF_LEADER",
           clerkId: "seed-06",
           marketCenterId: mc[1]?.id,
         },
@@ -107,14 +112,14 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "henry.agent@kw.com",
           name: "Henry Clark",
-          role: "STAFF_LEADER",
+          role: "STAFF",
           clerkId: "seed-08",
           marketCenterId: mc[2]?.id,
         },
         {
           email: "isla.staff@kw.com",
           name: "Isla Martinez",
-          role: "STAFF",
+          role: "AGENT",
           clerkId: "seed-09",
           marketCenterId: mc[2]?.id,
         },
@@ -128,23 +133,30 @@ export const seedData = api<void, SeedResponse>(
         {
           email: "kathryn.hann@kw.com",
           name: "Kathryn Hann",
-          role: "ADMIN",
+          role: "STAFF",
           clerkId: "seed-11",
           marketCenterId: undefined,
         },
         {
           email: "lawrence.david@kw.com",
           name: "Larry David",
-          role: "AGENT",
+          role: "STAFF",
           clerkId: "seed-12",
           marketCenterId: undefined,
         },
         {
           email: "m.organa@kw.com",
           name: "Morgan Organa",
-          role: "ADMIN",
+          role: "STAFF",
           clerkId: "seed-13",
           marketCenterId: undefined,
+        },
+        {
+          email: "nathan.lane@kw.com",
+          name: "Nathan Agent",
+          role: "AGENT",
+          clerkId: "seed-14",
+          marketCenterId: mc[0]?.id,
         },
       ],
     });
@@ -154,7 +166,6 @@ export const seedData = api<void, SeedResponse>(
     )!;
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
 
-    // Create User Default settings
     createdUsers.forEach(async (user, index) => {
       await prisma.user.update({
         where: { id: user?.id },
@@ -186,46 +197,91 @@ export const seedData = api<void, SeedResponse>(
       });
     });
 
-    // Create ticket categories
-    const categoryNames = [
-      "Appraisals",
-      "Compliance",
-      "Contracts",
-      "Documents",
-      "Financial",
-      "Inspections",
-      "Listings",
-      "Maintenance",
-      "Marketing",
-      "Onboarding",
-      "Showing Request",
-    ];
+    // Group users by market center for easy assignment
+    const usersByMC: Record<string, typeof createdUsers> = {};
+    createdUsers.forEach((user) => {
+      if (user.marketCenterId) {
+        if (!usersByMC[user.marketCenterId]) {
+          usersByMC[user.marketCenterId] = [];
+        }
+        usersByMC[user.marketCenterId].push(user);
+      }
+    });
 
-    const categories = await Promise.all(
-      categoryNames.map((name) =>
-        prisma.ticketCategory.create({
-          data: {
-            name,
-            marketCenterId: rand(mc).id,
-            defaultAssigneeId: rand(agents).id,
-          },
+    // Create Ticket Categories for each Market Center
+    const createdCategories = (
+      await Promise.all(
+        mc.map(async (marketCenter, i) => {
+          const mcStaff = usersByMC[marketCenter.id] || [];
+          const staffLeader = mcStaff.find((u) => u.role === "STAFF_LEADER");
+          const regularStaff = mcStaff.filter((u) => u.role === "STAFF");
+          return await prisma.ticketCategory.createManyAndReturn({
+            data: [
+              {
+                name: "Appraisals",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[2]?.id || null,
+              },
+              {
+                name: "Compliance",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: staffLeader?.id || null,
+              },
+              {
+                name: "Contracts",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[0]?.id || null,
+              },
+              {
+                name: "Documents",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[0]?.id || null,
+              },
+              {
+                name: "Financial",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: staffLeader?.id || null,
+              },
+              {
+                name: "Inspections",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[1]?.id || null,
+              },
+              {
+                name: "Listings",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[1]?.id || null,
+              },
+              {
+                name: "Maintenance",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[1]?.id || null,
+              },
+              {
+                name: "Marketing",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[2]?.id || null,
+              },
+              {
+                name: "Onboarding",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: staffLeader?.id || null, // Staff leader handles onboarding
+              },
+              {
+                name: "Showing Request",
+                marketCenterId: marketCenter.id,
+                defaultAssigneeId: regularStaff[2]?.id || null,
+              },
+            ],
+          });
         })
       )
-    );
-
-    const categoryMap: Record<
-      string,
-      { id: string; defaultAssigneeId: string | null }
-    > = Object.fromEntries(
-      categories.map((category) => [
-        category.name,
-        { id: category.id, defaultAssigneeId: category.defaultAssigneeId },
-      ])
-    );
+    ).flat();
 
     const templates: Array<
       Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId"> & {
         categoryName: string;
+        marketCenterId?: string;
         dueDate?: Date | null;
         resolvedAt?: Date | null;
       }
@@ -236,9 +292,10 @@ export const seedData = api<void, SeedResponse>(
           "Financing contingency expires tomorrow, awaiting appraisal report",
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
-        categoryName: "Contracts",
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 1),
+        categoryName: "Contracts",
+        marketCenterId: mc[0]?.id,
       },
       {
         title: "Showing feedback for 456 Oak Ave",
@@ -246,6 +303,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "MEDIUM",
         categoryName: "Showing Request",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 3),
         dueDate: subDays(now, 1),
       },
@@ -255,6 +313,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 10),
         resolvedAt: subDays(now, 8),
       },
@@ -264,6 +323,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "HIGH",
         categoryName: "Compliance",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 2),
       },
@@ -273,6 +333,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 3),
       },
@@ -283,7 +344,9 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Documents",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 3),
+        dueDate: addDays(now, 4),
       },
       {
         title: "Price reduction update for 999 Spruce Ave",
@@ -291,6 +354,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "MEDIUM",
         categoryName: "Listings",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 15),
         resolvedAt: subDays(now, 14),
       },
@@ -300,6 +364,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Maintenance",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 1),
       },
       {
@@ -308,6 +373,7 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 6),
       },
       {
@@ -316,6 +382,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "HIGH",
         categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 3),
         dueDate: addDays(now, 2),
         resolvedAt: addDays(now, 1),
@@ -326,6 +393,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 4),
       },
       {
@@ -334,8 +402,9 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Onboarding",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 2),
-        dueDate: addDays(now, 4),
+        dueDate: addDays(now, 5),
       },
       {
         title: "Update website with sold properties",
@@ -343,6 +412,7 @@ export const seedData = api<void, SeedResponse>(
         status: "RESOLVED",
         urgency: "LOW",
         categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 20),
         resolvedAt: subDays(now, 18),
       },
@@ -352,6 +422,7 @@ export const seedData = api<void, SeedResponse>(
         status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Appraisals",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 1),
         dueDate: addDays(now, 7),
       },
@@ -361,14 +432,18 @@ export const seedData = api<void, SeedResponse>(
         status: "AWAITING_RESPONSE",
         urgency: "LOW",
         categoryName: "Financial",
+        marketCenterId: mc[1]?.id,
         createdAt: subDays(now, 2),
+        dueDate: addDays(now, 4),
       },
+
       {
         title: "Inspection results review",
         description: "Review inspection report with client for 101 Maple St",
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
+        marketCenterId: mc[0]?.id,
         createdAt: subDays(now, 1),
       },
       {
@@ -376,7 +451,8 @@ export const seedData = api<void, SeedResponse>(
         description: "Client wants virtual staging before MLS listing",
         status: "ASSIGNED",
         urgency: "LOW",
-        categoryName: "Listings",
+        categoryName: "Marketing",
+        marketCenterId: mc[2]?.id,
         createdAt: subDays(now, 3),
       },
       {
@@ -385,6 +461,7 @@ export const seedData = api<void, SeedResponse>(
         status: "CREATED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
+        marketCenterId: mc[1]?.id,
         createdAt: now,
         dueDate: addDays(now, 10),
       },
@@ -392,27 +469,39 @@ export const seedData = api<void, SeedResponse>(
 
     // Tickets per Market Center: 2-4
     const ticketsToCreate: Prisma.TicketCreateManyInput[] = templates.map(
-      (t) => {
-        const category = categoryMap[t.categoryName];
+      (ticket) => {
+        const marketCenter = ticket.marketCenterId
+          ? mc.find((m) => m.id === ticket.marketCenterId)
+          : undefined;
+
+        const agentInMC = usersByMC[ticket.marketCenterId || ""] || [];
+
+        const category =
+          ticket?.status !== "UNASSIGNED"
+            ? createdCategories.find(
+                (c) =>
+                  c.name === ticket.categoryName &&
+                  c.marketCenterId === marketCenter?.id
+              )
+            : null;
 
         const base: Prisma.TicketCreateManyInput = {
-          title: t.title,
-          description: t.description,
-          status: t.status,
-          urgency: t.urgency,
-          categoryId: category.id,
-          creatorId: rand(agents).id,
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status,
+          urgency: ticket.urgency,
+          categoryId: category?.id,
+          creatorId: agentInMC.length > 0 ? agentInMC[0].id : admin.id,
           assigneeId:
-            t.status === "CREATED"
-              ? undefined
-              : category?.defaultAssigneeId
-                ? category.defaultAssigneeId
-                : undefined,
-
-          createdAt: t.createdAt,
-          dueDate: t.dueDate ?? null,
+            category && category?.defaultAssigneeId
+              ? category.defaultAssigneeId
+              : null,
+          createdAt: ticket.createdAt,
+          dueDate: ticket.dueDate ?? null,
           resolvedAt:
-            t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null,
+            ticket.status === "RESOLVED"
+              ? (ticket.resolvedAt ?? subDays(now, 1))
+              : null,
         };
         return base;
       }
@@ -427,7 +516,7 @@ export const seedData = api<void, SeedResponse>(
       comments.push(
         {
           ticketId: ticket.id,
-          userId: ticket.assigneeId ?? rand(staff).id,
+          userId: ticket?.assigneeId ?? ticket?.creatorId ?? admin.id,
           content: `Initial update on "${ticket.title}"`,
           internal: false,
           createdAt: subDays(now, 1),
@@ -460,6 +549,24 @@ export const seedData = api<void, SeedResponse>(
     });
 
     await prisma.comment.createMany({ data: comments });
+
+    // Create todos for tickets that have templates with todos
+    // const todos: Prisma.TodoCreateManyInput[] = [];
+    // tickets.forEach((ticket, i) => {
+    //   console.log(i, "Creating todo for ticket:", ticket);
+    //   if (ticket && ticket?.id && ticket?.categoryId)
+    //     todos.push({
+    //       title: "Subtask",
+    //       complete: false,
+    //       ticketId: ticket.id,
+    //       createdById: ticket.categoryId,
+    //       createdAt: ticket.createdAt,
+    //     });
+    // });
+
+    // if (todos.length > 0) {
+    // await prisma.todo.createMany({ data: todos });
+    // }
 
     // Create attachments for some tickets
     const attachments: Prisma.AttachmentCreateManyInput[] = [];

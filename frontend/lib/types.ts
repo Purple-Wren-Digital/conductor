@@ -18,7 +18,7 @@ export type AppContext = {
   setCurrentUser: Dispatch<SetStateAction<PrismaUser | null>>;
 };
 
-// TICKET
+// TICKETS
 export type TicketStatus =
   | "DRAFT"
   | "CREATED"
@@ -51,6 +51,24 @@ export interface Ticket {
   deletedAt?: Date | null;
   isActive?: boolean;
   ticketHistory: TicketHistory[];
+  emailMessageId?: string | null;
+  todos?: Todo[];
+}
+
+export interface Todo {
+  id: string;
+  title: string;
+  complete: boolean;
+  ticketId: string;
+  createdById: string;
+  updatedById?: string | null;
+
+  createdAt: Date;
+  updatedAt?: Date;
+
+  ticket?: Ticket;
+  createdBy?: { id: string; name?: string } | PrismaUser;
+  updatedBy?: { id: string; name?: string } | PrismaUser;
 }
 
 export interface Attachment {
@@ -107,10 +125,14 @@ export interface TicketSearchParams {
 export interface TicketTemplate {
   id: string;
   name: string;
+  description: string;
   title: string;
   ticketDescription: string;
-  category: string;
-  urgency: Urgency;
+  category?: string;
+  urgency?: Urgency;
+  tags?: string[];
+  isActive: boolean;
+  todos: string[];
 }
 
 export interface BulkAssignRequest {

@@ -359,10 +359,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                         variant={
                           (user?.role ? user.role.toLowerCase() : "user") as any
                         }
-                        title={user?.role.split("_").join(" ")}
+                        title={
+                          user?.role ? user?.role.split("_").join(" ") : "N/A"
+                        }
                         className="text-xs px-2 py-0.5"
                       >
-                        {user?.role.split("_").join(" ") ?? "N/a"}
+                        {user?.role ? user?.role.split("_").join(" ") : "N/A"}
                       </Badge>
                     }
                     content={getRoleDescription(user?.role)}

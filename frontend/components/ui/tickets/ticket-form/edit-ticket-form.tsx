@@ -32,6 +32,7 @@ const emptyValues: TicketFormValues = {
   categoryId: "",
   dueDate: undefined,
   assigneeId: "",
+  todos: [],
 };
 
 export function EditTicketForm({
@@ -86,16 +87,24 @@ export function EditTicketForm({
         categoryId: ticket?.categoryId ?? "",
         dueDate: ticket.dueDate ? new Date(ticket.dueDate) : undefined,
         assigneeId: ticket?.assigneeId ? ticket.assigneeId : "Unassigned",
+        todos: [],
       });
       setErrors({});
 
-      const userMarketCenterId =
-        (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
-        currentUser?.marketCenterId
-          ? currentUser.marketCenterId
-          : null;
+      const marketCenterId =
+        ticket?.assignee?.marketCenterId ||
+        ticket?.creator?.marketCenterId ||
+        ticket?.category?.marketCenterId;
 
-      setMarketCenterId(userMarketCenterId);
+      const ticketMarketCenter =
+        role === "ADMIN" && marketCenterId
+          ? marketCenterId
+          : (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
+              currentUser?.marketCenterId
+            ? currentUser.marketCenterId
+            : null;
+
+      setMarketCenterId(ticketMarketCenter);
       setSelectedTemplateId("");
       fetchTemplates();
     }
@@ -114,10 +123,11 @@ export function EditTicketForm({
       setValues({
         title: t.title,
         description: t.ticketDescription,
-        urgency: t.urgency,
-        categoryId: t.category,
+        urgency: t?.urgency || "MEDIUM",
+        categoryId: t?.category || "",
         dueDate: undefined,
         assigneeId: "Unassigned",
+        todos: [...t.todos],
       });
     }
   };
@@ -130,7 +140,8 @@ export function EditTicketForm({
     if (!values.title.trim()) next.title = "Title is required";
     if (!values.description.trim())
       next.description = "Description is required";
-    // if (!marketCenterId) next.marketCenter = "Market Center is required";
+    if (role === "ADMIN" && !marketCenterId)
+      next.marketCenter = "Market Center is required";
     if (!values.categoryId.trim()) next.category = "Category is required";
     setErrors(next);
     return Object.keys(next).length === 0;

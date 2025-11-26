@@ -60,7 +60,7 @@ export default function MarketCenterUserTable({
           className="text-xs px-2 py-0.5"
         >
           {getRoleIcon(user?.role || "AGENT")}
-          {user?.role.split("_").join(" ") ?? "N/a"}
+          {user?.role ? user?.role.split("_").join(" ") : "N/A"}
         </Badge>
       </TableCell>
       <TableCell className="max-w-[150px]">

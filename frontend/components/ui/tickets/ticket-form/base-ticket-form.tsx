@@ -35,11 +35,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
-import { findMarketCenter, urgencyOptions } from "@/lib/utils";
+import {
+  capitalizeEveryWord,
+  findMarketCenter,
+  urgencyOptions,
+} from "@/lib/utils";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { useStore } from "@/context/store-provider";
 
 export type TicketFormValues = {
   title: string;
@@ -48,6 +53,8 @@ export type TicketFormValues = {
   categoryId: string;
   dueDate?: Date;
   assigneeId?: string;
+  marketCenterId?: string;
+  todos: string[];
 };
 
 export type BaseTicketFormProps = {
@@ -95,7 +102,8 @@ export function BaseTicketForm({
   const [selectedMarketCenter, setSelectedMarketCenter] =
     useState<MarketCenter>({} as MarketCenter);
 
-  const { role } = useUserRole();
+  const { currentUser } = useStore();
+  const { role, permissions } = useUserRole();
   const { data: marketCentersData, isLoading: isMarketCentersLoading } =
     useFetchAllMarketCenters(role);
 
@@ -360,7 +368,7 @@ export function BaseTicketForm({
                 <Label>Assign To</Label>
                 <ToolTip
                   trigger={<Info className="w-3 h-3" />}
-                  content="Only Staff users may assign tickets"
+                  content="Only management assigns tickets"
                 />
               </div>
               <Select
@@ -374,12 +382,35 @@ export function BaseTicketForm({
                   <SelectValue placeholder={"Select an assignee"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={"Unassigned"}>Unassigned</SelectItem>
+                  <SelectItem
+                    value={"Unassigned"}
+                    disabled={!permissions?.canUnassignTicket}
+                  >
+                    Unassigned
+                  </SelectItem>
                   {!isMarketCentersLoading &&
                     marketCenterAssignees?.map((user) => {
+                      const assignmentPermissions =
+                        permissions?.canReassignTicket &&
+                        (role === "ADMIN" ||
+                          (role === "STAFF_LEADER" &&
+                            currentUser?.marketCenterId &&
+                            user?.marketCenterId ===
+                              currentUser?.marketCenterId) ||
+                          (role === "STAFF" && user?.id === currentUser?.id));
+
                       return (
-                        <SelectItem key={user?.id} value={user?.id}>
-                          {user?.name ?? user?.id}
+                        <SelectItem
+                          key={user.id}
+                          value={user.id}
+                          disabled={!assignmentPermissions}
+                        >
+                          {user.name}:{" "}
+                          {user?.role
+                            ? capitalizeEveryWord(
+                                user.role.split("_").join(" ")
+                              )
+                            : "Unassigned"}
                         </SelectItem>
                       );
                     })}
