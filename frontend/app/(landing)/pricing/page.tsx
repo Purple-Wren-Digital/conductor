@@ -28,7 +28,7 @@ export default function PricingPage() {
             <CardHeader className="min-w-60">
               <CardTitle>{plan.name}</CardTitle>
               <CardDescription>
-                <span className="text-4xl font-semibold">${plan.price}</span> /
+                <span className="text-4xl font-semibold">${plan.monthlyPrice}</span> /
                 month
               </CardDescription>
             </CardHeader>

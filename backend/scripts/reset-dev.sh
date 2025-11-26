@@ -16,6 +16,10 @@ sleep 2
 echo "📝 Syncing Prisma migration history..."
 npx prisma migrate resolve --applied 20241121000000_initial --schema=./ticket/schema.prisma --skip-generate 2>/dev/null
 
+# Push current schema to database (includes subscription tables)
+echo "📊 Applying current schema to database..."
+npx prisma db push --schema=./ticket/schema.prisma --skip-generate --accept-data-loss
+
 # Generate Prisma client
 echo "🔨 Generating Prisma client..."
 npx prisma generate --schema=./ticket/schema.prisma

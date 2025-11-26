@@ -129,6 +129,11 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
           ticketId: req.ticketId,
           userId: userContext.userId,
           internal: req.internal || false,
+          source: "WEB", // Add source field for email tracking
+          metadata: {
+            // Add metadata field for future email tracking
+            source: "WEB",
+          },
         },
         include: {
           user: true,
