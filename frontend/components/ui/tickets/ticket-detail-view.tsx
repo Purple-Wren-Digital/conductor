@@ -24,6 +24,8 @@ import { AttachmentsList } from "@/components/ui/tickets/attachments-list";
 import { FileUpload } from "@/components/ui/tickets/file-upload";
 import { TicketTodos } from "@/components/ui/tickets/ticket-subtask";
 import { TicketCommentsSection } from "@/components/ui/tickets/ticket-comments-section";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
+import TicketSurveyModal from "@/components/ui/tickets/survey/ticket-survey-modal";
 import TicketHistoryTable from "@/components/history-tables/tickets/history-table-ticket";
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import {
@@ -33,6 +35,7 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  ClipboardListIcon,
   Clock,
   Edit,
   History,
@@ -68,6 +71,7 @@ import {
 import { API_BASE } from "@/lib/api/utils";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 import { useFetchTicketHistory } from "@/hooks/use-history";
+import { useFetchTicketSurveyResults } from "@/hooks/use-tickets";
 import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -85,16 +89,16 @@ export const ticketDetailQueryKeyParams = Object.fromEntries(
   ticketDetailQueryParams.entries()
 ) as Record<string, string>;
 
-export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
+export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const { getToken } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [attachmentTotal, setAttachmentTotal] = useState(0);
   const [commentTotal, setCommentTotal] = useState(0);
   const [users, setUsers] = useState<PrismaUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   const router = useRouter();
   const { currentUser } = useStore();
@@ -120,14 +124,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       (ticket?.assignee && ticket?.assignee?.email === currentUser?.email));
 
   const canEditTicket =
-    role === "ADMIN" ||
-    agentCanEditTicket ||
-    staffCanEditMCTicket ||
-    staffCanEditOwnTickets;
+    ticket?.status !== "RESOLVED" &&
+    (role === "ADMIN" ||
+      agentCanEditTicket ||
+      staffCanEditMCTicket ||
+      staffCanEditOwnTickets);
 
   const refreshAllData = useCallback(async () => {
     if (!ticketId) return;
-    setLoading(true);
+    setIsLoading(true);
     try {
       const token = await getToken();
       if (!token) {
@@ -157,7 +162,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       console.error("Error refreshing data:", err);
       setTicket(null);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [ticketId, getToken]);
 
@@ -176,6 +181,16 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
   const invalidateTicketHistory = queryClient.invalidateQueries({
     queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
   });
+
+  const { data: surveyData, isLoading: isSurveyLoading } =
+    useFetchTicketSurveyResults(ticket?.status, ticket?.surveyId ?? undefined);
+
+  const invalidateSurvey = queryClient.invalidateQueries({
+    queryKey: ["ticket-survey", ticket?.surveyId ?? undefined],
+  });
+
+  const canTakeSurvey =
+    ticket?.status === "RESOLVED" && surveyData?.surveyorId === currentUser?.id;
 
   const handleSendTicketNotifications = async ({
     ticket,
@@ -246,12 +261,77 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     }
   };
 
+  const handleCloseTicket = async () => {
+    setIsLoading(true);
+    if (!ticket || !ticketId) {
+      throw new Error("Ticket ID is required to close a ticket");
+    }
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(`${API_BASE}/tickets/close/${ticketId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to close ticket");
+      const data = await res.json();
+      if (
+        !data ||
+        !data?.usersToNotify ||
+        !data?.usersToNotify.length ||
+        !data?.changedDetails
+      ) {
+        throw new Error("No data returned from close ticket");
+      }
+      const { usersToNotify, changedDetails } = data;
+      await Promise.all(
+        usersToNotify.map(
+          async (user: UsersToNotify) =>
+            await handleSendTicketNotifications({
+              ticket: {
+                id: ticketId,
+                title: ticket?.title ?? "No title provided",
+                createdAt: ticket.createdAt,
+                updatedAt: new Date(ticket.updatedAt || new Date()),
+                resolvedAt: new Date(ticket.resolvedAt || new Date()),
+                description: null,
+                status: "RESOLVED",
+                urgency: ticket.urgency as Urgency,
+                dueDate: ticket.dueDate ?? null,
+                ticketHistory: [],
+                attachments: [],
+                creator: ticket.creator,
+              },
+              userToNotify: user,
+              changedDetails: changedDetails,
+            })
+        )
+      );
+
+      toast.success("Ticket closed successfully.");
+    } catch (error) {
+      console.error("Failed to close ticket:", error);
+      toast.error("Error: Failed to close ticket. Please try again.");
+    } finally {
+      await refreshAllData();
+      setIsLoading(false);
+    }
+  };
+
   const handleUpdateTicket = async (field: keyof Ticket, value: any) => {
     if (!ticket) throw new Error("No ticket loaded");
     if (ticket && ticket.status === "RESOLVED") {
       toast.info("Resolved tickets cannot be edited");
       return;
     }
+    setIsLoading(true);
 
     const prev = ticket;
     setTicket({ ...ticket, [field]: value });
@@ -293,6 +373,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       await refreshAllData();
       await invalidateTicketHistory;
+      setIsLoading(false);
     }
   };
 
@@ -302,6 +383,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       toast.info("Resolved tickets cannot be edited");
       return;
     }
+    setIsLoading(true);
     const prev = ticket;
     const nextAssignee =
       newAssigneeId === "unassigned"
@@ -357,6 +439,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     } finally {
       await refreshAllData();
       await invalidateTicketHistory;
+      setIsLoading(false);
     }
   };
 
@@ -390,49 +473,28 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Loading ticket…</p>
-      </div>
-    );
-  }
-
   if (!ticket) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">
           Ticket not found or could not be loaded.
         </p>
-        {onClose && (
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="mt-4 bg-transparent"
-          >
-            Go Back
-          </Button>
-        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-          className="gap-2"
-        >
+      <div className="flex items-center flex-col justify-center gap-4  sm:flex-row sm:justify-between ">
+        <Button variant="ghost" onClick={() => router.back()} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <div className="flex items-center gap-4 space-y-2 flex-wrap">
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             onClick={() => setShowHistoryModal(!showHistoryModal)}
             className="gap-2 w-full sm:w-fit"
+            disabled={isHistoryLoading || isLoading}
           >
             <History className="h-4 w-4" /> View History
           </Button>
@@ -443,6 +505,19 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
               disabled={ticket.status === "RESOLVED"}
             >
               <Edit className="h-4 w-4" /> Edit Ticket
+            </Button>
+          )}
+          {canTakeSurvey && (
+            <Button
+              variant={"destructive"}
+              onClick={() => setShowSurveyModal(true)}
+              disabled={
+                isLoading || isSurveyLoading || surveyData?.completed === true
+              }
+              className="gap-2"
+            >
+              <ClipboardListIcon className="h-4 w-4" />
+              Take Survey
             </Button>
           )}
         </div>
@@ -461,7 +536,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 <Button
                   variant={"ghost"}
                   onClick={() => setShowHistoryModal(false)}
-                  disabled={!canEditTicket}
+                  disabled={!currentUser || isLoading || isHistoryLoading}
                 >
                   <X className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -478,7 +553,13 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
             <CardHeader>
               <div className="w-full space-y-2">
                 {/* TITLE, BADGES */}
-                <CardTitle className="text-xl">{ticket.title}</CardTitle>
+                <CardTitle className="text-xl">
+                  {isLoading
+                    ? "Loading ticket..."
+                    : ticket?.title
+                      ? ticket.title
+                      : "Ticket"}
+                </CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardDescription className="text-sm text-muted-foreground font-md">
                     Ticket{" "}
@@ -593,125 +674,221 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
                 onAttachmentDeleted={() => refreshAllData()}
               />
               <FileUpload
-                disabled={!canEditTicket}
+                disabled={!canEditTicket || isLoading}
                 ticketId={ticket.id}
                 onUploadComplete={() => refreshAllData()}
               />
             </CardContent>
           </Card>
         </div>
+        {/* ACTION or SURVEY */}
         <div className="lg:col-span-1 space-y-6">
-          {/* ACTIONS */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={ticket.status}
-                    onValueChange={(value: TicketStatus) =>
-                      handleUpdateTicket("status", value)
-                    }
-                    disabled={!canEditTicket}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((status: TicketStatus) => (
-                        <SelectItem key={status} value={status}>
-                          <Badge variant={status.toLowerCase() as any}>
-                            {status.replace("_", " ")}
-                          </Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {ticket?.status === "RESOLVED" ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <ClipboardListIcon className="size-4 text-muted-foreground" />
+                    <CardTitle>Survey Results</CardTitle>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Urgency</Label>
-                  <Select
-                    value={ticket.urgency}
-                    onValueChange={(value: Urgency) =>
-                      handleUpdateTicket("urgency", value)
-                    }
-                    disabled={!canEditTicket}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {urgencyOptions.map((urgency) => (
-                        <SelectItem key={urgency} value={urgency}>
-                          <Badge variant={urgency.toLowerCase() as any}>
-                            {urgency}
-                          </Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {permissions?.canReassignTicket && (
+                  <CardDescription>
+                    {ticket?.surveyId &&
+                      surveyData &&
+                      surveyData.completed === true &&
+                      `Completed by ${surveyData?.surveyor?.name ?? "N/a"} on ${
+                        surveyData?.updatedAt
+                          ? format(new Date(surveyData.updatedAt), "PPP p")
+                          : ""
+                      }`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {ticket?.surveyId && surveyData && (
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <p className="font-medium">Overall:</p>
+                        {surveyData?.overallRating ? (
+                          <StarRating
+                            rating={surveyData.overallRating}
+                            size={18}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Not Rated
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium">Assignee:</p>
+                        <div>
+                          {surveyData.assigneeRating ? (
+                            <StarRating
+                              rating={surveyData.assigneeRating}
+                              size={18}
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Not Rated
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium">Market Center:</p>
+                        <div>
+                          {surveyData?.marketCenterRating ? (
+                            <StarRating
+                              rating={surveyData.marketCenterRating}
+                              size={18}
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Not Rated
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium">Comments:</p>
+                        {surveyData?.comment ? (
+                          <p className="text-sm text-muted-foreground">
+                            {surveyData.comment}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No comments
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Assignee</Label>
+                    <Label>Status</Label>
                     <Select
-                      value={ticket.assignee?.id || "Unassigned"}
-                      onValueChange={handleAssigneeChange}
-                      disabled={
-                        ticket.status === "RESOLVED" ||
-                        !permissions?.canReassignTicket
-                      }
+                      value={ticket.status}
+                      onValueChange={async (value: TicketStatus) => {
+                        if (value === "RESOLVED") {
+                          await handleCloseTicket();
+                        } else {
+                          await handleUpdateTicket("status", value);
+                        }
+                      }}
+                      disabled={!canEditTicket || isLoading}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem
-                          value="Unassigned"
-                          disabled={!permissions?.canUnassignTicket}
-                        >
-                          Unassigned
-                        </SelectItem>
-                        {users &&
-                          users.length > 0 &&
-                          users.map((user) => {
-                            const assignmentPermissions =
-                              permissions?.canReassignTicket &&
-                              (role === "ADMIN" ||
-                                (role === "STAFF_LEADER" &&
-                                  currentUser?.marketCenterId &&
-                                  user?.marketCenterId ===
-                                    currentUser?.marketCenterId) ||
-                                (role === "STAFF" &&
-                                  user?.id === currentUser?.id));
-
-                            return (
-                              <SelectItem
-                                key={user.id}
-                                value={user.id}
-                                disabled={!assignmentPermissions}
-                              >
-                                {user.name}:{" "}
-                                {user?.role
-                                  ? capitalizeEveryWord(
-                                      user.role.split("_").join(" ")
-                                    )
-                                  : "Unassigned"}
-                              </SelectItem>
-                            );
-                          })}
+                        {statusOptions.map((status: TicketStatus) => (
+                          <SelectItem key={status} value={status}>
+                            <Badge variant={status.toLowerCase() as any}>
+                              {status.replace("_", " ")}
+                            </Badge>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+
+                  <div className="space-y-2">
+                    <Label>Urgency</Label>
+                    <Select
+                      value={ticket.urgency}
+                      onValueChange={(value: Urgency) =>
+                        handleUpdateTicket("urgency", value)
+                      }
+                      disabled={!canEditTicket || isLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {urgencyOptions.map((urgency) => (
+                          <SelectItem key={urgency} value={urgency}>
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {permissions?.canReassignTicket && (
+                    <div className="space-y-2">
+                      <Label>Assignee</Label>
+                      <Select
+                        value={ticket.assignee?.id || "Unassigned"}
+                        onValueChange={handleAssigneeChange}
+                        disabled={
+                          !permissions?.canReassignTicket ||
+                          isLoading ||
+                          isHistoryLoading
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          <SelectItem
+                            value="Unassigned"
+                            disabled={!permissions?.canUnassignTicket}
+                          >
+                            Unassigned
+                          </SelectItem>
+                          {users &&
+                            users.length > 0 &&
+                            users.map((user) => {
+                              const assignmentPermissions =
+                                permissions?.canReassignTicket &&
+                                (role === "ADMIN" ||
+                                  (role === "STAFF_LEADER" &&
+                                    currentUser?.marketCenterId &&
+                                    user?.marketCenterId ===
+                                      currentUser?.marketCenterId) ||
+                                  (role === "STAFF" &&
+                                    user?.id === currentUser?.id));
+
+                              return (
+                                <SelectItem
+                                  key={user.id}
+                                  value={user.id}
+                                  disabled={
+                                    !assignmentPermissions ||
+                                    isLoading ||
+                                    isHistoryLoading
+                                  }
+                                >
+                                  {user.name}:{" "}
+                                  {user?.role
+                                    ? capitalizeEveryWord(
+                                        user.role.split("_").join(" ")
+                                      )
+                                    : "Unassigned"}
+                                </SelectItem>
+                              );
+                            })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -805,7 +982,7 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
       </div>
 
       <EditTicketForm
-        disabled={ticket.status === "RESOLVED" || !canEditTicket}
+        disabled={!canEditTicket || isLoading}
         ticket={ticket ?? undefined}
         isOpen={showEditForm}
         onClose={() => setShowEditForm(false)}
@@ -816,6 +993,15 @@ export function TicketDetailView({ ticketId, onClose }: TicketDetailViewProps) {
           setShowEditForm(false);
           void (await refreshAllData());
         }}
+      />
+
+      <TicketSurveyModal
+        ticketId={ticket.id}
+        surveyId={ticket.surveyId ?? ""}
+        showSurveyModal={showSurveyModal}
+        setShowSurveyModal={setShowSurveyModal}
+        refreshSurvey={invalidateSurvey}
+        disabled={isLoading || isSurveyLoading || !canTakeSurvey}
       />
     </div>
   );

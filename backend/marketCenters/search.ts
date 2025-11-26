@@ -3,7 +3,7 @@ import { Query } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
-import { MarketCenter } from "./types";
+import type { MarketCenter } from "./types";
 
 export interface ListMarketCentersRequest {
   id?: Query<string>;
@@ -142,7 +142,6 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
             },
           },
         });
-
         return {
           ...mc,
           totalTickets,
@@ -153,6 +152,10 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
         };
       })
     );
-    return { marketCenters: formattedMarketCenters, total: total };
+
+    return {
+      marketCenters: formattedMarketCenters,
+      total: total,
+    };
   }
 );

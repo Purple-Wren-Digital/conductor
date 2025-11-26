@@ -10,6 +10,7 @@ import {
   ArrowRightCircle,
   TagIcon,
   Ticket,
+  Star,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/lib/utils";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 
 export function UserListItem({
   user,
@@ -40,6 +42,13 @@ export function UserListItem({
   );
 
   const marketCenter: MarketCenter = marketCenterData ?? {};
+  const shouldFetchRatings = (user?._count?.assignedTickets ?? 0) > 0;
+
+  const { data: userRatingsData } = useFetchRatingsByAssignee(
+    ["ratings-by-assignee", user?.id],
+    shouldFetchRatings,
+    user?.id
+  );
 
   return (
     <ListItem
@@ -92,7 +101,16 @@ export function UserListItem({
             content: `${user?.defaultForCategories && user?.defaultForCategories?.length > 0 && arrayToCommaSeparatedListWithConjunction("and", user?.defaultForCategories?.map((cat) => cat?.name) ?? [])}`,
           },
         },
-      ]}
+        shouldFetchRatings &&
+          userRatingsData && {
+            label: `Avg Rating: ${
+              userRatingsData?.assigneeAverageRating
+                ? userRatingsData.assigneeAverageRating.toFixed(2)
+                : "N/A"
+            }`,
+            icon: <Star className="h-3 w-3" />,
+          },
+      ].filter(Boolean)}
       actions={[
         {
           label: "Edit",

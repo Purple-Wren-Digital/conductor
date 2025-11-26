@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
   useFetchMarketCenter,
   useFetchMarketCenterTickets,
@@ -37,9 +39,10 @@ import {
   Activity,
   TrendingUp,
   TicketIcon,
+  InfoIcon,
 } from "lucide-react";
 import Link from "next/link";
-import type { Ticket } from "@/lib/types";
+import type { PrismaUser, SurveyResults, Ticket } from "@/lib/types";
 import {
   chartColors,
   getResolvedInBusinessDays,
@@ -60,6 +63,7 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
+import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
 
 export function StaffLeaderDashboard() {
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
@@ -74,7 +78,21 @@ export function StaffLeaderDashboard() {
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
 
-  const teamMembers = useMemo(() => {
+  const queryKeyRatingsByMarketCenter = [
+    "staff-leader-dashboard-ratings-by-market-center",
+    marketCenterId,
+  ];
+  const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
+    useFetchRatingsByMarketCenter(
+      queryKeyRatingsByMarketCenter,
+      marketCenterId
+    );
+
+  const marketCenterRatings: SurveyResults = useMemo(() => {
+    return ratingsData;
+  }, [ratingsData]);
+
+  const teamMembers: PrismaUser[] = useMemo(() => {
     return marketCenter?.users && marketCenter?.users.length > 0
       ? marketCenter?.users
       : [];
@@ -266,48 +284,79 @@ export function StaffLeaderDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
-            Welcome, {clerkUser?.firstName}
-          </h1>
-          <p className="text-muted-foreground">
-            {`${marketCenter?.name || "your"} market center`}
-          </p>
-        </div>
-        <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-          <Select
-            value={selectedTeamMemberId}
-            onValueChange={(value) => setSelectedTeamMemberId(value)}
-          >
-            <SelectTrigger className="w-full sm:w-[250px]">
-              <SelectValue placeholder="Select Team" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">
-                <Users className="w-4 h-4" />
-                All Team Members
-              </SelectItem>
-              {teamMembers &&
-                teamMembers?.length &&
-                teamMembers?.map((member: any) => {
-                  return (
-                    <SelectItem key={member.id} value={member.id}>
-                      <User className={`w-4 h-4`} />
-                      {member.name}
-                    </SelectItem>
-                  );
-                })}
-            </SelectContent>
-          </Select>
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
+              Welcome, {clerkUser?.firstName}
+            </h1>
+            <p className="text-muted-foreground">
+              Managing {`${marketCenter?.name || "your"} market center`}
+            </p>
+          </div>
+          <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
+            <Select
+              value={selectedTeamMemberId}
+              onValueChange={(value) => setSelectedTeamMemberId(value)}
+            >
+              <SelectTrigger className="w-full sm:w-[250px]">
+                <SelectValue placeholder="Select Team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">
+                  <Users className="w-4 h-4" />
+                  All Team Members
+                </SelectItem>
+                {teamMembers &&
+                  teamMembers?.length &&
+                  teamMembers?.map((member: any) => {
+                    return (
+                      <SelectItem key={member.id} value={member.id}>
+                        <User className={`w-4 h-4`} />
+                        {member.name}
+                      </SelectItem>
+                    );
+                  })}
+              </SelectContent>
+            </Select>
 
-          <Button asChild className="w-full sm:w-fit">
-            <Link href="/dashboard/tickets">
-              <Plus className="mr-2 h-4 w-4" /> Create Ticket
-            </Link>
-          </Button>
+            <Button asChild className="w-full sm:w-fit">
+              <Link href="/dashboard/tickets">
+                <Plus className="mr-2 h-4 w-4" /> Create Ticket
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+        <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
+          <ToolTip
+            content="Ratings are based on resolved tickets within this market center via survey responses"
+            trigger={<InfoIcon className="size-3 text-primary" />}
+          />
+          <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
+            <span className="flex items-center gap-1">
+              {marketCenter?.name || "Market Center"}:
+              <StarRating
+                rating={marketCenterRatings?.marketCenterAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Team Members:
+              <StarRating
+                rating={marketCenterRatings?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Tickets:
+              <StarRating
+                rating={marketCenterRatings?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -374,6 +423,71 @@ export function StaffLeaderDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 justify-center">
+        {/* TEAM MEMBERS */}
+        <Card className="max-w-2xs sm:max-w-full">
+          <CardHeader className="flex flex-row justify-between">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>
+                Ticket distribution across {teamMembers.length} team members
+              </CardDescription>
+            </div>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
+              {Object.entries(teamStats).map(
+                ([memberId, stats]: [string, any]) => {
+                  const isViewingStats = selectedTeamMemberId === memberId;
+                  return (
+                    <div
+                      key={memberId}
+                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium ">{stats.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {stats.assigned} active • {stats.resolved} resolved
+                            {stats?.role === "STAFF_LEADER"
+                              ? " • Staff Leader"
+                              : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge
+                            variant={isViewingStats ? "outline" : "secondary"}
+                          >
+                            {stats.assigned}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+              {Object.keys(teamStats).length === 0 && (
+                <p className="text-muted-foreground text-center py-4">
+                  No team data available
+                </p>
+              )}
+            </ScrollArea>
+            <div className="mt-4">
+              <Button
+                asChild
+                variant="outline"
+                className="w-full"
+                disabled={!currentUser || !currentUser?.marketCenterId}
+              >
+                <Link
+                  href={`/dashboard/marketCenters/${currentUser?.marketCenterId}?tab=team`}
+                >
+                  Manage Team
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         {/* TICKETS BY STATUS */}
         <Card className="max-w-2xs sm:max-w-full">
           <CardHeader className="flex flex-row justify-between">
@@ -440,136 +554,6 @@ export function StaffLeaderDashboard() {
                 ? "all users"
                 : `User #${selectedTeamMemberId.slice(0, 8)}`}
             </p>
-          </CardContent>
-        </Card>
-
-        {/* TEAM MEMBERS */}
-        <Card className="max-w-2xs sm:max-w-full">
-          <CardHeader className="flex flex-row justify-between">
-            <div className="flex flex-col gap-1">
-              <CardTitle>Team Members</CardTitle>
-              <CardDescription>
-                Ticket distribution across {teamMembers.length} team members
-              </CardDescription>
-            </div>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="space-y-4 md:max-h-100 overflow-y-auto">
-              {Object.entries(teamStats).map(
-                ([memberId, stats]: [string, any]) => {
-                  const isViewingStats = selectedTeamMemberId === memberId;
-                  return (
-                    <div
-                      key={memberId}
-                      className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium ">{stats.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {stats.assigned} active • {stats.resolved} resolved
-                            {stats?.role === "STAFF_LEADER"
-                              ? " • Staff Leader"
-                              : ""}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Badge
-                            variant={isViewingStats ? "outline" : "secondary"}
-                          >
-                            {stats.assigned}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-              )}
-              {Object.keys(teamStats).length === 0 && (
-                <p className="text-muted-foreground text-center py-4">
-                  No team data available
-                </p>
-              )}
-            </ScrollArea>
-            <div className="mt-4">
-              <Button
-                asChild
-                variant="outline"
-                className="w-full"
-                disabled={!currentUser || !currentUser?.marketCenterId}
-              >
-                <Link
-                  href={`/dashboard/marketCenters/${currentUser?.marketCenterId}?tab=team`}
-                >
-                  Manage Team
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* RECENT ACTIVITY */}
-        <Card className="max-w-2xs sm:max-w-full">
-          <CardHeader className="flex flex-row flex-wrap justify-between">
-            <div className="flex flex-col gap-1">
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest tickets from your team</CardDescription>
-            </div>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="space-y-2 md:h-75 overflow-y-auto">
-              {!tickets && !tickets?.length && (
-                <p className="text-sm font-medium text-muted-foreground">
-                  No tickets found
-                </p>
-              )}
-              {tickets &&
-                tickets?.length > 0 &&
-                tickets.slice(0, 10).map((ticket: any) => (
-                  <div
-                    key={ticket.id}
-                    className="flex items-center p-2 rounded hover:bg-muted"
-                  >
-                    <div className="flex-1">
-                      <Link
-                        href={`/dashboard/tickets/${ticket.id}`}
-                        className="hover:underline"
-                      >
-                        <p className="font-medium ">{ticket.title}</p>
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
-                          #{ticket.id.substring(0, 8)}
-                        </span>
-                        <Badge
-                          variant={ticket.urgency.toLowerCase() as any}
-                          className="text-xs"
-                        >
-                          {ticket.urgency}
-                        </Badge>
-                        <Badge
-                          variant={ticket.status.toLowerCase() as any}
-                          className="text-xs"
-                        >
-                          {ticket.status.replace("_", " ")}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {tickets.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">
-                  No tickets yet
-                </p>
-              )}
-            </ScrollArea>
-            <div className="mt-4">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard/tickets">View All Tickets</Link>
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -644,6 +628,70 @@ export function StaffLeaderDashboard() {
                   <span className="text-xs font-medium">{entry.name}</span>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* RECENT ACTIVITY */}
+        <Card className="max-w-2xs sm:max-w-full">
+          <CardHeader className="flex flex-row flex-wrap justify-between">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest tickets from your team</CardDescription>
+            </div>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
+              {!tickets && !tickets?.length && (
+                <p className="text-sm font-medium text-muted-foreground">
+                  No tickets found
+                </p>
+              )}
+              {tickets &&
+                tickets?.length > 0 &&
+                tickets.slice(0, 10).map((ticket: any) => (
+                  <div
+                    key={ticket.id}
+                    className="flex items-center p-2 rounded hover:bg-muted"
+                  >
+                    <div className="flex-1">
+                      <Link
+                        href={`/dashboard/tickets/${ticket.id}`}
+                        className="hover:underline"
+                      >
+                        <p className="font-medium ">{ticket.title}</p>
+                      </Link>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          #{ticket.id.substring(0, 8)}
+                        </span>
+                        <Badge
+                          variant={ticket.urgency.toLowerCase() as any}
+                          className="text-xs"
+                        >
+                          {ticket.urgency}
+                        </Badge>
+                        <Badge
+                          variant={ticket.status.toLowerCase() as any}
+                          className="text-xs"
+                        >
+                          {ticket.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {tickets.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">
+                  No tickets yet
+                </p>
+              )}
+            </ScrollArea>
+            <div className="mt-4">
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/dashboard/tickets">View All Tickets</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

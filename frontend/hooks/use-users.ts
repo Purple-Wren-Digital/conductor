@@ -112,17 +112,12 @@ export function useFetchUsersWithinMarketCenter({
 }
 
 // FETCH USER
-export function useFetchOneUser({
-  id,
-}: {
-  id?: string;
-}) {
+export function useFetchOneUser({ id }: { id?: string }) {
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["user-profile", id],
     queryFn: async () => {
-
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
 
@@ -133,7 +128,7 @@ export function useFetchOneUser({
       });
       if (!response.ok) throw new Error("Failed to fetch user");
       const data = await response.json();
-      return data?.user;
+      return data;
     },
     enabled: !!id,
   });

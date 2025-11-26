@@ -12,11 +12,12 @@ import {
 } from "@/components/ui/tabs/base-tabs";
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
-import { useFetchOneUserByEmail } from "@/hooks/use-users";
+import { useFetchOneUser } from "@/hooks/use-users";
 import { PrismaUser } from "@/lib/types";
 import { BellRing, History, UserCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 
 export default function AccountLayout() {
   const queryClient = useQueryClient();
@@ -25,10 +26,10 @@ export default function AccountLayout() {
   const { currentUser } = useStore();
   const { user: clerkUser } = useUser();
 
-  const { data: userData, isLoading: userLoading } = useFetchOneUserByEmail({
-    email: currentUser?.email,
+  const { data: userData, isLoading: userLoading } = useFetchOneUser({
+    id: currentUser?.id,
   });
-  const user: PrismaUser = userData ?? {};
+  const user: PrismaUser = userData?.user ?? {};
 
   const isCurrentUserProfile =
     currentUser?.email === user?.email && clerkUser?.id === user?.clerkId;
@@ -36,6 +37,11 @@ export default function AccountLayout() {
   const invalidateUserQuery = queryClient.invalidateQueries({
     queryKey: ["user-profile", user?.id],
   });
+  const { data: userRatingsData } = useFetchRatingsByAssignee(
+    ["ratings-by-assignee", user?.id],
+    (userData?.resolvedTicketsCount ?? 0) > 0,
+    user?.id
+  );
 
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "profile";
@@ -69,6 +75,7 @@ export default function AccountLayout() {
             user={user}
             isCurrentUserProfile={isCurrentUserProfile}
             invalidateUserQuery={invalidateUserQuery}
+            userRatingsData={userRatingsData}
           />
         </TabsContent>
 
@@ -98,39 +105,3 @@ export default function AccountLayout() {
     </div>
   );
 }
-//<TabsTrigger
-//             value="import-export"
-//             className="flex items-center gap-2"
-//           >
-//             <Download className="h-4 w-4" />
-//             Import/Export
-//           </TabsTrigger>  <TabsTrigger value="audit" className="flex items-center gap-2">
-//             <History className="h-4 w-4" />
-//             Audit Log
-//           </TabsTrigger> <TabsTrigger value="sign-out" className="flex items-center gap-2">
-//             <LogOut className="h-4 w-4" />
-//             Sign out
-//           </TabsTrigger>
-//  <TabsContent value="categories">
-//           <TicketCategories />
-//         </TabsContent>
-// <TabsContent value="import-export">
-//           <ImportExport />
-//         </TabsContent>
-// <TabsContent value="audit">
-//           <AuditLog />
-//         </TabsContent>
-//  <TabsContent value="account">
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Sign out</CardTitle>
-//             </CardHeader>
-//             <CardContent>
-//               <Button asChild>
-//                 <Link href="/auth/logout" onClick={() => setCurrentUser(null)}>
-//                   Sign out <LogOut className="ml-2 h-4 w-4" />
-//                 </Link>
-//               </Button>
-//             </CardContent>
-//           </Card>
-//         </TabsContent>

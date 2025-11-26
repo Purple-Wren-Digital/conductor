@@ -24,19 +24,18 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
     auth: true,
   },
   async (req) => {
-    console.log("Close ticket request:", req);
     const userContext = await getUserContext();
     if (!req.ticketId) {
       throw APIError.invalidArgument("Ticket ID is required");
     }
 
-    if (!req.status) {
+    if (!req.status || req?.status !== "RESOLVED") {
       throw APIError.invalidArgument("Status is required");
     }
 
     const oldTicket = await prisma.ticket.findUnique({
       where: { id: req.ticketId },
-      include: { assignee: true, creator: true },
+      include: { assignee: true, creator: true, category: true },
     });
 
     if (!oldTicket) {
@@ -45,6 +44,15 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
     if (oldTicket && oldTicket.status === "RESOLVED") {
       throw APIError.invalidArgument("Resolved tickets cannot be updated");
     }
+    const marketCenterId =
+      oldTicket.assignee?.marketCenterId ||
+      oldTicket.creator?.marketCenterId ||
+      oldTicket.category?.marketCenterId ||
+      null;
+
+    if (!marketCenterId) {
+      throw APIError.notFound("Market Center not found");
+    }
     let canClose = await canDeleteTicket(userContext, req.ticketId);
     if (!canClose) {
       throw APIError.permissionDenied(
@@ -52,13 +60,30 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       );
     }
 
-    const [ticket] = await prisma.$transaction([
-      prisma.ticket.update({
+    const { ticket } = await prisma.$transaction(async (p) => {
+      const survey = await p.survey.create({
+        data: {
+          ticketId: req.ticketId,
+          surveyorId: oldTicket.creatorId,
+          assigneeId: oldTicket.assigneeId || null,
+          marketCenterId: marketCenterId,
+          overallRating: null,
+          assigneeRating: null,
+          marketCenterRating: null,
+          comment: null,
+        },
+      });
+
+      const ticket = await p.ticket.update({
         where: { id: req.ticketId },
-        data: { status: "RESOLVED", resolvedAt: new Date() },
+        data: {
+          status: "RESOLVED",
+          resolvedAt: new Date(),
+          surveyId: survey.id,
+        },
         include: { assignee: true, creator: true },
-      }),
-      prisma.ticketHistory.create({
+      });
+      await p.ticketHistory.create({
         data: {
           ticketId: req.ticketId,
           action: "UPDATE",
@@ -69,8 +94,10 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
           changedAt: new Date(),
           changedById: userContext.userId,
         },
-      }),
-    ]);
+      });
+
+      return { ticket };
+    });
 
     const usersToNotify: UsersToNotify[] = [
       {

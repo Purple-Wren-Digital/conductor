@@ -3,10 +3,12 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { PrismaUser, UserRole } from "@/lib/types";
 import { getCategoryStyle, ROLE_ICONS } from "@/lib/utils";
 import { CircleMinus, TicketIcon, User } from "lucide-react";
+import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 import { useUserRole } from "@/hooks/use-user-role";
 
 export default function MarketCenterUserTable({
@@ -31,6 +33,14 @@ export default function MarketCenterUserTable({
     return Icon ? <Icon className="h-4 w-4" /> : <User className="h-4 w-4" />;
   };
 
+  const shouldFetchRatings = (user?._count?.assignedTickets ?? 0) > 0;
+
+  const { data: userRatingsData } = useFetchRatingsByAssignee(
+    ["ratings-by-assignee", user?.id],
+    shouldFetchRatings,
+    user?.id
+  );
+
   return (
     <TableRow
       className="p-2 align-center cursor-pointer hover:bg-muted"
@@ -41,13 +51,22 @@ export default function MarketCenterUserTable({
           <p className="font-medium hover:underline">
             {user?.name ?? "No Name"}
           </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1 whitespace-nowrap">
-              <TicketIcon className="h-2.75 w-2.75" />
-              {user?._count?.assignedTickets ?? 0} assigned •{" "}
-              {user?._count?.createdTickets ?? 0} created{" "}
-            </span>
-          </div>
+          <span className="flex items-center gap-1 whitespace-nowrap text-sm text-muted-foreground">
+            <TicketIcon className="h-2.75 w-2.75" />
+            {user?._count?.assignedTickets ?? 0} assigned •{" "}
+            {user?._count?.createdTickets ?? 0} created{" "}
+          </span>
+          <span className="flex items-center gap-1 whitespace-nowrap text-sm text-muted-foreground">
+            Avg Rating
+            <StarRating
+              size={12}
+              rating={
+                userRatingsData?.assigneeAverageRating
+                  ? userRatingsData.assigneeAverageRating
+                  : 0
+              }
+            />
+          </span>
         </div>
       </TableCell>
 

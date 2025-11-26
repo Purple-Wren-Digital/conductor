@@ -9,6 +9,7 @@ export interface GetUserRequest {
 
 export interface GetUserResponse {
   user: User;
+  resolvedTicketsCount: number;
 }
 
 export const get = api<GetUserRequest, GetUserResponse>(
@@ -33,6 +34,14 @@ export const get = api<GetUserRequest, GetUserResponse>(
             notificationPreferences: true,
           },
         },
+        _count: {
+          select: {
+            assignedTickets: true,
+            createdTickets: true,
+            comments: true,
+            defaultForCategories: true,
+          },
+        },
       },
     });
 
@@ -40,12 +49,16 @@ export const get = api<GetUserRequest, GetUserResponse>(
       throw APIError.notFound("user not found");
     }
 
+    const resolvedTicketsCount = await prisma.ticket.count({
+      where: { assigneeId: user.id, status: "RESOLVED" },
+    });
+
     const safeUser = {
       ...user,
       marketCenter: user.marketCenter ?? undefined,
       userSettings: user.userSettings ?? undefined,
     };
 
-    return { user: safeUser } as GetUserResponse;
+    return { user: safeUser, resolvedTicketsCount } as GetUserResponse;
   }
 );

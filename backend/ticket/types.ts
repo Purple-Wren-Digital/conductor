@@ -1,6 +1,7 @@
 import type { TicketCategory } from "../marketCenters/types";
 import { Todo } from "../todos/types";
 import type { User } from "../user/types";
+import type { Survey } from "../surveys/types";
 
 export type TicketStatus =
   | "DRAFT"
@@ -74,6 +75,9 @@ export interface Ticket {
   ticketHistory?: TicketHistory[];
   emailMessageId?: string | null;
   todos?: Todo[];
+
+  surveyId?: string | null;
+  survey?: Survey | null;
 }
 
 export interface Comment {

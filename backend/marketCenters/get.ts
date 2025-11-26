@@ -40,23 +40,18 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
         ticketCategories: {
           include: {
             defaultAssignee: true,
-            _count: {
-              select: { tickets: true },
-            },
+            _count: { select: { tickets: true } },
           },
         },
       },
     });
-    if (!marketCenter) {
+
+    if (!marketCenter || !marketCenter?.id) {
       throw APIError.notFound("Market Center not found");
     }
 
     const totalTickets = await prisma.ticket.count({
-      where: {
-        category: {
-          marketCenterId: req.id,
-        },
-      },
+      where: { category: { marketCenterId: req.id } },
     });
 
     const formattedMarketCenter = {

@@ -1,6 +1,6 @@
 import { api } from "encore.dev/api";
 import { prisma } from "../ticket/db";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
 import { ticket } from "~encore/clients";
@@ -28,8 +28,10 @@ export const seedData = api<void, SeedResponse>(
     await prisma.ticket.updateMany({
       data: { assigneeId: null },
     });
+    await prisma.survey.deleteMany({});
     await prisma.ticket.deleteMany({});
 
+    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
     await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
     await prisma.notificationPreferences.deleteMany({});
     await prisma.notificationTemplate.deleteMany({});
@@ -44,7 +46,11 @@ export const seedData = api<void, SeedResponse>(
     await prisma.marketCenterHistory.deleteMany({});
 
     // Delete parent records last
-    await prisma.user.deleteMany({});
+    await prisma.user.deleteMany({
+      where: {
+        NOT: { email: "vmcnorrill@gmail.com" },
+      },
+    });
     await prisma.marketCenter.deleteMany({});
 
     const now = new Date();
@@ -86,7 +92,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Dan Williams",
           role: "AGENT",
           clerkId: "seed-04",
-          marketCenterId: mc[0]?.id,
+          marketCenterId: mc[1]?.id,
         },
         {
           email: "emma.staff@kw.com",
@@ -142,7 +148,7 @@ export const seedData = api<void, SeedResponse>(
           name: "Larry David",
           role: "STAFF",
           clerkId: "seed-12",
-          marketCenterId: undefined,
+          marketCenterId: mc[2]?.id,
         },
         {
           email: "m.organa@kw.com",
@@ -197,86 +203,126 @@ export const seedData = api<void, SeedResponse>(
       });
     });
 
-    // Group users by market center for easy assignment
-    const usersByMC: Record<string, typeof createdUsers> = {};
-    createdUsers.forEach((user) => {
-      if (user.marketCenterId) {
-        if (!usersByMC[user.marketCenterId]) {
-          usersByMC[user.marketCenterId] = [];
-        }
-        usersByMC[user.marketCenterId].push(user);
-      }
-    });
+    // Create ticket categories
+    const categoryNames = [
+      { name: "Appraisals", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Compliance", marketCenterIds: mc.map((m) => m.id) },
+      {
+        name: "Contracts",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Documents",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Financial",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Inspections",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Listings",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Maintenance",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Marketing",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Onboarding",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+      {
+        name: "Showing Request",
+        marketCenterIds: mc.map((m) => m.id),
+      },
+    ];
+    // const categoryNames = [
+    //   "Appraisals",
+    //   "Compliance",
+    //   "Contracts",
+    //   "Documents",
+    //   "Financial",
+    //   "Inspections",
+    //   "Listings",
+    //   "Maintenance",
+    //   "Marketing",
+    //   "Onboarding",
+    //   "Showing Request",
+    // ];
 
-    // Create Ticket Categories for each Market Center
-    const createdCategories = (
+    const categories: Prisma.TicketCategoryGetPayload<{}>[] = (
       await Promise.all(
-        mc.map(async (marketCenter, i) => {
-          const mcStaff = usersByMC[marketCenter.id] || [];
-          const staffLeader = mcStaff.find((u) => u.role === "STAFF_LEADER");
-          const regularStaff = mcStaff.filter((u) => u.role === "STAFF");
-          return await prisma.ticketCategory.createManyAndReturn({
+        categoryNames.map((category) =>
+          prisma.ticketCategory.createManyAndReturn({
             data: [
               {
-                name: "Appraisals",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[2]?.id || null,
+                name: category.name,
+                marketCenterId: category.marketCenterIds[0],
+                defaultAssigneeId: rand(
+                  staff.filter(
+                    (s) => s.marketCenterId === category.marketCenterIds[0]
+                  )
+                ).id,
               },
               {
-                name: "Compliance",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: staffLeader?.id || null,
+                name: category.name,
+                marketCenterId: category.marketCenterIds[1],
+                defaultAssigneeId: rand(
+                  staff.filter(
+                    (s) => s.marketCenterId === category.marketCenterIds[1]
+                  )
+                ).id,
               },
               {
-                name: "Contracts",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[0]?.id || null,
-              },
-              {
-                name: "Documents",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[0]?.id || null,
-              },
-              {
-                name: "Financial",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: staffLeader?.id || null,
-              },
-              {
-                name: "Inspections",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[1]?.id || null,
-              },
-              {
-                name: "Listings",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[1]?.id || null,
-              },
-              {
-                name: "Maintenance",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[1]?.id || null,
-              },
-              {
-                name: "Marketing",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[2]?.id || null,
-              },
-              {
-                name: "Onboarding",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: staffLeader?.id || null, // Staff leader handles onboarding
-              },
-              {
-                name: "Showing Request",
-                marketCenterId: marketCenter.id,
-                defaultAssigneeId: regularStaff[2]?.id || null,
+                name: category.name,
+                marketCenterId: category.marketCenterIds[2],
+                defaultAssigneeId: rand(
+                  staff.filter(
+                    (s) => s.marketCenterId === category.marketCenterIds[2]
+                  )
+                ).id,
               },
             ],
-          });
-        })
+          })
+        )
       )
     ).flat();
+
+    const categoryMap: Record<
+      string,
+      {
+        id: string;
+        defaultAssigneeId?: string | null;
+        marketCenterId: string;
+      }[]
+    > = categories.reduce<
+      Record<
+        string,
+        {
+          id: string;
+          defaultAssigneeId: string | null;
+          marketCenterId: string;
+        }[]
+      >
+    >((acc, category) => {
+      if (!acc[category.name]) {
+        acc[category.name] = [];
+      }
+      acc[category.name].push({
+        id: category.id,
+        defaultAssigneeId: category.defaultAssigneeId,
+        marketCenterId: category.marketCenterId,
+      });
+      return acc;
+    }, {});
 
     const templates: Array<
       Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId"> & {
@@ -469,39 +515,35 @@ export const seedData = api<void, SeedResponse>(
 
     // Tickets per Market Center: 2-4
     const ticketsToCreate: Prisma.TicketCreateManyInput[] = templates.map(
-      (ticket) => {
-        const marketCenter = ticket.marketCenterId
-          ? mc.find((m) => m.id === ticket.marketCenterId)
-          : undefined;
-
-        const agentInMC = usersByMC[ticket.marketCenterId || ""] || [];
-
+      (t) => {
+        const marketCenterId = rand(mc).id;
         const category =
-          ticket?.status !== "UNASSIGNED"
-            ? createdCategories.find(
-                (c) =>
-                  c.name === ticket.categoryName &&
-                  c.marketCenterId === marketCenter?.id
-              )
-            : null;
+          categoryMap[t.categoryName]?.find(
+            (c) => c.marketCenterId === marketCenterId
+          ) || categoryMap[t.categoryName][0];
+        const agentIdsInMC = agents.filter(
+          (a) => a.marketCenterId === marketCenterId
+        );
+        const creatorId = rand(agentIdsInMC)?.id;
 
         const base: Prisma.TicketCreateManyInput = {
-          title: ticket.title,
-          description: ticket.description,
-          status: ticket.status,
-          urgency: ticket.urgency,
-          categoryId: category?.id,
-          creatorId: agentInMC.length > 0 ? agentInMC[0].id : admin.id,
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          urgency: t.urgency,
+          categoryId: category.id,
+          creatorId: creatorId,
           assigneeId:
-            category && category?.defaultAssigneeId
-              ? category.defaultAssigneeId
-              : null,
-          createdAt: ticket.createdAt,
-          dueDate: ticket.dueDate ?? null,
+            t?.status === "CREATED" || t?.status === "UNASSIGNED"
+              ? undefined
+              : category?.defaultAssigneeId
+                ? category.defaultAssigneeId
+                : undefined,
+
+          createdAt: t.createdAt,
+          dueDate: t.dueDate ?? null,
           resolvedAt:
-            ticket.status === "RESOLVED"
-              ? (ticket.resolvedAt ?? subDays(now, 1))
-              : null,
+            t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null,
         };
         return base;
       }
@@ -509,6 +551,51 @@ export const seedData = api<void, SeedResponse>(
 
     const tickets = await prisma.ticket.createManyAndReturn({
       data: ticketsToCreate,
+    });
+    const resolvedTickets = tickets.filter((t) => t.status === "RESOLVED");
+
+    await prisma.$transaction(async (tx) => {
+      for (const ticket of resolvedTickets) {
+        const marketCenterId =
+          mc.find(
+            (m) =>
+              m.id ===
+              staff.find((s) => s.id === ticket.assigneeId)?.marketCenterId
+          )?.id || "";
+
+        // 1. CREATE the survey
+        const survey = await tx.survey.create({
+          data: {
+            ticket: { connect: { id: ticket.id } },
+            surveyor: { connect: { id: ticket.creatorId } },
+            assignee: ticket.assigneeId
+              ? { connect: { id: ticket.assigneeId } }
+              : undefined,
+            marketCenter: marketCenterId
+              ? { connect: { id: marketCenterId } }
+              : undefined,
+            overallRating: new Prisma.Decimal(
+              Math.floor(Math.random() * 5) + 1
+            ),
+            assigneeRating: new Prisma.Decimal(
+              Math.floor(Math.random() * 5) + 1
+            ),
+            marketCenterRating: new Prisma.Decimal(
+              Math.floor(Math.random() * 5) + 1
+            ),
+            comment: `Survey for ticket "${ticket.title}"`,
+            createdAt: ticket.resolvedAt!,
+            completed: true,
+            updatedAt: addDays(ticket.resolvedAt!, 1),
+          },
+        });
+
+        // 2. UPDATE the ticket with the surveyId
+        await tx.ticket.update({
+          where: { id: ticket.id },
+          data: { surveyId: survey.id },
+        });
+      }
     });
 
     const comments: Prisma.CommentCreateManyInput[] = [];
@@ -539,10 +626,6 @@ export const seedData = api<void, SeedResponse>(
         });
       }
     }
-
-    // await prisma.notificationPreferences.createMany({
-    //   data: defaultNotificationPreferences,
-    // });
 
     await prisma.notificationTemplate.createMany({
       data: notificationTemplatesDefault,

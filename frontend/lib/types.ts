@@ -53,6 +53,8 @@ export interface Ticket {
   ticketHistory: TicketHistory[];
   emailMessageId?: string | null;
   todos?: Todo[];
+  surveyId?: string | null;
+  survey?: Survey | null;
 }
 
 export interface Todo {
@@ -146,6 +148,33 @@ export interface BulkUpdateRequest {
   urgency?: Urgency;
 }
 
+// SURVEY
+export interface Survey {
+  id: string;
+  ticketId: string;
+  surveyorId: string;
+  assigneeId?: string | null;
+  completed: boolean;
+  marketCenterId: string | null;
+  overallRating: number | null;
+  assigneeRating: number | null;
+  marketCenterRating: number | null;
+  comment: string | null;
+  createdAt: Date;
+  updatedAt?: Date;
+  ticket?: Ticket;
+  surveyor?: PrismaUser;
+  assignee?: PrismaUser;
+  marketCenter?: MarketCenter;
+}
+
+export interface SurveyResults {
+  totalSurveys: number;
+  overallAverageRating: number;
+  assigneeAverageRating: number;
+  marketCenterAverageRating: number;
+}
+
 // COMMENTS
 export interface Comment {
   id: string;
@@ -191,12 +220,15 @@ export interface PrismaUser {
 
   notifications?: Notification[];
 
-  _count: {
+  _count?: {
     assignedTickets?: number;
-    comments?: number;
     createdTickets?: number;
+    comments?: number;
     defaultForCategories?: number;
   };
+  responseSurveys?: Survey[];
+  receivedSurveys?: Survey[];
+  // averages?: SurveyResults;
 }
 export interface UserHistory {
   id: string;
@@ -277,8 +309,11 @@ export interface MarketCenter {
   ticketCategories?: TicketCategory[];
   users?: PrismaUser[];
   totalTickets?: number;
+  totalUsers?: number;
   staffLeaderIds?: string[];
   // settingsAuditLogs?: SettingsAuditLog[];
+
+  averages?: SurveyResults;
 }
 
 export interface MarketCenterHistory {

@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/api/utils";
-import { PrismaUser } from "@/lib/types";
+import { PrismaUser, SurveyResults } from "@/lib/types";
 import { Edit, Lock, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -27,10 +27,12 @@ const EditUserProfile = ({
   user,
   isCurrentUserProfile,
   invalidateUserQuery,
+  userRatingsData,
 }: {
   user: PrismaUser;
   isCurrentUserProfile: boolean;
   invalidateUserQuery: Promise<void>;
+  userRatingsData?: SurveyResults;
 }) => {
   const prefilledData = {
     firstName: user && user?.name ? user.name.split(" ")[0] : "",
@@ -210,6 +212,7 @@ const EditUserProfile = ({
       <UserInformation
         user={user}
         marketCenterName={user?.marketCenter?.name}
+        userRatingsData={userRatingsData}
       />
 
       <Card className="max-h-fit">
