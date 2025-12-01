@@ -148,6 +148,24 @@ export const defaultNotificationPreferences = [
     push: false,
     sms: false,
   },
+  {
+    frequency: NotificationFrequency.INSTANT,
+    category: NotificationCategory.ACTIVITY,
+    type: "Ticket Survey",
+    email: true,
+    inApp: true,
+    push: false,
+    sms: false,
+  },
+  {
+    frequency: NotificationFrequency.INSTANT,
+    category: NotificationCategory.ACTIVITY,
+    type: "Ticket Survey Results",
+    email: true,
+    inApp: true,
+    push: false,
+    sms: false,
+  },
 ];
 // {
 //   frequency: NotificationFrequency.INSTANT,

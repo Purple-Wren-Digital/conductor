@@ -81,7 +81,6 @@ export default function DashboardLayout({
   const { data: notificationsData, isLoading: isNotificationsLoading } =
     useFetchAllUserNotifications({
       isAccountLoaded: isLoaded,
-
       email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
       getToken,
     });

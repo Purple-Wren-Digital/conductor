@@ -18,7 +18,6 @@ import {
 } from "./types";
 import { ForwardRefExoticComponent, RefAttributes } from "react";
 
-
 // USERS
 export const ROLE_COLORS = {
   ADMIN: "destructive",
@@ -336,11 +335,11 @@ export const LANGUAGES = [
 export const chartColors = {
   blue: "#175CD3",
   orange: "#C4320A",
-  indigo: "#3538CD",
+  green: "#027A48",
   yellow: "#F7BB00",
   purple: "#6941C6",
   pink: "#BC2E74",
-  green: "#027A48",
+  indigo: "#3538CD",
   red: "#B42318",
   grey: "#9CA3AF",
 };

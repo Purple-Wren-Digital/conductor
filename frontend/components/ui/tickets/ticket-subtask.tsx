@@ -18,7 +18,13 @@ type EditSubtask = {
   title: string;
 };
 
-export function TicketTodos({ ticketId }: { ticketId: string }) {
+export function TicketTodos({
+  ticketId,
+  disabled,
+}: {
+  ticketId: string;
+  disabled: boolean;
+}) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState<string>("");
   const [editingSubtask, setEditingSubtask] = useState<EditSubtask>({
@@ -281,25 +287,26 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
       <div className="col-start-1 col-end-9">
         <h4 className="font-semibold">Todos</h4>
       </div>
-
-      <div className="col-start-9 col-end-12">
-        {todos && todos.length > 0 && (
-          <div className="w-full mx-auto">
-            <Progress
-              value={taskTodosProgress()}
-              getValueLabel={(value, max) =>
-                `${Math.round((value / max) * 100)}%`
-              }
-              className="w-full h-2"
-            />
+      {todos && todos.length > 0 && (
+        <>
+          <div className="col-start-9 col-end-12">
+            <div className="w-full mx-auto">
+              <Progress
+                value={taskTodosProgress()}
+                getValueLabel={(value, max) =>
+                  `${Math.round((value / max) * 100)}%`
+                }
+                className="w-full h-2"
+              />
+            </div>
           </div>
-        )}
-      </div>
-      <div className="col-start-12 col-end-13">
-        <p className="text-xs text-center text-muted-foreground font-semibold">
-          {Math.round(taskTodosProgress())}%
-        </p>
-      </div>
+          <div className="col-start-12 col-end-13">
+            <p className="text-xs text-center text-muted-foreground font-semibold">
+              {Math.round(taskTodosProgress())}%
+            </p>
+          </div>
+        </>
+      )}
 
       <div className="col-start-1 col-end-13">
         <form
@@ -318,14 +325,14 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
             placeholder="Create a new task"
             value={newSubtaskTitle}
             onChange={(e) => setNewSubtaskTitle(e.target.value)}
-            className={`md:w-2/3 h-8 ${errorMessage?.type === "create" ? "border-rose-500" : ""}`}
-            disabled={isLoading}
+            className={`md:w-2/3 h-8 ${errorMessage?.type === "create" ? "border-rose-500" : ""} ${disabled ? "cursor-not-allowed" : ""}`}
+            disabled={isLoading || disabled}
           />
           <Button
             type="submit"
             variant="outline"
             size={"sm"}
-            disabled={isLoading || newSubtaskTitle.trim() === ""}
+            disabled={isLoading || newSubtaskTitle.trim() === "" || disabled}
             aria-label="Create new subtask for ticket"
           >
             Create
@@ -335,7 +342,7 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
               type="reset"
               variant="outline"
               size={"sm"}
-              disabled={isLoading || newSubtaskTitle.trim() === ""}
+              disabled={isLoading || newSubtaskTitle.trim() === "" || disabled}
               aria-label="Reset new subtask input"
               className="bg-muted"
               onBlur={closeEditSubtask}
@@ -358,20 +365,23 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
                 onCheckedChange={async (checked) => {
                   await onMarketTaskComplete(todo.id, Boolean(checked));
                 }}
-                className="shadow hover:bg-muted"
+                className={`shadow ${disabled ? "" : "hover:bg-muted"}`}
                 aria-label={`Mark subtask "${todo.title}" as ${
                   todo.complete ? "incomplete" : "complete"
                 }`}
+                disabled={isLoading || disabled}
               />
               <div
                 onClick={() => {
+                  if (disabled) return;
                   setEditingSubtask({
                     ticketId,
                     todoId: todo.id,
                     title: todo.title,
                   });
                 }}
-                className="flex-1 space-y-2 cursor-pointer hover:underline py-2"
+                className={`flex-1 space-y-2 ${disabled ? "" : "cursor-pointer hover:underline"} py-2`}
+                aria-disabled={disabled}
               >
                 {editingSubtask?.todoId !== todo.id && (
                   <Label
@@ -401,6 +411,7 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
                         if (e.key === "Escape" || e.key === "Tab")
                           closeEditSubtask();
                       }}
+                      disabled={isLoading || disabled}
                     />
                     <div className="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto">
                       <Button
@@ -408,7 +419,9 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
                         size={"sm"}
                         onClick={handleUpdatedSubtask}
                         disabled={
-                          isLoading || editingSubtask?.title.trim() === ""
+                          isLoading ||
+                          editingSubtask?.title.trim() === "" ||
+                          disabled
                         }
                         aria-label="Save edited subtask title"
                       >
@@ -419,10 +432,10 @@ export function TicketTodos({ ticketId }: { ticketId: string }) {
                         size={"sm"}
                         onClick={handleRemoveSubtask}
                         className="bg-muted"
-                        disabled={isLoading}
+                        disabled={isLoading || disabled}
                         aria-label="Delete subtask from todo list"
                       >
-                        Delete
+                        Remove
                       </Button>
                     </div>
                   </div>

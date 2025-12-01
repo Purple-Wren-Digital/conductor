@@ -34,7 +34,6 @@ export const get = api<GetSurveyRequest, GetSurveyResponse>(
         surveyor: true,
       },
     });
-    console.log("Raw Survey:", rawSurvey);
 
     if (!rawSurvey) {
       throw APIError.notFound("Survey not found for the given Ticket Id");
@@ -90,7 +89,6 @@ export const get = api<GetSurveyRequest, GetSurveyResponse>(
         : undefined,
     };
 
-    console.log("Formatted Survey:", survey);
 
     return { survey: survey };
   }

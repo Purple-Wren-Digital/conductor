@@ -112,7 +112,7 @@ export const create = api<CreateNotificationRequest>(
           case "EMAIL":
             if (user?.email) {
               await sendEmailNotification({
-                userEmail: user.email,
+                userEmail: user.email, // "delivered@resend.dev", //
                 notification: {
                   ...safeNotification,
                   type: safeNotification?.type,
