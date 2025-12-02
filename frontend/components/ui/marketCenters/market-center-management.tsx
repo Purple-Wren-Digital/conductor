@@ -480,6 +480,7 @@ export default function MarketCenterManagement() {
                 <div className="space-y-2">
                   <Label>Categories</Label>
                   <Select
+                    defaultValue={"all"}
                     value={selectedCategory?.label}
                     onValueChange={(value) => {
                       if (value === "all") {
@@ -499,6 +500,7 @@ export default function MarketCenterManagement() {
                         setCurrentPage(1);
                       }
                     }}
+                    aria-label="Filter by ticket categories"
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a Category" />
