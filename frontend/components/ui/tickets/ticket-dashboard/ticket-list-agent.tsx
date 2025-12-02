@@ -81,14 +81,11 @@ import type {
 } from "@/lib/types";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
-import {
-  useMutation,
-  useQueryClient,
-  UseQueryResult,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function AgentTicketList() {
   const [isLoading, setIsLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -127,6 +124,72 @@ export default function AgentTicketList() {
   const { getToken } = useAuth();
 
   useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+        showFilters,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    dateFrom,
+    dateTo,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
       setCurrentPage(1);
@@ -140,6 +203,9 @@ export default function AgentTicketList() {
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
+
+    if (selectedAssignee !== "all")
+      params.append("assigneeId", selectedAssignee);
 
     if (selectedCategory !== "all")
       params.append("categoryId", selectedCategory);
@@ -157,6 +223,7 @@ export default function AgentTicketList() {
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
+    selectedAssignee,
     dateFrom,
     dateTo,
     sortBy,
@@ -169,6 +236,7 @@ export default function AgentTicketList() {
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
     [queryParams]
   );
+
   const agentTicketsQueryKey = useMemo(
     () => ["agent-tickets", queryKeyParams] as const,
     [queryKeyParams]
@@ -177,13 +245,8 @@ export default function AgentTicketList() {
   const agentTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey });
 
-  const {
-    data: ticketsData,
-    isFetching: ticketsLoading,
-  }: UseQueryResult<TicketsResponse, Error> = useFetchAgentTickets({
-    queryParams,
-    agentTicketsQueryKey,
-  });
+  const { data: ticketsData, isFetching: ticketsLoading } =
+    useFetchAgentTickets({ queryParams, agentTicketsQueryKey, hydrated });
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);

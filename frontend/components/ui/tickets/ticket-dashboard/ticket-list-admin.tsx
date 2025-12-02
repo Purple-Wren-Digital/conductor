@@ -101,6 +101,7 @@ export default function AdminTicketList() {
   const { currentUser } = useStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -118,9 +119,7 @@ export default function AdminTicketList() {
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    role === "AGENT" ? `${currentUser?.id}` : "all"
-  );
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
@@ -151,8 +150,84 @@ export default function AdminTicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        selectedMarketCenterId,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        showFilters,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    selectedMarketCenterId,
+    dateFrom,
+    dateTo,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setSelectedCreator(fetchedFilters.selectedCreator || "all");
+      setSelectedMarketCenterId(fetchedFilters.selectedMarketCenterId || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
+
+  // TICKETS QUERY PARAMS
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
+
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
@@ -202,6 +277,7 @@ export default function AdminTicketList() {
       role,
       adminTicketsQueryKey,
       queryParams,
+      hydrated,
     });
 
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
@@ -232,6 +308,7 @@ export default function AdminTicketList() {
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+    enabled: role === "ADMIN" && !!hydrated,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];

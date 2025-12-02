@@ -8,15 +8,18 @@ import type {
 } from "@/lib/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-type AgentSearchTicketsQuery = {
-  queryParams: URLSearchParams;
-  agentTicketsQueryKey: readonly [string, Record<string, string>];
-};
+const ticketsRefetchInterval = 300000; // 5 minutes in milliseconds
 
+// AGENT QUERIES
 export function useFetchAgentTickets({
   queryParams,
   agentTicketsQueryKey,
-}: AgentSearchTicketsQuery) {
+  hydrated,
+}: {
+  queryParams: URLSearchParams;
+  agentTicketsQueryKey: readonly [string, Record<string, string>];
+  hydrated: boolean;
+}) {
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
@@ -44,20 +47,24 @@ export function useFetchAgentTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
+    enabled: !!hydrated,
+    refetchInterval: ticketsRefetchInterval,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
-    refetchInterval: 15000,
   });
 }
 
-type StaffSearchTicketsQuery = {
-  queryParams: URLSearchParams;
-  staffTicketsQueryKey: readonly [string, Record<string, string>];
-};
-
+// STAFF QUERIES
 export function useFetchStaffTickets({
   queryParams,
   staffTicketsQueryKey,
-}: StaffSearchTicketsQuery) {
+  hydrated,
+}: {
+  queryParams: URLSearchParams;
+  staffTicketsQueryKey: readonly [string, Record<string, string>];
+  hydrated: boolean;
+}) {
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
@@ -86,22 +93,26 @@ export function useFetchStaffTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
+    enabled: !!hydrated,
+    refetchInterval: ticketsRefetchInterval,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
-    refetchInterval: 15000,
   });
 }
 
-type AdminSearchTicketsQuery = {
-  role: UserRole | undefined;
-  adminTicketsQueryKey: readonly [string, Record<string, string>];
-  queryParams: URLSearchParams;
-};
-
+// ADMIN QUERIES
 export function useFetchAdminTickets({
   role,
   adminTicketsQueryKey,
   queryParams,
-}: AdminSearchTicketsQuery) {
+  hydrated,
+}: {
+  role: UserRole | undefined;
+  adminTicketsQueryKey: readonly [string, Record<string, string>];
+  queryParams: URLSearchParams;
+  hydrated: boolean;
+}) {
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
@@ -134,9 +145,11 @@ export function useFetchAdminTickets({
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
-    enabled: role === "ADMIN",
+    enabled: role === "ADMIN" && !!hydrated,
+    refetchInterval: ticketsRefetchInterval,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
-    refetchInterval: 15000,
   });
 }
 
@@ -144,7 +157,11 @@ export function useListAdminTickets({
   role,
   adminTicketsQueryKey,
   queryParams,
-}: AdminSearchTicketsQuery) {
+}: {
+  role: UserRole | undefined;
+  adminTicketsQueryKey: readonly [string, Record<string, string>];
+  queryParams: URLSearchParams;
+}) {
   const { getToken } = useAuth();
 
   return useQuery<TicketsResponse, Error, TicketsResponse>({
@@ -179,10 +196,11 @@ export function useListAdminTickets({
     },
     enabled: role === "ADMIN",
     placeholderData: keepPreviousData,
-    refetchInterval: 15000,
+    refetchInterval: ticketsRefetchInterval,
   });
 }
 
+// SURVEYS + RATINGS QUERIES
 export function useFetchTicketSurveyResults(
   ticketStatus?: TicketStatus,
   surveyId?: string
