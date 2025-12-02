@@ -268,7 +268,6 @@ export function useListAllRatings(
           },
           cache: "no-store",
         });
-        console.log("useFetchRatingsByAssignee - response", res);
         if (!res.ok) {
           throw new Error("Failed to fetch survey data");
         }
@@ -312,7 +311,6 @@ export function useFetchRatingsByAssignee(
             cache: "no-store",
           }
         );
-        console.log("useFetchRatingsByAssignee - response", res);
         if (!res.ok) {
           throw new Error("Failed to fetch survey data");
         }
@@ -355,7 +353,6 @@ export function useFetchRatingsByMarketCenter(
             cache: "no-store",
           }
         );
-        console.log("useFetchRatingsByAssignee - response", res);
         if (!res.ok) {
           throw new Error("Failed to fetch survey data");
         }
