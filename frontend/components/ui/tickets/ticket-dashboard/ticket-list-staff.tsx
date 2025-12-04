@@ -93,6 +93,7 @@ export default function TicketListStaff() {
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
 
+  const [hydrated, setHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
@@ -136,6 +137,77 @@ export default function TicketListStaff() {
   const [bulkStatus, setBulkStatus] = useState<TicketStatus | "">("");
 
   const { getToken } = useAuth();
+
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+        showFilters,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    dateTo,
+    dateFrom,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setSelectedCreator(fetchedFilters.selectedCreator || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -200,10 +272,7 @@ export default function TicketListStaff() {
   );
 
   const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
-    {
-      queryParams,
-      staffTicketsQueryKey,
-    }
+    { queryParams, staffTicketsQueryKey, hydrated }
   );
 
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {

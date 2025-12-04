@@ -11,7 +11,10 @@ export interface SearchTicketsRequest {
   urgency?: Query<Urgency[]>;
   assigneeId?: Query<string>;
   creatorId?: Query<string>;
-  categoryId?: Query<string[]>;
+
+  categoryId?: Query<string>;
+  categoryIdsMultiple?: Query<string[]>;
+
   marketCenterId?: Query<string>;
 
   dateFrom?: Query<string>;
@@ -66,11 +69,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
 
           where = baseScope;
 
-          if (req.creatorId) {
+          if (req.creatorId && !req.assigneeId) {
             where.AND = [{ creatorId: req.creatorId }];
           }
 
-          if (req.assigneeId) {
+          if (req.assigneeId && !req.creatorId) {
             where.AND = [
               {
                 assigneeId:
@@ -78,9 +81,14 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
               },
             ];
           }
-
-          if (req.categoryId && req.categoryId.length > 0) {
-            where.AND = [{ categoryId: { in: req.categoryId } }];
+          if (req.assigneeId && req.creatorId) {
+            where.AND = [
+              { creatorId: req.creatorId },
+              {
+                assigneeId:
+                  req.assigneeId === "Unassigned" ? null : req.assigneeId,
+              },
+            ];
           }
         }
         break;
@@ -109,12 +117,21 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
 
         where = baseScopeAdmin;
 
-        if (req.creatorId) {
+        if (req.creatorId && !req.assigneeId) {
           where.AND = [{ creatorId: req.creatorId }];
         }
 
-        if (req.assigneeId) {
+        if (req.assigneeId && !req.creatorId) {
           where.AND = [
+            {
+              assigneeId:
+                req.assigneeId === "Unassigned" ? null : req.assigneeId,
+            },
+          ];
+        }
+        if (req.assigneeId && req.creatorId) {
+          where.AND = [
+            { creatorId: req.creatorId },
             {
               assigneeId:
                 req.assigneeId === "Unassigned" ? null : req.assigneeId,
@@ -136,7 +153,20 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (req.urgency && req.urgency.length > 0) {
       where.urgency = { in: req.urgency as Urgency[] };
     }
-    if (req.categoryId) where.AND = [{ categoryId: { in: req.categoryId } }];
+    if (
+      req.categoryId &&
+      (!req?.categoryIdsMultiple || !req?.categoryIdsMultiple.length)
+    ) {
+      where.AND = [{ categoryId: req.categoryId }];
+    }
+
+    if (
+      !req?.marketCenterId &&
+      req.categoryIdsMultiple &&
+      req.categoryIdsMultiple.length > 0
+    ) {
+      where.categoryId = { in: req.categoryIdsMultiple };
+    }
 
     if (req.query) {
       const searchCondition = {

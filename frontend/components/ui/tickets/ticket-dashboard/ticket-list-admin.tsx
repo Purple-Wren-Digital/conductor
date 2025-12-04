@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
 import { useAuth } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog/base-dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
 import { useFetchAdminTickets } from "@/hooks/use-tickets";
@@ -94,6 +93,9 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
 
+type CategoryOption = { label: string; ids: string[] };
+const defaultSelectedCategory: CategoryOption = { label: "all", ids: [] };
+
 export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -101,6 +103,7 @@ export default function AdminTicketList() {
   const { currentUser } = useStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -116,11 +119,11 @@ export default function AdminTicketList() {
     defaultActiveStatuses
   );
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-
-  const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    role === "AGENT" ? `${currentUser?.id}` : "all"
+  const [selectedCategory, setSelectedCategory] = useState<CategoryOption>(
+    defaultSelectedCategory
   );
+
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
@@ -151,8 +154,84 @@ export default function AdminTicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        selectedMarketCenterId,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        showFilters,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    selectedMarketCenterId,
+    dateFrom,
+    dateTo,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setSelectedCreator(fetchedFilters.selectedCreator || "all");
+      setSelectedMarketCenterId(fetchedFilters.selectedMarketCenterId || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
+
+  // TICKETS QUERY PARAMS
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
+
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
@@ -162,8 +241,15 @@ export default function AdminTicketList() {
     if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
     }
-    if (selectedCategory !== "all") {
-      params.append("categoryId", selectedCategory);
+    if (
+      selectedCategory &&
+      selectedCategory?.label !== "all" &&
+      selectedCategory?.ids &&
+      selectedCategory?.ids.length > 0
+    ) {
+      selectedCategory.ids.forEach((categoryId) =>
+        params.append("categoryIdsMultiple", categoryId)
+      );
     }
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
@@ -202,6 +288,7 @@ export default function AdminTicketList() {
       role,
       adminTicketsQueryKey,
       queryParams,
+      hydrated,
     });
 
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
@@ -232,6 +319,7 @@ export default function AdminTicketList() {
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+    enabled: role === "ADMIN" && !!hydrated,
   });
 
   const users: PrismaUser[] = usersData?.users ?? [];
@@ -239,7 +327,29 @@ export default function AdminTicketList() {
   const { data: ticketCategoryData } = useFetchMarketCenterCategories(
     selectedMarketCenterId
   );
-  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
+  const categories: TicketCategory[] = useMemo(
+    () => ticketCategoryData?.categories ?? [],
+    [ticketCategoryData]
+  );
+  const groupedCategories: Record<string, string[]> = useMemo(() => {
+    const map: Record<string, string[]> = {};
+
+    categories?.forEach((category) => {
+      if (!map[category.name]) {
+        map[category.name] = [];
+      }
+      map[category.name].push(category.id);
+    });
+
+    return map;
+  }, [categories]);
+
+  const categoryOptions = useMemo(() => {
+    return Object.entries(groupedCategories).map(([name, ids]) => ({
+      label: name,
+      ids,
+    }));
+  }, [groupedCategories]);
 
   const adminTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
@@ -438,7 +548,7 @@ export default function AdminTicketList() {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
-    setSelectedCategory("all");
+    setSelectedCategory(defaultSelectedCategory);
     setSelectedAssignee("all");
     setSelectedCreator("all");
     setSelectedMarketCenterId("all");
@@ -451,18 +561,36 @@ export default function AdminTicketList() {
     setSortDir("desc");
   };
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedStatuses.length !== defaultActiveStatuses.length ||
-    selectedUrgencies.length > 0 ||
-    selectedCategory !== "all" ||
-    selectedAssignee !== "all" ||
-    selectedCreator !== "all" ||
-    selectedMarketCenterId !== "all" ||
-    !!dateFrom ||
-    !!dateTo ||
-    sortDir !== "desc" ||
-    sortBy !== "updatedAt";
+  const hasActiveFilters = useMemo(() => {
+    return (
+      !!searchQuery ||
+      selectedStatuses.length !== defaultActiveStatuses.length ||
+      selectedUrgencies.length > 0 ||
+      (selectedCategory.label !== "all" &&
+        selectedCategory?.ids &&
+        selectedCategory.ids.length > 0) ||
+      selectedMarketCenterId !== "all" ||
+      selectedAssignee !== "all" ||
+      selectedCreator !== "all" ||
+      selectedMarketCenterId !== "all" ||
+      !!dateFrom ||
+      !!dateTo ||
+      sortDir !== "desc" ||
+      sortBy !== "updatedAt"
+    );
+  }, [
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    selectedMarketCenterId,
+    dateFrom,
+    dateTo,
+    sortDir,
+    sortBy,
+  ]);
 
   const handleQuickEdit = (e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();
@@ -511,521 +639,470 @@ export default function AdminTicketList() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <CardTitle className="space-y-2 text-left w-full sm:w-fit">
-              Tickets ({totalTickets})
-            </CardTitle>
+      <section className="space-y-4">
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <h1 className="text-xl font-bold text-left w-full sm:w-fit">
+            Tickets ({totalTickets})
+          </h1>
 
-            <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
-              <TeamSwitcher
-                selectedMarketCenterId={selectedMarketCenterId}
-                setSelectedMarketCenterId={setSelectedMarketCenterId}
-                handleMarketCenterSelected={() => {
-                  setSelectedCategory("all");
-                  setCurrentPage(1);
-                }}
-              />
-              <Button
-                className="gap-2 w-full sm:w-fit"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Create Ticket
-              </Button>
-            </div>
+          <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
+            <TeamSwitcher
+              selectedMarketCenterId={selectedMarketCenterId}
+              setSelectedMarketCenterId={setSelectedMarketCenterId}
+              handleMarketCenterSelected={() => {
+                setSelectedCategory(defaultSelectedCategory);
+                setCurrentPage(1);
+              }}
+            />
+            <Button
+              className="gap-2 w-full sm:w-fit"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Create Ticket
+            </Button>
           </div>
+        </div>
 
-          <div className="space-y-4 mt-4">
-            <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
-              <div className="relative flex-1 w-full sm:w-fit">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search tickets..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+        <div className="space-y-4 mt-4">
+          <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+            <div className="relative flex-1 w-full sm:w-fit">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search tickets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-transparent w-full sm:w-fit"
+              onClick={() => setShowFilters(!showFilters)}
+              type="button"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-2 w-2 rounded-full p-0"
                 />
-              </div>
+              )}
+            </Button>
+            {hasActiveFilters && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-2 bg-transparent w-full sm:w-fit"
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={clearFilters}
+                className="gap-2 w-full sm:w-fit"
                 type="button"
               >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-1 h-2 w-2 rounded-full p-0"
-                  />
-                )}
+                <X className="h-4 w-4" />
+                Clear
               </Button>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="gap-2 w-full sm:w-fit"
-                  type="button"
-                >
-                  <X className="h-4 w-4" />
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            {showFilters && (
-              <Card className="p-4 bg-muted/50">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Assignee</Label>
-                    <Select
-                      value={selectedAssignee}
-                      onValueChange={(v) => {
-                        setSelectedAssignee(v);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All assignees</SelectItem>
-                        <SelectItem value="Unassigned">Unassigned</SelectItem>
-                        {users.map((user: PrismaUser) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Creator</Label>
-                    <Select
-                      value={selectedCreator}
-                      onValueChange={(v) => {
-                        setSelectedCreator(v);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select creator" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All creators</SelectItem>
-                        {users.map((user: PrismaUser) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2 lg:row-span-2">
-                    <Label>Status</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {statusOptions.map((status) => (
-                        <div
-                          key={status}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`status-${status}`}
-                            checked={selectedStatuses.includes(status)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedStatuses((prev) =>
-                                checked
-                                  ? [...prev, status]
-                                  : prev.filter((s) => s !== status)
-                              );
-                              setCurrentPage(1);
-                            }}
-                          />
-                          <Label
-                            htmlFor={`status-${status}`}
-                            className="text-sm font-normal"
-                          >
-                            {status.replace("_", " ")}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Date From</Label>
-                    <Popover open={openFrom} onOpenChange={setOpenFrom}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-transparent"
-                          onClick={() => setOpenFrom(true)}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateFrom}
-                          onSelect={(d) => {
-                            setDateFrom(d);
-                            setCurrentPage(1);
-                            setOpenFrom(false);
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Date To</Label>
-                    <Popover open={openTo} onOpenChange={setOpenTo}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-transparent"
-                          onClick={() => setOpenTo(true)}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateTo ? format(dateTo, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateTo}
-                          onSelect={(d) => {
-                            setDateTo(d);
-                            setCurrentPage(1);
-                            setOpenTo(false);
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {selectedMarketCenterId &&
-                    selectedMarketCenterId !== "all" && (
-                      <div className="space-y-2 lg:col-span-2 lg:row-span-2">
-                        <Label>Category</Label>
-                        <RadioGroup
-                          value={selectedCategory}
-                          onValueChange={(value) => setSelectedCategory(value)}
-                          defaultValue="all"
-                          aria-label="Filter by ticket categories"
-                          className="flex flex-wrap gap-4 items-center"
-                        >
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value={"all"} id={`category-all`} />
-                            <Label
-                              htmlFor={`category-all`}
-                              className="text-sm font-normal"
-                            >
-                              All
-                            </Label>
-                          </div>
-                          {categories &&
-                            categories.length > 0 &&
-                            categories.map((category: TicketCategory) => {
-                              return (
-                                <div
-                                  key={category?.id}
-                                  className="flex items-center gap-2"
-                                >
-                                  <RadioGroupItem
-                                    value={category?.id}
-                                    id={`category-${category?.id}`}
-                                  />
-
-                                  <Label
-                                    htmlFor={`category-${category?.id}`}
-                                    className="text-sm font-normal"
-                                  >
-                                    {category?.name}
-                                  </Label>
-                                </div>
-                              );
-                            })}
-                        </RadioGroup>
-                      </div>
-                    )}
-
-                  <div className="space-y-2">
-                    <Label>Urgency</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {urgencyOptions.map((urgency) => (
-                        <div
-                          key={urgency}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`urgency-${urgency}`}
-                            checked={selectedUrgencies.includes(urgency)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedUrgencies((prev) =>
-                                checked
-                                  ? [...prev, urgency]
-                                  : prev.filter((u) => u !== urgency)
-                              );
-                              setCurrentPage(1);
-                            }}
-                          />
-                          <Label
-                            htmlFor={`urgency-${urgency}`}
-                            className="text-sm font-normal"
-                          >
-                            <Badge variant={urgency.toLowerCase() as any}>
-                              {urgency}
-                            </Badge>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </Card>
             )}
           </div>
-        </CardHeader>
 
-        <CardContent>
-          <div
-            className={`space-y-4 transition-opacity duration-300 ${
-              ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
-            }`}
-          >
-            <div className="flex flex-wrap justify-between items-center pb-2 px-2 gap-4 w-full">
-              <p className="text-sm text-muted-foreground">
-                Avg Resolution:{" "}
-                {selectedStatuses.includes("RESOLVED")
-                  ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
-                  : "N/A"}
-              </p>
-              <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
-                {/* SORT BY */}
-                <div className="space-y-2 w-full sm:w-fit">
+          {showFilters && (
+            <Card className="p-4 bg-muted/50">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Assignee</Label>
                   <Select
-                    value={sortBy}
-                    onValueChange={(value: TicketSortBy) => {
-                      setSortBy(value);
+                    value={selectedAssignee}
+                    onValueChange={(v) => {
+                      setSelectedAssignee(v);
                       setCurrentPage(1);
                     }}
-                    disabled={ticketsLoading || !tickets || !tickets.length}
                   >
-                    <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
-                      <SelectValue placeholder={"Sort by..."} />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
-
                     <SelectContent>
-                      {sortByTicketOptions.map((ticketOption) => (
-                        <SelectItem key={ticketOption} value={ticketOption}>
-                          <div className="flex gap-1 items-center mr-1">
-                            <ArrowDownUp />
-                            <p className="text-sm font-medium">
-                              {formatTicketOptions(ticketOption)}
-                            </p>
-                          </div>
+                      <SelectItem value="all">All assignees</SelectItem>
+                      <SelectItem value="Unassigned">Unassigned</SelectItem>
+                      {users.map((user: PrismaUser) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                {/* ORDER BY */}
-                <div className="space-y-2 w-full sm:w-fit">
+
+                <div className="space-y-2">
+                  <Label>Creator</Label>
                   <Select
-                    value={sortDir}
-                    onValueChange={(value: OrderBy) => {
-                      setSortDir(value);
+                    value={selectedCreator}
+                    onValueChange={(v) => {
+                      setSelectedCreator(v);
                       setCurrentPage(1);
                     }}
-                    disabled={ticketsLoading || !tickets || !tickets.length}
                   >
-                    <SelectTrigger aria-label="Order by ascending or descending data">
-                      <SelectValue placeholder={"Order by..."} />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select creator" />
                     </SelectTrigger>
                     <SelectContent>
-                      {orderByOptions.map((direction) => (
-                        <SelectItem key={direction} value={direction}>
-                          <div className="flex gap-1 items-center mr-1">
-                            {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
-                            <p className="text-sm font-medium">
-                              {formatOrderBy(direction)}
-                            </p>
-                          </div>
+                      <SelectItem value="all">All creators</SelectItem>
+                      {users.map((user: PrismaUser) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-5 overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted">
-                  <TableRow className="border rounded">
-                    <TableHead className="text-black cursor-pointer">
-                      <Checkbox
-                        className="mr-2 bg-white"
-                        checked={
-                          selectedTickets.length === tickets.length &&
-                          tickets.length > 0
-                        }
-                        onCheckedChange={(v: boolean | "indeterminate") =>
-                          handleSelectAll(v === true)
-                        }
-                      />
-                      Ticket
-                    </TableHead>
-                    <TableHead className="text-black">Assignee</TableHead>
-                    <TableHead
-                      className="text-black cursor-pointer"
-                      onClick={() => {
-                        setSortBy("status");
-                        setSortDir(sortDir === "asc" ? "desc" : "asc");
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <p className="flex items-center gap-1">
-                        {sortBy === "status" && sortDir === "asc" ? (
-                          <ArrowUp className="size-4" />
-                        ) : sortBy === "status" && sortDir === "desc" ? (
-                          <ArrowDown className="size-4" />
-                        ) : (
-                          <ArrowDownUp className="size-4" />
-                        )}
-                        Status
-                      </p>
-                    </TableHead>
-                    <TableHead
-                      className="text-black cursor-pointer"
-                      onClick={() => {
-                        setSortBy("urgency");
-                        setSortDir(sortDir === "asc" ? "desc" : "asc");
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <p className="flex items-center gap-1">
-                        {sortBy === "urgency" && sortDir === "asc" ? (
-                          <ArrowUp className="size-4" />
-                        ) : sortBy === "urgency" && sortDir === "desc" ? (
-                          <ArrowDown className="size-4" />
-                        ) : (
-                          <ArrowDownUp className="size-4" />
-                        )}
-                        Urgency
-                      </p>
-                    </TableHead>
-                    <TableHead className="text-black">Category</TableHead>
-                    <TableHead className="text-center text-black">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="border [&_tr:last-child]:border-0">
-                  {ticketsLoading && (
-                    <>
-                      {[...Array(5)].map((_, i) => (
-                        <TableRow
-                          key={i}
-                          className="h-16 w-full bg-muted rounded animate-pulse"
+
+                <div className="space-y-2 lg:row-span-3">
+                  <Label>Status</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {statusOptions.map((status) => (
+                      <div key={status} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`status-${status}`}
+                          checked={selectedStatuses.includes(status)}
+                          onCheckedChange={(v: boolean | "indeterminate") => {
+                            const checked = v === true;
+                            setSelectedStatuses((prev) =>
+                              checked
+                                ? [...prev, status]
+                                : prev.filter((s) => s !== status)
+                            );
+                            setCurrentPage(1);
+                          }}
+                        />
+                        <Label
+                          htmlFor={`status-${status}`}
+                          className="text-sm font-normal"
                         >
-                          <TableCell colSpan={5} className="py-8">
-                            <div className="h-4 w-full bg-muted rounded animate-pulse" />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </>
-                  )}
-
-                  {!ticketsLoading &&
-                    tickets &&
-                    tickets.length > 0 &&
-                    tickets.map((ticket: TicketWithUpdatedAt) => (
-                      <TicketListItemWrapper
-                        key={ticket.id}
-                        ticket={ticket}
-                        selected={selectedTickets.includes(ticket.id)}
-                        onSelect={(checked: boolean) =>
-                          handleSelectTicket(ticket.id, checked)
-                        }
-                        onEdit={(e: React.MouseEvent) =>
-                          handleQuickEdit(e, ticket)
-                        }
-                        onClose={(e: React.MouseEvent) =>
-                          handleQuickClose(e, ticket)
-                        }
-                        onClick={() => handleTicketClick(ticket)}
-                      />
+                          <Badge variant={status.toLowerCase() as any}>
+                            {status.replace("_", " ")}
+                          </Badge>
+                        </Label>
+                      </div>
                     ))}
+                  </div>
+                </div>
 
-                  {!ticketsLoading && (!tickets || !tickets.length) && (
-                    <TableRow className="text-center text-muted-foreground">
-                      <TableCell colSpan={5} className="py-8">
-                        No tickets found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            <PagesAndItemsCount
-              type="tickets"
-              totalItems={totalTickets}
-              itemsPerPage={itemsPerPage}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-              totalPages={totalPages}
-            />
-            {/* <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing{" "}
-                {formatPaginationText({
-                  totalItems: totalTickets,
-                  itemsPerPage,
-                  currentPage,
-                })}{" "}
-                of {totalTickets} tickets
+                <div className="space-y-2">
+                  <Label>Date From</Label>
+                  <Popover open={openFrom} onOpenChange={setOpenFrom}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal bg-transparent"
+                        onClick={() => setOpenFrom(true)}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={(d) => {
+                          setDateFrom(d);
+                          setCurrentPage(1);
+                          setOpenFrom(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date To</Label>
+                  <Popover open={openTo} onOpenChange={setOpenTo}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal bg-transparent"
+                        onClick={() => setOpenTo(true)}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={(d) => {
+                          setDateTo(d);
+                          setCurrentPage(1);
+                          setOpenTo(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select
+                    defaultValue={"all"}
+                    value={selectedCategory?.label}
+                    onValueChange={(value) => {
+                      if (value === "all") {
+                        setSelectedCategory(defaultSelectedCategory);
+                        setCurrentPage(1);
+                        return;
+                      }
+                      const selected: CategoryOption | undefined =
+                        categoryOptions.find((c) => c.label === value);
+                      if (
+                        selected &&
+                        selected?.label &&
+                        selected?.ids &&
+                        selected?.ids.length > 0
+                      ) {
+                        setSelectedCategory(selected);
+                        setCurrentPage(1);
+                      }
+                    }}
+                    aria-label="Filter by ticket categories"
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Categories ({categoryOptions?.length ?? 0})
+                      </SelectItem>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.label} value={option.label}>
+                          {option?.label ?? "Unlabeled"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Urgency</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {urgencyOptions.map((urgency) => (
+                      <div
+                        key={urgency}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={`urgency-${urgency}`}
+                          checked={selectedUrgencies.includes(urgency)}
+                          onCheckedChange={(v: boolean | "indeterminate") => {
+                            const checked = v === true;
+                            setSelectedUrgencies((prev) =>
+                              checked
+                                ? [...prev, urgency]
+                                : prev.filter((u) => u !== urgency)
+                            );
+                            setCurrentPage(1);
+                          }}
+                        />
+                        <Label
+                          htmlFor={`urgency-${urgency}`}
+                          className="text-sm font-normal"
+                        >
+                          <Badge variant={urgency.toLowerCase() as any}>
+                            {urgency}
+                          </Badge>
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 1 || totalTickets === 0}
-                  type="button"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-                <span className="text-sm">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage === totalPages || totalTickets === 0}
-                  type="button"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div> */}
+            </Card>
+          )}
+        </div>
+      </section>
+
+      <section className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
+        <p className="text-sm text-muted-foreground">
+          Avg Resolution:{" "}
+          {selectedStatuses.includes("RESOLVED")
+            ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
+            : "N/A"}
+        </p>
+        <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
+          {/* SORT BY */}
+          <div className="space-y-2 w-full sm:w-fit">
+            <Select
+              value={sortBy}
+              onValueChange={(value: TicketSortBy) => {
+                setSortBy(value);
+                setCurrentPage(1);
+              }}
+              disabled={ticketsLoading || !tickets || !tickets.length}
+            >
+              <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
+                <SelectValue placeholder={"Sort by..."} />
+              </SelectTrigger>
+
+              <SelectContent>
+                {sortByTicketOptions.map((ticketOption) => (
+                  <SelectItem key={ticketOption} value={ticketOption}>
+                    <div className="flex gap-1 items-center mr-1">
+                      <ArrowDownUp />
+                      <p className="text-sm font-medium">
+                        {formatTicketOptions(ticketOption)}
+                      </p>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+          {/* ORDER BY */}
+          <div className="space-y-2 w-full sm:w-fit">
+            <Select
+              value={sortDir}
+              onValueChange={(value: OrderBy) => {
+                setSortDir(value);
+                setCurrentPage(1);
+              }}
+              disabled={ticketsLoading || !tickets || !tickets.length}
+            >
+              <SelectTrigger aria-label="Order by ascending or descending data">
+                <SelectValue placeholder={"Order by..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {orderByOptions.map((direction) => (
+                  <SelectItem key={direction} value={direction}>
+                    <div className="flex gap-1 items-center mr-1">
+                      {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
+                      <p className="text-sm font-medium">
+                        {formatOrderBy(direction)}
+                      </p>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className={`"flex flex-col gap-5 overflow-x-auto" space-y-4 transition-opacity duration-300 ${
+          ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
+        }`}
+      >
+        <Table>
+          <TableHeader className="bg-muted">
+            <TableRow className="border rounded">
+              <TableHead className="text-black cursor-pointer">
+                <Checkbox
+                  className="mr-2 bg-white"
+                  checked={
+                    selectedTickets.length === tickets.length &&
+                    tickets.length > 0
+                  }
+                  onCheckedChange={(v: boolean | "indeterminate") =>
+                    handleSelectAll(v === true)
+                  }
+                />
+                Ticket
+              </TableHead>
+              <TableHead className="text-black">Assignee</TableHead>
+              <TableHead
+                className="text-black cursor-pointer"
+                onClick={() => {
+                  setSortBy("status");
+                  setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  setCurrentPage(1);
+                }}
+              >
+                <p className="flex items-center gap-1">
+                  {sortBy === "status" && sortDir === "asc" ? (
+                    <ArrowUp className="size-4" />
+                  ) : sortBy === "status" && sortDir === "desc" ? (
+                    <ArrowDown className="size-4" />
+                  ) : (
+                    <ArrowDownUp className="size-4" />
+                  )}
+                  Status
+                </p>
+              </TableHead>
+              <TableHead
+                className="text-black cursor-pointer"
+                onClick={() => {
+                  setSortBy("urgency");
+                  setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  setCurrentPage(1);
+                }}
+              >
+                <p className="flex items-center gap-1">
+                  {sortBy === "urgency" && sortDir === "asc" ? (
+                    <ArrowUp className="size-4" />
+                  ) : sortBy === "urgency" && sortDir === "desc" ? (
+                    <ArrowDown className="size-4" />
+                  ) : (
+                    <ArrowDownUp className="size-4" />
+                  )}
+                  Urgency
+                </p>
+              </TableHead>
+              <TableHead className="text-black">Category</TableHead>
+              <TableHead className="text-center text-black">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="border [&_tr:last-child]:border-0">
+            {ticketsLoading && (
+              <>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow
+                    key={i}
+                    className="h-16 w-full bg-muted rounded animate-pulse"
+                  >
+                    <TableCell colSpan={5} className="py-8">
+                      <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
+            )}
+
+            {!ticketsLoading &&
+              tickets &&
+              tickets.length > 0 &&
+              tickets.map((ticket: TicketWithUpdatedAt) => (
+                <TicketListItemWrapper
+                  key={ticket.id}
+                  ticket={ticket}
+                  selected={selectedTickets.includes(ticket.id)}
+                  onSelect={(checked: boolean) =>
+                    handleSelectTicket(ticket.id, checked)
+                  }
+                  onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
+                  onClose={(e: React.MouseEvent) => handleQuickClose(e, ticket)}
+                  onClick={() => handleTicketClick(ticket)}
+                />
+              ))}
+
+            {!ticketsLoading && (!tickets || !tickets.length) && (
+              <TableRow className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-8">
+                  No tickets found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        <PagesAndItemsCount
+          type="tickets"
+          totalItems={totalTickets}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+        />
+      </section>
 
       {/* Bulk Assign Modal */}
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>

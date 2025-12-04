@@ -75,18 +75,17 @@ export default function MarketCenterUsers({
     data,
   }: MarketCenterNotificationCallback) => Promise<void>;
 }) {
-  // console.log("Rendering MarketCenterUsers component", marketCenterId);
   const router = useRouter();
 
+  const [hydrated, setHydrated] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
   const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
   const [sortDir, setSortDir] = useState<OrderBy>("desc");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
 
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<PrismaUser | null>(null);
@@ -94,6 +93,37 @@ export default function MarketCenterUsers({
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
   const { getToken } = useAuth();
+
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "market-center-user-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedRole,
+        sortBy,
+        sortDir,
+        currentPage,
+      })
+    );
+  }, [hydrated, searchQuery, selectedRole, sortBy, sortDir, currentPage]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("market-center-user-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedRole(fetchedFilters.selectedRole || "all");
+
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+    }
+
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {

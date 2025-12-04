@@ -27,12 +27,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { Plus } from "lucide-react";
-import { API_BASE } from "@/lib/api/utils";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { Calendar, InfoIcon, Plus } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import type {
   MarketCenter,
@@ -41,9 +44,11 @@ import type {
   TicketCategory,
   UsersToNotify,
 } from "@/lib/types";
+import { createAndSendNotification } from "@/lib/utils/notifications";
+import { API_BASE } from "@/lib/api/utils";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 
 export default function MarketCenterTicketCategories({
   marketCenter,
@@ -74,6 +79,8 @@ export default function MarketCenterTicketCategories({
 
   const { permissions } = useUserRole();
   const { getToken } = useAuth();
+
+  const router = useRouter();
 
   const teamMembers: PrismaUser[] =
     marketCenter && marketCenter?.users
@@ -448,98 +455,166 @@ export default function MarketCenterTicketCategories({
           className={`space-y-4 transition-opacity duration-300 
               ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
         >
-          {isLoading && (
-            <p className="text-muted-foreground">Loading categories... </p>
-          )}
-          {ticketCategories &&
-            ticketCategories.length > 0 &&
-            ticketCategories.map((category: TicketCategory) => {
-              const deactivatedUser = !category?.defaultAssignee?.isActive;
-              const wrongMarketCenter =
-                category?.defaultAssignee?.marketCenterId !== marketCenter?.id;
-              const assignmentError = deactivatedUser || wrongMarketCenter;
-              return (
-                <div
-                  key={category?.id}
-                  className="flex flex-col sm:flex-row items-center justify-between border-b p-2 pb-6 last:border-0 last:pb-0 w-full gap-4"
-                >
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <p className="font-medium text-sm leading-5 text-ellipsis">
-                      {category?.name}
-                    </p>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-xs text-muted-foreground mt-0.5 text-ellipsis">
-                          {category?.description
-                            ? category.description
-                            : "No Description"}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {category?.description ?? "No Description"}
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span
-                        className={`${category?.defaultAssignee && assignmentError && "text-red-800"}`}
+          <Table>
+            <TableHeader className="bg-muted">
+              <TableRow className="border rounded">
+                <TableHead className="text-black">Category Name</TableHead>
+                <TableHead className="text-black">Description</TableHead>
+                <TableHead className="text-black">Default User</TableHead>
+                <TableHead className="text-black">Tickets</TableHead>
+                <TableHead className="text-center text-black">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow
+                      key={i}
+                      className="h-16 w-full bg-muted rounded animate-pulse"
+                    >
+                      <TableCell colSpan={5} className="py-8">
+                        <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
+              {ticketCategories &&
+                ticketCategories.length > 0 &&
+                ticketCategories.map(
+                  (category: TicketCategory, index: number) => {
+                    const deactivatedUser =
+                      !category?.defaultAssignee?.isActive;
+                    const wrongMarketCenter =
+                      category?.defaultAssignee?.marketCenterId !==
+                      marketCenter?.id;
+                    const assignmentError =
+                      deactivatedUser || wrongMarketCenter;
+                    return (
+                      <TableRow
+                        key={`${index}-${category?.id}`}
+                        className="p-2 align-center cursor-pointer hover:bg-muted"
+                        data-ticket-id={category.id}
                       >
-                        Default:{" "}
-                        {category?.defaultAssignee?.name
-                          ? `${category?.defaultAssignee?.name}`
-                          : "None"}
-                        {category?.defaultAssignee &&
-                          deactivatedUser &&
-                          " (Deactivated)"}{" "}
-                        {category?.defaultAssignee &&
-                          wrongMarketCenter &&
-                          " (Incorrect Market Center)"}
-                      </span>
-                      <span>Tickets: {category.ticketCount}</span>
-                      <span>
-                        Created on{" "}
-                        {category?.createdAt
-                          ? new Date(category?.createdAt).toLocaleDateString()
-                          : "-"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap flex-row items-end gap-1 flex-shrink-0 w-full sm:w-auto sm:justify-end">
-                    <Button
-                      variant={"outline"}
-                      onClick={() => {
-                        setEditingTicketCategory(category);
-                        setCategoryToRemove(null);
-
-                        setCategoryFormData({
-                          name: category?.name,
-                          description: category?.description ?? "",
-                          defaultAssigneeId:
-                            category?.defaultAssigneeId ?? "none",
-                        });
-                        setOpenCategoryForm(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant={"outline"}
-                      onClick={() => {
-                        setEditingTicketCategory(null);
-                        setCategoryToRemove(category);
-                        setShowRemoveCategory(true);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-
-          {(!ticketCategories || !ticketCategories.length) && (
-            <p className="text-muted-foreground">No categories yet!</p>
-          )}
+                        {/* NAME */}
+                        <TableCell className="font-medium">
+                          {category?.name ?? "No Name"}
+                        </TableCell>
+                        {/* DESCRIPTION */}
+                        <TableCell className="flex flex-col gap-1 cursor-pointer max-w-[100px]">
+                          <ToolTip
+                            content={
+                              category?.description
+                                ? category.description
+                                : "No Description"
+                            }
+                            trigger={
+                              <p className="line-clamp-2">
+                                {category?.description
+                                  ? category.description
+                                  : "No Description"}
+                              </p>
+                            }
+                          />
+                          <span className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+                            <Calendar className="size-2.5" />
+                            Created{" "}
+                            {category?.createdAt
+                              ? new Date(
+                                  category.createdAt
+                                ).toLocaleDateString()
+                              : "Unknown"}
+                          </span>
+                        </TableCell>
+                        {/* DEFAULT ASSIGNEE */}
+                        <TableCell
+                          className={`capitalize ${category?.defaultAssigneeId ? "hover:underline cursor-pointer" : ""}`}
+                          onClick={() => {
+                            if (!category?.defaultAssigneeId) return;
+                            router.push(
+                              `/dashboard/users/${category.defaultAssigneeId}`
+                            );
+                          }}
+                        >
+                          <p className="flex items-center justify-between gap-1">
+                            <span>
+                              {category?.defaultAssignee?.name
+                                ? `${category?.defaultAssignee?.name}`
+                                : "None"}
+                              :{" "}
+                              {category?.defaultAssignee?.role
+                                ? category.defaultAssignee.role
+                                    .split("_")
+                                    .join(" ")
+                                    .toLowerCase()
+                                : "No Role Assigned"}
+                            </span>
+                            {assignmentError && (
+                              <ToolTip
+                                trigger={
+                                  <InfoIcon className="size-3 text-warning" />
+                                }
+                                content={
+                                  deactivatedUser
+                                    ? "Warning: This user is deactivated"
+                                    : "Warning: This user is assigned to a different Market Center"
+                                }
+                              />
+                            )}
+                          </p>
+                        </TableCell>
+                        {/* TICKET COUNT */}
+                        <TableCell className="text-center font-medium">
+                          {category.ticketCount}
+                        </TableCell>
+                        {/* ACTIONS */}
+                        <TableCell className="flex gap-2 items-center justify-end">
+                          <Button
+                            variant={"outline"}
+                            disabled={isLoading || !permissions?.canManageTeam}
+                            onClick={() => {
+                              setEditingTicketCategory(category);
+                              setCategoryToRemove(null);
+                              setCategoryFormData({
+                                name: category?.name,
+                                description: category?.description ?? "",
+                                defaultAssigneeId:
+                                  category?.defaultAssigneeId ?? "none",
+                              });
+                              setOpenCategoryForm(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant={"outline"}
+                            disabled={isLoading || !permissions?.canManageTeam}
+                            onClick={() => {
+                              setEditingTicketCategory(null);
+                              setCategoryToRemove(category);
+                              setShowRemoveCategory(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                )}
+              {!isLoading &&
+                (!ticketCategories || !ticketCategories.length) && (
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
+                      No categories found
+                    </TableCell>
+                  </TableRow>
+                )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
@@ -627,7 +702,10 @@ export default function MarketCenterTicketCategories({
                     teamMembers.map((user) => {
                       return (
                         <SelectItem key={user?.id} value={user?.id}>
-                          {user?.name}
+                          {user?.name}:{" "}
+                          {user?.role
+                            ? user.role.split("_").join(" ")
+                            : "No Role Assigned"}
                         </SelectItem>
                       );
                     })}
