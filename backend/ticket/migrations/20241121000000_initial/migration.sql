@@ -69,8 +69,9 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "role" "public"."UserRole" NOT NULL DEFAULT 'AGENT',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" TIMESTAMP(3),
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "deleted_at" TIMESTAMP(3),
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "image_url" TEXT,
     "market_center_id" TEXT,
     "clerk_id" TEXT NOT NULL,
 
@@ -90,7 +91,7 @@ CREATE TABLE IF NOT EXISTS "public"."tickets" (
     "resolved_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "publishedAt" TIMESTAMP(3),
+    "published_at" TIMESTAMP(3),
     "category_id" TEXT,
     "email_message_id" TEXT,
 
@@ -158,80 +159,80 @@ CREATE TABLE IF NOT EXISTS "public"."team_invitations" (
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."TicketHistory" (
+CREATE TABLE IF NOT EXISTS "public"."ticket_history" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "ticket_id" TEXT NOT NULL,
     "field" TEXT,
-    "previousValue" TEXT,
-    "newValue" TEXT,
+    "previous_value" TEXT,
+    "new_value" TEXT,
     "snapshot" JSONB,
-    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "changed_by_id" TEXT NOT NULL,
+    "changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "changed_by_id" TEXT,
     "action" TEXT NOT NULL DEFAULT 'UPDATE',
 
-    CONSTRAINT "TicketHistory_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ticket_history_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."UserHistory" (
+CREATE TABLE IF NOT EXISTS "public"."user_history" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "market_center_id" TEXT,
     "field" TEXT,
-    "previousValue" TEXT,
-    "newValue" TEXT,
+    "previous_value" TEXT,
+    "new_value" TEXT,
     "snapshot" JSONB,
-    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "changed_by_id" TEXT,
-    "userId" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
     "action" TEXT NOT NULL DEFAULT 'UPDATE',
 
-    CONSTRAINT "UserHistory_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "user_history_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."MarketCenterHistory" (
+CREATE TABLE IF NOT EXISTS "public"."market_center_history" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "market_center_id" TEXT NOT NULL,
     "field" TEXT,
-    "previousValue" TEXT,
-    "newValue" TEXT,
+    "previous_value" TEXT,
+    "new_value" TEXT,
     "snapshot" JSONB,
-    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "changed_by_id" TEXT,
     "action" TEXT NOT NULL DEFAULT 'UPDATE',
 
-    CONSTRAINT "MarketCenterHistory_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "market_center_history_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."UserSettings" (
+CREATE TABLE IF NOT EXISTS "public"."user_settings" (
     "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "userId" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "user_id" TEXT NOT NULL,
 
-    CONSTRAINT "UserSettings_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "user_settings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."NotificationPreferences" (
-    "id" TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS "public"."notification_preferences" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
     "type" TEXT NOT NULL,
     "email" BOOLEAN NOT NULL DEFAULT true,
     "push" BOOLEAN NOT NULL DEFAULT true,
-    "inApp" BOOLEAN NOT NULL DEFAULT true,
-    "userSettingsId" TEXT NOT NULL,
+    "in_app" BOOLEAN NOT NULL DEFAULT true,
+    "user_settings_id" TEXT NOT NULL,
     "category" "public"."NotificationCategory" NOT NULL DEFAULT 'ACCOUNT',
     "frequency" "public"."NotificationFrequency" NOT NULL,
     "sms" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "NotificationPreferences_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "notification_preferences_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."Notification" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS "public"."notifications" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+    "user_id" TEXT NOT NULL,
     "channel" "public"."NotificationChannel" NOT NULL,
     "category" "public"."NotificationCategory" NOT NULL,
     "priority" "public"."Urgency",
@@ -240,27 +241,27 @@ CREATE TABLE IF NOT EXISTS "public"."Notification" (
     "body" TEXT NOT NULL,
     "data" JSONB,
     "read" BOOLEAN NOT NULL DEFAULT false,
-    "deliveredAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "delivered_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "public"."NotificationTemplate" (
-    "id" TEXT NOT NULL,
-    "templateName" TEXT NOT NULL,
-    "templateDescription" TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS "public"."notification_templates" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid())::text,
+    "template_name" TEXT NOT NULL,
+    "template_description" TEXT NOT NULL,
     "category" "public"."NotificationCategory" NOT NULL,
     "channel" "public"."NotificationChannel" NOT NULL,
     "type" TEXT NOT NULL,
-    "subject" TEXT NOT NULL,
+    "subject" TEXT,
     "body" TEXT NOT NULL,
-    "isDefault" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "is_default" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "variables" JSONB,
 
-    CONSTRAINT "NotificationTemplate_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "notification_templates_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -324,40 +325,40 @@ CREATE INDEX IF NOT EXISTS "team_invitations_expires_at_idx" ON "public"."team_i
 CREATE UNIQUE INDEX IF NOT EXISTS "team_invitations_market_center_id_email_key" ON "public"."team_invitations"("market_center_id", "email");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "TicketHistory_ticket_id_idx" ON "public"."TicketHistory"("ticket_id");
+CREATE INDEX IF NOT EXISTS "ticket_history_ticket_id_idx" ON "public"."ticket_history"("ticket_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "TicketHistory_changed_by_id_idx" ON "public"."TicketHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "ticket_history_changed_by_id_idx" ON "public"."ticket_history"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "UserHistory_userId_idx" ON "public"."UserHistory"("userId");
+CREATE INDEX IF NOT EXISTS "user_history_user_id_idx" ON "public"."user_history"("user_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "UserHistory_changed_by_id_idx" ON "public"."UserHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "user_history_changed_by_id_idx" ON "public"."user_history"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "MarketCenterHistory_changed_by_id_idx" ON "public"."MarketCenterHistory"("changed_by_id");
+CREATE INDEX IF NOT EXISTS "market_center_history_changed_by_id_idx" ON "public"."market_center_history"("changed_by_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "MarketCenterHistory_market_center_id_idx" ON "public"."MarketCenterHistory"("market_center_id");
+CREATE INDEX IF NOT EXISTS "market_center_history_market_center_id_idx" ON "public"."market_center_history"("market_center_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "UserSettings_id_key" ON "public"."UserSettings"("id");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_settings_id_key" ON "public"."user_settings"("id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "UserSettings_userId_key" ON "public"."UserSettings"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_settings_user_id_key" ON "public"."user_settings"("user_id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "UserSettings_userId_idx" ON "public"."UserSettings"("userId");
+CREATE INDEX IF NOT EXISTS "user_settings_user_id_idx" ON "public"."user_settings"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "NotificationPreferences_id_key" ON "public"."NotificationPreferences"("id");
+CREATE UNIQUE INDEX IF NOT EXISTS "notification_preferences_id_key" ON "public"."notification_preferences"("id");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "NotificationPreferences_userSettingsId_idx" ON "public"."NotificationPreferences"("userSettingsId");
+CREATE INDEX IF NOT EXISTS "notification_preferences_user_settings_id_idx" ON "public"."notification_preferences"("user_settings_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "NotificationTemplate_templateName_key" ON "public"."NotificationTemplate"("templateName");
+CREATE UNIQUE INDEX IF NOT EXISTS "notification_templates_template_name_key" ON "public"."notification_templates"("template_name");
 
 -- AddForeignKey (with IF NOT EXISTS handling)
 DO $$ BEGIN
@@ -427,55 +428,55 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."ticket_history" ADD CONSTRAINT "ticket_history_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."TicketHistory" ADD CONSTRAINT "TicketHistory_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."ticket_history" ADD CONSTRAINT "ticket_history_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    ALTER TABLE "public"."user_history" ADD CONSTRAINT "user_history_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."UserHistory" ADD CONSTRAINT "UserHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."user_history" ADD CONSTRAINT "user_history_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    ALTER TABLE "public"."market_center_history" ADD CONSTRAINT "market_center_history_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."MarketCenterHistory" ADD CONSTRAINT "MarketCenterHistory_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."market_center_history" ADD CONSTRAINT "market_center_history_market_center_id_fkey" FOREIGN KEY ("market_center_id") REFERENCES "public"."market_centers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."UserSettings" ADD CONSTRAINT "UserSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."user_settings" ADD CONSTRAINT "user_settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."NotificationPreferences" ADD CONSTRAINT "NotificationPreferences_userSettingsId_fkey" FOREIGN KEY ("userSettingsId") REFERENCES "public"."UserSettings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."notification_preferences" ADD CONSTRAINT "notification_preferences_user_settings_id_fkey" FOREIGN KEY ("user_settings_id") REFERENCES "public"."user_settings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    ALTER TABLE "public"."Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    ALTER TABLE "public"."notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;

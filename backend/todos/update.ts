@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
 
@@ -30,20 +30,11 @@ export const update = api<UpdateTodoRequest, UpdateTodoResponse>(
         "You do not have permission to add subtasks to this ticket"
       );
     }
-    let updateData: any = {
-      updatedById: userContext.userId,
-      updatedAt: new Date(),
-    };
-    if (req.title !== undefined) {
-      updateData.title = req.title;
-    }
-    if (req.completed !== undefined) {
-      updateData.complete = req.completed;
-    }
 
-    await prisma.todo.update({
-      where: { id: req.todoId },
-      data: updateData,
+    await todoRepository.update(req.todoId, {
+      title: req.title,
+      complete: req.completed,
+      updatedById: userContext.userId,
     });
 
     return { success: true };

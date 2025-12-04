@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { ticketAttachments } from "./bucket";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket } from "../auth/permissions";
 
@@ -30,12 +30,16 @@ export const deleteAttachment = api<
       const userContext = await getUserContext();
 
       // Get attachment details
-      const attachment = await prisma.attachment.findUnique({
-        where: { id: attachmentId },
-        include: {
-          ticket: true,
-        },
-      });
+      const attachment = await db.queryRow<{
+        id: string;
+        ticket_id: string;
+        bucket_key: string;
+        uploaded_by: string;
+      }>`
+        SELECT id, ticket_id, bucket_key, uploaded_by
+        FROM attachments
+        WHERE id = ${attachmentId}
+      `;
 
       if (!attachment) {
         throw APIError.notFound("Attachment not found");
@@ -44,11 +48,11 @@ export const deleteAttachment = api<
       // Check if user has permission to update the ticket (only those who can update can delete attachments)
       const hasPermission = await canModifyTicket(
         userContext,
-        attachment.ticketId
+        attachment.ticket_id
       );
       if (!hasPermission) {
         // Also allow the uploader to delete their own attachments
-        if (attachment.uploadedBy !== userContext.userId) {
+        if (attachment.uploaded_by !== userContext.userId) {
           throw APIError.permissionDenied(
             "You do not have permission to delete this attachment"
           );
@@ -56,12 +60,13 @@ export const deleteAttachment = api<
       }
 
       // Delete from bucket
-      await ticketAttachments.remove(attachment.bucketKey);
+      await ticketAttachments.remove(attachment.bucket_key);
 
       // Delete from database
-      await prisma.attachment.delete({
-        where: { id: attachmentId },
-      });
+      await db.exec`
+        DELETE FROM attachments
+        WHERE id = ${attachmentId}
+      `;
 
       return {
         success: true,

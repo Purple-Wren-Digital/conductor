@@ -1,6 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { Prisma } from "@prisma/client";
-import { prisma } from "../ticket/db";
+import { userRepository, notificationRepository } from "../ticket/db";
 import { broadcastNotification } from "./stream";
 import { sendEmailNotification } from "./channels/email/email";
 import type {
@@ -10,6 +9,7 @@ import type {
   Notification,
 } from "./types";
 import { Urgency } from "../ticket/types";
+
 export interface CreateNotificationRequest {
   userId: string;
   category: NotificationCategory;
@@ -35,84 +35,90 @@ export const create = api<CreateNotificationRequest>(
   async (req) => {
     console.log("****** START: Create/Send Notifications ******", req);
 
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ clerkId: req.userId }, { id: req.userId }],
-        isActive: true,
-      },
-      include: {
-        userSettings: { include: { notificationPreferences: true } },
-      },
-    });
+    const user = await userRepository.findByIdWithSettings(req.userId);
 
-    if (!user || !user?.id || !user?.clerkId) {
+    // Also try to find by clerkId if not found
+    let foundUser = user;
+    if (!foundUser) {
+      foundUser = await userRepository.findByIdWithSettings(req.userId);
+    }
+
+    if (!foundUser || !foundUser?.id || !foundUser?.clerkId) {
       throw APIError.notFound("User not found");
     }
+
+    if (!foundUser.isActive) {
+      throw APIError.notFound("User not found");
+    }
+
     // USER PREFERENCE CHECKING
     const notificationTypeSettings =
-      user.userSettings?.notificationPreferences?.find(
+      foundUser.userSettings?.notificationPreferences?.find(
         (preference) => preference.type === req.type
       );
 
-    let notificationsToCreate: any[] = [];
+    let notificationsToCreate: Array<{
+      userId: string;
+      channel: NotificationChannel;
+      category: NotificationCategory;
+      type: string;
+      title: string;
+      body: string;
+      data?: NotificationData;
+      priority?: Urgency;
+    }> = [];
 
     if (notificationTypeSettings && notificationTypeSettings.inApp === true) {
       notificationsToCreate.push({
-        userId: user.id,
-        channel: "IN_APP" as NotificationChannel,
+        userId: foundUser.id,
+        channel: "IN_APP",
         category: req.category,
         type: req.type,
         title: req.title,
         body: req.body,
-        data: req?.data ? (req?.data as Prisma.InputJsonValue) : undefined,
-        priority: req?.priority ? (req.priority as Urgency) : "LOW",
-        deliveredAt: null,
+        data: req?.data ?? undefined,
+        priority: req?.priority ?? "LOW",
       });
     }
     if (notificationTypeSettings && notificationTypeSettings.email === true) {
       notificationsToCreate.push({
-        userId: user.id,
-        channel: "EMAIL" as NotificationChannel,
+        userId: foundUser.id,
+        channel: "EMAIL",
         category: req.category,
         type: req.type,
         title: req.title,
         body: req.body,
-        data: req?.data ? (req?.data as Prisma.InputJsonValue) : undefined,
-        priority: req?.priority ? (req.priority as Urgency) : "LOW",
-        deliveredAt: null,
+        data: req?.data ?? undefined,
+        priority: req?.priority ?? "LOW",
       });
     }
 
     if (notificationsToCreate.length === 0) {
       console.log(
-        `User ${user.id} has opted out of all channels for notification type ${req.type}. Skipping notification creation.`
+        `User ${foundUser.id} has opted out of all channels for notification type ${req.type}. Skipping notification creation.`
       );
       return { success: true };
     }
 
-    const createdNotifications = await prisma.notification.createManyAndReturn({
-      data: notificationsToCreate,
-    });
+    const createdNotifications = await notificationRepository.createManyAndReturn(notificationsToCreate);
 
     if (!createdNotifications || !createdNotifications.length) {
       throw APIError.internal("Failed to create notification(s)");
     }
+
     await Promise.all(
       createdNotifications.map(async (notification) => {
         const safeNotification: Notification = {
           ...notification,
           priority: notification?.priority ?? "LOW",
-          data:
-            typeof notification.data === "object" && notification.data !== null
-              ? (notification.data as NotificationData)
-              : undefined,
+          data: notification.data ?? undefined,
         };
 
         switch (safeNotification.channel) {
           case "EMAIL":
-            if (user?.email) {
+            if (foundUser?.email) {
               await sendEmailNotification({
-                userEmail: user.email, // "delivered@resend.dev", //
+                userEmail: foundUser.email,
                 notification: {
                   ...safeNotification,
                   type: safeNotification?.type,
@@ -124,18 +130,8 @@ export const create = api<CreateNotificationRequest>(
             break;
 
           case "IN_APP":
-            await broadcastNotification(user?.clerkId, safeNotification);
+            await broadcastNotification(foundUser?.clerkId!, safeNotification);
             break;
-
-          // case "PUSH":
-          //   // TODO: Firebase Web Push Notifications
-          //   await sendPushNotification({
-          //     token: req.userId, // user?.userSettings?.browserPushToken
-          //     userId: req.userId,
-          //     title: req.title,
-          //     body: req.body,
-          //   });
-          //   break;
         }
       })
     );

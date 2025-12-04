@@ -7,7 +7,7 @@
 | Frontend | Next.js + TypeScript | SSR + SPA, type safety |
 | UI Components | React Query + Tailwind CSS | Data fetching + utility-first styling |
 | Backend API | Encore TS | Backend framework with flexible queries |
-| Database | PostgreSQL + Prisma ORM | Relational data + type-safe ORM |
+| Database | PostgreSQL + Encore SQLDatabase | Relational data + raw SQL with repositories |
 | Auth & RBAC | Clerk | Authentication + role-based access control |
 | Notifications | SendGrid or Resend | Email notifications |
 | Hosting | Vercel (Frontend) + AWS (Backend) | Scalable deployment |
@@ -85,71 +85,42 @@ interface StaffDashboard {
 }
 ```
 
-### 6. Database Schema (Prisma)
+### 6. Database Schema
 
-```prisma
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  role      UserRole
-  tickets   Ticket[] @relation("TicketCreator")
-  assigned  Ticket[] @relation("TicketAssignee")
-  comments  Comment[]
-  createdAt DateTime @default(now())
-}
+The database schema is defined via SQL migrations in `backend/ticket/migrations/`. Data access uses the repository pattern with Encore's SQLDatabase.
 
-model Ticket {
-  id          String       @id @default(cuid())
-  title       String
-  description String
-  status      TicketStatus
-  urgency     Urgency
-  category    String
-  
-  creatorId   String
-  creator     User         @relation("TicketCreator", fields: [creatorId], references: [id])
-  
-  assigneeId  String?
-  assignee    User?        @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  
-  comments    Comment[]
-  
-  dueDate     DateTime?
-  resolvedAt  DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-}
+**Key Tables:**
+- `users` - User accounts linked to Clerk via `clerk_id`
+- `tickets` - Support tickets with status, urgency, assignee
+- `comments` - Ticket comments with internal flag
+- `ticket_categories` - Categories per market center
+- `ticket_ratings` - Post-resolution surveys
+- `subscriptions` - Stripe subscription data
 
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  internal  Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
+**Repository Pattern:**
+```typescript
+// Example: ticket/db.ts
+import { db } from "../shared/db";
 
-enum TicketStatus {
-  ASSIGNED
-  AWAITING_RESPONSE
-  IN_PROGRESS
-  RESOLVED
-}
+export const ticketRepository = {
+  async findById(id: string) {
+    return db.queryRow<Ticket>`SELECT * FROM tickets WHERE id = ${id}`;
+  },
+  async create(data: CreateTicketData) {
+    return db.queryRow<Ticket>`
+      INSERT INTO tickets (title, description, creator_id, ...)
+      VALUES (${data.title}, ${data.description}, ${data.creatorId}, ...)
+      RETURNING *
+    `;
+  }
+};
+```
 
-enum Urgency {
-  HIGH
-  MEDIUM
-  LOW
-}
-
-enum UserRole {
-  AGENT
-  STAFF
-  ADMIN
-}
+**Enums (defined in TypeScript):**
+```typescript
+type TicketStatus = "ASSIGNED" | "AWAITING_RESPONSE" | "IN_PROGRESS" | "RESOLVED" | "DRAFT" | "CREATED" | "UNASSIGNED";
+type Urgency = "HIGH" | "MEDIUM" | "LOW";
+type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 ```
 
 ### 7. API Endpoints (Encore)
@@ -307,12 +278,13 @@ SENDGRID_API_KEY=
 ## Key Technical Decisions
 
 - **Monorepo**: Single repository for frontend and backend
-- **Type Safety**: TypeScript everywhere, Prisma for DB
+- **Type Safety**: TypeScript everywhere, raw SQL with typed repositories
 - **API Design**: RESTful with Encore TS
+- **Database**: Encore SQLDatabase with repository pattern
 - **Styling**: Tailwind CSS with custom design tokens
 - **Data Fetching**: React Query for caching and synchronization
 - **Forms**: React Hook Form with Zod validation
-- **Testing**: Jest + React Testing Library + Cypress
+- **Testing**: Vitest for backend unit tests
 
 # Conductor Project Guide
 
@@ -323,7 +295,7 @@ Conductor is a [brief description of what your app does]. Built with Next.js fro
 - **Frontend**: Next.js 14+ with Clerk authentication
 - **Backend**: Encore framework with TypeScript
 - **Auth**: Clerk for user management and authentication
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: PostgreSQL with Encore SQLDatabase (repository pattern)
 
 ## Development Setup
 ```bash

@@ -97,12 +97,12 @@ export const userRepository = {
     const user = rowToUser(userRow);
 
     const settingsRow = await db.queryRow<UserSettingsRow>`
-      SELECT * FROM "UserSettings" WHERE "userId" = ${id}
+      SELECT * FROM user_settings WHERE user_id = ${id}
     `;
 
     if (settingsRow) {
       const prefsRows = await db.queryAll<NotificationPreferencesRow>`
-        SELECT * FROM "NotificationPreferences" WHERE "userSettingsId" = ${settingsRow.id}
+        SELECT * FROM notification_preferences WHERE user_settings_id = ${settingsRow.id}
       `;
 
       user.userSettings = {
@@ -368,7 +368,7 @@ export const userRepository = {
   // Create user settings
   async createUserSettings(userId: string): Promise<UserSettings> {
     const row = await db.queryRow<UserSettingsRow>`
-      INSERT INTO "UserSettings" ("userId", "createdAt", "updatedAt")
+      INSERT INTO user_settings (user_id, created_at, updated_at)
       VALUES (${userId}, NOW(), NOW())
       RETURNING *
     `;
@@ -396,8 +396,8 @@ export const userRepository = {
   ): Promise<void> {
     for (const pref of preferences) {
       await db.exec`
-        INSERT INTO "NotificationPreferences" (
-          id, "userSettingsId", type, category, frequency, email, push, "inApp", sms
+        INSERT INTO notification_preferences (
+          id, user_settings_id, type, category, frequency, email, push, in_app, sms
         ) VALUES (
           gen_random_uuid()::text,
           ${userSettingsId},
@@ -425,9 +425,10 @@ export const userRepository = {
     changedById?: string | null;
   }): Promise<void> {
     await db.exec`
-      INSERT INTO "UserHistory" (
-        "userId", market_center_id, action, field, "previousValue", "newValue", snapshot, changed_by_id, "changedAt"
+      INSERT INTO user_history (
+        id, user_id, market_center_id, action, field, previous_value, new_value, snapshot, changed_by_id, changed_at
       ) VALUES (
+        gen_random_uuid()::text,
         ${data.userId},
         ${data.marketCenterId ?? null},
         ${data.action},

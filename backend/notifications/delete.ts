@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface DeleteNotificationsRequest {
@@ -30,30 +30,36 @@ export const deleteNotifications = api<
     }
     let deletedCount: number = 0;
     if (req?.notificationIds && req?.notificationIds.length > 0) {
-      const deleted = await prisma.notification.deleteMany({
-        where: {
-          id: { in: req.notificationIds },
-          userId: req.userId,
-        },
-      });
-      console.log(`🧹 Deleted ${deleted.count} notifications, as requested`);
-      deletedCount = deleted.count;
+      const result = await db.queryRow<{ count: number }>`
+        WITH deleted AS (
+          DELETE FROM notifications
+          WHERE id = ANY(${req.notificationIds})
+            AND user_id = ${req.userId}
+          RETURNING id
+        )
+        SELECT COUNT(*)::int as count FROM deleted
+      `;
+      deletedCount = result?.count ?? 0;
+      console.log(`🧹 Deleted ${deletedCount} notifications, as requested`);
     } else {
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
-      const deleted = await prisma.notification.deleteMany({
-        where: {
-          read: true,
-          userId: userContext.userId,
-          createdAt: { lte: tenDaysAgo },
-        },
-      });
+      const result = await db.queryRow<{ count: number }>`
+        WITH deleted AS (
+          DELETE FROM notifications
+          WHERE read = true
+            AND user_id = ${userContext.userId}
+            AND created_at <= ${tenDaysAgo}
+          RETURNING id
+        )
+        SELECT COUNT(*)::int as count FROM deleted
+      `;
+      deletedCount = result?.count ?? 0;
 
       console.log(
-        `🧹 Deleted ${deleted.count} read notifications older than 10 days for user`
+        `🧹 Deleted ${deletedCount} read notifications older than 10 days for user`
       );
-      deletedCount = deleted.count;
     }
 
     return {

@@ -43,7 +43,7 @@ export const notificationRepository = {
   // Find notification by ID
   async findById(id: string): Promise<Notification | null> {
     const row = await db.queryRow<NotificationRow>`
-      SELECT * FROM "Notification" WHERE id = ${id}
+      SELECT * FROM notifications WHERE id = ${id}
     `;
     return row ? rowToNotification(row) : null;
   },
@@ -56,7 +56,7 @@ export const notificationRepository = {
     limit?: number;
     offset?: number;
   }): Promise<Notification[]> {
-    let sql = 'SELECT * FROM "Notification" WHERE "userId" = $1';
+    let sql = 'SELECT * FROM notifications WHERE user_id = $1';
     const values: any[] = [userId];
     let paramIndex = 2;
 
@@ -74,7 +74,7 @@ export const notificationRepository = {
       values.push(options.category);
     }
 
-    sql += ' ORDER BY "createdAt" DESC';
+    sql += ' ORDER BY created_at DESC';
 
     if (options?.limit) {
       sql += ` LIMIT ${Math.min(options.limit, 100)}`;
@@ -100,8 +100,8 @@ export const notificationRepository = {
     priority?: Urgency;
   }): Promise<Notification> {
     const row = await db.queryRow<NotificationRow>`
-      INSERT INTO "Notification" (
-        id, "userId", channel, category, type, title, body, data, priority, read, "deliveredAt", "createdAt"
+      INSERT INTO notifications (
+        id, user_id, channel, category, type, title, body, data, priority, read, delivered_at, created_at
       ) VALUES (
         gen_random_uuid()::text,
         ${data.userId},
@@ -159,8 +159,8 @@ export const notificationRepository = {
   // Mark notification as read
   async markAsRead(id: string): Promise<Notification | null> {
     const row = await db.queryRow<NotificationRow>`
-      UPDATE "Notification"
-      SET read = true, "deliveredAt" = NOW()
+      UPDATE notifications
+      SET read = true, delivered_at = NOW()
       WHERE id = ${id}
       RETURNING *
     `;
@@ -171,9 +171,9 @@ export const notificationRepository = {
   async markAllAsRead(userId: string): Promise<number> {
     const result = await db.queryRow<{ count: number }>`
       WITH updated AS (
-        UPDATE "Notification"
-        SET read = true, "deliveredAt" = NOW()
-        WHERE "userId" = ${userId} AND read = false
+        UPDATE notifications
+        SET read = true, delivered_at = NOW()
+        WHERE user_id = ${userId} AND read = false
         RETURNING id
       )
       SELECT COUNT(*)::int as count FROM updated
@@ -183,13 +183,13 @@ export const notificationRepository = {
 
   // Delete notification
   async delete(id: string): Promise<boolean> {
-    await db.exec`DELETE FROM "Notification" WHERE id = ${id}`;
+    await db.exec`DELETE FROM notifications WHERE id = ${id}`;
     return true;
   },
 
   // Count unread notifications
   async countUnread(userId: string, channel?: NotificationChannel): Promise<number> {
-    let sql = 'SELECT COUNT(*)::int as count FROM "Notification" WHERE "userId" = $1 AND read = false';
+    let sql = 'SELECT COUNT(*)::int as count FROM notifications WHERE user_id = $1 AND read = false';
     const values: any[] = [userId];
 
     if (channel) {

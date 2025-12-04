@@ -1,9 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
-import { prisma } from "./db";
+import { ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { getTicketScopeFilter } from "../auth/permissions";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -34,26 +33,23 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
-    const scopeFilter = await getTicketScopeFilter(
-      userContext,
-      req.marketCenterId
-    );
+    // Use the search method which handles role-based filtering
+    const { tickets, total } = await ticketRepository.search({
+      userId: userContext.userId,
+      userRole: userContext.role,
+      userMarketCenterId: userContext.marketCenterId,
+      status: req.status,
+      urgency: req.urgency,
+      assigneeId: req.assigneeId,
+      creatorId: req.creatorId,
+      categoryId: req.categoryId ? [req.categoryId] : undefined,
+      query: req.search,
+      sortBy: 'updatedAt',
+      sortDir: 'desc',
+      limit,
+      offset,
+    });
 
-    let where: any = { ...scopeFilter };
-
-    if (req.status) where.status = { in: req.status };
-    if (req.urgency) where.urgency = { in: req.urgency };
-
-    const [tickets, total] = await Promise.all([
-      prisma.ticket.findMany({
-        where,
-        include: { _count: true },
-        orderBy: { updatedAt: "desc" },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.ticket.count({ where }),
-    ]);
     if (!tickets) {
       throw APIError.notFound("Could not find any tickets that meets criteria");
     }

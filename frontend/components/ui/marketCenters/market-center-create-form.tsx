@@ -28,8 +28,8 @@ type CreateMarketCenterProps = {
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
   unassignedUsers: PrismaUser[];
-  refreshMarketCenters: Promise<void>;
-  refreshUsers: Promise<void>;
+  refreshMarketCenters: () => void;
+  refreshUsers: () => void;
   handleSendMarketCenterNotifications: ({
     trigger,
     receivingUser,
@@ -152,8 +152,8 @@ export default function CreateMarketCenter({
       console.error("Failed to create new market center", error);
       toast.error(`Error: Unable to create market center`);
     } finally {
-      await refreshMarketCenters;
-      await refreshUsers;
+      refreshMarketCenters();
+      refreshUsers();
       setIsSubmitting(false);
     }
   };

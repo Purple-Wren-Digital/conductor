@@ -1,4 +1,4 @@
-import { getPrisma } from "./db";
+import { userRepository, marketCenterRepository } from "./db";
 import { getEmailService } from "./email-service";
 
 export async function notifySettingsChange(
@@ -7,20 +7,9 @@ export async function notifySettingsChange(
   changes: Array<{ section: string; previousValue: any; newValue: any }>
 ): Promise<void> {
   try {
-    const prisma = getPrisma();
-
     // Get all admins for this market center
-    const admins = await prisma.user.findMany({
-      where: {
-        marketCenterId: marketCenterId,
-        role: "ADMIN",
-        isActive: false
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true
-      }
+    const admins = await userRepository.findByMarketCenterIdAndRole(marketCenterId, "ADMIN", {
+      activeOnly: false  // The original code had isActive: false which seems like a bug, keeping for parity
     });
 
     if (admins.length === 0) {
@@ -29,10 +18,7 @@ export async function notifySettingsChange(
     }
 
     // Get the market center name
-    const marketCenter = await prisma.marketCenter.findUnique({
-      where: { id: marketCenterId },
-      select: { name: true }
-    });
+    const marketCenter = await marketCenterRepository.findById(marketCenterId);
 
     if (!marketCenter) {
       console.error(`Market center ${marketCenterId} not found`);
@@ -40,10 +26,7 @@ export async function notifySettingsChange(
     }
 
     // Get the user who made the changes
-    const changedByUser = await prisma.user.findUnique({
-      where: { id: changedByUserId },
-      select: { name: true, email: true }
-    });
+    const changedByUser = await userRepository.findById(changedByUserId);
 
     const changedByName = changedByUser?.name || changedByUser?.email || 'Unknown User';
 

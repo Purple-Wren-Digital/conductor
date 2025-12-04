@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
+import { db, userRepository } from "./db";
 import type { Urgency } from "./types";
 import type { UserRole } from "../user/types";
 
@@ -139,9 +139,7 @@ export const createRule = api<CreateRuleRequest, CreateRuleResponse>(
 
     // Validate user exists if assignToUserId is specified
     if (req.action.assignToUserId) {
-      const user = await prisma.user.findUnique({
-        where: { id: req.action.assignToUserId },
-      });
+      const user = await userRepository.findById(req.action.assignToUserId);
       if (!user) {
         throw APIError.notFound("Assigned user not found");
       }
@@ -149,12 +147,12 @@ export const createRule = api<CreateRuleRequest, CreateRuleResponse>(
 
     // Validate users exist for round-robin
     if (req.action.roundRobin) {
-      const users = await prisma.user.findMany({
-        where: {
-          id: { in: req.action.roundRobin.userIds },
-        },
-      });
-      if (users.length !== req.action.roundRobin.userIds.length) {
+      const userCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*)::int as count
+        FROM users
+        WHERE id = ANY(${req.action.roundRobin.userIds})
+      `;
+      if (userCount && userCount.count !== req.action.roundRobin.userIds.length) {
         throw APIError.invalidArgument(
           "One or more users in round-robin list not found"
         );
@@ -193,22 +191,26 @@ export async function applyAutoAssignment(ticket: {
   creatorId: string;
 }): Promise<string | null> {
   // Priority 1: Check category-specific default assignee first
-  const categoryConfig = await prisma.ticketCategory.findFirst({
-    where: {
-      name: ticket.category,
-      // TODO: Get market center from auth context
-      marketCenterId: "market_center_1",
-    },
-  });
+  const categoryConfig = await db.queryRow<{
+    id: string;
+    defaultAssigneeId: string | null;
+  }>`
+    SELECT id, default_assignee_id as "defaultAssigneeId"
+    FROM ticket_categories
+    WHERE name = ${ticket.category}
+      AND market_center_id = 'market_center_1'
+    LIMIT 1
+  `;
 
   if (categoryConfig?.defaultAssigneeId) {
     // Verify the assignee still exists and is active
-    const assignee = await prisma.user.findFirst({
-      where: {
-        id: categoryConfig.defaultAssigneeId,
-        isActive: true,
-      },
-    });
+    const assignee = await db.queryRow<{ id: string }>`
+      SELECT id
+      FROM users
+      WHERE id = ${categoryConfig.defaultAssigneeId}
+        AND is_active = true
+      LIMIT 1
+    `;
     if (assignee) {
       return assignee.id;
     }
@@ -292,17 +294,15 @@ async function executeAction(action: RuleAction): Promise<string | null> {
 
   // Assign to first available user with role
   if (action.assignToRole) {
-    const user = await prisma.user.findFirst({
-      where: {
-        role: action.assignToRole,
-      },
-      orderBy: {
-        // Prefer users with fewer assigned tickets
-        assignedTickets: {
-          _count: "asc",
-        },
-      },
-    });
+    const user = await db.queryRow<{ id: string }>`
+      SELECT u.id
+      FROM users u
+      LEFT JOIN tickets t ON t.assignee_id = u.id
+      WHERE u.role = ${action.assignToRole}
+      GROUP BY u.id
+      ORDER BY COUNT(t.id) ASC
+      LIMIT 1
+    `;
     return user?.id || null;
   }
 
@@ -319,16 +319,15 @@ async function executeAction(action: RuleAction): Promise<string | null> {
 
   // Assign to next available (least busy)
   if (action.assignToNextAvailable) {
-    const user = await prisma.user.findFirst({
-      where: {
-        role: { in: ["STAFF", "ADMIN"] },
-      },
-      orderBy: {
-        assignedTickets: {
-          _count: "asc",
-        },
-      },
-    });
+    const user = await db.queryRow<{ id: string }>`
+      SELECT u.id
+      FROM users u
+      LEFT JOIN tickets t ON t.assignee_id = u.id
+      WHERE u.role IN ('STAFF', 'ADMIN')
+      GROUP BY u.id
+      ORDER BY COUNT(t.id) ASC
+      LIMIT 1
+    `;
     return user?.id || null;
   }
 

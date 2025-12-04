@@ -1,7 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
+import { db, fromTimestamp, fromJson } from "../../ticket/db";
 import type { UserSettings, NotificationPreferences } from "../../user/types";
 import { getUserContext } from "../../auth/user-context";
+
 export interface GetUserSettingsRequest {
   id: string;
   userId: string;
@@ -9,6 +10,19 @@ export interface GetUserSettingsRequest {
 
 export interface GetUserSettingsResponse {
   userSettings: UserSettings[];
+}
+
+interface UserHistoryRow {
+  id: string;
+  user_id: string;
+  market_center_id: string | null;
+  action: string;
+  field: string | null;
+  previous_value: string | null;
+  new_value: string | null;
+  snapshot: any;
+  changed_by_id: string | null;
+  changed_at: Date;
 }
 
 export const getUserHistory = api<GetUserSettingsRequest>(
@@ -26,9 +40,12 @@ export const getUserHistory = api<GetUserSettingsRequest>(
         "Must logged in to your account to update your settings"
       );
 
-    const settings = await prisma.userHistory.findUnique({
-      where: { id: req.id },
-    });
+    const settings = await db.queryRow<UserHistoryRow>`
+      SELECT *
+      FROM user_history
+      WHERE id = ${req.id}
+    `;
+
     console.log("USER SETTINGS FOUND", settings);
   }
 );

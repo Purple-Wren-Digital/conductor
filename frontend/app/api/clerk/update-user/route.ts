@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const URL = process.env.CLERK_BACKEND_API_URL;
+const CLERK_API_URL = process.env.CLERK_BACKEND_API_URL || "https://api.clerk.com/v1";
 const TOKEN = process.env.CLERK_SECRET_KEY;
 
 export async function PATCH(req: NextRequest) {
@@ -45,7 +45,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const response = await fetch(`${URL}/users/${requestData.clerkId}`, {
+    const response = await fetch(`${CLERK_API_URL}/users/${requestData.clerkId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

@@ -1,10 +1,17 @@
-import { PrismaClient } from "@prisma/client";
+/**
+ * Settings Database Module
+ *
+ * This module re-exports the shared database instance and repositories
+ * for use in the settings service.
+ */
 
-let prisma: PrismaClient;
-
-export const getPrisma = () => {
-  if (!prisma) {
-    prisma = new PrismaClient();
-  }
-  return prisma;
-};
+export {
+  db,
+  userRepository,
+  ticketRepository,
+  marketCenterRepository,
+  notificationRepository,
+  settingsAuditRepository,
+  toJson,
+  fromJson,
+} from "../shared/repositories";

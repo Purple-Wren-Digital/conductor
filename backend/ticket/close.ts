@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
+import { db, ticketRepository, surveyRepository } from "./db";
 import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
 import type { TicketStatus } from "./types";
@@ -31,10 +31,7 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       throw APIError.invalidArgument("Status is required");
     }
 
-    const oldTicket = await prisma.ticket.findUnique({
-      where: { id: req.ticketId },
-      include: { assignee: true, creator: true, category: true },
-    });
+    const oldTicket = await ticketRepository.findByIdWithRelations(req.ticketId);
 
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
@@ -58,44 +55,47 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       );
     }
 
-    const { ticket, survey } = await prisma.$transaction(async (p) => {
-      const survey = await p.survey.create({
-        data: {
-          ticketId: req.ticketId,
-          surveyorId: oldTicket.creatorId,
-          assigneeId: oldTicket.assigneeId || null,
-          marketCenterId: marketCenterId,
-          overallRating: null,
-          assigneeRating: null,
-          marketCenterRating: null,
-          comment: null,
-        },
-      });
-
-      const ticket = await p.ticket.update({
-        where: { id: req.ticketId },
-        data: {
-          status: "RESOLVED",
-          resolvedAt: new Date(),
-          surveyId: survey.id,
-        },
-        include: { assignee: true, creator: true },
-      });
-      await p.ticketHistory.create({
-        data: {
-          ticketId: req.ticketId,
-          action: "UPDATE",
-          field: "status",
-          previousValue: oldTicket.status,
-          newValue: "RESOLVED",
-          snapshot: oldTicket,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        },
-      });
-
-      return { ticket, survey };
+    // Create survey using repository
+    const survey = await surveyRepository.create({
+      ticketId: req.ticketId,
+      surveyorId: oldTicket.creatorId,
+      assigneeId: oldTicket.assigneeId || null,
+      marketCenterId: marketCenterId,
+      overallRating: null,
+      assigneeRating: null,
+      marketCenterRating: null,
+      comment: null,
+      completed: false,
     });
+
+    if (!survey) {
+      throw APIError.internal("Failed to create survey");
+    }
+
+    // Update ticket status to resolved
+    await ticketRepository.update(req.ticketId, {
+      status: "RESOLVED",
+      resolvedAt: new Date(),
+      surveyId: survey.id,
+    });
+
+    // Create ticket history
+    await ticketRepository.createHistory({
+      ticketId: req.ticketId,
+      action: "UPDATE",
+      field: "status",
+      previousValue: oldTicket.status,
+      newValue: "RESOLVED",
+      snapshot: oldTicket as any,
+      changedById: userContext.userId,
+    });
+
+    // Get updated ticket
+    const ticket = await ticketRepository.findByIdWithRelations(req.ticketId);
+
+    if (!ticket) {
+      throw APIError.internal("Failed to retrieve updated ticket");
+    }
 
     const usersToNotify: UsersToNotify[] = [
       {

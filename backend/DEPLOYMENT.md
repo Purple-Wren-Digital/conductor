@@ -14,7 +14,6 @@ encore secret set --prod STRIPE_WEBHOOK_SECRET
 ### 2. Database Setup
 The database migrations are automatically handled by Encore on deployment:
 - Initial migration (`20241121000000_initial`) will be applied
-- Prisma client is generated during build via `postinstall` script
 
 ## Deployment Steps
 

@@ -316,9 +316,10 @@ export const marketCenterRepository = {
     changedById?: string | null;
   }): Promise<void> {
     await db.exec`
-      INSERT INTO "MarketCenterHistory" (
-        market_center_id, action, field, "previousValue", "newValue", snapshot, changed_by_id, "changedAt"
+      INSERT INTO market_center_history (
+        id, market_center_id, action, field, previous_value, new_value, snapshot, changed_by_id, changed_at
       ) VALUES (
+        gen_random_uuid()::text,
         ${data.marketCenterId},
         ${data.action},
         ${data.field ?? null},

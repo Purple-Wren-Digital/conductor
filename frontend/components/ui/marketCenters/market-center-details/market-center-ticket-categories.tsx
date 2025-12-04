@@ -59,7 +59,7 @@ export default function MarketCenterTicketCategories({
   marketCenter: MarketCenter;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: Promise<void>;
+  invalidateMarketCenter: () => void;
 }) {
   const { user: clerkUser } = useUser();
   const [showRemoveCategory, setShowRemoveCategory] = useState(false);
@@ -139,10 +139,10 @@ export default function MarketCenterTicketCategories({
 
     const defaultAssigneeFormValue =
       categoryFormData?.defaultAssigneeId === "none"
-        ? ""
+        ? null
         : categoryFormData?.defaultAssigneeId;
     if (editingTicketCategory?.defaultAssigneeId !== defaultAssigneeFormValue) {
-      formattedBody.defaultAssigneeId = categoryFormData?.defaultAssigneeId;
+      formattedBody.defaultAssigneeId = defaultAssigneeFormValue;
     }
     return formattedBody;
   };
@@ -251,9 +251,9 @@ export default function MarketCenterTicketCategories({
       console.error("Failed to update category", error);
       toast.error("Failed to update category");
     },
-    onSettled: async () => {
+    onSettled: () => {
       setIsLoading(false);
-      await invalidateMarketCenter;
+      invalidateMarketCenter();
     },
   });
 
@@ -278,7 +278,7 @@ export default function MarketCenterTicketCategories({
             marketCenterId: marketCenter.id,
             name: categoryFormData?.name ?? "",
             description: categoryFormData?.description ?? null,
-            defaultAssigneeId: categoryFormData?.defaultAssigneeId ?? null,
+            defaultAssigneeId: categoryFormData?.defaultAssigneeId === "none" ? null : categoryFormData?.defaultAssigneeId ?? null,
           }),
         }
       );
@@ -328,9 +328,9 @@ export default function MarketCenterTicketCategories({
       console.error(`Failed to create category`, error);
       toast.error(`Failed to create category`);
     },
-    onSettled: async () => {
+    onSettled: () => {
       setIsLoading(false);
-      await invalidateMarketCenter;
+      invalidateMarketCenter();
     },
   });
 
@@ -418,9 +418,9 @@ export default function MarketCenterTicketCategories({
       console.error(`Failed to delete category`, error);
       toast.error(`Failed to delete category`);
     },
-    onSettled: async () => {
+    onSettled: () => {
       setIsLoading(false);
-      await invalidateMarketCenter;
+      invalidateMarketCenter();
     },
   });
   const handleRemoveTicketCategory = async (e: React.FormEvent) => {

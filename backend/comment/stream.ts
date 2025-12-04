@@ -1,9 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-// import { getAuthData } from "~encore/auth";
 import { CommentEvent, commentEventBus } from "./events";
-// import { mygw } from "../auth/auth";
 import { getUserContext } from "../auth/user-context";
-import { prisma } from "../ticket/db";
+import { ticketRepository } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";
 
 // Define handshake type to specify which ticket to subscribe to
@@ -17,11 +15,12 @@ interface CommentStreamMessage {
 }
 
 // Store active streams by ticketId
-// Each ticketId maps to a Map of userId -> stream
-const activeStreams = new Map<
-  string,
-  Map<string, api.StreamOut<CommentStreamHandshake, CommentStreamMessage>>
->();
+// Each ticketId maps to a Map of userId -> stream entry
+interface StreamEntry {
+  stream: { send: (msg: CommentStreamMessage) => Promise<void>; close: () => Promise<void> };
+  active: boolean;
+}
+const activeStreams = new Map<string, Map<string, StreamEntry>>();
 
 /**
  * Streaming endpoint for real-time comment events
@@ -35,9 +34,10 @@ export const commentStream = api.streamOut<
     expose: true,
     auth: true,
     path: "/comments/stream/:ticketId",
-    method: "GET",
   },
   async ({ ticketId }, stream) => {
+    let userId: string | null = null;
+
     try {
       // Get authenticated user data
       const userContext = await getUserContext();
@@ -46,9 +46,7 @@ export const commentStream = api.streamOut<
       }
 
       // Verify user has access to this ticket
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: ticketId },
-      });
+      const ticket = await ticketRepository.findById(ticketId);
 
       if (!ticket) {
         throw APIError.notFound("Ticket not found");
@@ -61,7 +59,7 @@ export const commentStream = api.streamOut<
         throw APIError.permissionDenied("You don't have access to this ticket");
       }
 
-      const userId = userContext.userId;
+      userId = userContext.userId;
       console.log(
         `💬 Comment stream connected: User ${userId} for ticket ${ticketId}`
       );
@@ -73,25 +71,29 @@ export const commentStream = api.streamOut<
 
       // Store the stream for this user and ticket
       const ticketStreams = activeStreams.get(ticketId)!;
-      ticketStreams.set(userId, stream);
+      ticketStreams.set(userId, { stream, active: true });
 
       // Set up event handler for this stream
       const eventHandler = async (event: CommentEvent) => {
         // Only send events for the subscribed ticket
         if (event.ticketId === ticketId) {
-          try {
-            await stream.send({ event });
-            console.log(
-              `✅ Comment event sent to user ${userId} for ticket ${ticketId}: ${event.type}`
-            );
-          } catch (error) {
-            console.warn(
-              `⚠️ Failed to send comment event to user ${userId}:`,
-              error
-            );
-            ticketStreams.delete(userId);
-            if (ticketStreams.size === 0) {
-              activeStreams.delete(ticketId);
+          const entry = ticketStreams.get(userId!);
+          if (entry && entry.active) {
+            try {
+              await entry.stream.send({ event });
+              console.log(
+                `✅ Comment event sent to user ${userId} for ticket ${ticketId}: ${event.type}`
+              );
+            } catch (error) {
+              console.warn(
+                `⚠️ Failed to send comment event to user ${userId}:`,
+                error
+              );
+              entry.active = false;
+              ticketStreams.delete(userId!);
+              if (ticketStreams.size === 0) {
+                activeStreams.delete(ticketId);
+              }
             }
           }
         }
@@ -102,41 +104,27 @@ export const commentStream = api.streamOut<
       commentEventBus.subscribe("comment.updated", eventHandler);
       commentEventBus.subscribe("comment.deleted", eventHandler);
 
-      // Keep the stream alive until client disconnects
-      await new Promise<void>((resolve, reject) => {
-        // Handle stream closure
-        stream.on("close", () => {
-          ticketStreams.delete(userId);
-          if (ticketStreams.size === 0) {
-            activeStreams.delete(ticketId);
-          }
-          console.log(
-            `❌ Comment stream disconnected: User ${userId} for ticket ${ticketId}`
-          );
-
-          // Note: We're not unsubscribing from the event bus here because
-          // the same handler might be used by multiple streams
-          // The event bus is in-memory and handlers will be garbage collected
-          // when the service restarts
-          resolve();
-        });
-
-        // Handle stream errors
-        stream.on("error", (error) => {
-          ticketStreams.delete(userId);
-          if (ticketStreams.size === 0) {
-            activeStreams.delete(ticketId);
-          }
-          console.error(
-            `⚠️ Comment stream error for user ${userId} on ticket ${ticketId}:`,
-            error
-          );
-          reject(error);
-        });
-      });
+      // Keep the stream alive by periodically checking if it's still active
+      while (ticketStreams.get(userId)?.active) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     } catch (error) {
       console.error("Comment stream error:", error);
       throw error;
+    } finally {
+      // Cleanup when stream ends
+      if (userId && ticketId) {
+        const ticketStreams = activeStreams.get(ticketId);
+        if (ticketStreams) {
+          ticketStreams.delete(userId);
+          if (ticketStreams.size === 0) {
+            activeStreams.delete(ticketId);
+          }
+        }
+        console.log(
+          `❌ Comment stream disconnected: User ${userId} for ticket ${ticketId}`
+        );
+      }
     }
   }
 );
@@ -157,18 +145,21 @@ export async function broadcastCommentEvent(
 
   // Broadcast to all users watching this ticket
   const broadcastPromises = Array.from(ticketStreams.entries()).map(
-    async ([userId, stream]) => {
-      try {
-        await stream.send({ event });
-        console.log(
-          `✅ Comment event broadcast to user ${userId}: ${event.type}`
-        );
-      } catch (error) {
-        console.warn(
-          `⚠️ Failed to broadcast comment event to user ${userId}:`,
-          error
-        );
-        ticketStreams.delete(userId);
+    async ([userId, entry]) => {
+      if (entry.active) {
+        try {
+          await entry.stream.send({ event });
+          console.log(
+            `✅ Comment event broadcast to user ${userId}: ${event.type}`
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to broadcast comment event to user ${userId}:`,
+            error
+          );
+          entry.active = false;
+          ticketStreams.delete(userId);
+        }
       }
     }
   );

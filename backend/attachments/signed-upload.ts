@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { ticketAttachments } from "./bucket";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canViewTicket } from "../auth/permissions";
 
@@ -44,9 +44,9 @@ export const getSignedUploadUrl = api<
       }
 
       // Verify the ticket exists
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: req.ticketId },
-      });
+      const ticket = await db.queryRow<{ id: string }>`
+        SELECT id FROM tickets WHERE id = ${req.ticketId}
+      `;
 
       if (!ticket) {
         throw APIError.notFound("Ticket not found");
@@ -58,16 +58,32 @@ export const getSignedUploadUrl = api<
       const bucketKey = `${req.ticketId}/${timestamp}_${sanitizedFileName}`;
 
       // Create attachment record in database (will be confirmed after successful upload)
-      const attachment = await prisma.attachment.create({
-        data: {
-          fileName: req.fileName,
-          fileSize: req.fileSize,
-          mimeType: req.mimeType,
-          bucketKey: bucketKey,
-          ticketId: req.ticketId,
-          uploadedBy: userContext.userId,
-        },
-      });
+      const attachment = await db.queryRow<{ id: string }>`
+        INSERT INTO attachments (
+          file_name,
+          file_size,
+          mime_type,
+          bucket_key,
+          ticket_id,
+          uploaded_by,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${req.fileName},
+          ${req.fileSize},
+          ${req.mimeType},
+          ${bucketKey},
+          ${req.ticketId},
+          ${userContext.userId},
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      if (!attachment) {
+        throw APIError.internal("Failed to create attachment record");
+      }
 
       // Generate signed upload URL (valid for 2 hours)
       const uploadUrl = await ticketAttachments.signedUploadUrl(bucketKey, {

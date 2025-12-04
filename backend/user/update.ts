@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
@@ -28,19 +28,19 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     const userContext = await getUserContext();
 
     // Permission checks
-    const existingUser = await prisma.user.findUnique({
-      where: { id: req.id },
-    });
+    const existingUser = await userRepository.findById(req.id);
 
     if (!existingUser) {
       throw APIError.notFound("User not found");
     }
+
     const isEditingSelf = userContext.userId === req.id;
     const canModifyUsers = await canManageTeam(
       userContext,
       req.id,
       req.marketCenterId
     );
+
     if (!canModifyUsers) {
       throw APIError.permissionDenied(
         "Insufficient permissions to update other users"
@@ -51,7 +51,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     let marketCenterId: string | null = existingUser?.marketCenterId ?? null;
 
     const updateUserData: any = {};
-    let userHistoryData: any = [];
+    const userHistoryData: any[] = [];
 
     if (
       !isEditingSelf &&
@@ -59,17 +59,11 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       req?.marketCenterId !== existingUser?.marketCenterId &&
       userContext?.role === "ADMIN"
     ) {
-      const marketCenter = await prisma.marketCenter.findFirst({
-        where: { id: req.marketCenterId },
-      });
+      const marketCenter = await marketCenterRepository.findById(req.marketCenterId);
 
       marketCenterId = marketCenter?.id ?? null;
       if (marketCenter) {
-        updateUserData.marketCenterId = {
-          ...updateUserData,
-          set: marketCenter?.id,
-          marketCenterId: marketCenter?.id,
-        };
+        updateUserData.marketCenterId = marketCenter.id;
         userHistoryData.push({
           userId: req.id,
           action: "UPDATE",
@@ -77,7 +71,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
           previousValue: existingUser?.marketCenterId ?? "Unassigned",
           newValue: req.marketCenterId,
           snapshot: existingUser,
-          changedAt: new Date(),
           changedById: userContext.userId,
         });
       }
@@ -98,7 +91,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         previousValue: existingUser.role,
         newValue: req.role,
         snapshot: existingUser,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
@@ -118,7 +110,6 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
           existingUser?.isActive === true ? "Active" : "Not Active",
         newValue: req.isActive === true ? "Active" : "Not Active",
         snapshot: existingUser,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
@@ -133,47 +124,36 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         previousValue: existingUser.name,
         newValue: req.name,
         snapshot: existingUser,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
-
-    // TODO: update email in CLERK for existing user as well
-    // if (req?.email && req.email !== existingUser.email) {
-    //   updateUserData.email = req.email;
-    //   userHistoryData.push({
-    //     userId: req.id,
-    //     marketCenterId: marketCenterId,
-    //     field: "email",
-    //     previousValue: existingUser.email,
-    //     newValue: req.email,
-    //     snapshot: existingUser,
-    //     changedAt: new Date(),
-    //     changedById: userContext.userId,
-    //   });
-    // }
 
     if (Object.keys(updateUserData).length === 0) {
       throw APIError.invalidArgument("No fields to update");
     }
 
-    const [updatedUser, userHistory] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: req.id },
-        data: updateUserData,
-        include: {
-          marketCenter: req?.isActive ?? true,
-        },
-      }),
-      prisma.userHistory.createMany({
-        data: userHistoryData,
-      }),
-    ]);
+    // Update user
+    const updatedUser = await userRepository.update(req.id, updateUserData);
+
+    if (!updatedUser) {
+      throw APIError.internal("Failed to update user");
+    }
+
+    // Create history records
+    for (const historyEntry of userHistoryData) {
+      await userRepository.createHistory(historyEntry);
+    }
+
+    // Get market center if needed
+    let marketCenter;
+    if (updatedUser.marketCenterId) {
+      marketCenter = await marketCenterRepository.findById(updatedUser.marketCenterId);
+    }
 
     const safeUser = {
       ...updatedUser,
       name: updatedUser?.name ?? "",
-      marketCenter: updatedUser.marketCenter ?? undefined,
+      marketCenter: marketCenter ?? undefined,
     };
 
     return { user: safeUser };

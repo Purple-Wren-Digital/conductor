@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { Notification, NotificationData } from "./types";
 
@@ -36,28 +36,54 @@ export const listInApp = api<
       );
     }
 
-    let where: any = { userId: userContext.userId, channel: "IN_APP" };
+    const notificationsRaw = await db.queryAll<{
+      id: string;
+      user_id: string;
+      type: string;
+      title: string;
+      body: string;
+      data: any;
+      read: boolean;
+      channel: string;
+      category: string;
+      priority: string | null;
+      delivered_at: Date | null;
+      created_at: Date;
+    }>`
+      SELECT id, user_id, type, title, body, data, read, channel, category, priority, delivered_at, created_at
+      FROM notifications
+      WHERE user_id = ${userContext.userId}
+        AND channel = 'IN_APP'
+      ORDER BY created_at DESC
+    `;
 
-    const result = await prisma.$transaction(async (p) => {
-      const notificationsRaw = await p.notification.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-      });
-      const notifications = notificationsRaw.map((n) => ({
-        ...n,
-        priority: n?.priority ?? undefined,
-        data: n.data as NotificationData,
-      }));
+    const notifications: Notification[] = notificationsRaw.map((n) => ({
+      id: n.id,
+      userId: n.user_id,
+      type: n.type,
+      title: n.title,
+      body: n.body,
+      data: n.data as NotificationData,
+      read: n.read,
+      channel: n.channel as Notification["channel"],
+      category: n.category as Notification["category"],
+      priority: n?.priority as Notification["priority"],
+      deliveredAt: n.delivered_at,
+      createdAt: n.created_at,
+    }));
 
-      where.read = false;
-      const unReadAmount = await p.notification.count({ where });
-      return { notifications, unReadAmount };
-    });
-
+    const unReadResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count
+      FROM notifications
+      WHERE user_id = ${userContext.userId}
+        AND channel = 'IN_APP'
+        AND read = false
+    `;
+    const unReadAmount = unReadResult?.count ?? 0;
 
     return {
-      notifications: result.notifications,
-      unReadAmount: result.unReadAmount ?? 0,
+      notifications,
+      unReadAmount,
     };
   }
 );

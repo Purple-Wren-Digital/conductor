@@ -1,9 +1,8 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { userRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface GetCurrentUserResponse {
-  // user: User;
   id: string;
   email: string;
   name: string;
@@ -26,14 +25,12 @@ export const me = api<void, GetCurrentUserResponse>(
   async () => {
     const userContext = await getUserContext();
 
-    const user = await prisma.user.findUnique({
-      where: { id: userContext.userId },
-      include: { marketCenter: true },
-    });
+    const user = await userRepository.findByIdWithMarketCenter(userContext.userId);
 
     if (!user || !user?.id) {
       throw APIError.notFound("User not found");
     }
+
     return {
       id: user.id,
       email: user.email,

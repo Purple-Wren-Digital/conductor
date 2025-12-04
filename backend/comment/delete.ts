@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { commentRepository, db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { processCommentContent } from "./sanitize";
 import { CommentEventPublisher } from "./publisher";
@@ -31,15 +31,14 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     const userContext = await getUserContext();
     const userId = userContext?.userId;
 
-    const comment = await prisma.comment.findFirst({
-      where: {
-        id: req.commentId,
-        ticketId: req.ticketId,
-      },
-    });
+    const comment = await commentRepository.findById(req.commentId);
 
     if (!comment) {
       throw APIError.notFound("Comment not found");
+    }
+
+    if (comment.ticketId !== req.ticketId) {
+      throw APIError.notFound("Comment not found for this ticket");
     }
 
     if (comment.userId !== userId) {
@@ -49,18 +48,27 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
     // Store ticketId before deletion for event publishing
     const ticketId = comment.ticketId;
 
-    const history = await prisma.ticketHistory.create({
-      data: {
-        ticketId: comment?.ticketId,
-        action: "DELETE",
-        field: "comment",
-        previousValue: processCommentContent(comment?.content),
-        changedById: userContext.userId,
-      },
-    });
-    await prisma.comment.delete({
-      where: { id: req.commentId },
-    });
+    // Create history record
+    await db.exec`
+      INSERT INTO ticket_history (
+        ticket_id,
+        action,
+        field,
+        previous_value,
+        changed_by_id,
+        created_at
+      ) VALUES (
+        ${comment.ticketId},
+        'DELETE',
+        'comment',
+        ${processCommentContent(comment.content)},
+        ${userContext.userId},
+        NOW()
+      )
+    `;
+
+    // Delete the comment
+    await commentRepository.delete(req.commentId);
 
     // Publish comment deleted event for real-time updates
     await CommentEventPublisher.publishCommentDeleted(req.commentId, ticketId);

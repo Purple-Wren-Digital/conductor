@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { ticketAttachments } from "./bucket";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canViewTicket } from "../auth/permissions";
 
@@ -48,9 +48,9 @@ export const upload = api<UploadAttachmentRequest, UploadAttachmentResponse>(
       }
 
       // Verify the ticket exists
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: req.ticketId },
-      });
+      const ticket = await db.queryRow<{ id: string }>`
+        SELECT id FROM tickets WHERE id = ${req.ticketId}
+      `;
 
       if (!ticket) {
         throw APIError.notFound("Ticket not found");
@@ -70,16 +70,40 @@ export const upload = api<UploadAttachmentRequest, UploadAttachmentResponse>(
       });
 
       // Save attachment metadata to database
-      const attachment = await prisma.attachment.create({
-        data: {
-          fileName: req.fileName,
-          fileSize: req.fileSize,
-          mimeType: req.mimeType,
-          bucketKey: bucketKey,
-          ticketId: req.ticketId,
-          uploadedBy: userContext.userId,
-        },
-      });
+      const attachment = await db.queryRow<{
+        id: string;
+        file_name: string;
+        file_size: number;
+        mime_type: string;
+        ticket_id: string;
+        uploaded_by: string;
+        created_at: Date;
+      }>`
+        INSERT INTO attachments (
+          file_name,
+          file_size,
+          mime_type,
+          bucket_key,
+          ticket_id,
+          uploaded_by,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${req.fileName},
+          ${req.fileSize},
+          ${req.mimeType},
+          ${bucketKey},
+          ${req.ticketId},
+          ${userContext.userId},
+          NOW(),
+          NOW()
+        )
+        RETURNING id, file_name, file_size, mime_type, ticket_id, uploaded_by, created_at
+      `;
+
+      if (!attachment) {
+        throw APIError.internal("Failed to create attachment record");
+      }
 
       // Generate a signed download URL (valid for 1 hour)
       const downloadUrl = await ticketAttachments.signedDownloadUrl(bucketKey, {
@@ -89,12 +113,12 @@ export const upload = api<UploadAttachmentRequest, UploadAttachmentResponse>(
       return {
         attachment: {
           id: attachment.id,
-          fileName: attachment.fileName,
-          fileSize: attachment.fileSize,
-          mimeType: attachment.mimeType,
-          ticketId: attachment.ticketId,
-          uploadedBy: attachment.uploadedBy,
-          createdAt: attachment.createdAt,
+          fileName: attachment.file_name,
+          fileSize: attachment.file_size,
+          mimeType: attachment.mime_type,
+          ticketId: attachment.ticket_id,
+          uploadedBy: attachment.uploaded_by,
+          createdAt: attachment.created_at,
           downloadUrl: downloadUrl.url,
         },
       };

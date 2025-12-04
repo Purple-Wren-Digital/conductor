@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { ticketRepository, surveyRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
 
@@ -28,10 +28,7 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
       throw APIError.invalidArgument("Missing data");
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: req.ticketId },
-      include: { assignee: true, creator: true, category: true },
-    });
+    const ticket = await ticketRepository.findByIdWithRelations(req.ticketId);
 
     if (!ticket) {
       throw APIError.notFound("Ticket not found");
@@ -48,13 +45,11 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
       throw APIError.notFound("Market Center not found");
     }
 
-    await prisma.survey.create({
-      data: {
-        ticketId: req.ticketId,
-        surveyorId: req.surveyorId,
-        assigneeId: ticket?.assigneeId ?? null,
-        marketCenterId: marketCenterId,
-      },
+    await surveyRepository.create({
+      ticketId: req.ticketId,
+      surveyorId: req.surveyorId,
+      assigneeId: ticket?.assigneeId ?? null,
+      marketCenterId: marketCenterId,
     });
 
     const usersToNotify: UsersToNotify[] = [];

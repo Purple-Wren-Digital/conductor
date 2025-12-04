@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
+import { userRepository } from "../../ticket/db";
 import type { UserSettings } from "../../user/types";
 import { getUserContext } from "../../auth/user-context";
 
@@ -30,25 +30,21 @@ export const getUserSettings = api<
       );
     }
 
-    const userSettings = await prisma.userSettings.findUnique({
-      where: { userId: req.id },
-      include: {
-        notificationPreferences: true,
-      },
-    });
+    const user = await userRepository.findByIdWithSettings(req.id);
 
-    if (!userSettings) {
+    if (!user || !user.userSettings) {
       throw APIError.notFound("Could not find user settings");
     }
+
     const formattedSettings: UserSettings = {
-      id: userSettings.id,
-      userId: userSettings.userId,
-      createdAt: userSettings.createdAt,
-      updatedAt: userSettings.updatedAt,
+      id: user.userSettings.id,
+      userId: user.userSettings.userId,
+      createdAt: user.userSettings.createdAt,
+      updatedAt: user.userSettings.updatedAt,
       notificationPreferences:
-        userSettings?.notificationPreferences &&
-        userSettings?.notificationPreferences.length > 0
-          ? userSettings.notificationPreferences.map((pref) => ({
+        user.userSettings?.notificationPreferences &&
+        user.userSettings?.notificationPreferences.length > 0
+          ? user.userSettings.notificationPreferences.map((pref) => ({
               id: pref.id,
               type: pref.type,
               category: pref.category,

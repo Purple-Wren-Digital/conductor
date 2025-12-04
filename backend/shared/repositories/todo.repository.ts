@@ -63,9 +63,10 @@ export const todoRepository = {
   }): Promise<Todo> {
     const row = await db.queryRow<TodoRow>`
       INSERT INTO todos (
-        title, complete, ticket_id, created_by_user_id, updated_by_user_id,
+        id, title, complete, ticket_id, created_by_user_id, updated_by_user_id,
         created_by, updated_by, created_at, updated_at
       ) VALUES (
+        gen_random_uuid()::text,
         ${data.title},
         ${data.complete ?? false},
         ${data.ticketId},

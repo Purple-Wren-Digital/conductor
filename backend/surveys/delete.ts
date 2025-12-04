@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { surveyRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface DeleteSurveyRequest {
@@ -24,17 +24,13 @@ export const deleteSurvey = api<DeleteSurveyRequest, DeleteSurveyResponse>(
       throw APIError.invalidArgument("Ticket ID is required");
     }
 
-    const survey = await prisma.survey.findUnique({
-      where: { ticketId: req.ticketId },
-    });
+    const survey = await surveyRepository.findByTicketId(req.ticketId);
 
     if (!survey) {
       throw APIError.notFound("Survey not found for the given Ticket ID");
     }
 
-    await prisma.survey.delete({
-      where: { id: survey.id },
-    });
+    await surveyRepository.delete(survey.id);
 
     return { success: true };
   }

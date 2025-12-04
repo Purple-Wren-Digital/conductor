@@ -1,10 +1,12 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import {
+  userRepository,
+  marketCenterRepository,
+} from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { defaultNotificationPreferences } from "../utils";
 import { MarketCenter } from "../marketCenters/types";
-import { $Enums } from "@prisma/client";
 
 export interface CreateUserRequest {
   email: string;
@@ -31,9 +33,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       throw APIError.invalidArgument("Missing data");
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: req.email },
-    });
+    const existingUser = await userRepository.findByEmail(req.email);
 
     if (existingUser) {
       // TODO: how to check duplicate emails for Auth0 Accounts (extension or custom?)
@@ -45,10 +45,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
 
     let marketCenterAssignment: MarketCenter | null = null;
     if (req?.marketCenterId) {
-      const marketCenter = await prisma.marketCenter.findUnique({
-        where: { id: req.marketCenterId },
-        include: { users: true },
-      });
+      const marketCenter = await marketCenterRepository.findByIdWithUsers(req.marketCenterId);
       if (!marketCenter) {
         APIError.notFound("Market Center not found");
       } else {
@@ -56,77 +53,36 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       }
     }
 
-    let newUser: {
-      id: string;
-      email: string;
-      clerkId: string;
-      // auth0Id: string;
-      name: string | null;
-      role: $Enums.UserRole;
-      createdAt: Date;
-      updatedAt: Date;
-      deletedAt: Date | null;
-      isActive: boolean;
-      marketCenterId: string | null;
-    } = {} as {
-      id: string;
-      email: string;
-      clerkId: string;
-      name: string | null;
-      role: $Enums.UserRole;
-      createdAt: Date;
-      updatedAt: Date;
-      deletedAt: Date | null;
-      isActive: boolean;
-      marketCenterId: string | null;
-    };
-
-    const result = await prisma.$transaction(async (p) => {
-      const newUser = await p.user.create({
-        data: {
-          email: req.email,
-          name: req.name,
-          role: req.role || "AGENT",
-          isActive: true,
-          clerkId: req.clerkId,
-          userSettings: {
-            create: {
-              notificationPreferences: {
-                create: defaultNotificationPreferences,
-              },
-            },
-          },
-          marketCenter: req?.marketCenterId
-            ? {
-                connect: { id: req.marketCenterId },
-              }
-            : undefined,
-        },
-        include: {
-          userHistory: true,
-          userSettings: true,
-        },
-      });
-
-      const history = await p.userHistory.create({
-        data: {
-          userId: newUser.id,
-          marketCenterId: newUser?.marketCenterId,
-          action: "CREATE",
-          field: "New User",
-          previousValue: "",
-          newValue: "Activated",
-          changedById: userContext.userId,
-          snapshot: newUser,
-        },
-      });
-
-      return { newUser, history };
+    // Create user
+    const newUser = await userRepository.create({
+      email: req.email,
+      name: req.name,
+      role: req.role || "AGENT",
+      isActive: true,
+      clerkId: req.clerkId,
+      marketCenterId: req?.marketCenterId ?? null,
     });
 
-    if (!result || !result?.newUser) {
-      throw APIError.internal("New user not created");
-    }
+    // Create user settings with notification preferences
+    const userSettings = await userRepository.createUserSettings(newUser.id);
+
+    // Create notification preferences
+    await userRepository.createNotificationPreferences(
+      userSettings.id,
+      defaultNotificationPreferences
+    );
+
+    // Create user history
+    await userRepository.createHistory({
+      userId: newUser.id,
+      marketCenterId: newUser.marketCenterId,
+      action: "CREATE",
+      field: "New User",
+      previousValue: "",
+      newValue: "Activated",
+      changedById: userContext.userId,
+      snapshot: newUser,
+    });
 
     return {
       success: true,

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { surveyRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { SurveyResults } from "./types";
 
@@ -24,35 +24,19 @@ export const getRatingsByAssignee = api<
       throw APIError.invalidArgument("Assignee Id is required");
     }
 
-    const surveys = await prisma.survey.findMany({
-      where: { assigneeId: req.assigneeId, completed: true },
-    });
+    const hasSurveys = await surveyRepository.hasCompletedSurveysForAssignee(req.assigneeId);
 
-    if (!surveys || surveys.length === 0) {
+    if (!hasSurveys) {
       throw APIError.notFound("Surveys not found for the given assignee Id");
     }
 
-    const result = await prisma.survey.aggregate({
-      where: { assigneeId: req.assigneeId, completed: true },
-      _avg: {
-        overallRating: true,
-        assigneeRating: true,
-        marketCenterRating: true,
-      },
-      _count: true,
-    });
+    const result = await surveyRepository.getAssigneeAverages(req.assigneeId);
 
     return {
-      totalSurveys: result?._count ?? 0,
-      overallAverageRating: result?._avg?.overallRating
-        ? Number(result._avg.overallRating)
-        : 0,
-      assigneeAverageRating: result?._avg?.assigneeRating
-        ? Number(result._avg.assigneeRating)
-        : 0,
-      marketCenterAverageRating: result?._avg?.marketCenterRating
-        ? Number(result._avg.marketCenterRating)
-        : 0,
+      totalSurveys: result.totalSurveys,
+      overallAverageRating: result.overallAverageRating ?? 0,
+      assigneeAverageRating: result.assigneeAverageRating ?? 0,
+      marketCenterAverageRating: result.marketCenterAverageRating ?? 0,
     };
   }
 );

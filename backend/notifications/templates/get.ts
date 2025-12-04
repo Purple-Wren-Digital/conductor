@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
+import { db, fromTimestamp, fromJson } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
-import { NotificationTemplate } from "../types";
+import { NotificationTemplate, NotificationCategory, NotificationChannel } from "../types";
 
 export interface GetNotificationTemplateRequest {
   id: string;
@@ -9,6 +9,19 @@ export interface GetNotificationTemplateRequest {
 
 export interface GetNotificationTemplateResponse {
   notificationTemplate: NotificationTemplate;
+}
+
+interface NotificationTemplateRow {
+  id: string;
+  template_name: string;
+  template_description: string;
+  subject: string | null;
+  body: string;
+  category: NotificationCategory;
+  channel: NotificationChannel;
+  is_default: boolean;
+  created_at: Date;
+  variables: any;
 }
 
 export const get = api<
@@ -24,17 +37,29 @@ export const get = api<
   async (req) => {
     await getUserContext();
 
-    const notificationTemplate = await prisma.notificationTemplate.findUnique({
-      where: {
-        templateName: req.id,
-      },
-    });
+    const notificationTemplate = await db.queryRow<NotificationTemplateRow>`
+      SELECT * FROM notification_templates
+      WHERE template_name = ${req.id}
+    `;
+
     if (!notificationTemplate) {
       throw APIError.notFound("Notification Template not found");
     }
 
     return {
-      notificationTemplate: notificationTemplate,
+      notificationTemplate: {
+        id: notificationTemplate.id,
+        templateName: notificationTemplate.template_name,
+        templateDescription: notificationTemplate.template_description,
+        subject: notificationTemplate.subject,
+        body: notificationTemplate.body,
+        category: notificationTemplate.category,
+        channel: notificationTemplate.channel,
+        isDefault: notificationTemplate.is_default,
+        createdAt: fromTimestamp(notificationTemplate.created_at)!,
+        variables: fromJson(notificationTemplate.variables) ?? undefined,
+        data: null,
+      },
     };
   }
 );

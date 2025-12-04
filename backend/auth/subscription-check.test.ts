@@ -268,38 +268,29 @@ describe("Subscription Check", () => {
   });
 
   describe("checkCanCreateTicket", () => {
-    it("should not throw when under ticket limit", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(true);
-
+    // Note: Ticket limit checking is disabled - unlimited tickets allowed
+    it("should always allow ticket creation (unlimited tickets)", async () => {
       await expect(checkCanCreateTicket("mc-123")).resolves.not.toThrow();
-      expect(mockCheckSubscriptionLimit).toHaveBeenCalledWith(
-        "mc-123",
-        "tickets"
-      );
+      // checkSubscriptionLimit should NOT be called since ticket limits are disabled
+      expect(mockCheckSubscriptionLimit).not.toHaveBeenCalled();
     });
 
-    it("should throw when ticket limit is reached", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(false);
+    it("should not check limits even with mock subscription", async () => {
       mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(
         createSubscription({
           features: { maxTicketsPerMonth: 50 },
         })
       );
 
-      await expect(checkCanCreateTicket("mc-123")).rejects.toThrow(
-        "Monthly ticket limit reached (50 tickets)"
-      );
+      // Should still not throw - ticket limits disabled
+      await expect(checkCanCreateTicket("mc-123")).resolves.not.toThrow();
     });
 
-    it("should handle missing features gracefully", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(false);
-      mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(
-        createSubscription({ features: {} })
-      );
+    it("should not check limits for any market center", async () => {
+      // Even with no subscription, should not throw
+      mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(null);
 
-      await expect(checkCanCreateTicket("mc-123")).rejects.toThrow(
-        "Monthly ticket limit reached (0 tickets)"
-      );
+      await expect(checkCanCreateTicket("mc-123")).resolves.not.toThrow();
     });
   });
 

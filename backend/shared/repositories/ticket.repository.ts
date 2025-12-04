@@ -512,9 +512,10 @@ export const ticketRepository = {
     changedById: string;
   }): Promise<void> {
     await db.exec`
-      INSERT INTO "TicketHistory" (
-        ticket_id, action, field, "previousValue", "newValue", snapshot, changed_by_id, "changedAt"
+      INSERT INTO ticket_history (
+        id, ticket_id, action, field, previous_value, new_value, snapshot, changed_by_id, changed_at
       ) VALUES (
+        gen_random_uuid()::text,
         ${data.ticketId},
         ${data.action},
         ${data.field ?? null},

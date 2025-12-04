@@ -7,10 +7,6 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "postinstall": "npx prisma generate --schema=ticket/schema.prisma",
-    "migrate": "npx prisma migrate dev --schema=ticket/schema.prisma",
-    "studio": "npx prisma studio --schema=ticket/schema.prisma",
-    "seed": "npx prisma seed seed/seed.ts",
     "reset": "./scripts/reset-dev.sh",
     "dev": "encore run"
   },
@@ -19,7 +15,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "~22.13.9",
     "@types/ws": "^8.18.1",
-    "prisma": "^6.15.0",
     "tsx": "^4.20.3",
     "typescript": "~5.2.2",
     "vite": "^6.4.1",
@@ -27,8 +22,6 @@
   },
   "dependencies": {
     "@clerk/backend": "^2.19.0",
-    "@prisma/client": "^6.15.0",
-    "@prisma/extension-accelerate": "^2.0.2",
     "@react-email/components": "^0.5.7",
     "@react-email/render": "^1.4.0",
     "@types/react": "^19.2.2",

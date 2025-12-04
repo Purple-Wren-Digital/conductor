@@ -1,8 +1,8 @@
 import { APIError } from "encore.dev/api";
-import { PrismaClient, SubscriptionStatus, User } from "@prisma/client";
+import { subscriptionRepository } from "../shared/repositories";
+import { SubscriptionStatus } from "../subscription/types";
 import { checkSubscriptionLimit } from "../subscription/subscription";
-
-const prisma = new PrismaClient();
+import type { User } from "../user/types";
 
 export interface SubscriptionContext {
   hasActiveSubscription: boolean;
@@ -18,9 +18,7 @@ export interface SubscriptionContext {
  * Check if the market center has an active subscription
  */
 export async function requireActiveSubscription(marketCenterId: string): Promise<void> {
-  const subscription = await prisma.subscription.findUnique({
-    where: { marketCenterId },
-  });
+  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription) {
     throw APIError.failedPrecondition(
@@ -55,50 +53,30 @@ export async function checkCanAddUser(marketCenterId: string): Promise<void> {
   const canAdd = await checkSubscriptionLimit(marketCenterId, "users");
 
   if (!canAdd) {
-    const subscription = await prisma.subscription.findUnique({
-      where: { marketCenterId },
-      include: {
-        marketCenter: {
-          include: {
-            users: { where: { isActive: true } },
-          },
-        },
-      },
-    });
+    const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
 
-    if (!subscription) {
+    if (!result) {
       throw APIError.failedPrecondition(
         "No subscription found. Please subscribe to continue."
       );
     }
 
+    const { subscription, activeUserCount } = result;
     const totalSeats = subscription.includedSeats + subscription.additionalSeats;
-    const usedSeats = subscription.marketCenter.users.length;
 
     throw APIError.resourceExhausted(
-      `User limit reached (${usedSeats}/${totalSeats} seats). Please upgrade your subscription or purchase additional seats.`
+      `User limit reached (${activeUserCount}/${totalSeats} seats). Please upgrade your subscription or purchase additional seats.`
     );
   }
 }
 
 /**
  * Check if creating a new ticket would exceed subscription limits
+ * Note: Subscription usage tracking disabled - unlimited tickets allowed
  */
 export async function checkCanCreateTicket(marketCenterId: string): Promise<void> {
-  const canCreate = await checkSubscriptionLimit(marketCenterId, "tickets");
-
-  if (!canCreate) {
-    const subscription = await prisma.subscription.findUnique({
-      where: { marketCenterId },
-    });
-
-    const features = subscription?.features as any;
-    const maxTickets = features?.maxTicketsPerMonth || 0;
-
-    throw APIError.resourceExhausted(
-      `Monthly ticket limit reached (${maxTickets} tickets). Please upgrade your subscription for unlimited tickets.`
-    );
-  }
+  // Subscription usage tracking disabled - unlimited tickets allowed
+  return;
 }
 
 /**
@@ -108,20 +86,11 @@ export async function checkCanAddCategory(marketCenterId: string): Promise<void>
   const canAdd = await checkSubscriptionLimit(marketCenterId, "categories");
 
   if (!canAdd) {
-    const subscription = await prisma.subscription.findUnique({
-      where: { marketCenterId },
-      include: {
-        marketCenter: {
-          include: {
-            ticketCategories: true,
-          },
-        },
-      },
-    });
+    const result = await subscriptionRepository.findByMarketCenterIdWithCategoryCount(marketCenterId);
 
-    const features = subscription?.features as any;
+    const features = result?.subscription.features as any;
     const maxCategories = features?.customCategories || 0;
-    const currentCategories = subscription?.marketCenter.ticketCategories.length || 0;
+    const currentCategories = result?.categoryCount || 0;
 
     throw APIError.resourceExhausted(
       `Category limit reached (${currentCategories}/${maxCategories} categories). Please upgrade your subscription for unlimited categories.`
@@ -142,9 +111,7 @@ export async function getSubscriptionContext(user: User): Promise<SubscriptionCo
     };
   }
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { marketCenterId: user.marketCenterId },
-  });
+  const subscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
 
   if (!subscription) {
     return {
@@ -177,9 +144,7 @@ export async function checkFeatureAccess(
   marketCenterId: string,
   feature: string
 ): Promise<boolean> {
-  const subscription = await prisma.subscription.findUnique({
-    where: { marketCenterId },
-  });
+  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription ||
       (subscription.status !== SubscriptionStatus.ACTIVE &&

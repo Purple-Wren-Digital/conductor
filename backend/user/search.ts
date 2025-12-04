@@ -1,8 +1,7 @@
 import { api, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
-import { Prisma } from "@prisma/client";
 
 export interface SearchUsersRequest {
   query?: string;
@@ -37,134 +36,63 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+    // Agents and staff without market center can only see themselves
     if (
       userContext.role === "AGENT" ||
       ((userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
         !userContext?.marketCenterId)
     ) {
-      const baseWhere = {
-        id: userContext?.userId,
-        isActive: true,
-      };
-      let where: any = { ...baseWhere };
+      const user = await userRepository.findById(userContext.userId);
 
-      if (req.query) {
-        where = {
-          OR: [
-            { name: { contains: req.query, mode: "insensitive" } },
-            { email: { contains: req.query, mode: "insensitive" } },
-          ],
-          ...where,
-        };
+      if (!user || !user.isActive) {
+        return { users: [], total: 0 };
       }
 
-      const users = await prisma.user.findMany({
-        where,
-        take: 1,
-      });
+      // If query provided, check if it matches
+      if (req.query) {
+        const queryLower = req.query.toLowerCase();
+        const nameMatch = user.name?.toLowerCase().includes(queryLower);
+        const emailMatch = user.email.toLowerCase().includes(queryLower);
+        if (!nameMatch && !emailMatch) {
+          return { users: [], total: 0 };
+        }
+      }
 
-      const formattedUsers = users.map((user) => ({
+      const formattedUser = {
         ...user,
         name: user.name ?? "",
-      }));
+      };
 
       return {
-        users: formattedUsers,
-        total: users.length,
-        hasMore: false,
+        users: [formattedUser],
+        total: 1,
       };
     }
 
-    const limit =
-      req.limit && Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
-    const offset = req.offset && Math.max(Number(req.offset ?? 0), 0);
-
-    let where: any = {};
-
-    if (req.query) {
-      where.OR = [
-        { name: { contains: req.query, mode: "insensitive" } },
-        { email: { contains: req.query, mode: "insensitive" } },
-      ];
-    }
+    // Determine market center filter based on role
+    let marketCenterId: string | undefined;
 
     if (userContext.role === "ADMIN" && req.marketCenterId) {
-      where = { marketCenterId: req.marketCenterId };
+      marketCenterId = req.marketCenterId;
     }
 
     if (
       (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
       userContext?.marketCenterId
     ) {
-      where = { marketCenterId: userContext.marketCenterId };
+      marketCenterId = userContext.marketCenterId;
     }
 
-    if (req.role && req.role.length > 0) {
-      where.role = { in: req.role };
-    }
-
-    if (req.isActive) {
-      where.isActive = req.isActive;
-    }
-
-    // if (req.hasTickets !== undefined) {
-    //   if (req.hasTickets) {
-    //     where.OR = [
-    //       ...(where.OR ?? []),
-    //       { createdTickets: { some: {} } },
-    //       { assignedTickets: { some: {} } },
-    //     ];
-    //   } else {
-    //     where.AND = [
-    //       ...(where.AND ?? []),
-    //       { createdTickets: { none: {} } },
-    //       { assignedTickets: { none: {} } },
-    //     ];
-    //   }
-    // }
-
-    const sortBy: "updatedAt" | "createdAt" | "name" | "role" =
-      (req.sortBy as any) ?? "updatedAt";
-
-    const sortDir: Prisma.SortOrder = req.sortDir === "asc" ? "asc" : "desc";
-
-    const orderBy: Prisma.UserOrderByWithRelationInput[] = [];
-
-    switch (sortBy) {
-      case "createdAt":
-        orderBy.push({ createdAt: sortDir });
-        break;
-      case "name":
-        orderBy.push({ name: sortDir });
-        break;
-      case "role":
-        orderBy.push({ role: sortDir });
-        break;
-      default:
-        orderBy.push({ updatedAt: sortDir });
-        break;
-    }
-
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        include: {
-          defaultForCategories: true,
-          _count: {
-            select: {
-              createdTickets: true,
-              assignedTickets: true,
-              comments: true,
-              defaultForCategories: true,
-            },
-          },
-        },
-        orderBy,
-        take: limit,
-        skip: offset,
-      }),
-      prisma.user.count({ where: { ...where } }),
-    ]);
+    const { users, total } = await userRepository.search({
+      query: req.query,
+      role: req.role,
+      marketCenterId,
+      isActive: req.isActive,
+      sortBy: req.sortBy as any,
+      sortDir: req.sortDir as any,
+      limit: req.limit,
+      offset: req.offset,
+    });
 
     const formattedUsers = users.map((user) => ({
       ...user,

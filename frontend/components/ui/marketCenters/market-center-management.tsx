@@ -234,9 +234,11 @@ export default function MarketCenterManagement() {
     itemsPerPage,
   });
 
-  const invalidateMarketCenters = queryClient.invalidateQueries({
-    queryKey: marketCentersQueryKey,
-  });
+  const invalidateMarketCenters = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: marketCentersQueryKey,
+    });
+  }, [queryClient, marketCentersQueryKey]);
 
   const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
     UsersResponse,
@@ -276,9 +278,11 @@ export default function MarketCenterManagement() {
     if (!user?.marketCenterId) return user;
   });
 
-  const invalidateUsers = queryClient.invalidateQueries({
-    queryKey: ["market-center-filter-users"],
-  });
+  const invalidateUsers = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["market-center-filter-users"],
+    });
+  }, [queryClient]);
 
   const { data: ticketCategoryData } = useFetchMarketCenterCategories(
     selectedMarketCenterId

@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockPrisma, mockEmailService } = vi.hoisted(() => {
+const { mockUserRepository, mockMarketCenterRepository, mockEmailService } = vi.hoisted(() => {
   return {
-    mockPrisma: {
-      user: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-      },
-      marketCenter: {
-        findUnique: vi.fn(),
-      },
+    mockUserRepository: {
+      findById: vi.fn(),
+      findByMarketCenterIdAndRole: vi.fn(),
+    },
+    mockMarketCenterRepository: {
+      findById: vi.fn(),
     },
     mockEmailService: {
       sendSettingsChangeNotification: vi.fn(),
@@ -18,7 +16,8 @@ const { mockPrisma, mockEmailService } = vi.hoisted(() => {
 });
 
 vi.mock("./db", () => ({
-  getPrisma: vi.fn(() => mockPrisma),
+  userRepository: mockUserRepository,
+  marketCenterRepository: mockMarketCenterRepository,
 }));
 
 vi.mock("./email-service", () => ({
@@ -38,14 +37,16 @@ describe("Email Notifications", () => {
 
   it("should handle notification function without throwing", async () => {
     // Arrange
-    mockPrisma.user.findMany.mockResolvedValue([
+    mockUserRepository.findByMarketCenterIdAndRole.mockResolvedValue([
       { id: "admin1", email: "admin1@example.com", name: "Admin 1" },
       { id: "admin2", email: "admin2@example.com", name: "Admin 2" },
     ]);
-    mockPrisma.marketCenter.findUnique.mockResolvedValue({
+    mockMarketCenterRepository.findById.mockResolvedValue({
+      id: "market-center-id",
       name: "Test Market Center",
     });
-    mockPrisma.user.findUnique.mockResolvedValue({
+    mockUserRepository.findById.mockResolvedValue({
+      id: "changed-by-user-id",
       name: "Changed By User",
       email: "user@example.com",
     });
@@ -63,23 +64,16 @@ describe("Email Notifications", () => {
       notifySettingsChange("market-center-id", "changed-by-user-id", changes)
     ).resolves.not.toThrow();
 
-    // Assert findMany was called with expected query
-    expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
-      where: {
-        marketCenterId: "market-center-id",
-        role: "ADMIN",
-        isActive: false,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
+    // Assert repository was called with expected arguments
+    expect(mockUserRepository.findByMarketCenterIdAndRole).toHaveBeenCalledWith(
+      "market-center-id",
+      "ADMIN",
+      { activeOnly: false }
+    );
 
-    // (Optional) sanity checks:
-    expect(mockPrisma.marketCenter.findUnique).toHaveBeenCalled();
-    expect(mockPrisma.user.findUnique).toHaveBeenCalled();
+    // Sanity checks:
+    expect(mockMarketCenterRepository.findById).toHaveBeenCalledWith("market-center-id");
+    expect(mockUserRepository.findById).toHaveBeenCalledWith("changed-by-user-id");
     expect(mockEmailService.sendSettingsChangeNotification).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db, userRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 
@@ -9,16 +9,21 @@ export const removeTeamMember = api(
     const userContext = await getUserContext();
 
     // Find the user and their market center
-    const user = await prisma.user.findUnique({
-      where: { id: userContext.userId },
-      include: { marketCenter: true },
-    });
+    const user = await db.queryRow<{
+      id: string;
+      marketCenterId: string | null;
+      role: string;
+    }>`
+      SELECT id, market_center_id as "marketCenterId", role
+      FROM users
+      WHERE id = ${userContext.userId}
+    `;
 
     if (!user) {
       throw APIError.notFound("User not found");
     }
 
-    if (!user.marketCenter) {
+    if (!user.marketCenterId) {
       throw APIError.notFound("Market center not found");
     }
 
@@ -35,13 +40,16 @@ export const removeTeamMember = api(
     }
 
     // Get the user to be removed
-    const userToRemove = await prisma.user.findFirst({
-      where: {
-        id,
-        marketCenterId: user.marketCenterId!,
-        deletedAt: null,
-      },
-    });
+    const userToRemove = await db.queryRow<{
+      id: string;
+      role: string;
+    }>`
+      SELECT id, role
+      FROM users
+      WHERE id = ${id}
+        AND market_center_id = ${user.marketCenterId}
+        AND deleted_at IS NULL
+    `;
 
     if (!userToRemove) {
       throw APIError.notFound("User not found or not in your market center");
@@ -59,54 +67,34 @@ export const removeTeamMember = api(
 
     // Check if this is the last admin
     if (userToRemove.role === "ADMIN") {
-      const adminCount = await prisma.user.count({
-        where: {
-          marketCenterId: user.marketCenterId!,
-          role: "ADMIN",
-          deletedAt: null,
-          isActive: true,
-        },
-      });
+      const adminCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*)::int as count
+        FROM users
+        WHERE market_center_id = ${user.marketCenterId}
+          AND role = 'ADMIN'
+          AND deleted_at IS NULL
+          AND is_active = true
+      `;
 
-      if (adminCount <= 1) {
+      if (adminCount && adminCount.count <= 1) {
         throw APIError.aborted("Cannot remove the last admin");
       }
     }
 
     // Soft delete the user
-    await prisma.user.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        isActive: false,
-      },
-    });
+    await db.exec`
+      UPDATE users
+      SET deleted_at = NOW(), is_active = false, updated_at = NOW()
+      WHERE id = ${id}
+    `;
 
     // Reassign their tickets to the current user (admin)
-    await prisma.ticket.updateMany({
-      where: {
-        assigneeId: id,
-        status: { in: ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"] },
-      },
-      data: {
-        assigneeId: user.id,
-      },
-    });
-
-    // Log the removal in audit trail
-    // await prisma.settingsAuditLog.create({
-    //   data: {
-    //     marketCenterId: user.marketCenterId!,
-    //     userId: user.id,
-    //     action: "remove",
-    //     section: "team",
-    //     previousValue: {
-    //       userId: userToRemove.id,
-    //       email: userToRemove.email,
-    //       role: userToRemove.role,
-    //     },
-    //   },
-    // });
+    await db.exec`
+      UPDATE tickets
+      SET assignee_id = ${user.id}, updated_at = NOW()
+      WHERE assignee_id = ${id}
+        AND status IN ('ASSIGNED', 'IN_PROGRESS', 'AWAITING_RESPONSE')
+    `;
 
     return { success: true };
   }
