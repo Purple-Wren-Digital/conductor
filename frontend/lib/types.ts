@@ -9,6 +9,8 @@ import {
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
   NewUserInvitationProps,
+  SurveyResultsProps,
+  TicketSurveyProps,
   UpdatedTicketProps,
 } from "@/packages/transactional/emails/types";
 
@@ -474,7 +476,9 @@ export type NotificationTypes =
   | "Mentions"
   | "New Comments"
   | "Market Center Assignment"
-  | "Category Assignment";
+  | "Category Assignment"
+  | "Ticket Survey"
+  | "Ticket Survey Results";
 export interface Notification {
   id: string;
   userId: string;
@@ -514,6 +518,8 @@ export interface NotificationData {
   updatedTicket?: UpdatedTicketProps;
   ticketAssignment?: AssignedTicketNotificationProps;
   newComment?: NewCommentNotificationProps;
+  ticketSurvey?: TicketSurveyProps;
+  surveyResults?: SurveyResultsProps;
 }
 
 export interface PushNotificationPayload {

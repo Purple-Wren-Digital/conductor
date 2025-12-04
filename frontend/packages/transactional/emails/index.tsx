@@ -1,5 +1,9 @@
 export { default as CreatedTicketNotification } from "./CreatedTicketNotification";
-export { default as MarketCenterUserUpdate } from "./MarketCenterUserUpdate";
+export { default as MarketCenterAssignment } from "./MarketCenterUserUpdate";
+export { default as CategoryAssignment } from "./CategoryAssignment";
 export { default as NewCommentNotification } from "./NewCommentNotification";
 export { default as TicketAssignment } from "./TicketAssignment";
 export { default as UserInvitation } from "./UserInvitation";
+export { default as UpdatedTicket } from "./EditedTicketNotification";
+export { default as TicketSurvey } from "./TicketSurvey";
+export { default as TicketSurveyResults } from "./TicketSurveyResults";

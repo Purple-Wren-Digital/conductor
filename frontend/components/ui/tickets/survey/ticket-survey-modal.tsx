@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,50 +13,105 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { StarRatingInput } from "@/components/ui/ratingInput/star-rating-input";
 import { Textarea } from "@/components/ui/textarea";
-import { useFetchTicketSurveyResults } from "@/hooks/use-tickets";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Survey, UsersToNotify } from "@/lib/types";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 
 export interface TicketSurveyFormProps {
   ticketId: string;
-  surveyId?: string;
+  survey: Survey;
+
   showSurveyModal: boolean;
   setShowSurveyModal: (show: boolean) => void;
-  refreshSurvey: Promise<void>;
+  refreshSurvey: () => Promise<void>;
   disabled: boolean;
 }
 
 export default function TicketSurveyModal({
   ticketId,
-  surveyId,
+  survey,
   showSurveyModal,
   setShowSurveyModal,
   refreshSurvey,
   disabled,
 }: TicketSurveyFormProps) {
-  const { data: surveyData } = useFetchTicketSurveyResults(
-    "RESOLVED",
-    surveyId
-  );
-  const [overAllRating, setOverallRating] = useState(
-    surveyData?.overallRating ?? 0
-  );
-  const [assigneeRating, setAssigneeRating] = useState(
-    surveyData?.assigneeRating ?? 0
-  );
-  const [marketCenterRating, setMarketCenterRating] = useState(
-    surveyData?.marketCenterRating ?? 0
-  );
-  const [comments, setComments] = useState(surveyData?.comment ?? "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overAllRating, setOverallRating] = useState(0);
+  const [assigneeRating, setAssigneeRating] = useState(0);
+  const [marketCenterRating, setMarketCenterRating] = useState(0);
+  const [comments, setComments] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { getToken } = useAuth();
+
+  const prefillSurveyValues = useCallback(() => {
+    setOverallRating(survey?.overallRating ?? 0);
+    setAssigneeRating(survey?.assigneeRating ?? 0);
+    setMarketCenterRating(survey?.marketCenterRating ?? 0);
+    setComments(survey?.comment ?? "");
+  }, [survey]);
+
+  useEffect(() => {
+    if (showSurveyModal && survey) {
+      prefillSurveyValues();
+    }
+  }, [showSurveyModal, survey, prefillSurveyValues]);
+
+  const handleSendSurveyNotifications = async ({
+    userToNotify,
+  }: {
+    userToNotify: UsersToNotify;
+  }) => {
+    try {
+      const response = await createAndSendNotification({
+        getToken: getToken,
+        templateName: "Ticket Survey Results",
+        trigger: "Ticket Survey Results",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          surveyResults: {
+            ticketNumber: ticketId,
+            ticketTitle: survey?.ticket?.title ?? "No title provided",
+            staffName: userToNotify?.name ?? "No name provided",
+          },
+        },
+      });
+    } catch (error) {
+      console.error(
+        "TicketSurveyModal - Unable to generate notifications",
+        error
+      );
+    }
+  };
+
+  const validateSurveyInputs = (): boolean => {
+    if (overAllRating < 0 || assigneeRating < 0 || marketCenterRating < 0) {
+      toast.error("Please provide ratings for all categories.");
+      return false;
+    }
+    if (
+      survey.completed &&
+      survey?.overallRating === overAllRating &&
+      survey?.assigneeRating === assigneeRating &&
+      survey?.marketCenterRating === marketCenterRating &&
+      survey?.comment === comments
+    ) {
+      setErrorMessage("Please make changes before submitting");
+      return false;
+    }
+    return true;
+  };
 
   const updateSurveyMutation = useMutation({
     mutationFn: async (ticketId: string) => {
       if (!ticketId) throw new Error("Missing Ticket ID");
-      setIsSubmitting(true);
+      setIsLoading(true);
 
       const token = await getToken();
       if (!token) {
@@ -78,8 +133,17 @@ export default function TicketSurveyModal({
       });
 
       if (!response.ok) throw new Error("Failed to update survey");
+      const data = await response.json();
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      if (data?.usersToNotify) {
+        await Promise.all(
+          data.usersToNotify.map(async (userToNotify: UsersToNotify) => {
+            await handleSendSurveyNotifications({ userToNotify });
+          })
+        );
+      }
       toast.success(`Rating submitted successfully!`);
       setShowSurveyModal(false);
     },
@@ -87,9 +151,9 @@ export default function TicketSurveyModal({
       console.error("Error submitting survey:", error);
       toast.error("Failed to submit survey");
     },
-    onSettled() {
-      refreshSurvey;
-      setIsSubmitting(false);
+    onSettled: async () => {
+      await refreshSurvey();
+      setIsLoading(false);
     },
   });
 
@@ -101,15 +165,14 @@ export default function TicketSurveyModal({
       <DialogPortal>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
-              Ticket Survey
-            </DialogTitle>
-            <DialogDescription className="flex flex-col gap-1">
+            <DialogTitle>Survey</DialogTitle>
+
+            <DialogDescription className="flex flex-col gap-0.5 my-2">
               <span>
-                Ticket:{" "}
-                {`${surveyData?.ticket?.title ? `"${surveyData?.ticket?.title}"` : ""}`}
+                Please evaluate your experience with this ticket, using a 0–5
+                scale.
               </span>
-              <span>Please provide your feedback below.</span>
+              <span>0 = poor, 5 = excellent</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -117,21 +180,28 @@ export default function TicketSurveyModal({
             className="space-y-4"
             onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
               e.preventDefault();
+              if (!validateSurveyInputs()) return;
               updateSurveyMutation.mutate(ticketId);
             }}
           >
-            <Separator />
-
             <div className="space-y-2">
-              <Label htmlFor="assigneeRating" className="font-semibold">
-                {surveyData?.assignee?.name || "Assignee"} Rating:{" "}
-                {assigneeRating.toFixed(2)}
+              <Label
+                htmlFor="assigneeRating"
+                className="flex flex-col gap-1 items-start font-semibold"
+              >
+                <span className="flex justify-between gap-2 w-full">
+                  <span>{survey?.assignee?.name || "Assignee"} Rating:</span>
+                  <span>{assigneeRating.toFixed(2)}</span>
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Staff person assigned to your ticket
+                </span>
               </Label>
               <StarRatingInput
                 value={assigneeRating}
                 onChange={setAssigneeRating}
                 inputId="assigneeRating"
-                disabled={disabled || isSubmitting}
+                disabled={disabled || isLoading}
                 size={20}
               />
             </div>
@@ -139,16 +209,24 @@ export default function TicketSurveyModal({
             <Separator />
 
             <div className="space-y-2">
-              <Label htmlFor="marketCenterRating" className="font-semibold">
-                {surveyData?.marketCenter?.name || "Market Center"} Rating:{" "}
-                {marketCenterRating.toFixed(2)}
+              <Label
+                htmlFor="marketCenterRating"
+                className="flex flex-col gap-1 items-start font-semibold"
+              >
+                <span className="flex justify-between gap-2 w-full">
+                  {survey?.marketCenter?.name || "Market Center"} Rating:
+                  <span>{marketCenterRating.toFixed(2)}</span>
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Market Center handling your ticket
+                </span>
               </Label>
 
               <StarRatingInput
                 value={marketCenterRating}
                 onChange={setMarketCenterRating}
                 inputId="marketCenterRating"
-                disabled={disabled || isSubmitting}
+                disabled={disabled || isLoading}
                 size={20}
               />
             </div>
@@ -156,15 +234,25 @@ export default function TicketSurveyModal({
             <Separator />
 
             <div className="space-y-2">
-              <Label htmlFor="overallRating" className="font-semibold">
-                Overall Rating: {overAllRating.toFixed(2)}
+              <Label
+                htmlFor="overallRating"
+                className="flex flex-col gap-1 items-start font-semibold"
+              >
+                <span className="flex justify-between gap-2 w-full">
+                  <span>Overall Rating:</span>
+                  <span>{overAllRating.toFixed(2)}</span>
+                </span>
+
+                <span className="text-xs text-muted-foreground font-medium">
+                  Overall experience with your ticket
+                </span>
               </Label>
 
               <StarRatingInput
                 value={overAllRating}
                 onChange={setOverallRating}
                 inputId="overallRating"
-                disabled={disabled || isSubmitting}
+                disabled={disabled || isLoading}
                 size={20}
               />
             </div>
@@ -173,7 +261,9 @@ export default function TicketSurveyModal({
 
             {/* COMMENTS */}
             <div className="space-y-2">
-              <Label htmlFor="comments">Additional Comments:</Label>
+              <Label htmlFor="comments" className="mb-3">
+                Additional Comments:
+              </Label>
               <Textarea
                 id="comments"
                 name="comments"
@@ -181,12 +271,18 @@ export default function TicketSurveyModal({
                 cols={50}
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                disabled={disabled || isSubmitting}
+                disabled={disabled || isLoading}
+                autoFocus={false}
               />
             </div>
             <Separator />
 
-            <div className="space-y-2 flex justify-end gap-2 mt-4">
+            <div className="space-y-2 flex items-center justify-end gap-2 mt-4">
+              {errorMessage && (
+                <p className="text-sm text-red-600 mr-auto font-medium">
+                  {errorMessage}
+                </p>
+              )}
               <Button
                 variant="outline"
                 onClick={() => setShowSurveyModal(false)}
@@ -196,7 +292,7 @@ export default function TicketSurveyModal({
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={disabled || isSubmitting || !ticketId}
+                disabled={disabled || isLoading || !ticketId || !survey}
               >
                 Submit
               </Button>

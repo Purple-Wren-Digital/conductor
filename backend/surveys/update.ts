@@ -1,6 +1,8 @@
 import { api, APIError } from "encore.dev/api";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
+import type { UsersToNotify } from "../notifications/types";
 
 export interface UpdateSurveyRequest {
   ticketId: string;
@@ -12,6 +14,7 @@ export interface UpdateSurveyRequest {
 
 export interface UpdateSurveyResponse {
   success: boolean;
+  usersToNotify: UsersToNotify[];
 }
 
 export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
@@ -30,6 +33,7 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
 
     const survey = await prisma.survey.findUnique({
       where: { ticketId: req.ticketId },
+      include: { assignee: true, marketCenter: true },
     });
 
     if (!survey || !survey?.surveyorId) {
@@ -54,6 +58,35 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
       },
     });
 
-    return { success: true };
+    const usersToNotify: UsersToNotify[] = [];
+    if (survey?.assigneeId && survey?.assignee) {
+      usersToNotify.push({
+        id: survey.assigneeId,
+        name: survey.assignee?.name || "",
+        email: survey.assignee?.email || "",
+        updateType: "ticketSurveyResults",
+      });
+    }
+
+    if (survey?.marketCenterId && survey?.marketCenter) {
+      let staffWhere: Prisma.UserWhereInput = {
+        marketCenterId: survey.marketCenterId,
+        role: "STAFF_LEADER",
+        id: survey?.assigneeId ? { not: survey.assigneeId } : undefined,
+      };
+      const staffLeaders = await prisma.user.findMany({
+        where: staffWhere,
+      });
+      staffLeaders.forEach((leader) => {
+        usersToNotify.push({
+          id: leader.id,
+          name: leader.name || "",
+          email: leader.email || "",
+          updateType: "ticketSurveyResults",
+        });
+      });
+    }
+
+    return { success: true, usersToNotify: usersToNotify };
   }
 );

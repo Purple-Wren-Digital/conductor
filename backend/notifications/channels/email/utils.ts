@@ -1,11 +1,16 @@
 import * as React from "react";
 import type { Notification } from "../../types";
-import UserInvitation from "@/emails/UserInvitation";
-import MarketCenterAssignment from "@/emails/MarketCenterUserUpdate";
-import CategoryAssignment from "@/emails/CategoryAssignment";
-import CreatedTicketNotification from "@/emails/CreatedTicketNotification";
-import TicketAssignment from "@/emails/TicketAssignment";
-import UpdatedTicket from "@/emails/EditedTicketNotification";
+import {
+  CategoryAssignment,
+  CreatedTicketNotification,
+  MarketCenterAssignment,
+  NewCommentNotification,
+  TicketAssignment,
+  TicketSurvey,
+  TicketSurveyResults,
+  UpdatedTicket,
+  UserInvitation,
+} from "@/emails/index";
 
 export const formatEmailNotification = (notification: Notification) => {
   // USERS
@@ -18,17 +23,17 @@ export const formatEmailNotification = (notification: Notification) => {
 
   // MARKET CENTERS
   if (notification?.data?.marketCenterAssignment) {
-    const createdTicket = MarketCenterAssignment(
+    const marketCenterAssignment = MarketCenterAssignment(
       notification.data.marketCenterAssignment
     ) as React.ReactElement;
-    return createdTicket;
+    return marketCenterAssignment;
   }
 
   if (notification?.data?.categoryAssignment) {
-    const createdTicket = CategoryAssignment(
+    const categoryAssignment = CategoryAssignment(
       notification.data.categoryAssignment
     ) as React.ReactElement;
-    return createdTicket;
+    return categoryAssignment;
   }
 
   // TICKETS
@@ -40,21 +45,41 @@ export const formatEmailNotification = (notification: Notification) => {
   }
 
   if (notification?.data?.ticketAssignment) {
-    const createdTicket = TicketAssignment(
+    const assignedTicket = TicketAssignment(
       notification.data.ticketAssignment
     ) as React.ReactElement;
-    return createdTicket;
+    return assignedTicket;
   }
 
   if (notification?.data?.updatedTicket) {
-    const createdTicket = UpdatedTicket(
+    const updatedTicket = UpdatedTicket(
       notification.data.updatedTicket
     ) as React.ReactElement;
-    return createdTicket;
+    return updatedTicket;
   }
 
-  // TODO: COMMENTS
-  // TODO: Weekly/Daily Summaries
+  if (notification?.data?.newComment) {
+    const newComment = NewCommentNotification(
+      notification.data.newComment
+    ) as React.ReactElement;
+    return newComment;
+  }
+
+  if (notification?.data?.ticketSurvey) {
+    const ticketSurvey = TicketSurvey(
+      notification.data.ticketSurvey
+    ) as React.ReactElement;
+    return ticketSurvey;
+  }
+
+  if (notification?.data?.surveyResults) {
+    const surveyResults = TicketSurveyResults(
+      notification.data.surveyResults
+    ) as React.ReactElement;
+    return surveyResults;
+  }
+
+  // TODO: Weekly/Daily Summary Reports
 
   return null;
 };

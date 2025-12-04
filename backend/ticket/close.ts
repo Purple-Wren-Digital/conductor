@@ -1,9 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "./db";
 import { getUserContext } from "../auth/user-context";
-import type { ActivityUpdates } from "@/emails/types";
 import type { UsersToNotify } from "../notifications/types";
-import { TicketStatus } from "./types";
+import type { TicketStatus } from "./types";
 import { canDeleteTicket } from "../auth/permissions";
 
 export interface CloseTicketRequest {
@@ -13,7 +12,6 @@ export interface CloseTicketRequest {
 
 export interface CloseTicketResponse {
   usersToNotify: UsersToNotify[];
-  changedDetails: ActivityUpdates;
 }
 
 export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
@@ -60,7 +58,7 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       );
     }
 
-    const { ticket } = await prisma.$transaction(async (p) => {
+    const { ticket, survey } = await prisma.$transaction(async (p) => {
       const survey = await p.survey.create({
         data: {
           ticketId: req.ticketId,
@@ -96,7 +94,7 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
         },
       });
 
-      return { ticket };
+      return { ticket, survey };
     });
 
     const usersToNotify: UsersToNotify[] = [
@@ -104,14 +102,14 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
         id: ticket.creatorId,
         name: ticket.creator?.name || "",
         email: ticket.creator?.email || "",
-        updateType: "unchanged",
+        updateType: "ticketSurvey",
       },
     ];
 
     if (
-      ticket?.assignee &&
       ticket?.assigneeId &&
-      ticket?.assigneeId !== ticket?.creatorId
+      ticket.creatorId !== ticket?.assigneeId &&
+      ticket?.assignee
     ) {
       usersToNotify.push({
         id: ticket.assigneeId,
@@ -121,13 +119,6 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       });
     }
 
-    return {
-      usersToNotify: usersToNotify,
-      changedDetails: {
-        label: "Status",
-        originalValue: oldTicket.status,
-        newValue: "RESOLVED",
-      },
-    };
+    return { usersToNotify: usersToNotify };
   }
 );

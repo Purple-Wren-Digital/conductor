@@ -315,45 +315,59 @@ export default function AdminTicketList() {
     setSelectedTickets(checked ? tickets.map((t) => t.id) : []);
   };
 
-  const handleSendTicketNotifications = async ({
-    ticket,
+  const handleSendTicketClosedNotifications = async ({
     userToNotify,
-    changedDetails,
+    ticket,
   }: {
-    ticket: {
-      id: string;
-      title: string;
-      createdAt: Date;
-      updatedOn: Date;
-    };
     userToNotify: UsersToNotify;
-    changedDetails: ActivityUpdates;
+    ticket: { id: string; title: string; createdAt: Date };
   }) => {
+    const notifyCreator = userToNotify.updateType === "unchanged";
+    const notifySurvey =
+      userToNotify?.updateType === "ticketSurvey" ||
+      userToNotify?.updateType === "ticketSurveyResults";
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: "Ticket Updated",
-        trigger: "Ticket Updated",
+        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
           name: userToNotify?.name,
           email: userToNotify?.email,
         },
         data: {
-          updatedTicket: {
-            ticketNumber: ticket.id,
-            ticketTitle: ticket?.title ?? "No title provided",
-            createdOn: ticket?.createdAt,
-            updatedOn: ticket?.updatedOn,
-            editorName: currentUser?.name ?? "Unknown",
-            editorId: currentUser?.id ?? "",
-            changedDetails: [changedDetails],
-          },
+          ticketSurvey:
+            notifySurvey && !notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  surveyorName: userToNotify?.name ?? "No name provided",
+                }
+              : undefined,
+          updatedTicket:
+            !notifySurvey && notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  createdOn: ticket?.createdAt,
+                  updatedOn: new Date(),
+                  editorName: userToNotify?.name ?? "Unknown",
+                  editorId: userToNotify?.id ?? "",
+                  changedDetails: [
+                    {
+                      label: "Status",
+                      newValue: "RESOLVED",
+                      originalValue: "ASSIGNED",
+                    },
+                  ],
+                }
+              : undefined,
         },
       });
     } catch (error) {
       console.error(
-        "AgentTicketList - Unable to generate notifications for closed ticket:",
+        "TicketListAdmin - Unable to generate Survey notifications",
         error
       );
     }
@@ -380,12 +394,7 @@ export default function AdminTicketList() {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      if (
-        !data ||
-        !data?.usersToNotify ||
-        !data?.usersToNotify.length ||
-        !data?.changedDetails
-      )
+      if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
         throw new Error("No data returned from close ticket");
       return { ...data, ticket: ticket };
     },
@@ -397,15 +406,13 @@ export default function AdminTicketList() {
       const { usersToNotify, changedDetails, ticket } = data;
       await Promise.all(
         usersToNotify.map((user) =>
-          handleSendTicketNotifications({
+          handleSendTicketClosedNotifications({
             ticket: {
               id: ticket.id,
               title: ticket?.title ?? "No title provided",
               createdAt: ticket.createdAt,
-              updatedOn: new Date(),
             },
             userToNotify: user,
-            changedDetails,
           })
         )
       );
