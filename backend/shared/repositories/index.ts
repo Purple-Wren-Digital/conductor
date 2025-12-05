@@ -17,3 +17,4 @@ export { surveyRepository } from "./survey.repository";
 export { todoRepository } from "./todo.repository";
 export { subscriptionRepository } from "./subscription.repository";
 export { settingsAuditRepository } from "./settings-audit.repository";
+export { slaRepository } from "./sla.repository";

@@ -12,6 +12,7 @@ import { getUserContext } from "../auth/user-context";
 import { canModifyTicket, canReassignTicket } from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";
 import { UsersToNotify } from "../notifications/types";
+import { slaService } from "../sla/sla.service";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -303,6 +304,9 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         }
       );
+
+      // Record first response for SLA tracking (assignment counts as first response)
+      await slaService.recordFirstResponse(req.ticketId);
     } else if (
       canAssign &&
       !unassignTicket &&

@@ -25,6 +25,7 @@ import {
   Info,
   BookMarked,
   Folder,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -185,6 +186,16 @@ export function AppSidebar({
                   >
                     <BookMarked className="text-muted-foreground" />
                     Market Center
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {/* ADMIN/STAFF_LEADER - SLA MANAGEMENT */}
+            {(role === "ADMIN" || role === "STAFF_LEADER") && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/sla">
+                    <Clock className="text-muted-foreground" /> SLA Management
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

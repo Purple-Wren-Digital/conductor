@@ -88,6 +88,11 @@ export interface NotificationData {
   newComment?: NewCommentNotificationProps;
   ticketSurvey?: TicketSurveyProps;
   surveyResults?: SurveyResultsProps;
+
+  // SLA
+  slaEventType?: 'WARNING_50' | 'WARNING_75' | 'BREACHED' | 'MET';
+  urgency?: Urgency;
+  assigneeId?: string | null;
 }
 
 export interface UsersToNotify {
