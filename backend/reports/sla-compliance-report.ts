@@ -35,9 +35,13 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
     const userContext = await getUserContext();
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
     const statusList = req.status && req.status.length > 0 ? req.status : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+    const marketCenterIds =
+      req.marketCenterIds && req.marketCenterIds.length > 0
+        ? req.marketCenterIds
+        : null;
 
     let ticketsFound: TicketRow[] = [];
 
@@ -51,6 +55,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             WHERE (
               t.assignee_id = ${userContext.userId}
               OR t.creator_id = ${userContext.userId}
+              OR t.assignee_id IS NULL
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
@@ -66,6 +71,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
               tc.market_center_id = ${userContext.marketCenterId}
               OR creator.market_center_id = ${userContext.marketCenterId}
               OR assignee.market_center_id = ${userContext.marketCenterId}
+              OR t.assignee_id IS NULL
+
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
@@ -84,6 +91,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
               tc.market_center_id = ANY(${marketCenterIds})
               OR creator.market_center_id = ANY(${marketCenterIds})
               OR assignee.market_center_id = ANY(${marketCenterIds})
+              OR t.assignee_id IS NULL
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))

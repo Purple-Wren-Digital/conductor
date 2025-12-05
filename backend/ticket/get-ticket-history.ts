@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { db, fromTimestamp, fromJson } from "./db";
-import { TicketHistory, User } from "../ticket/types";
+import { TicketHistory } from "../ticket/types";
+import { UserRole } from "../user/types";
 import { mapHistorySnapshot } from "../utils";
 
 export interface GetTicketHistoryRequest {
@@ -34,6 +35,8 @@ interface TicketHistoryRow {
   user_image_url: string | null;
   user_role: string;
   user_is_active: boolean;
+  user_created_at(user_created_at: any): Date;
+  user_updated_at(user_updated_at: any): Date;
 }
 
 export const getTicketHistory = api<
@@ -113,27 +116,32 @@ export const getTicketHistory = api<
     const total = totalResult?.count ?? 0;
 
     // Transform rows to TicketHistory format
-    const ticketHistory: TicketHistory[] = history.map(row => ({
+    const ticketHistory: TicketHistory[] = history.map((row) => ({
       id: row.id,
       ticketId: row.ticket_id,
       action: row.action,
       field: row.field,
       previousValue: row.previousValue,
       newValue: row.newValue,
-      snapshot: row.snapshot ? fromJson(row.snapshot) : undefined,
-      changedAt: fromTimestamp(row.changed_at),
+      snapshot: row?.snapshot
+        ? (fromJson(row.snapshot) ?? undefined)
+        : undefined,
+      changedAt: fromTimestamp(row.changed_at) ?? new Date(),
       changedById: row.changed_by_id,
-      changedBy: row.user_clerk_id ? {
-        id: row.changed_by_id,
-        clerkId: row.user_clerk_id,
-        email: row.user_email,
-        name: row.user_name,
-        imageUrl: row.user_image_url,
-        role: row.user_role as any,
-        isActive: row.user_is_active,
-        createdAt: new Date(), // Not queried but required by User type
-        updatedAt: new Date(), // Not queried but required by User type
-      } as User : undefined,
+      changedBy: row.user_clerk_id
+        ? {
+            id: row.changed_by_id ?? "Unknown",
+            clerkId: row.user_clerk_id ?? "Unknown",
+            email: row.user_email ?? "Unknown",
+            name: row.user_name ?? "Unknown",
+            imageUrl: row.user_image_url || null,
+            role: (row.user_role as UserRole) || ("AGENT" as UserRole),
+            isActive: row.user_is_active,
+            marketCenterId: null,
+            createdAt: fromTimestamp(row.user_created_at) ?? new Date(),
+            updatedAt: fromTimestamp(row.user_updated_at) ?? new Date(),
+          }
+        : undefined,
     }));
 
     return {
