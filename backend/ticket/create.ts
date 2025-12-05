@@ -3,7 +3,6 @@ import { ticketRepository, todoRepository, userRepository } from "./db";
 import type { Ticket, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
-import { mapHistorySnapshot } from "../utils";
 import { UsersToNotify } from "../notifications/types";
 import { checkCanCreateTicket } from "../auth/subscription-check";
 import { slaService } from "../sla/sla.service";
@@ -33,6 +32,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
     auth: true,
   },
   async (req) => {
+    console.log("********** Create ticket request received:", req);
     try {
       const userContext = await getUserContext();
 
@@ -67,7 +67,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         dueDate: req.dueDate,
       });
 
-      // Set SLA due date based on urgency
+      // Set SLA due date based on urgency // TODO:
       await slaService.setTicketSla(ticket.id, req.urgency, ticket.createdAt);
 
       // If ticket is assigned on creation, record that as first response
