@@ -91,13 +91,7 @@ export function useFetchTicketHistory({
   id,
   queryKey,
   queryParams,
-  showHistoryModal,
-}: {
-  id?: string;
-  queryKey: readonly [string, string | undefined, Record<string, string>];
-  queryParams: URLSearchParams;
-  showHistoryModal: boolean;
-}) {
+}: FetchHistoryType) {
   const { getToken } = useAuth();
 
   return useQuery({
@@ -127,7 +121,7 @@ export function useFetchTicketHistory({
         throw error;
       }
     },
-    enabled: !!id && !!showHistoryModal,
+    enabled: !!id,
   });
 }
 

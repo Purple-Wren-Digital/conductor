@@ -168,7 +168,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         { orderBy: "desc", limit: "5" },
       ],
       queryParams: new URLSearchParams("orderBy=desc&limit=5"),
-      showHistoryModal: showHistoryModal,
     });
   const ticketHistory: TicketHistory[] = ticketHistoryData?.ticketHistory || [];
   const invalidateTicketHistory = useCallback(
