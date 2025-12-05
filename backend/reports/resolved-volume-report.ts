@@ -1,6 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
-import { Prisma } from "@prisma/client";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface ResolvedVolumeRequest {
@@ -20,6 +19,11 @@ export interface ResolvedVolumeResponse {
   total: number;
 }
 
+interface TicketRow {
+  id: string;
+  resolved_at: Date | null;
+}
+
 export const resolvedByMonth = api<
   ResolvedVolumeRequest,
   ResolvedVolumeResponse
@@ -32,43 +36,110 @@ export const resolvedByMonth = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    let where: Prisma.TicketWhereInput = {
-      status: "RESOLVED",
-      resolvedAt: { not: null },
-    };
+
+    // Convert arrays to filter params (null if empty)
+    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const assigneeIds = req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
+    const creatorIds = req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
+    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+
+    // Parse date filters
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+
+    if (req.dateFrom) {
+      const from = new Date(req.dateFrom);
+      if (!isNaN(from.getTime())) dateFrom = from;
+    }
+    if (req.dateTo) {
+      const to = new Date(req.dateTo);
+      if (!isNaN(to.getTime())) dateTo = to;
+    }
+
+    // Default to last 6 months if no date range provided
+    if (!dateFrom && !dateTo) {
+      dateFrom = new Date();
+      dateFrom.setDate(1);
+      dateFrom.setMonth(dateFrom.getMonth() - 6);
+    }
+
+    let tickets: TicketRow[] = [];
 
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
         if (!userContext.marketCenterId) {
-          where = {
-            OR: [
-              { assigneeId: userContext.userId },
-              { creatorId: userContext.userId },
-            ],
-          };
+          tickets = await db.queryAll<TicketRow>`
+            SELECT t.id, t.resolved_at
+            FROM tickets t
+            WHERE t.status = 'RESOLVED'
+              AND t.resolved_at IS NOT NULL
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.creator_id = ${userContext.userId}
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
+          `;
         } else {
-          const baseScope: Prisma.TicketWhereInput = {
-            OR: [
-              { category: { marketCenterId: userContext.marketCenterId } },
-              { creator: { marketCenterId: userContext.marketCenterId } },
-              { assignee: { marketCenterId: userContext.marketCenterId } },
-            ],
-          };
-
-          where = baseScope;
+          tickets = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.resolved_at
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status = 'RESOLVED'
+              AND t.resolved_at IS NOT NULL
+              AND (
+                tc.market_center_id = ${userContext.marketCenterId}
+                OR creator.market_center_id = ${userContext.marketCenterId}
+                OR assignee.market_center_id = ${userContext.marketCenterId}
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
+          `;
         }
         break;
       case "ADMIN":
-        const baseScopeAdmin: Prisma.TicketWhereInput = {};
-        if (req.marketCenterIds && req.marketCenterIds.length > 0) {
-          baseScopeAdmin.OR = [
-            { category: { marketCenterId: { in: req.marketCenterIds } } },
-            { creator: { marketCenterId: { in: req.marketCenterIds } } },
-            { assignee: { marketCenterId: { in: req.marketCenterIds } } },
-          ];
+        if (marketCenterIds) {
+          tickets = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.resolved_at
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status = 'RESOLVED'
+              AND t.resolved_at IS NOT NULL
+              AND (
+                tc.market_center_id = ANY(${marketCenterIds})
+                OR creator.market_center_id = ANY(${marketCenterIds})
+                OR assignee.market_center_id = ANY(${marketCenterIds})
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
+          `;
+        } else {
+          tickets = await db.queryAll<TicketRow>`
+            SELECT t.id, t.resolved_at
+            FROM tickets t
+            WHERE t.status = 'RESOLVED'
+              AND t.resolved_at IS NOT NULL
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
+          `;
         }
-        where = baseScopeAdmin;
         break;
       default:
         throw APIError.permissionDenied(
@@ -76,51 +147,18 @@ export const resolvedByMonth = api<
         );
     }
 
-    if (req.categoryIds && req.categoryIds.length > 0) {
-      where.categoryId = { in: req.categoryIds as string[] };
-    }
-
-    if (req.assigneeIds && req.assigneeIds.length > 0) {
-      where.assigneeId = { in: req.assigneeIds as string[] };
-    }
-
-    if (req.creatorIds && req.creatorIds.length > 0) {
-      where.creatorId = { in: req.creatorIds as string[] };
-    }
-
-    if (req.dateFrom || req.dateTo) {
-      const resolvedAt: Prisma.DateTimeFilter = {};
-      if (req.dateFrom) {
-        const from = new Date(req.dateFrom);
-        if (!isNaN(from.getTime())) resolvedAt.gte = from;
-      }
-      if (req.dateTo) {
-        const to = new Date(req.dateTo);
-        if (!isNaN(to.getTime())) resolvedAt.lte = to;
-      }
-      if (Object.keys(resolvedAt).length > 0) {
-        where.resolvedAt = resolvedAt;
-      }
-    } else {
-      // Default to last 6 months
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setDate(1);
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      where.resolvedAt = { gte: sixMonthsAgo };
-    }
-
-    const tickets = await prisma.ticket.findMany({ where });
-
     const ticketsResolved: {
       resolvedMonthYear: string;
       resolvedCount: number;
     }[] = [];
+
     // Sort the tickets into groups by MM/YYYY
     tickets.forEach((ticket) => {
-      const resolvedDate = ticket.resolvedAt;
+      const resolvedDate = ticket.resolved_at;
       if (!resolvedDate) return;
-      const month = resolvedDate.getMonth() + 1; // Months are zero-based
-      const year = resolvedDate.getFullYear();
+      const date = new Date(resolvedDate);
+      const month = date.getMonth() + 1; // Months are zero-based
+      const year = date.getFullYear();
       const monthYearKey = `${month.toString().padStart(2, "0")}/${year}`;
 
       const existingGroup = ticketsResolved.find(

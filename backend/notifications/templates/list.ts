@@ -46,14 +46,14 @@ export const listTemplates = api<
       id: t.id,
       templateName: t.template_name,
       templateDescription: t.template_description,
-      subject: t.subject ?? null,
+      subject: t.subject ?? "",
       body: t.body,
       category: t.category,
       channel: t.channel,
+      type: t.category, // Use category as type
       isDefault: t.is_default,
       createdAt: fromTimestamp(t.created_at)!,
       variables: fromJson(t.variables) ?? undefined,
-      data: null,
     }));
 
     return {

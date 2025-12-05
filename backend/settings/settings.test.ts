@@ -23,8 +23,10 @@ const { mockDb, mockUserRepository, mockTicketRepository, mockSettingsAuditRepos
   },
   mockUserContext: {
     userId: "user-123",
-    role: "ADMIN",
+    email: "admin@test.com",
+    role: "ADMIN" as const,
     marketCenterId: "mc-123",
+    clerkId: "clerk-123",
   },
 }));
 
@@ -121,8 +123,10 @@ describe("Settings Service Tests", () => {
     it("should throw permission denied for AGENT users", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "user-123",
-        role: "AGENT",
+        email: "agent@test.com",
+        role: "AGENT" as const,
         marketCenterId: "mc-123",
+        clerkId: "clerk-agent",
       });
 
       await expect(getTeamMembers()).rejects.toThrow(
@@ -330,8 +334,10 @@ describe("Settings Service Tests", () => {
     it("should prevent staff from removing admins", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "user-123",
-        role: "STAFF",
+        email: "staff@test.com",
+        role: "STAFF" as const,
         marketCenterId: "mc-123",
+        clerkId: "clerk-staff",
       });
       mockDb.queryRow
         .mockResolvedValueOnce({ id: "user-123", marketCenterId: "mc-123", role: "STAFF" })

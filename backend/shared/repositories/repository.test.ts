@@ -36,6 +36,7 @@ import { surveyRepository } from "./survey.repository";
 import { todoRepository } from "./todo.repository";
 import { subscriptionRepository } from "./subscription.repository";
 import { settingsAuditRepository } from "./settings-audit.repository";
+import { SubscriptionStatus, SubscriptionPlan } from "../../subscription/types";
 
 // Type the mocked db
 const mockedDb = vi.mocked(db);
@@ -328,7 +329,7 @@ describe("Notification Repository", () => {
     const notification = await notificationRepository.create({
       userId: "user-123",
       channel: "IN_APP",
-      category: "TICKET",
+      category: "ACTIVITY",
       type: "TICKET_ASSIGNED",
       title: "New Assignment",
       body: "You have been assigned a ticket",
@@ -783,8 +784,8 @@ describe("Subscription Repository", () => {
       stripeSubscriptionId: "stripe-sub-123",
       stripeCustomerId: "stripe-cus-123",
       marketCenterId: "mc-123",
-      status: "ACTIVE",
-      planType: "PROFESSIONAL",
+      status: SubscriptionStatus.ACTIVE,
+      planType: SubscriptionPlan.TEAM,
       priceId: "price-123",
       currentPeriodStart: new Date("2024-01-01"),
       currentPeriodEnd: new Date("2024-02-01"),
@@ -798,7 +799,7 @@ describe("Subscription Repository", () => {
     const canceledSub = { ...mockSubscriptionRow, status: "CANCELED" };
     mockedDb.rawQueryRow.mockResolvedValueOnce(canceledSub);
 
-    const sub = await subscriptionRepository.update("sub-123", { status: "CANCELED" });
+    const sub = await subscriptionRepository.update("sub-123", { status: SubscriptionStatus.CANCELED });
 
     expect(sub?.status).toBe("CANCELED");
   });

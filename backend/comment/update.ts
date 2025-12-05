@@ -85,19 +85,24 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     }
 
     // Fetch the updated comment with user details
-    const updatedComment = await commentRepository.findById(req.commentId);
+    const updatedComment = await commentRepository.findByIdWithUser(req.commentId);
 
     if (!updatedComment) {
       throw APIError.internal("Failed to fetch updated comment");
     }
 
     // Ensure user name is not null for the response
-    const safeUpdatedComment = {
-      ...updatedComment,
-      user: {
+    const safeUpdatedComment: Comment = {
+      id: updatedComment.id,
+      content: updatedComment.content,
+      ticketId: updatedComment.ticketId,
+      userId: updatedComment.userId,
+      internal: updatedComment.internal,
+      createdAt: updatedComment.createdAt,
+      user: updatedComment.user ? {
         ...updatedComment.user,
         name: updatedComment.user.name ?? "",
-      },
+      } : undefined,
     };
 
     // Publish comment updated event for real-time updates

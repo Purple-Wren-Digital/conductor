@@ -117,7 +117,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
         role: u.role as any,
         clerkId: u.clerk_id,
         isActive: u.is_active,
-        marketCenterId: u.market_center_id ?? undefined,
+        marketCenterId: u.market_center_id ?? null,
         createdAt: fromTimestamp(u.created_at)!,
         updatedAt: fromTimestamp(u.updated_at)!,
       })),
@@ -126,7 +126,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
         name: c.name ?? "",
         description: c.description ?? "",
         marketCenterId: c.market_center_id,
-        defaultAssigneeId: c.default_assignee_id ?? undefined,
+        defaultAssigneeId: c.default_assignee_id ?? null,
         createdAt: fromTimestamp(c.created_at)!,
         updatedAt: fromTimestamp(c.updated_at)!,
         defaultAssignee: c.assignee_id ? {
@@ -136,6 +136,7 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
           role: c.assignee_role as any,
           clerkId: "", // Not fetched in this query
           isActive: true,
+          marketCenterId: c.market_center_id ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
         } : null,

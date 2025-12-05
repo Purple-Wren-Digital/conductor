@@ -55,12 +55,14 @@ export const getTeamMembers = api(
     if (!members || !members.length) {
       safeMembers = [] as TeamMember[];
     } else {
-      safeMembers = members.map((member) => {
-        return {
-          ...member,
-          name: member?.name || "",
-        };
-      });
+      safeMembers = members.map((member) => ({
+        id: member.id,
+        email: member.email,
+        name: member.name || "",
+        role: member.role as TeamMember["role"],
+        isActive: member.isActive,
+        createdAt: member.createdAt,
+      }));
     }
 
     return {
