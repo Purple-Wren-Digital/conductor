@@ -1,4 +1,6 @@
-import { NotificationCategory, NotificationFrequency } from "@prisma/client";
+// Local enum definitions (replacing Prisma imports)
+export type NotificationCategory = "ACCOUNT" | "ACTIVITY" | "MARKETING" | "PRODUCT" | "PERMISSIONS";
+export type NotificationFrequency = "NONE" | "INSTANT" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUALLY";
 
 export function mapHistorySnapshot(history: any[]): any[] {
   return history.map((h) => ({
@@ -18,8 +20,8 @@ export function mapUser(user: any) {
 export const defaultNotificationPreferences = [
   // PERMISSIONS
   {
-    frequency: NotificationFrequency.NONE,
-    category: NotificationCategory.PERMISSIONS,
+    frequency: "NONE" as NotificationFrequency,
+    category: "PERMISSIONS" as NotificationCategory,
     type: "App Permissions",
     email: true,
     inApp: true,
@@ -28,8 +30,8 @@ export const defaultNotificationPreferences = [
   },
   // MARKETING
   {
-    frequency: NotificationFrequency.NONE,
-    category: NotificationCategory.MARKETING,
+    frequency: "NONE" as NotificationFrequency,
+    category: "MARKETING" as NotificationCategory,
     type: "General",
     email: true,
     inApp: true,
@@ -38,8 +40,8 @@ export const defaultNotificationPreferences = [
   },
   // PRODUCT
   {
-    frequency: NotificationFrequency.NONE,
-    category: NotificationCategory.PRODUCT,
+    frequency: "NONE" as NotificationFrequency,
+    category: "PRODUCT" as NotificationCategory,
     type: "General",
     email: true,
     inApp: true,
@@ -48,8 +50,8 @@ export const defaultNotificationPreferences = [
   },
   //   ACCOUNT
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACCOUNT,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACCOUNT" as NotificationCategory,
     type: "General",
     email: true,
     inApp: false,
@@ -57,8 +59,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACCOUNT,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACCOUNT" as NotificationCategory,
     type: "Account Information",
     email: true,
     inApp: true,
@@ -67,8 +69,8 @@ export const defaultNotificationPreferences = [
   },
   // ACTIVITY: SUMMARY
   {
-    frequency: NotificationFrequency.DAILY,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "DAILY" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Daily Summary",
     email: true,
     inApp: true,
@@ -76,8 +78,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.WEEKLY,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "WEEKLY" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Weekly Report",
     email: true,
     inApp: true,
@@ -86,8 +88,8 @@ export const defaultNotificationPreferences = [
   },
   // ACTIVITY: TICKETS
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Ticket Created",
     email: true,
     inApp: true,
@@ -95,8 +97,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Ticket Updated",
     email: true,
     inApp: true,
@@ -104,8 +106,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Ticket Assignment",
     email: true,
     inApp: true,
@@ -113,8 +115,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   // { // TODO: re-add mentions later
-  //   frequency: NotificationFrequency.INSTANT,
-  //   category: NotificationCategory.ACTIVITY,
+  //   frequency: "INSTANT",
+  //   category: "ACTIVITY",
   //   type: "Mentions",
   //   email: true,
   //   inApp: true,
@@ -122,8 +124,8 @@ export const defaultNotificationPreferences = [
   //   sms: false,
   // },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "New Comments",
     email: true,
     inApp: true,
@@ -131,8 +133,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Market Center Assignment",
     email: true,
     inApp: true,
@@ -140,8 +142,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Category Assignment",
     email: true,
     inApp: true,
@@ -149,8 +151,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Ticket Survey",
     email: true,
     inApp: true,
@@ -158,8 +160,8 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
   {
-    frequency: NotificationFrequency.INSTANT,
-    category: NotificationCategory.ACTIVITY,
+    frequency: "INSTANT" as NotificationFrequency,
+    category: "ACTIVITY" as NotificationCategory,
     type: "Ticket Survey Results",
     email: true,
     inApp: true,

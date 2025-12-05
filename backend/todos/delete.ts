@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
 
@@ -28,17 +28,15 @@ export const deleteTask = api<DeleteTodoRequest, DeleteTodoResponse>(
         "You do not have permission to delete subtasks from this ticket"
       );
     }
-    const todo = await prisma.todo.findFirstOrThrow({
-      where: { AND: [{ id: req.todoId }, { ticketId: req.ticketId }] },
-    });
 
-    if (!todo) {
+    // Check that the todo belongs to this ticket
+    const todo = await todoRepository.findById(req.todoId);
+
+    if (!todo || todo.ticketId !== req.ticketId) {
       throw APIError.notFound("Subtask not found for the specified ticket");
     }
 
-    const deleted = await prisma.todo.delete({
-      where: { id: todo.id },
-    });
+    await todoRepository.delete(todo.id);
 
     return { success: true };
   }

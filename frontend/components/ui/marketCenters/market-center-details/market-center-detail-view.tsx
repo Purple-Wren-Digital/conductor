@@ -84,9 +84,11 @@ export default function MarketCenterDetailView({
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const invalidateMarketCenter = queryClient.invalidateQueries({
-    queryKey: ["get-market-center", marketCenterId],
-  });
+  const invalidateMarketCenter = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["get-market-center", marketCenterId],
+    });
+  }, [queryClient, marketCenterId]);
 
   const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
     useFetchRatingsByMarketCenter(
@@ -130,9 +132,11 @@ export default function MarketCenterDetailView({
     if (!user?.marketCenterId) return user;
   });
 
-  const invalidateUsers = queryClient.invalidateQueries({
-    queryKey: ["market-center-detail-users"],
-  });
+  const invalidateUsers = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["market-center-detail-users"],
+    });
+  }, [queryClient]);
 
   const handleSendMarketCenterNotifications = useCallback(
     async ({

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { getPrisma } from "./db";
+import { userRepository } from "./db";
 import { MarketCenterSettings } from "./types";
 
 export interface SettingsExportData {
@@ -15,16 +15,11 @@ export interface SettingsExportData {
 export const exportMarketCenterSettings = api(
   { method: "GET", path: "/settings/export", auth: true },
   async (): Promise<SettingsExportData> => {
-    const prisma = getPrisma();
-
     // TODO: Replace with proper auth
     const mockUserId = "user_1";
 
-    // Find the user and their market center
-    const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
-      include: { marketCenter: true }
-    });
+    // Find the user with their market center
+    const user = await userRepository.findByIdWithMarketCenter(mockUserId);
 
     if (!user) {
       throw APIError.notFound("User not found");
@@ -41,7 +36,7 @@ export const exportMarketCenterSettings = api(
 
     // Get current settings (using the same logic as get.ts)
     const settings = user.marketCenter.settings as any;
-    
+
     const defaultSettings: MarketCenterSettings = {
       businessHours: {
         monday: { start: "09:00", end: "17:00", isOpen: true },
@@ -62,10 +57,12 @@ export const exportMarketCenterSettings = api(
         webhooks: []
       },
       general: {
+        name: user.marketCenter.name,
         timezone: "UTC",
         language: "en",
         autoAssignment: false
-      }
+      },
+      teamMembers: 0
     };
 
     // Merge default settings with stored settings

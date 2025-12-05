@@ -1,6 +1,6 @@
 import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
-import { prisma } from "../ticket/db";
+import { ticketRepository } from "../ticket/db";
 import { Ticket } from "../ticket/types";
 import { UserRole } from "../user/types";
 
@@ -26,15 +26,11 @@ export async function canAccessTicket(
     return true;
   }
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: ticketId },
-    include: { creator: true, assignee: true, category: true },
-  });
+  const ticket = await ticketRepository.findByIdWithRelations(ticketId);
 
   if (!ticket) {
     return false;
   }
-
 
   if (
     userContext.role === "AGENT" &&
@@ -66,9 +62,7 @@ export async function canModifyTicket(
   }
 
   if (userContext.role === "AGENT") {
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
-    });
+    const ticket = await ticketRepository.findById(ticketId);
     return ticket?.creatorId === userContext.userId;
   }
 

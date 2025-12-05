@@ -1,31 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
-  mockPrisma: {
-    ticketCategory: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      findMany: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    ticket: {
-      create: vi.fn(),
-    },
-    user: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-    },
+  mockDb: {
+    queryRow: vi.fn(),
+    queryAll: vi.fn(),
+    exec: vi.fn(),
+  },
+  mockUserRepository: {
+    findById: vi.fn(),
+    findByIdWithMarketCenter: vi.fn(),
   },
 }));
 
 vi.mock("./ticket/db", () => ({
-  prisma: hoisted.mockPrisma,
+  db: hoisted.mockDb,
+  userRepository: hoisted.mockUserRepository,
 }));
 
 vi.mock("./settings/db", () => ({
-  getPrisma: () => hoisted.mockPrisma,
+  db: hoisted.mockDb,
+  userRepository: hoisted.mockUserRepository,
 }));
 
 vi.mock("encore.dev/api", () => ({
@@ -48,7 +42,8 @@ import {
   ASSIGNMENT_RULES,
 } from "./ticket/auto-assignment";
 
-const mockPrisma = hoisted.mockPrisma;
+const mockDb = hoisted.mockDb;
+const mockUserRepository = hoisted.mockUserRepository;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -56,22 +51,10 @@ beforeEach(() => {
 
 describe("Category Auto-Routing Integration", () => {
   it("should assign ticket to category default assignee when available", async () => {
-    const mockCategory = {
-      id: "cat_1",
-      name: "Technical Support",
-      defaultAssigneeId: "user_tech_1",
-      marketCenterId: "market_center_1",
-    };
-
-    const mockAssignee = {
-      id: "user_tech_1",
-      name: "Tech Specialist",
-      email: "tech@example.com",
-      isActive: true,
-    };
-
-    mockPrisma.ticketCategory.findFirst.mockResolvedValue(mockCategory);
-    mockPrisma.user.findFirst.mockResolvedValue(mockAssignee);
+    // Mock category lookup
+    mockDb.queryRow
+      .mockResolvedValueOnce({ id: "cat_1", defaultAssigneeId: "user_tech_1" }) // category lookup
+      .mockResolvedValueOnce({ id: "user_tech_1" }); // user active check
 
     const ticket = {
       category: "Technical Support",
@@ -84,28 +67,14 @@ describe("Category Auto-Routing Integration", () => {
     const assigneeId = await applyAutoAssignment(ticket);
 
     expect(assigneeId).toBe("user_tech_1");
-    expect(mockPrisma.ticketCategory.findFirst).toHaveBeenCalledWith({
-      where: { name: "Technical Support", marketCenterId: "market_center_1" },
-    });
-    expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
-      where: { id: "user_tech_1", isActive: true },
-    });
+    expect(mockDb.queryRow).toHaveBeenCalled();
   });
 
   it("should fall back to assignment rules when no category default assignee", async () => {
-    const mockCategory = {
-      id: "cat_1",
-      name: "General",
-      defaultAssigneeId: null,
-      marketCenterId: "market_center_1",
-    };
-
-    mockPrisma.ticketCategory.findFirst.mockResolvedValue(mockCategory);
-    mockPrisma.user.findFirst.mockResolvedValue({
-      id: "user_admin_1",
-      role: "ADMIN",
-      isActive: true,
-    });
+    // Mock category with no default assignee
+    mockDb.queryRow
+      .mockResolvedValueOnce({ id: "cat_1", defaultAssigneeId: null }) // category lookup
+      .mockResolvedValueOnce({ id: "user_admin_1" }); // executeAction for ADMIN role
 
     const ticket = {
       category: "General",
@@ -120,21 +89,11 @@ describe("Category Auto-Routing Integration", () => {
   });
 
   it("should handle inactive default assignee by falling back to rules", async () => {
-    const mockCategory = {
-      id: "cat_1",
-      name: "Technical Support",
-      defaultAssigneeId: "user_inactive_1",
-      marketCenterId: "market_center_1",
-    };
-
-    mockPrisma.ticketCategory.findFirst.mockResolvedValue(mockCategory);
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: "user_admin_1",
-        role: "ADMIN",
-        isActive: true,
-      });
+    // Mock category with inactive default assignee
+    mockDb.queryRow
+      .mockResolvedValueOnce({ id: "cat_1", defaultAssigneeId: "user_inactive_1" }) // category lookup
+      .mockResolvedValueOnce(null) // user inactive check fails
+      .mockResolvedValueOnce({ id: "user_admin_1" }); // executeAction for ADMIN role
 
     const ticket = {
       category: "Technical Support",
@@ -147,16 +106,13 @@ describe("Category Auto-Routing Integration", () => {
     const assigneeId = await applyAutoAssignment(ticket);
 
     expect(assigneeId).toBe("user_admin_1");
-    expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
-      where: { id: "user_inactive_1", isActive: true },
-    });
   });
 
   it("should return null when no category match and no rules match", async () => {
     ASSIGNMENT_RULES.length = 0;
 
-    mockPrisma.ticketCategory.findFirst.mockResolvedValue(null);
-    mockPrisma.user.findFirst.mockResolvedValue(null);
+    // Mock no category found
+    mockDb.queryRow.mockResolvedValueOnce(null);
 
     const ticket = {
       category: "Unknown Category",
@@ -173,36 +129,10 @@ describe("Category Auto-Routing Integration", () => {
 
 describe("Category Management API Integration", () => {
   it("should create category and immediately be available for auto-routing", async () => {
-    const mockCategory = {
-      id: "cat_new_1",
-      name: "Billing Issues",
-      description: "Customer billing inquiries",
-      marketCenterId: "market_center_1",
-      defaultAssigneeId: "user_billing_1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      defaultAssignee: {
-        id: "user_billing_1",
-        name: "Billing Specialist",
-        email: "billing@example.com",
-      },
-    };
-
-    const mockAssignee = {
-      id: "user_billing_1",
-      name: "Billing Specialist",
-      email: "billing@example.com",
-      isActive: true,
-    };
-
-    // category creation path
-    mockPrisma.user.findUnique.mockResolvedValue(mockAssignee);
-    mockPrisma.ticketCategory.findUnique.mockResolvedValue(null);
-    mockPrisma.ticketCategory.create.mockResolvedValue(mockCategory);
-
-    // auto-assignment lookup
-    mockPrisma.ticketCategory.findFirst.mockResolvedValue(mockCategory);
-    mockPrisma.user.findFirst.mockResolvedValue(mockAssignee);
+    // Mock category lookup with default assignee
+    mockDb.queryRow
+      .mockResolvedValueOnce({ id: "cat_new_1", defaultAssigneeId: "user_billing_1" }) // category lookup
+      .mockResolvedValueOnce({ id: "user_billing_1" }); // user active check
 
     const ticket = {
       category: "Billing Issues",

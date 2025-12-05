@@ -41,8 +41,8 @@ type EditMarketCenterProps = {
   unassignedUsers: PrismaUser[];
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
-  refreshMarketCenters: Promise<void>;
-  refreshUsers: Promise<void>;
+  refreshMarketCenters: () => void;
+  refreshUsers: () => void;
 };
 
 export default function EditMarketCenter({
@@ -193,9 +193,9 @@ export default function EditMarketCenter({
       console.error("Failed to edit new market center", error);
       toast.error(`Error: Unable to save changes`);
     },
-    onSettled: async () => {
-      await refreshMarketCenters;
-      await refreshUsers;
+    onSettled: () => {
+      refreshMarketCenters();
+      refreshUsers();
       setIsSubmitting(false);
     },
   });

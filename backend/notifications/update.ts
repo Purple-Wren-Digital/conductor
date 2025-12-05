@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { notificationRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface UpdateNotificationRequest {
@@ -38,9 +38,7 @@ export const update = api<
       throw APIError.invalidArgument("Missing notification information");
     }
 
-    const existingNotification = await prisma.notification.findUnique({
-      where: { id: req.notificationId },
-    });
+    const existingNotification = await notificationRepository.findById(req.notificationId);
 
     if (!existingNotification) {
       throw APIError.notFound("Notification not found");
@@ -51,10 +49,7 @@ export const update = api<
       );
     }
 
-    const updatedNotification = await prisma.notification.update({
-      where: { id: existingNotification.id },
-      data: { read: true },
-    });
+    const updatedNotification = await notificationRepository.markAsRead(existingNotification.id);
 
     return { success: updatedNotification?.read };
   }

@@ -4,8 +4,9 @@ import log from "encore.dev/log";
 import { getAuthData } from "~encore/auth";
 import type { IncomingMessage } from "node:http";
 import Stripe from "stripe";
-import { prisma } from "../ticket/db";
+import { db, userRepository, subscriptionRepository } from "../ticket/db";
 import { SubscriptionStatus, SubscriptionPlan, InvoiceStatus } from "./types";
+import { getUserContext } from "../auth/user-context";
 
 // Setup Stripe client
 const stripeSecretKey = secret("StripeSecretKey");
@@ -199,9 +200,27 @@ export const webhookHandler = api.raw(
             ? new Date(subscription.trial_end * 1000)
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
 
-          await prisma.subscription.upsert({
-            where: { stripeSubscriptionId: subscription.id },
-            create: {
+          // Check if subscription exists
+          const existingSub = await subscriptionRepository.findByStripeSubscriptionId(subscription.id);
+
+          if (existingSub) {
+            // Update existing subscription
+            await subscriptionRepository.update(existingSub.id, {
+              status: mapStripeStatus(subscription.status),
+              planType,
+              priceId,
+              currentPeriodStart: periodStart,
+              currentPeriodEnd: periodEnd,
+              cancelAt: subscription.cancel_at
+                ? new Date(subscription.cancel_at * 1000)
+                : null,
+              canceledAt: subscription.canceled_at
+                ? new Date(subscription.canceled_at * 1000)
+                : null,
+            });
+          } else {
+            // Create new subscription
+            await subscriptionRepository.create({
               stripeSubscriptionId: subscription.id,
               stripeCustomerId: subscription.customer as string,
               marketCenterId,
@@ -223,21 +242,8 @@ export const webhookHandler = api.raw(
                 ? new Date(subscription.trial_end * 1000)
                 : null,
               features: planConfig.features,
-            },
-            update: {
-              status: mapStripeStatus(subscription.status),
-              planType,
-              priceId,
-              currentPeriodStart: periodStart,
-              currentPeriodEnd: periodEnd,
-              cancelAt: subscription.cancel_at
-                ? new Date(subscription.cancel_at * 1000)
-                : null,
-              canceledAt: subscription.canceled_at
-                ? new Date(subscription.canceled_at * 1000)
-                : null,
-            },
-          });
+            });
+          }
 
           console.log("✅ Subscription saved successfully:", {
             id: subscription.id,
@@ -252,13 +258,13 @@ export const webhookHandler = api.raw(
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
 
-          await prisma.subscription.update({
-            where: { stripeSubscriptionId: subscription.id },
-            data: {
+          const existingSub = await subscriptionRepository.findByStripeSubscriptionId(subscription.id);
+          if (existingSub) {
+            await subscriptionRepository.update(existingSub.id, {
               status: SubscriptionStatus.CANCELED,
               canceledAt: new Date(),
-            },
-          });
+            });
+          }
           break;
         }
 
@@ -267,28 +273,26 @@ export const webhookHandler = api.raw(
           const invoice = event.data.object as Stripe.Invoice;
 
           if (invoice.subscription) {
-            const subscription = await prisma.subscription.findUnique({
-              where: { stripeSubscriptionId: invoice.subscription as string },
-            });
+            const subscription = await subscriptionRepository.findByStripeSubscriptionId(invoice.subscription as string);
 
             if (subscription) {
-              await prisma.subscriptionInvoice.create({
-                data: {
-                  subscriptionId: subscription.id,
-                  stripeInvoiceId: invoice.id,
-                  amountDue: invoice.amount_due / 100, // Convert from cents
-                  amountPaid: invoice.amount_paid / 100,
-                  currency: invoice.currency,
-                  status: InvoiceStatus.PAID,
-                  lineItems: invoice.lines.data,
-                  periodStart: new Date(invoice.period_start * 1000),
-                  periodEnd: new Date(invoice.period_end * 1000),
-                  dueDate: invoice.due_date
-                    ? new Date(invoice.due_date * 1000)
-                    : null,
-                  paidAt: new Date(),
-                },
-              });
+              await db.exec`
+                INSERT INTO subscription_invoices (
+                  id, subscription_id, stripe_invoice_id, amount_due, amount_paid,
+                  currency, status, line_items, period_start, period_end,
+                  due_date, paid_at, created_at, updated_at
+                )
+                VALUES (
+                  gen_random_uuid()::text, ${subscription.id}, ${invoice.id},
+                  ${invoice.amount_due / 100}, ${invoice.amount_paid / 100},
+                  ${invoice.currency}, ${InvoiceStatus.PAID},
+                  ${JSON.stringify(invoice.lines.data)}::jsonb,
+                  ${new Date(invoice.period_start * 1000)},
+                  ${new Date(invoice.period_end * 1000)},
+                  ${invoice.due_date ? new Date(invoice.due_date * 1000) : null},
+                  NOW(), NOW(), NOW()
+                )
+              `;
             }
           }
           break;
@@ -299,12 +303,12 @@ export const webhookHandler = api.raw(
           const invoice = event.data.object as Stripe.Invoice;
 
           if (invoice.subscription) {
-            await prisma.subscription.update({
-              where: { stripeSubscriptionId: invoice.subscription as string },
-              data: {
+            const existingSub = await subscriptionRepository.findByStripeSubscriptionId(invoice.subscription as string);
+            if (existingSub) {
+              await subscriptionRepository.update(existingSub.id, {
                 status: SubscriptionStatus.PAST_DUE,
-              },
-            });
+              });
+            }
           }
           break;
         }
@@ -351,49 +355,53 @@ export const createCheckoutSession = api(
     }
 
     // Get user
-    const user = await prisma.user.findUnique({
-      where: { clerkId: authData.userID },
-      include: { marketCenter: true },
-    });
+    const user = await userRepository.findByClerkId(authData.userID);
 
     if (!user) {
       throw APIError.notFound("User not found");
     }
 
     let marketCenterId = user.marketCenterId;
-    let marketCenterName = user.marketCenter?.name;
+    let marketCenterName: string | undefined;
+
+    if (marketCenterId) {
+      const mc = await db.queryRow<{ name: string }>`
+        SELECT name FROM market_centers WHERE id = ${marketCenterId}
+      `;
+      marketCenterName = mc?.name;
+    }
 
     // If user doesn't have a market center, create one for them
     if (!marketCenterId) {
       // Create a new market center for this user
-      const newMarketCenter = await prisma.marketCenter.create({
-        data: {
-          name: params.organizationName || `${user.name || user.email}'s Organization`,
-          settings: {},
-        },
-      });
+      const newMarketCenter = await db.queryRow<{ id: string; name: string }>`
+        INSERT INTO market_centers (id, name, created_at, updated_at)
+        VALUES (
+          gen_random_uuid()::text,
+          ${params.organizationName || `${user.name || user.email}'s Organization`},
+          NOW(), NOW()
+        )
+        RETURNING id, name
+      `;
 
-      // Update user to be admin of this new market center
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
+      if (newMarketCenter) {
+        // Update user to be admin of this new market center
+        await userRepository.update(user.id, {
           marketCenterId: newMarketCenter.id,
           role: "ADMIN", // Make them admin of their new organization
-        },
-      });
+        });
 
-      marketCenterId = newMarketCenter.id;
-      marketCenterName = newMarketCenter.name;
+        marketCenterId = newMarketCenter.id;
+        marketCenterName = newMarketCenter.name;
 
-      log.info("Created new market center for subscription", {
-        userId: user.id,
-        marketCenterId: newMarketCenter.id,
-      });
+        log.info("Created new market center for subscription", {
+          userId: user.id,
+          marketCenterId: newMarketCenter.id,
+        });
+      }
     } else {
       // Check if market center already has a subscription
-      const existingSubscription = await prisma.subscription.findUnique({
-        where: { marketCenterId: user.marketCenterId },
-      });
+      const existingSubscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
 
       if (
         existingSubscription &&
@@ -415,10 +423,12 @@ export const createCheckoutSession = api(
     // Get or create Stripe customer
     let stripeCustomerId: string;
 
+    if (!marketCenterId) {
+      throw APIError.invalidArgument("Market center ID is required");
+    }
+
     // Check if this market center already has a Stripe customer
-    const existingSubscription = await prisma.subscription.findUnique({
-      where: { marketCenterId },
-    });
+    const existingSubscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
     if (existingSubscription?.stripeCustomerId) {
       stripeCustomerId = existingSubscription.stripeCustomerId;
@@ -499,18 +509,15 @@ export const createPortalSession = api(
     }
 
     // Get user's market center and subscription
-    const user = await prisma.user.findUnique({
-      where: { clerkId: authData.userID },
-      include: {
-        marketCenter: {
-          include: {
-            subscription: true,
-          },
-        },
-      },
-    });
+    const user = await userRepository.findByClerkId(authData.userID);
 
-    if (!user?.marketCenter?.subscription) {
+    if (!user || !user.marketCenterId) {
+      throw APIError.notFound("User or market center not found");
+    }
+
+    const subscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
+
+    if (!subscription) {
       throw APIError.notFound("No subscription found");
     }
 
@@ -520,7 +527,7 @@ export const createPortalSession = api(
     }
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: user.marketCenter.subscription.stripeCustomerId,
+      customer: subscription.stripeCustomerId,
       return_url: `${frontendUrl()}/dashboard/subscription`,
     });
 
@@ -552,32 +559,22 @@ export const getSubscription = api(
     auth: true,
   },
   async (): Promise<GetSubscriptionResponse> => {
-    const authData = getAuthData();
-    if (!authData) {
-      throw APIError.unauthenticated("Not authenticated");
+    // Use getUserContext which handles Clerk ID lookup with email fallback
+    const userContext = await getUserContext();
+
+    if (!userContext.marketCenterId) {
+      throw APIError.notFound("User or market center not found");
     }
 
-    // Get user's market center and subscription
-    const user = await prisma.user.findUnique({
-      where: { clerkId: authData.userID },
-      include: {
-        marketCenter: {
-          include: {
-            subscription: true,
-            users: {
-              where: { isActive: true },
-            },
-          },
-        },
-      },
-    });
+    const marketCenterId = userContext.marketCenterId;
 
-    if (!user?.marketCenter?.subscription) {
+    const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
+
+    if (!result) {
       throw APIError.notFound("No subscription found");
     }
 
-    const subscription = user.marketCenter.subscription;
-    const usedSeats = user.marketCenter.users.length;
+    const { subscription, activeUserCount } = result;
 
     return {
       id: subscription.id,
@@ -586,7 +583,7 @@ export const getSubscription = api(
       includedSeats: subscription.includedSeats,
       additionalSeats: subscription.additionalSeats,
       totalSeats: subscription.includedSeats + subscription.additionalSeats,
-      usedSeats,
+      usedSeats: activeUserCount,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
       cancelAt: subscription.cancelAt,
@@ -615,21 +612,15 @@ export const updateSeats = api(
     }
 
     // Get user and verify admin
-    const user = await prisma.user.findUnique({
-      where: { clerkId: authData.userID },
-      include: {
-        marketCenter: {
-          include: {
-            subscription: true,
-            users: {
-              where: { isActive: true },
-            },
-          },
-        },
-      },
-    });
+    const user = await userRepository.findByClerkId(authData.userID);
 
-    if (!user?.marketCenter?.subscription) {
+    if (!user || !user.marketCenterId) {
+      throw APIError.notFound("User or market center not found");
+    }
+
+    const subscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
+
+    if (!subscription) {
       throw APIError.notFound("No subscription found");
     }
 
@@ -637,13 +628,18 @@ export const updateSeats = api(
       throw APIError.permissionDenied("Only admins can update seats");
     }
 
-    const subscription = user.marketCenter.subscription;
-    const currentUsers = user.marketCenter.users.length;
+    const currentUsers = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count
+      FROM users
+      WHERE market_center_id = ${user.marketCenterId} AND is_active = true
+    `;
+
+    const currentUsersCount = currentUsers?.count || 0;
     const newTotalSeats = subscription.includedSeats + params.additionalSeats;
 
-    if (newTotalSeats < currentUsers) {
+    if (newTotalSeats < currentUsersCount) {
       throw APIError.invalidArgument(
-        `Cannot reduce seats below current user count (${currentUsers})`
+        `Cannot reduce seats below current user count (${currentUsersCount})`
       );
     }
 
@@ -679,11 +675,8 @@ export const updateSeats = api(
     }
 
     // Update in database
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        additionalSeats: params.additionalSeats,
-      },
+    await subscriptionRepository.update(subscription.id, {
+      additionalSeats: params.additionalSeats,
     });
 
     return { success: true };
@@ -695,24 +688,7 @@ export async function checkSubscriptionLimit(
   marketCenterId: string,
   feature: "users" | "tickets" | "categories"
 ): Promise<boolean> {
-  const subscription = await prisma.subscription.findUnique({
-    where: { marketCenterId },
-    include: {
-      marketCenter: {
-        include: {
-          users: { where: { isActive: true } },
-          ticketCategories: true,
-        },
-      },
-      usageRecords: {
-        where: {
-          month: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-      },
-    },
-  });
+  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription || subscription.status !== SubscriptionStatus.ACTIVE) {
     return false;
@@ -724,22 +700,39 @@ export async function checkSubscriptionLimit(
     case "users":
       const totalSeats =
         subscription.includedSeats + subscription.additionalSeats;
-      return subscription.marketCenter.users.length < totalSeats;
+      const userCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*)::int as count
+        FROM users
+        WHERE market_center_id = ${marketCenterId} AND is_active = true
+      `;
+      return (userCount?.count || 0) < totalSeats;
 
     case "tickets":
       const maxTickets = features.maxTicketsPerMonth;
       if (maxTickets === -1) return true; // Unlimited
 
-      const currentMonthUsage = subscription.usageRecords[0];
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const currentMonthUsage = await db.queryRow<{ tickets_created: number }>`
+        SELECT tickets_created
+        FROM subscription_usage
+        WHERE subscription_id = ${subscription.id}
+          AND month >= ${monthStart}
+        LIMIT 1
+      `;
       return (
-        !currentMonthUsage || currentMonthUsage.ticketsCreated < maxTickets
+        !currentMonthUsage || currentMonthUsage.tickets_created < maxTickets
       );
 
     case "categories":
       const maxCategories = features.customCategories;
       if (maxCategories === -1) return true; // Unlimited
 
-      return subscription.marketCenter.ticketCategories.length < maxCategories;
+      const categoryCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*)::int as count
+        FROM ticket_categories
+        WHERE market_center_id = ${marketCenterId}
+      `;
+      return (categoryCount?.count || 0) < maxCategories;
 
     default:
       return false;
@@ -754,29 +747,45 @@ export async function trackUsage(
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { marketCenterId },
-  });
+  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription) return;
 
-  await prisma.subscriptionUsage.upsert({
-    where: {
-      subscriptionId_month: {
-        subscriptionId: subscription.id,
-        month: monthStart,
-      },
-    },
-    create: {
-      subscriptionId: subscription.id,
-      month: monthStart,
-      activeSeats: 0,
-      ticketsCreated: metric === "tickets" ? 1 : 0,
-      storageUsedMb: metric === "storage" ? 1 : 0,
-    },
-    update: {
-      ticketsCreated: metric === "tickets" ? { increment: 1 } : undefined,
-      storageUsedMb: metric === "storage" ? { increment: 1 } : undefined,
-    },
-  });
+  // Check if usage record exists
+  const existingUsage = await db.queryRow<{ id: string }>`
+    SELECT id
+    FROM subscription_usage
+    WHERE subscription_id = ${subscription.id}
+      AND month = ${monthStart}
+  `;
+
+  if (existingUsage) {
+    // Update existing usage
+    if (metric === "tickets") {
+      await db.exec`
+        UPDATE subscription_usage
+        SET tickets_created = tickets_created + 1, updated_at = NOW()
+        WHERE id = ${existingUsage.id}
+      `;
+    } else if (metric === "storage") {
+      await db.exec`
+        UPDATE subscription_usage
+        SET storage_used_mb = storage_used_mb + 1, updated_at = NOW()
+        WHERE id = ${existingUsage.id}
+      `;
+    }
+  } else {
+    // Create new usage record
+    await db.exec`
+      INSERT INTO subscription_usage (
+        id, subscription_id, month, active_seats, tickets_created,
+        storage_used_mb, created_at, updated_at
+      )
+      VALUES (
+        gen_random_uuid()::text, ${subscription.id}, ${monthStart}, 0,
+        ${metric === "tickets" ? 1 : 0}, ${metric === "storage" ? 1 : 0},
+        NOW(), NOW()
+      )
+    `;
+  }
 }

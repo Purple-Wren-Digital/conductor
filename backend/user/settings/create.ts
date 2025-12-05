@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
+import { userRepository } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
 import { defaultNotificationPreferences } from "../../utils";
 
@@ -29,15 +29,13 @@ export const createNotifications = api<
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: req.id },
-      include: { userSettings: { include: { notificationPreferences: true } } },
-    });
+    const existingUser = await userRepository.findByIdWithSettings(req.id);
 
     if (!existingUser || !existingUser.id) {
       throw APIError.notFound("User not found");
     }
 
+    // Check if user settings and notification preferences already exist
     if (
       existingUser?.userSettings &&
       existingUser?.userSettings?.notificationPreferences &&
@@ -46,37 +44,21 @@ export const createNotifications = api<
       return { created: true };
     }
 
+    // If no user settings exist, create them with notification preferences
     if (!existingUser?.userSettings || !existingUser?.userSettings?.id) {
-      await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          userSettings: {
-            create: {
-              notificationPreferences: {
-                create: defaultNotificationPreferences,
-              },
-            },
-          },
-        },
-        include: {
-          userSettings: {
-            include: {
-              notificationPreferences: true,
-            },
-          },
-        },
-      });
+      const newSettings = await userRepository.createUserSettings(existingUser.id);
+      await userRepository.createNotificationPreferences(
+        newSettings.id,
+        defaultNotificationPreferences
+      );
       return { created: true };
     }
-    // if no notificationPreferences, create them
-    await prisma.userSettings.update({
-      where: { id: existingUser?.userSettings?.id },
-      data: {
-        notificationPreferences: {
-          create: defaultNotificationPreferences,
-        },
-      },
-    });
+
+    // If user settings exist but no notification preferences, create them
+    await userRepository.createNotificationPreferences(
+      existingUser.userSettings.id,
+      defaultNotificationPreferences
+    );
 
     return { created: true };
   }

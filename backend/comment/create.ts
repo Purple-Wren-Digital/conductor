@@ -1,5 +1,9 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import {
+  ticketRepository,
+  commentRepository,
+  notificationRepository,
+} from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
 import { processCommentContent } from "./sanitize";
@@ -55,17 +59,12 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     // Apply rate limiting
     commentRateLimiter.checkRateLimit(userContext.userId);
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: req.ticketId },
-      include: {
-        assignee: true,
-        creator: true,
-      },
-    });
+    const ticket = await ticketRepository.findByIdWithRelations(req.ticketId);
 
     if (!ticket) {
       throw APIError.notFound("ticket not found");
     }
+
     const usersToNotify: UsersToNotify[] = [];
 
     if (
@@ -100,15 +99,16 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         updateType: "created",
       });
     }
-    const previousComments = await prisma.comment.findMany({
-      where: { ticketId: req.ticketId },
-      include: { user: true },
-    });
+
+    // Get previous comments to notify other commenters
+    const previousComments = await commentRepository.findByTicketIdWithUsers(req.ticketId);
 
     const notifiedUserIds = new Set(usersToNotify.map((user) => user.id));
 
     for (const comment of previousComments) {
       const commenter = comment.user;
+      if (!commenter) continue;
+
       const alreadyNotified = notifiedUserIds.has(commenter.id);
       const canAccess = await canAccessTicket(userContext, req.ticketId);
       if (!alreadyNotified && canAccess) {
@@ -122,79 +122,60 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       }
     }
 
-    const result = await prisma.$transaction(async (p) => {
-      const comment = await p.comment.create({
-        data: {
-          content: processCommentContent(req.content),
-          ticketId: req.ticketId,
-          userId: userContext.userId,
-          internal: req.internal || false,
-          source: "WEB", // Add source field for email tracking
-          metadata: {
-            // Add metadata field for future email tracking
-            source: "WEB",
-          },
-        },
-        include: {
-          user: true,
-        },
-      });
-
-      const history = await p.ticketHistory.create({
-        data: {
-          ticketId: ticket.id,
-          action: "CREATE",
-          field: "comment",
-          snapshot: ticket,
-          newValue: processCommentContent(req.content),
-          changedById: userContext.userId,
-        },
-      });
-      // TODO: notifications based on user preference
-      // TODO: notifications based on
-      const usersToNotify: string[] =
-        userContext?.userId && ticket?.creatorId && ticket?.assigneeId
-          ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
-          : userContext?.userId && ticket?.creatorId
-            ? [userContext?.userId, ticket?.creatorId]
-            : [];
-
-      // Notification<Partial>
-      const notifications: any[] =
-        usersToNotify && usersToNotify.length > 0
-          ? usersToNotify.map((userId) => {
-              return {
-                userId: userId, // notifications for commenter and assignee
-                channel: "IN_APP",
-                category: "ACTIVITY",
-                type: "Ticket New Comment",
-                title: `${
-                  comment?.user && comment?.user?.name
-                    ? `${comment.user.name} commented on`
-                    : "New comment on"
-                } ticket: "${ticket?.title}"`,
-                body: comment?.content,
-                data: {
-                  ticketId: ticket?.id,
-                  commentId: comment?.id,
-                },
-              };
-            })
-          : [];
-      const notificationData = notifications.filter(Boolean);
-      if (notificationData && notificationData.length > 0) {
-        const notification = await p.notification.createMany({
-          data: notificationData,
-        });
-      }
-      return { comment, history };
+    // Create comment
+    const comment = await commentRepository.createWithUser({
+      content: processCommentContent(req.content),
+      ticketId: req.ticketId,
+      userId: userContext.userId,
+      internal: req.internal || false,
+      source: "WEB",
+      metadata: { source: "WEB" },
     });
 
+    // Create ticket history
+    await ticketRepository.createHistory({
+      ticketId: ticket.id,
+      action: "CREATE",
+      field: "comment",
+      newValue: processCommentContent(req.content),
+      changedById: userContext.userId,
+      snapshot: ticket,
+    });
+
+    // Create notifications
+    const notificationUserIds: string[] =
+      userContext?.userId && ticket?.creatorId && ticket?.assigneeId
+        ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
+        : userContext?.userId && ticket?.creatorId
+          ? [userContext?.userId, ticket?.creatorId]
+          : [];
+
+    if (notificationUserIds.length > 0) {
+      const notificationsData = notificationUserIds.map((userId) => ({
+        userId,
+        channel: "IN_APP" as const,
+        category: "ACTIVITY" as const,
+        type: "Ticket New Comment",
+        title: `${
+          comment?.user?.name
+            ? `${comment.user.name} commented on`
+            : "New comment on"
+        } ticket: "${ticket?.title}"`,
+        body: comment?.content,
+        data: {
+          ticketId: ticket?.id,
+          commentId: comment?.id,
+        },
+      }));
+
+      await notificationRepository.createMany(notificationsData);
+    }
+
     const safeComment = {
-      ...result.comment,
+      ...comment,
       user: {
-        ...result.comment.user,
-        name: result.comment.user.name ?? "",
+        ...comment.user,
+        name: comment.user.name ?? "",
       },
     };
 

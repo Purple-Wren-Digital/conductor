@@ -202,13 +202,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     { userId: string; clerkId: string; quickEdit: boolean }
   >({
     mutationFn: async ({ userId, clerkId, quickEdit }) => {
-      if (!userId || !clerkId) throw new Error("Missing User ID");
+      if (!userId) throw new Error("Missing User ID");
 
-      // TODO: Separate Clerk endpoints for email updates
-      const clerkResponse = await updateUserInClerk(clerkId);
-      if (!clerkResponse) {
-        throw new Error("Clerk Error");
+      // Only update Clerk for non-quick edits (name changes) and real Clerk users
+      // Seeded users have clerkIds like "seed-XX" which aren't real Clerk users
+      const isRealClerkUser = clerkId && !clerkId.startsWith("seed-");
+      if (!quickEdit && isRealClerkUser) {
+        const clerkResponse = await updateUserInClerk(clerkId);
+        if (!clerkResponse) {
+          throw new Error("Clerk Error");
+        }
       }
+
       const prismaResponse = await updateUserInPrisma(userId, quickEdit);
       if (!prismaResponse) {
         throw new Error("Prisma Error");

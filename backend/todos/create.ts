@@ -1,8 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
-// import type { UsersToNotify } from "../notifications/types";
 import type { Todo } from "./types";
 
 export interface CreateTodoRequest {
@@ -13,7 +12,6 @@ export interface CreateTodoRequest {
 
 export interface CreateTodoResponse {
   todo: Todo;
-  // TODO:  usersToNotify?: UsersToNotify[];
 }
 
 export const create = api<CreateTodoRequest, CreateTodoResponse>(
@@ -34,14 +32,11 @@ export const create = api<CreateTodoRequest, CreateTodoResponse>(
       );
     }
 
-    const todo = await prisma.todo.create({
-      data: {
-        title: req.title,
-        complete: req.completed ? true : false,
-        ticketId: req.ticketId,
-        createdById: userContext.userId,
-        updatedById: userContext.userId,
-      },
+    const todo = await todoRepository.create({
+      title: req.title,
+      complete: req.completed ?? false,
+      ticketId: req.ticketId,
+      createdById: userContext.userId,
     });
 
     return { todo };

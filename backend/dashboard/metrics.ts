@@ -1,5 +1,5 @@
 import { api } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import type { DashboardMetrics, TicketStatus, Urgency } from "../ticket/types";
 
 export interface GetMetricsResponse {
@@ -9,46 +9,54 @@ export interface GetMetricsResponse {
 export const getMetrics = api<void, GetMetricsResponse>(
   { expose: true, method: "GET", path: "/dashboard/metrics" },
   async () => {
+    const totalTicketsResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count FROM tickets
+    `;
+    const totalTickets = totalTicketsResult?.count ?? 0;
 
-    const totalTickets = await prisma.ticket.count();
+    const openTicketsResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count
+      FROM tickets
+      WHERE status != 'RESOLVED'
+    `;
+    const openTickets = openTicketsResult?.count ?? 0;
 
-    const openTickets = await prisma.ticket.count({
-      where: {
-        status: { not: "RESOLVED" },
-      },
-    });
+    const overdueTicketsResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count
+      FROM tickets
+      WHERE due_date < NOW()
+        AND status != 'RESOLVED'
+    `;
+    const overdueTickets = overdueTicketsResult?.count ?? 0;
 
-    const overdueTickets = await prisma.ticket.count({
-      where: {
-        dueDate: { lt: new Date() },
-        status: { not: "RESOLVED" },
-      },
-    });
-
-    const statusCounts = await prisma.ticket.groupBy({
-      by: ["status"],
-      _count: { status: true },
-    });
+    const statusCountsRows = await db.queryAll<{ status: TicketStatus; count: number }>`
+      SELECT status, COUNT(*)::int as count
+      FROM tickets
+      GROUP BY status
+    `;
 
     const ticketsByStatus: Record<TicketStatus, number> = {
+      DRAFT: 0,
+      CREATED: 0,
       ASSIGNED: 0,
+      UNASSIGNED: 0,
       AWAITING_RESPONSE: 0,
       IN_PROGRESS: 0,
       RESOLVED: 0,
-      DRAFT: 0,
     };
 
-    statusCounts.forEach((item) => {
-      if (item.status !== null) {
-        ticketsByStatus[item.status as TicketStatus] = item._count.status;
+    statusCountsRows.forEach((row) => {
+      if (row.status !== null) {
+        ticketsByStatus[row.status] = row.count;
       }
     });
 
-    const urgencyCountsOpen = await prisma.ticket.groupBy({
-      by: ["urgency"],
-      where: { status: { not: "RESOLVED" } },
-      _count: { urgency: true },
-    });
+    const urgencyCountsRows = await db.queryAll<{ urgency: Urgency; count: number }>`
+      SELECT urgency, COUNT(*)::int as count
+      FROM tickets
+      WHERE status != 'RESOLVED'
+      GROUP BY urgency
+    `;
 
     const ticketsByUrgency: Record<Urgency, number> = {
       HIGH: 0,
@@ -56,8 +64,8 @@ export const getMetrics = api<void, GetMetricsResponse>(
       LOW: 0,
     };
 
-    urgencyCountsOpen.forEach((item) => {
-      ticketsByUrgency[item.urgency as Urgency] = item._count.urgency;
+    urgencyCountsRows.forEach((row) => {
+      ticketsByUrgency[row.urgency] = row.count;
     });
 
     const metrics: DashboardMetrics = {

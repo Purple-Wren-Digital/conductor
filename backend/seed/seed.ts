@@ -1,6 +1,5 @@
 import { api } from "encore.dev/api";
-import { prisma } from "../ticket/db";
-import { Prisma } from "@prisma/client";
+import { db, userRepository, ticketRepository, commentRepository, notificationRepository, marketCenterRepository, surveyRepository } from "../ticket/db";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
 import { ticket } from "~encore/clients";
@@ -20,296 +19,241 @@ export const seedData = api<void, SeedResponse>(
   async () => {
     console.log("Seeding database...");
 
-    // Clean up in correct order
-    await prisma.ticketHistory.deleteMany({});
-    await prisma.comment.deleteMany({});
-    await prisma.attachment.deleteMany({});
-    await prisma.todo.deleteMany({});
-    await prisma.ticket.updateMany({
-      data: { assigneeId: null },
-    });
-    await prisma.survey.deleteMany({});
-    await prisma.ticket.deleteMany({});
+    // Clean up in correct order using raw SQL
+    // Use correct table names matching the migration schema
+    await db.exec`DELETE FROM ticket_history`;
+    await db.exec`DELETE FROM comments`;
+    await db.exec`DELETE FROM attachments`;
+    await db.exec`DELETE FROM todos`;
+    await db.exec`UPDATE tickets SET assignee_id = NULL`;
+    await db.exec`DELETE FROM ticket_ratings`;
+    await db.exec`DELETE FROM tickets`;
 
-    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
-    await prisma.notification.deleteMany({}); // Delete notifications BEFORE users
-    await prisma.notificationPreferences.deleteMany({});
-    await prisma.notificationTemplate.deleteMany({});
+    await db.exec`DELETE FROM notifications`;
+    await db.exec`DELETE FROM notification_preferences`;
+    await db.exec`DELETE FROM notification_templates`;
 
-    await prisma.ticketCategory.deleteMany({});
+    await db.exec`DELETE FROM ticket_categories`;
 
-    // await prisma.teamInvitation.deleteMany({});
+    await db.exec`DELETE FROM user_history`;
+    await db.exec`DELETE FROM user_settings`;
 
-    await prisma.userHistory.deleteMany({});
-    await prisma.userSettings.deleteMany({});
+    await db.exec`DELETE FROM market_center_history`;
 
-    await prisma.marketCenterHistory.deleteMany({});
+    // Delete subscriptions before market centers (foreign key)
+    await db.exec`DELETE FROM subscription_invoices`;
+    await db.exec`DELETE FROM subscription_usage`;
+    await db.exec`DELETE FROM subscriptions`;
 
     // Delete parent records last
-    await prisma.user.deleteMany({
-      where: {
-        NOT: { email: "vmcnorrill@gmail.com" },
-      },
-    });
-    await prisma.marketCenter.deleteMany({});
+    await db.exec`DELETE FROM users WHERE email != 'vmcnorrill@gmail.com'`;
+    await db.exec`DELETE FROM market_centers`;
 
     const now = new Date();
 
     // 3-5 Market Centers
-    const mc = await prisma.marketCenter.createManyAndReturn({
-      data: [
-        { name: "Downtown Greenville" },
-        { name: "Simpsonville" },
-        { name: "Travelers Rest" },
-      ],
-    });
+    const mc = await db.queryAll<{ id: string; name: string }>`
+      INSERT INTO market_centers (id, name, created_at, updated_at)
+      VALUES
+        (gen_random_uuid()::text, 'Downtown Greenville', NOW(), NOW()),
+        (gen_random_uuid()::text, 'Simpsonville', NOW(), NOW()),
+        (gen_random_uuid()::text, 'Travelers Rest', NOW(), NOW())
+      RETURNING id, name
+    `;
 
-    const createdUsers = await prisma.user.createManyAndReturn({
-      data: [
-        {
-          email: "alice.agent@kw.com",
-          name: "Alice Johnson",
-          role: "STAFF_LEADER",
-          clerkId: "seed-01",
-          marketCenterId: mc[0]?.id,
-        },
-        {
-          email: "bob.staff@kw.com",
-          name: "Bob Smith",
-          role: "STAFF",
-          clerkId: "seed-02",
-          marketCenterId: mc[0]?.id,
-        },
-        {
-          email: "clara.admin@kw.com",
-          name: "Clara Davis",
-          role: "ADMIN",
-          clerkId: "seed-03",
-          marketCenterId: undefined,
-        },
-        {
-          email: "dan.agent@kw.com",
-          name: "Dan Williams",
-          role: "AGENT",
-          clerkId: "seed-04",
-          marketCenterId: mc[1]?.id,
-        },
-        {
-          email: "emma.staff@kw.com",
-          name: "Emma Brown",
-          role: "STAFF",
-          clerkId: "seed-05",
-          marketCenterId: mc[1]?.id,
-        },
-        {
-          email: "frank.agent@kw.com",
-          name: "Frank Miller",
-          role: "STAFF_LEADER",
-          clerkId: "seed-06",
-          marketCenterId: mc[1]?.id,
-        },
-        {
-          email: "gina.staff@kw.com",
-          name: "Gina Wilson",
-          role: "STAFF",
-          clerkId: "seed-07",
-          marketCenterId: mc[1]?.id,
-        },
-        {
-          email: "henry.agent@kw.com",
-          name: "Henry Clark",
-          role: "STAFF",
-          clerkId: "seed-08",
-          marketCenterId: mc[2]?.id,
-        },
-        {
-          email: "isla.staff@kw.com",
-          name: "Isla Martinez",
-          role: "AGENT",
-          clerkId: "seed-09",
-          marketCenterId: mc[2]?.id,
-        },
-        {
-          email: "jack.agent@kw.com",
-          name: "Jack Lee",
-          role: "STAFF_LEADER",
-          clerkId: "seed-10",
-          marketCenterId: mc[2]?.id,
-        },
-        {
-          email: "kathryn.hann@kw.com",
-          name: "Kathryn Hann",
-          role: "STAFF",
-          clerkId: "seed-11",
-          marketCenterId: undefined,
-        },
-        {
-          email: "lawrence.david@kw.com",
-          name: "Larry David",
-          role: "STAFF",
-          clerkId: "seed-12",
-          marketCenterId: mc[2]?.id,
-        },
-        {
-          email: "m.organa@kw.com",
-          name: "Morgan Organa",
-          role: "STAFF",
-          clerkId: "seed-13",
-          marketCenterId: undefined,
-        },
-        {
-          email: "nathan.lane@kw.com",
-          name: "Nathan Agent",
-          role: "AGENT",
-          clerkId: "seed-14",
-          marketCenterId: mc[0]?.id,
-        },
-      ],
-    });
+    // Create active subscriptions for each market center
+    for (const marketCenter of mc) {
+      await db.exec`
+        INSERT INTO subscriptions (
+          id, stripe_subscription_id, stripe_customer_id, market_center_id,
+          status, plan_type, price_id, included_seats, additional_seats,
+          seat_price, current_period_start, current_period_end, features,
+          created_at, updated_at
+        )
+        VALUES (
+          gen_random_uuid()::text,
+          ${'sub_seed_' + marketCenter.id.substring(0, 8)},
+          ${'cus_seed_' + marketCenter.id.substring(0, 8)},
+          ${marketCenter.id},
+          'ACTIVE',
+          'TEAM',
+          'price_seed_team',
+          5,
+          0,
+          10.00,
+          NOW(),
+          NOW() + INTERVAL '1 year',
+          '{"sla": true, "apiAccess": false}'::jsonb,
+          NOW(),
+          NOW()
+        )
+      `;
+    }
+
+    // Upsert developer user - create if not exists, update if exists
+    // This ensures the local development user always exists with proper access
+    const devEmail = 'calebmcquaid+1@gmail.com';
+    const existingDevUser = await db.queryRow<{ id: string }>`
+      SELECT id FROM users WHERE email = ${devEmail}
+    `;
+
+    if (existingDevUser) {
+      // Update existing user to have ADMIN role and first market center
+      await db.exec`
+        UPDATE users
+        SET market_center_id = ${mc[0]?.id}, role = 'ADMIN', updated_at = NOW()
+        WHERE email = ${devEmail}
+      `;
+      console.log(`Updated existing dev user: ${devEmail}`);
+    } else {
+      // Create the dev user with ADMIN role
+      await db.exec`
+        INSERT INTO users (id, email, name, role, clerk_id, market_center_id, is_active, created_at, updated_at)
+        VALUES (
+          gen_random_uuid()::text,
+          ${devEmail},
+          'Caleb McQuaid',
+          'ADMIN',
+          'dev-user-clerk-id',
+          ${mc[0]?.id},
+          true,
+          NOW(),
+          NOW()
+        )
+      `;
+      console.log(`Created dev user: ${devEmail}`);
+    }
+
+    // Update any other existing users without market center to be ADMIN of the first market center
+    await db.exec`
+      UPDATE users
+      SET market_center_id = ${mc[0]?.id}, role = 'ADMIN'
+      WHERE market_center_id IS NULL AND email != ${devEmail}
+    `;
+
+    const createdUsers = await db.queryAll<{
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      clerk_id: string;
+      market_center_id: string | null;
+    }>`
+      INSERT INTO users (id, email, name, role, clerk_id, market_center_id, created_at, updated_at)
+      VALUES
+        (gen_random_uuid()::text, 'alice.agent@kw.com', 'Alice Johnson', 'STAFF_LEADER', 'seed-01', ${mc[0]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'bob.staff@kw.com', 'Bob Smith', 'STAFF', 'seed-02', ${mc[0]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'clara.admin@kw.com', 'Clara Davis', 'ADMIN', 'seed-03', NULL, NOW(), NOW()),
+        (gen_random_uuid()::text, 'dan.agent@kw.com', 'Dan Williams', 'AGENT', 'seed-04', ${mc[1]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'emma.staff@kw.com', 'Emma Brown', 'STAFF', 'seed-05', ${mc[1]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'frank.agent@kw.com', 'Frank Miller', 'STAFF_LEADER', 'seed-06', ${mc[1]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'gina.staff@kw.com', 'Gina Wilson', 'STAFF', 'seed-07', ${mc[1]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'henry.agent@kw.com', 'Henry Clark', 'STAFF', 'seed-08', ${mc[2]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'isla.staff@kw.com', 'Isla Martinez', 'AGENT', 'seed-09', ${mc[2]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'jack.agent@kw.com', 'Jack Lee', 'STAFF_LEADER', 'seed-10', ${mc[2]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'kathryn.hann@kw.com', 'Kathryn Hann', 'STAFF', 'seed-11', NULL, NOW(), NOW()),
+        (gen_random_uuid()::text, 'lawrence.david@kw.com', 'Larry David', 'STAFF', 'seed-12', ${mc[2]?.id}, NOW(), NOW()),
+        (gen_random_uuid()::text, 'm.organa@kw.com', 'Morgan Organa', 'STAFF', 'seed-13', NULL, NOW(), NOW()),
+        (gen_random_uuid()::text, 'nathan.lane@kw.com', 'Nathan Agent', 'AGENT', 'seed-14', ${mc[0]?.id}, NOW(), NOW())
+      RETURNING id, email, name, role, clerk_id, market_center_id
+    `;
+
     const agents = createdUsers.filter((u) => u.role === "AGENT");
     const staff = createdUsers.filter(
       (u) => u.role === "STAFF" || u.role === "STAFF_LEADER"
     )!;
     const admin = createdUsers.find((u) => u.role === "ADMIN")!;
 
-    createdUsers.forEach(async (user, index) => {
-      await prisma.user.update({
-        where: { id: user?.id },
-        data: {
-          userSettings: {
-            create: {
-              notificationPreferences: {
-                create: defaultNotificationPreferences,
-              },
-            },
-          },
-        },
-        include: {
-          userSettings: true,
-        },
-      });
+    // Create user settings and notifications for each user
+    for (const user of createdUsers) {
+      // Create user settings with notification preferences
+      const userSettingsId = (await db.queryRow<{ id: string }>`
+        INSERT INTO user_settings (id, user_id, created_at, updated_at)
+        VALUES (gen_random_uuid()::text, ${user.id}, NOW(), NOW())
+        RETURNING id
+      `)?.id;
 
-      await prisma.notification.create({
-        data: {
-          userId: user?.id,
-          channel: "IN_APP",
-          category: "ACCOUNT",
-          priority: "HIGH",
-          type: "General",
-          title: "Welcome to Conductor",
-          body: "Hello " + user.name + ", we're excited to have you on board.",
-          deliveredAt: new Date(),
-        },
-      });
-    });
+      if (userSettingsId) {
+        // Create notification preferences
+        await db.exec`
+          INSERT INTO notification_preferences (
+            id, user_settings_id, type, email, push, in_app, category, frequency, sms
+          )
+          VALUES (
+            gen_random_uuid()::text, ${userSettingsId}, 'default', true, true,
+            true, 'ACCOUNT', 'INSTANT', false
+          )
+        `;
+      }
+
+      // Create welcome notification
+      await db.exec`
+        INSERT INTO notifications (
+          id, user_id, channel, category, priority, type, title, body,
+          delivered_at, created_at
+        )
+        VALUES (
+          gen_random_uuid()::text, ${user.id}, 'IN_APP', 'ACCOUNT', 'HIGH',
+          'General', 'Welcome to Conductor',
+          ${'Hello ' + user.name + ', we\'re excited to have you on board.'},
+          NOW(), NOW()
+        )
+      `;
+    }
 
     // Create ticket categories
     const categoryNames = [
       { name: "Appraisals", marketCenterIds: mc.map((m) => m.id) },
       { name: "Compliance", marketCenterIds: mc.map((m) => m.id) },
-      {
-        name: "Contracts",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Documents",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Financial",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Inspections",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Listings",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Maintenance",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Marketing",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Onboarding",
-        marketCenterIds: mc.map((m) => m.id),
-      },
-      {
-        name: "Showing Request",
-        marketCenterIds: mc.map((m) => m.id),
-      },
+      { name: "Contracts", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Documents", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Financial", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Inspections", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Listings", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Maintenance", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Marketing", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Onboarding", marketCenterIds: mc.map((m) => m.id) },
+      { name: "Showing Request", marketCenterIds: mc.map((m) => m.id) },
     ];
-    // const categoryNames = [
-    //   "Appraisals",
-    //   "Compliance",
-    //   "Contracts",
-    //   "Documents",
-    //   "Financial",
-    //   "Inspections",
-    //   "Listings",
-    //   "Maintenance",
-    //   "Marketing",
-    //   "Onboarding",
-    //   "Showing Request",
-    // ];
 
-    const categories: Prisma.TicketCategoryGetPayload<{}>[] = (
-      await Promise.all(
-        categoryNames.map((category) =>
-          prisma.ticketCategory.createManyAndReturn({
-            data: [
-              {
-                name: category.name,
-                marketCenterId: category.marketCenterIds[0],
-                defaultAssigneeId: rand(
-                  staff.filter(
-                    (s) => s.marketCenterId === category.marketCenterIds[0]
-                  )
-                ).id,
-              },
-              {
-                name: category.name,
-                marketCenterId: category.marketCenterIds[1],
-                defaultAssigneeId: rand(
-                  staff.filter(
-                    (s) => s.marketCenterId === category.marketCenterIds[1]
-                  )
-                ).id,
-              },
-              {
-                name: category.name,
-                marketCenterId: category.marketCenterIds[2],
-                defaultAssigneeId: rand(
-                  staff.filter(
-                    (s) => s.marketCenterId === category.marketCenterIds[2]
-                  )
-                ).id,
-              },
-            ],
-          })
-        )
-      )
-    ).flat();
+    const categories: { id: string; name: string; market_center_id: string; default_assignee_id: string | null }[] = [];
+
+    for (const category of categoryNames) {
+      for (const mcId of category.marketCenterIds) {
+        const staffInMC = staff.filter((s) => s.market_center_id === mcId);
+        const defaultAssignee = rand(staffInMC);
+
+        const cat = await db.queryRow<{
+          id: string;
+          name: string;
+          market_center_id: string;
+          default_assignee_id: string | null;
+        }>`
+          INSERT INTO ticket_categories (id, name, market_center_id, default_assignee_id, created_at, updated_at)
+          VALUES (gen_random_uuid()::text, ${category.name}, ${mcId}, ${defaultAssignee?.id || null}, NOW(), NOW())
+          RETURNING id, name, market_center_id, default_assignee_id
+        `;
+
+        if (cat) {
+          categories.push(cat);
+        }
+      }
+    }
 
     const categoryMap: Record<
       string,
       {
         id: string;
-        defaultAssigneeId?: string | null;
-        marketCenterId: string;
+        default_assignee_id?: string | null;
+        market_center_id: string;
       }[]
     > = categories.reduce<
       Record<
         string,
         {
           id: string;
-          defaultAssigneeId: string | null;
-          marketCenterId: string;
+          default_assignee_id: string | null;
+          market_center_id: string;
         }[]
       >
     >((acc, category) => {
@@ -318,20 +262,23 @@ export const seedData = api<void, SeedResponse>(
       }
       acc[category.name].push({
         id: category.id,
-        defaultAssigneeId: category.defaultAssigneeId,
-        marketCenterId: category.marketCenterId,
+        default_assignee_id: category.default_assignee_id,
+        market_center_id: category.market_center_id,
       });
       return acc;
     }, {});
 
-    const templates: Array<
-      Omit<Prisma.TicketCreateManyInput, "creatorId" | "assigneeId"> & {
-        categoryName: string;
-        marketCenterId?: string;
-        dueDate?: Date | null;
-        resolvedAt?: Date | null;
-      }
-    > = [
+    const templates: Array<{
+      title: string;
+      description: string;
+      status: string;
+      urgency: string;
+      createdAt: Date;
+      dueDate?: Date | null;
+      resolvedAt?: Date | null;
+      categoryName: string;
+      marketCenterId?: string;
+    }> = [
       {
         title: "Contract deadline for 123 Maple St",
         description:
@@ -482,7 +429,6 @@ export const seedData = api<void, SeedResponse>(
         createdAt: subDays(now, 2),
         dueDate: addDays(now, 4),
       },
-
       {
         title: "Inspection results review",
         description: "Review inspection report with client for 101 Maple St",
@@ -513,214 +459,211 @@ export const seedData = api<void, SeedResponse>(
       },
     ];
 
-    // Tickets per Market Center: 2-4
-    const ticketsToCreate: Prisma.TicketCreateManyInput[] = templates.map(
-      (t) => {
-        const marketCenterId = rand(mc).id;
-        const category =
-          categoryMap[t.categoryName]?.find(
-            (c) => c.marketCenterId === marketCenterId
-          ) || categoryMap[t.categoryName][0];
-        const agentIdsInMC = agents.filter(
-          (a) => a.marketCenterId === marketCenterId
-        );
-        const creatorId = rand(agentIdsInMC)?.id;
+    // Create tickets
+    const tickets: {
+      id: string;
+      title: string;
+      status: string;
+      creator_id: string;
+      assignee_id: string | null;
+      resolved_at: Date | null;
+      category_id: string;
+    }[] = [];
 
-        const base: Prisma.TicketCreateManyInput = {
-          title: t.title,
-          description: t.description,
-          status: t.status,
-          urgency: t.urgency,
-          categoryId: category.id,
-          creatorId: creatorId,
-          assigneeId:
-            t?.status === "CREATED" || t?.status === "UNASSIGNED"
-              ? undefined
-              : category?.defaultAssigneeId
-                ? category.defaultAssigneeId
-                : undefined,
+    for (const t of templates) {
+      const marketCenterId = rand(mc).id;
+      const category =
+        categoryMap[t.categoryName]?.find(
+          (c) => c.market_center_id === marketCenterId
+        ) || categoryMap[t.categoryName][0];
+      const agentIdsInMC = agents.filter(
+        (a) => a.market_center_id === marketCenterId
+      );
+      const creatorId = rand(agentIdsInMC)?.id;
 
-          createdAt: t.createdAt,
-          dueDate: t.dueDate ?? null,
-          resolvedAt:
-            t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null,
-        };
-        return base;
+      const assigneeId =
+        t?.status === "CREATED" || t?.status === "UNASSIGNED"
+          ? null
+          : category?.default_assignee_id || null;
+
+      const ticket = await db.queryRow<{
+        id: string;
+        title: string;
+        status: string;
+        creator_id: string;
+        assignee_id: string | null;
+        resolved_at: Date | null;
+        category_id: string;
+      }>`
+        INSERT INTO tickets (
+          id, title, description, status, urgency, category_id,
+          creator_id, assignee_id, created_at, updated_at,
+          due_date, resolved_at
+        )
+        VALUES (
+          gen_random_uuid()::text, ${t.title}, ${t.description}, ${t.status},
+          ${t.urgency}, ${category.id}, ${creatorId}, ${assigneeId},
+          ${t.createdAt}, NOW(), ${t.dueDate || null},
+          ${t.status === "RESOLVED" ? (t.resolvedAt ?? subDays(now, 1)) : null}
+        )
+        RETURNING id, title, status, creator_id, assignee_id, resolved_at, category_id
+      `;
+
+      if (ticket) {
+        tickets.push(ticket);
       }
-    );
+    }
 
-    const tickets = await prisma.ticket.createManyAndReturn({
-      data: ticketsToCreate,
-    });
     const resolvedTickets = tickets.filter((t) => t.status === "RESOLVED");
 
-    await prisma.$transaction(async (tx) => {
-      for (const ticket of resolvedTickets) {
-        const marketCenterId =
-          mc.find(
-            (m) =>
-              m.id ===
-              staff.find((s) => s.id === ticket.assigneeId)?.marketCenterId
-          )?.id || "";
+    // Create surveys for resolved tickets
+    for (const ticket of resolvedTickets) {
+      const staffMember = staff.find((s) => s.id === ticket.assignee_id);
+      const marketCenterId = staffMember?.market_center_id || mc[0]?.id;
 
-        // 1. CREATE the survey
-        const survey = await tx.survey.create({
-          data: {
-            ticket: { connect: { id: ticket.id } },
-            surveyor: { connect: { id: ticket.creatorId } },
-            assignee: ticket.assigneeId
-              ? { connect: { id: ticket.assigneeId } }
-              : undefined,
-            marketCenter: marketCenterId
-              ? { connect: { id: marketCenterId } }
-              : undefined,
-            overallRating: new Prisma.Decimal(
-              Math.floor(Math.random() * 5) + 1
-            ),
-            assigneeRating: new Prisma.Decimal(
-              Math.floor(Math.random() * 5) + 1
-            ),
-            marketCenterRating: new Prisma.Decimal(
-              Math.floor(Math.random() * 5) + 1
-            ),
-            comment: `Survey for ticket "${ticket.title}"`,
-            createdAt: ticket.resolvedAt!,
-            completed: true,
-            updatedAt: addDays(ticket.resolvedAt!, 1),
-          },
-        });
+      const overallRating = Math.floor(Math.random() * 5) + 1;
+      const assigneeRating = Math.floor(Math.random() * 5) + 1;
+      const marketCenterRating = Math.floor(Math.random() * 5) + 1;
 
-        // 2. UPDATE the ticket with the surveyId
-        await tx.ticket.update({
-          where: { id: ticket.id },
-          data: { surveyId: survey.id },
-        });
-      }
-    });
+      const survey = await db.queryRow<{ id: string }>`
+        INSERT INTO ticket_ratings (
+          id, ticket_id, surveyor_id, assignee_id, market_center_id,
+          overall_rating, assignee_rating, market_center_rating, comment,
+          completed, created_at, updated_at
+        )
+        VALUES (
+          gen_random_uuid()::text, ${ticket.id}, ${ticket.creator_id},
+          ${ticket.assignee_id}, ${marketCenterId},
+          ${overallRating}, ${assigneeRating}, ${marketCenterRating},
+          ${'Survey for ticket "' + ticket.title + '"'},
+          true, ${ticket.resolved_at!}, ${addDays(ticket.resolved_at!, 1)}
+        )
+        RETURNING id
+      `;
 
-    const comments: Prisma.CommentCreateManyInput[] = [];
-    for (const ticket of tickets) {
-      comments.push(
-        {
-          ticketId: ticket.id,
-          userId: ticket?.assigneeId ?? ticket?.creatorId ?? admin.id,
-          content: `Initial update on "${ticket.title}"`,
-          internal: false,
-          createdAt: subDays(now, 1),
-        },
-        {
-          ticketId: ticket.id,
-          userId: ticket.creatorId,
-          content: `Follow-up for "${ticket.title}". Progress noted`,
-          internal: false,
-          createdAt: now,
-        }
-      );
-      if (Math.random() > 0.6) {
-        comments.push({
-          ticketId: ticket.id,
-          userId: admin.id,
-          content: `Internal note for "${ticket.title}".`,
-          internal: true,
-          createdAt: now,
-        });
+      if (survey) {
+        await db.exec`
+          UPDATE tickets SET survey_id = ${survey.id} WHERE id = ${ticket.id}
+        `;
       }
     }
 
-    await prisma.notificationTemplate.createMany({
-      data: notificationTemplatesDefault,
-    });
+    // Create comments for tickets
+    for (const ticket of tickets) {
+      await db.exec`
+        INSERT INTO comments (id, ticket_id, user_id, content, internal, created_at, updated_at)
+        VALUES (
+          gen_random_uuid()::text, ${ticket.id},
+          ${ticket.assignee_id ?? ticket.creator_id ?? admin.id},
+          ${'Initial update on "' + ticket.title + '"'},
+          false, ${subDays(now, 1)}, NOW()
+        )
+      `;
 
-    await prisma.comment.createMany({ data: comments });
+      await db.exec`
+        INSERT INTO comments (id, ticket_id, user_id, content, internal, created_at, updated_at)
+        VALUES (
+          gen_random_uuid()::text, ${ticket.id}, ${ticket.creator_id},
+          ${'Follow-up for "' + ticket.title + '". Progress noted'},
+          false, NOW(), NOW()
+        )
+      `;
 
-    // Create todos for tickets that have templates with todos
-    // const todos: Prisma.TodoCreateManyInput[] = [];
-    // tickets.forEach((ticket, i) => {
-    //   console.log(i, "Creating todo for ticket:", ticket);
-    //   if (ticket && ticket?.id && ticket?.categoryId)
-    //     todos.push({
-    //       title: "Subtask",
-    //       complete: false,
-    //       ticketId: ticket.id,
-    //       createdById: ticket.categoryId,
-    //       createdAt: ticket.createdAt,
-    //     });
-    // });
+      if (Math.random() > 0.6) {
+        await db.exec`
+          INSERT INTO comments (id, ticket_id, user_id, content, internal, created_at, updated_at)
+          VALUES (
+            gen_random_uuid()::text, ${ticket.id}, ${admin.id},
+            ${'Internal note for "' + ticket.title + '".'},
+            true, NOW(), NOW()
+          )
+        `;
+      }
+    }
 
-    // if (todos.length > 0) {
-    // await prisma.todo.createMany({ data: todos });
-    // }
+    // Create notification templates
+    for (const template of notificationTemplatesDefault) {
+      await db.exec`
+        INSERT INTO notification_templates (
+          id, template_name, template_description, type, channel, category,
+          subject, body, is_default,
+          created_at
+        )
+        VALUES (
+          gen_random_uuid()::text, ${template.templateName}, ${template.templateDescription},
+          ${template.type}, ${template.channel}, ${template.category},
+          ${template.subject}, ${template.body}, ${template.isDefault},
+          NOW()
+        )
+      `;
+    }
 
     // Create attachments for some tickets
-    const attachments: Prisma.AttachmentCreateManyInput[] = [];
-
-    // Add attachments to the first 5 tickets
     const ticketsWithAttachments = tickets.slice(0, 5);
     for (const ticket of ticketsWithAttachments) {
-      // Add 1-3 attachments per ticket
       const numAttachments = Math.floor(Math.random() * 3) + 1;
 
-      for (let i = 0; i < numAttachments; i++) {
-        const fileTypes = [
-          {
-            name: "contract.pdf",
-            mimeType: "application/pdf",
-            size: 1024 * 256,
-          },
-          {
-            name: "property-photo.jpg",
-            mimeType: "image/jpeg",
-            size: 1024 * 1024 * 2,
-          },
-          {
-            name: "inspection-report.pdf",
-            mimeType: "application/pdf",
-            size: 1024 * 512,
-          },
-          { name: "floorplan.png", mimeType: "image/png", size: 1024 * 800 },
-          {
-            name: "disclosure.docx",
-            mimeType:
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            size: 1024 * 128,
-          },
-          {
-            name: "hoa-bylaws.pdf",
-            mimeType: "application/pdf",
-            size: 1024 * 384,
-          },
-          {
-            name: "budget.xlsx",
-            mimeType:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            size: 1024 * 96,
-          },
-        ];
+      const fileTypes = [
+        {
+          name: "contract.pdf",
+          mimeType: "application/pdf",
+          size: 1024 * 256,
+        },
+        {
+          name: "property-photo.jpg",
+          mimeType: "image/jpeg",
+          size: 1024 * 1024 * 2,
+        },
+        {
+          name: "inspection-report.pdf",
+          mimeType: "application/pdf",
+          size: 1024 * 512,
+        },
+        { name: "floorplan.png", mimeType: "image/png", size: 1024 * 800 },
+        {
+          name: "disclosure.docx",
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          size: 1024 * 128,
+        },
+        {
+          name: "hoa-bylaws.pdf",
+          mimeType: "application/pdf",
+          size: 1024 * 384,
+        },
+        {
+          name: "budget.xlsx",
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          size: 1024 * 96,
+        },
+      ];
 
+      for (let i = 0; i < numAttachments; i++) {
         const fileInfo = rand(fileTypes);
         const timestamp = Date.now() + Math.floor(Math.random() * 1000);
+        const uploadedBy = rand([...staff, ...agents]).id;
 
-        attachments.push({
-          fileName: fileInfo.name,
-          fileSize: fileInfo.size,
-          mimeType: fileInfo.mimeType,
-          bucketKey: `${ticket.id}/${timestamp}_${fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
-          ticketId: ticket.id,
-          uploadedBy: rand([...staff, ...agents]).id,
-          createdAt: new Date(
-            ticket.createdAt.getTime() + Math.random() * 86400000
-          ), // Random time after ticket creation
-        });
+        await db.exec`
+          INSERT INTO attachments (
+            id, file_name, file_size, mime_type, bucket_key,
+            ticket_id, uploaded_by, created_at, updated_at
+          )
+          VALUES (
+            gen_random_uuid()::text, ${fileInfo.name}, ${fileInfo.size},
+            ${fileInfo.mimeType},
+            ${ticket.id + '/' + timestamp + '_' + fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")},
+            ${ticket.id}, ${uploadedBy}, NOW(), NOW()
+          )
+        `;
       }
     }
-
-    await prisma.attachment.createMany({ data: attachments });
 
     console.log("Seed completed");
 
     return {
       message:
-        "🌲 Seeded multiple market centers, users, tickets, categories, comments and attachments",
+        "Seeded multiple market centers, users, tickets, categories, comments and attachments",
     };
   }
 );

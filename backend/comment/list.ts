@@ -1,5 +1,5 @@
 import { api } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { commentRepository } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { canViewInternalComments } from "../auth/permissions";
@@ -23,25 +23,19 @@ export const list = api<ListCommentsRequest, ListCommentsResponse>(
     const userContext = await getUserContext();
     const canSeeInternal = await canViewInternalComments(userContext);
 
-    const where: any = { ticketId: req.ticketId };
-    if (!canSeeInternal) {
-      where.internal = false;
-    }
-
-    const comments = await prisma.comment.findMany({
-      where,
-      include: {
-        user: true,
-      },
-      orderBy: { createdAt: "asc" },
+    const comments = await commentRepository.findByTicketIdWithUsers(req.ticketId, {
+      includeInternal: canSeeInternal,
+      orderBy: "asc",
     });
 
     const formattedComments: Comment[] = comments.map((comment) => ({
       ...comment,
-      user: {
-        ...comment.user,
-        name: comment.user.name ?? "",
-      },
+      user: comment.user
+        ? {
+            ...comment.user,
+            name: comment.user.name ?? "",
+          }
+        : undefined,
     }));
 
     return { comments: formattedComments };

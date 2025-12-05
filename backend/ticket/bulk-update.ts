@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
+import { db } from "./db";
 import type { TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket, getTicketScopeFilter } from "../auth/permissions";
@@ -58,68 +58,124 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
       throw APIError.invalidArgument("No fields to update");
     }
 
-    // Get ticket scope filter
-    const scopeFilter = await getTicketScopeFilter(userContext);
+    // Note: Since we're using raw SQL, we need to manually build the scope filter
+    // This is a simplified version that filters by ticketIds only
+    // In production, you'd want to validate permissions per ticket
 
-    // First, find which tickets are valid for update
-    const whereClause: any = {
-      AND: [
-        {
-          id: {
-            in: req.ticketIds,
-          },
-        },
-        scopeFilter,
-      ],
-    };
+    const validIds: string[] = [];
+    const failed: string[] = [];
 
-    // Get the tickets that can be updated
-    const validTickets = await prisma.ticket.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-      },
-    });
-
-    const validIds = validTickets.map((t) => t.id);
-    const failed = req.ticketIds.filter((id) => !validIds.includes(id));
+    // Validate each ticket ID against user permissions
+    for (const ticketId of req.ticketIds) {
+      const canModify = await canModifyTicket(userContext, ticketId);
+      if (canModify) {
+        validIds.push(ticketId);
+      } else {
+        failed.push(ticketId);
+      }
+    }
 
     // Update only the valid tickets
     if (validIds.length === 0) {
       return { updated: 0, failed };
     }
 
-    const results: number = await prisma.$transaction(async (tx) => {
-      let updatedCount = 0;
+    let updatedCount = 0;
 
-      for (const oldTicket of validTickets) {
-        const updated = await tx.ticket.update({
-          where: { id: oldTicket.id },
-          data: updateData,
+    // Update each ticket and create history records
+    for (const ticketId of validIds) {
+      // Get old ticket data for history
+      const oldTicket = await db.queryRow<{
+        id: string;
+        status: string | null;
+        urgency: string | null;
+        category: string | null;
+        dueDate: Date | null;
+      }>`
+        SELECT id, status, urgency, category_id as category, due_date as "dueDate"
+        FROM tickets
+        WHERE id = ${ticketId}
+      `;
+
+      if (!oldTicket) continue;
+
+      // Build update query
+      const updates: string[] = [];
+      const fields: { field: string; oldValue: string; newValue: string }[] = [];
+
+      if (updateData.status !== undefined) {
+        updates.push(`status = '${updateData.status}'`);
+        fields.push({
+          field: "status",
+          oldValue: oldTicket.status?.toString() ?? "null",
+          newValue: updateData.status,
         });
+      }
+      if (updateData.urgency !== undefined) {
+        updates.push(`urgency = '${updateData.urgency}'`);
+        fields.push({
+          field: "urgency",
+          oldValue: oldTicket.urgency?.toString() ?? "null",
+          newValue: updateData.urgency,
+        });
+      }
+      if (updateData.category !== undefined) {
+        updates.push(`category_id = '${updateData.category}'`);
+        fields.push({
+          field: "category",
+          oldValue: oldTicket.category?.toString() ?? "null",
+          newValue: updateData.category,
+        });
+      }
+      if (updateData.dueDate !== undefined) {
+        fields.push({
+          field: "dueDate",
+          oldValue: oldTicket.dueDate?.toString() ?? "null",
+          newValue: updateData.dueDate.toString(),
+        });
+      }
+      if (updateData.resolvedAt !== undefined) {
+        // Added by status change logic
+      }
+
+      // Execute update - build dynamic SQL
+      if (updates.length > 0 || updateData.dueDate !== undefined || updateData.resolvedAt !== undefined) {
+        // Build complete SET clause
+        const allUpdates = [...updates];
+        if (updateData.dueDate !== undefined) {
+          allUpdates.push(`due_date = '${updateData.dueDate.toISOString()}'`);
+        }
+        if (updateData.resolvedAt !== undefined && updateData.resolvedAt !== null) {
+          allUpdates.push(`resolved_at = '${updateData.resolvedAt.toISOString()}'`);
+        } else if (updateData.resolvedAt === null) {
+          allUpdates.push(`resolved_at = NULL`);
+        }
+        allUpdates.push(`updated_at = NOW()`);
+
+        const updateSQL = `UPDATE tickets SET ${allUpdates.join(", ")} WHERE id = '${ticketId}'`;
+        await db.exec([updateSQL] as any);
 
         updatedCount++;
 
-        // Build history entries for each changed field
-        const histories = Object.keys(updateData).map((field) => ({
-          ticketId: oldTicket.id,
-          field,
-          previousValue: (oldTicket as any)[field]?.toString() ?? "null",
-          newValue: (updated as any)[field]?.toString() ?? "null",
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        }));
-
-        await tx.ticketHistory.createMany({
-          data: histories,
-        });
+        // Create history records for each changed field
+        for (const field of fields) {
+          await db.exec`
+            INSERT INTO ticket_history (
+              id, ticket_id, field, previous_value, new_value,
+              changed_at, changed_by_id
+            )
+            VALUES (
+              gen_random_uuid()::text, ${ticketId}, ${field.field},
+              ${field.oldValue}, ${field.newValue},
+              NOW(), ${userContext.userId}
+            )
+          `;
+        }
       }
-
-      return updatedCount;
-    });
+    }
 
     return {
-      updated: results,
+      updated: updatedCount,
       failed,
     };
   }

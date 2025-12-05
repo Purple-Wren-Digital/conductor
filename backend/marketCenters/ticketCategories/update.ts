@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
-import { prisma } from "../../ticket/db";
+import { marketCenterRepository, userRepository, db, toJson } from "../../ticket/db";
 import { UsersToNotify } from "../../notifications/types";
 
 export interface UpdateCategoryRequest {
@@ -39,48 +39,56 @@ export const updateCategory = api<
       throw APIError.invalidArgument("Missing ticket category information");
     }
 
-    const oldTicketCategory = await prisma.ticketCategory.findUnique({
-      where: { id: req.id },
-      include: { defaultAssignee: true },
-    });
+    const oldTicketCategory = await marketCenterRepository.findCategoryById(req.id);
 
     if (!oldTicketCategory || !oldTicketCategory?.id) {
       throw APIError.notFound("Category not found");
     }
 
-    const updateCategoryData: any = {};
-    let marketCenterHistory: any = [];
+    // Get old default assignee if exists
+    let oldDefaultAssignee = null;
+    if (oldTicketCategory.defaultAssigneeId) {
+      oldDefaultAssignee = await userRepository.findById(oldTicketCategory.defaultAssigneeId);
+    }
+
+    const updateCategoryData: Partial<{
+      name: string;
+      description: string | null;
+      defaultAssigneeId: string | null;
+    }> = {};
     let usersToNotify: UsersToNotify[] = [];
 
     // NAME
     if (req?.name && req?.name !== oldTicketCategory.name) {
       updateCategoryData.name = req.name;
-      marketCenterHistory.push({
+      await marketCenterRepository.createHistory({
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
         field: "category name",
         previousValue: oldTicketCategory?.name ?? "",
         newValue: req.name,
-        snapshot: JSON.stringify(oldTicketCategory),
+        snapshot: oldTicketCategory,
       });
     }
+
     // DESCRIPTION
     if (
       req?.description &&
       req?.description !== oldTicketCategory.description
     ) {
       updateCategoryData.description = req.description;
-      marketCenterHistory.push({
+      await marketCenterRepository.createHistory({
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
         field: "category description",
         previousValue: oldTicketCategory?.description ?? "",
         newValue: req.description,
-        snapshot: JSON.stringify(oldTicketCategory),
+        snapshot: oldTicketCategory,
       });
     }
+
     // DEFAULT ASSIGNMENT
     if (
       req?.defaultAssigneeId &&
@@ -88,32 +96,31 @@ export const updateCategory = api<
     ) {
       let newDefaultAssignee: any = {};
       if (req.defaultAssigneeId !== "none") {
-        const user = await prisma.user.findUnique({
-          where: { id: req.defaultAssigneeId },
-        });
+        const user = await userRepository.findById(req.defaultAssigneeId);
         if (user) {
           newDefaultAssignee.name = user?.name ?? "N/a";
           newDefaultAssignee.id = user.id;
+          newDefaultAssignee.email = user.email;
         } else {
           throw APIError.notFound("Default assignee user not found");
         }
       }
 
       updateCategoryData.defaultAssigneeId =
-        req.defaultAssigneeId === "none" ? undefined : req.defaultAssigneeId;
+        req.defaultAssigneeId === "none" ? null : req.defaultAssigneeId;
 
-      marketCenterHistory.push({
+      await marketCenterRepository.createHistory({
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
         field: `${req?.name ? req.name : oldTicketCategory?.name} category default assignee`,
         previousValue:
           oldTicketCategory &&
-          oldTicketCategory?.defaultAssignee &&
-          oldTicketCategory?.defaultAssignee?.name &&
+          oldDefaultAssignee &&
+          oldDefaultAssignee?.name &&
           oldTicketCategory?.defaultAssigneeId
             ? JSON.stringify({
-                name: oldTicketCategory.defaultAssignee.name ?? "N/a",
+                name: oldDefaultAssignee.name ?? "N/a",
                 id: oldTicketCategory.defaultAssigneeId,
               })
             : "Unassigned",
@@ -123,16 +130,16 @@ export const updateCategory = api<
           newDefaultAssignee?.id
             ? JSON.stringify(newDefaultAssignee)
             : null,
-        snapshot: JSON.stringify(oldTicketCategory),
+        snapshot: oldTicketCategory,
       });
 
-      if (oldTicketCategory?.defaultAssigneeId) {
+      if (oldTicketCategory?.defaultAssigneeId && oldDefaultAssignee) {
         usersToNotify.push({
           id: oldTicketCategory.defaultAssigneeId,
-          name: oldTicketCategory?.defaultAssignee?.name
-            ? oldTicketCategory.defaultAssignee.name
+          name: oldDefaultAssignee?.name
+            ? oldDefaultAssignee.name
             : "",
-          email: oldTicketCategory?.defaultAssignee?.email ?? "",
+          email: oldDefaultAssignee?.email ?? "",
           updateType: "removed",
         });
       }
@@ -146,37 +153,18 @@ export const updateCategory = api<
         });
       }
     }
-    if (oldTicketCategory?.defaultAssigneeId) {
-      usersToNotify.push({
-        id: oldTicketCategory.defaultAssigneeId,
-        name: oldTicketCategory?.defaultAssignee?.name
-          ? oldTicketCategory.defaultAssignee.name
-          : "",
-        email: oldTicketCategory?.defaultAssignee?.email ?? "",
-        updateType: "removed",
-      });
-    }
 
     if (Object.keys(updateCategoryData).length === 0) {
       throw APIError.invalidArgument("No fields to update");
     }
 
-    const result = await prisma.$transaction(async (pr) => {
-      const ticketCategory = await prisma.ticketCategory.update({
-        where: { id: req.id },
-        data: updateCategoryData,
-      });
+    // Update the category
+    const ticketCategory = await marketCenterRepository.updateCategory(req.id, updateCategoryData);
 
-      const marketCenterHistoryNew = await pr.marketCenterHistory.createMany({
-        data: marketCenterHistory,
-      });
+    if (!ticketCategory) {
+      throw APIError.notFound("Failed to update category");
+    }
 
-      return {
-        ticketCategory,
-        marketCenterHistoryNew,
-      };
-    });
-
-    return { category: result.ticketCategory, usersToNotify: usersToNotify };
+    return { category: ticketCategory, usersToNotify: usersToNotify };
   }
 );

@@ -32,12 +32,10 @@ npm install -g bun
 
 The backend will be available at the URL shown in your terminal (typically `http://localhost:4000`).
 
-### Prisma Migrations
-This project uses Prisma to manage database migrations. After making changes to the Prisma schema, you can run the following command to generate migrations:
+### Database Migrations
+This project uses Encore's native SQLDatabase with SQL migrations. Migration files are located in `backend/ticket/migrations/`. To create a new migration, add a new timestamped folder with a `migration.sql` file inside.
 
-```bash
-npm run migrate
-```
+Encore automatically runs migrations when you start the development server with `encore run`.
 
 ### Frontend Setup
 

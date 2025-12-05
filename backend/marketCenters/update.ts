@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db, withTransaction, fromTimestamp, toJson } from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -38,56 +38,80 @@ export const update = api<
       throw APIError.permissionDenied("Only Admin can update market centers");
     }
 
-    const marketCenter = await prisma.marketCenter.findUnique({
-      where: { id: req.id },
-      include: { users: true },
-    });
-    if (!marketCenter) {
+    // Fetch existing market center with users
+    const marketCenterRow = await db.queryRow<{
+      id: string;
+      name: string;
+      settings: any;
+      created_at: Date;
+      updated_at: Date;
+    }>`
+      SELECT id, name, settings, created_at, updated_at
+      FROM market_centers
+      WHERE id = ${req.id}
+    `;
+
+    if (!marketCenterRow) {
       throw APIError.notFound("Cannot find Market Center");
     }
 
-    const updateMarketCenterData: any = {};
-    let marketCenterHistory: any = [];
+    const existingUsers = await db.queryAll<{
+      id: string;
+      email: string;
+      name: string | null;
+      role: string;
+    }>`
+      SELECT id, email, name, role
+      FROM users
+      WHERE market_center_id = ${req.id} AND is_active = true
+    `;
+
+    let marketCenterHistory: Array<{
+      marketCenterId: string;
+      changedById: string;
+      action: string;
+      field: string;
+      previousValue?: string;
+      newValue?: string;
+    }> = [];
+
     let removedUsers: User[] = [];
     let addedUsers: User[] = [];
+    let hasUpdates = false;
 
-    if (req?.name !== marketCenter.name) {
-      updateMarketCenterData.name = req.name;
+    // Check for name change
+    if (req?.name && req.name !== marketCenterRow.name) {
+      hasUpdates = true;
       marketCenterHistory.push({
-        marketCenterId: marketCenter.id,
+        marketCenterId: marketCenterRow.id,
         changedById: userContext.userId,
         action: "UPDATE",
         field: "name",
-        previousValue: marketCenter?.name,
+        previousValue: marketCenterRow.name,
         newValue: req.name,
       });
     }
 
+    // Check for user changes
     if (req?.users) {
-      const oldUserIds = marketCenter.users.map((u) => u.id);
+      const oldUserIds = existingUsers.map((u) => u.id);
       const newUserIds = req.users.map((u) => u.id);
 
       const addedUserIds = newUserIds.filter((id) => !oldUserIds.includes(id));
-      const removedUserIds = oldUserIds.filter(
-        (id) => !newUserIds.includes(id)
-      );
+      const removedUserIds = oldUserIds.filter((id) => !newUserIds.includes(id));
 
       addedUsers = req.users.filter((u) => addedUserIds.includes(u.id));
-      removedUsers = marketCenter.users.filter((u) =>
-        removedUserIds.includes(u.id)
-      );
+      removedUsers = existingUsers.filter((u) => removedUserIds.includes(u.id)) as User[];
 
-      // Build Prisma update
-      updateMarketCenterData.users = {
-        connect: addedUserIds.map((id) => ({ id })),
-        disconnect: removedUserIds.map((id) => ({ id })),
-      };
+      if (addedUsers.length > 0 || removedUsers.length > 0) {
+        hasUpdates = true;
+      }
 
-      // Track adds/removes for history
+      // Track adds for history
       if (addedUsers.length > 0) {
         marketCenterHistory.push(
           ...addedUsers.map((userAdded) => ({
-            marketCenterId: marketCenter.id,
+            marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "ADD",
             field: "team",
@@ -100,10 +124,11 @@ export const update = api<
         );
       }
 
+      // Track removes for history
       if (removedUsers.length > 0) {
         marketCenterHistory.push(
           ...removedUsers.map((userRemoved) => ({
-            marketCenterId: marketCenter.id,
+            marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "REMOVE",
             field: "team",
@@ -117,24 +142,72 @@ export const update = api<
       }
     }
 
-    if (Object.keys(updateMarketCenterData).length === 0) {
+    if (!hasUpdates) {
       throw APIError.invalidArgument("No fields to update");
     }
 
-    const result = await prisma.$transaction(async (pr) => {
-      const updatedMarketCenter = await pr.marketCenter.update({
-        where: { id: req.id },
-        data: updateMarketCenterData,
-      });
+    const result = await withTransaction(async (tx) => {
+      // Update market center name if changed
+      if (req?.name && req.name !== marketCenterRow.name) {
+        await tx.exec`
+          UPDATE market_centers
+          SET name = ${req.name}, updated_at = NOW()
+          WHERE id = ${req.id}
+        `;
+      }
 
-      const marketCenterLog = await pr.marketCenterHistory.createMany({
-        data: marketCenterHistory,
-      });
+      // Add users to market center
+      if (addedUsers.length > 0) {
+        for (const user of addedUsers) {
+          await tx.exec`
+            UPDATE users
+            SET market_center_id = ${req.id}, updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+        }
+      }
 
-      return {
-        updatedMarketCenter,
-        marketCenterLog,
-      };
+      // Remove users from market center
+      if (removedUsers.length > 0) {
+        for (const user of removedUsers) {
+          await tx.exec`
+            UPDATE users
+            SET market_center_id = NULL, updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+        }
+      }
+
+      // Create history entries
+      for (const historyEntry of marketCenterHistory) {
+        await tx.exec`
+          INSERT INTO market_center_history (
+            market_center_id, changed_by_id, action, field, previous_value, new_value
+          ) VALUES (
+            ${historyEntry.marketCenterId},
+            ${historyEntry.changedById},
+            ${historyEntry.action},
+            ${historyEntry.field},
+            ${historyEntry.previousValue ?? null},
+            ${historyEntry.newValue ?? null}
+          )
+        `;
+      }
+
+      // Fetch updated market center
+      const updatedMarketCenterRow = await tx.queryRow<{
+        id: string;
+        name: string;
+        settings: any;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        SELECT id, name, settings, created_at, updated_at
+        FROM market_centers
+        WHERE id = ${req.id}
+      `;
+
+      return { updatedMarketCenterRow };
     });
 
     const usersToNotify: UsersToNotify[] = [
@@ -152,8 +225,16 @@ export const update = api<
       })),
     ];
 
+    const updatedMarketCenter: MarketCenter = {
+      id: result.updatedMarketCenterRow!.id,
+      name: result.updatedMarketCenterRow!.name,
+      settings: result.updatedMarketCenterRow!.settings,
+      createdAt: fromTimestamp(result.updatedMarketCenterRow!.created_at)!,
+      updatedAt: fromTimestamp(result.updatedMarketCenterRow!.updated_at)!,
+    };
+
     return {
-      marketCenter: result.updatedMarketCenter,
+      marketCenter: updatedMarketCenter,
       usersToNotify: usersToNotify,
     };
   }

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../../ticket/db";
+import { userRepository, db } from "../../../ticket/db";
 import { getUserContext } from "../../../auth/user-context";
 import { defaultNotificationPreferences } from "../../../utils";
 
@@ -31,60 +31,58 @@ export const resetNotificationPreferences = api<
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: req.id },
-      include: { userSettings: { include: { notificationPreferences: true } } },
-    });
+    const existingUser = await userRepository.findByIdWithSettings(req.id);
 
     if (!existingUser) {
       throw APIError.notFound("User not found");
     }
 
+    // If no user settings or notification preferences, create them
     if (
       !existingUser?.userSettings ||
       !existingUser?.userSettings?.id ||
       !existingUser?.userSettings?.notificationPreferences ||
       !existingUser?.userSettings?.notificationPreferences.length
     ) {
-      const updatedUser = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          userSettings: {
-            create: {
-              notificationPreferences: {
-                create: defaultNotificationPreferences,
-              },
-            },
-          },
-        },
-        include: {
-          userSettings: {
-            include: {
-              notificationPreferences: true,
-            },
-          },
-        },
-      });
+      const newSettings = await userRepository.createUserSettings(existingUser.id);
+      await userRepository.createNotificationPreferences(
+        newSettings.id,
+        defaultNotificationPreferences
+      );
       return { reset: true };
     }
 
-    await Promise.all(
-      existingUser.userSettings.notificationPreferences.map(
-        async (pref) =>
-          await prisma.notificationPreferences.delete({
-            where: { id: pref.id },
-          })
-      )
-    );
+    // Delete existing notification preferences and create new ones
+    await using tx = await db.begin();
 
-    await prisma.userSettings.update({
-      where: { id: existingUser?.userSettings?.id },
-      data: {
-        notificationPreferences: {
-          create: defaultNotificationPreferences,
-        },
-      },
-    });
+    try {
+      // Delete all existing notification preferences
+      await tx.exec`
+        DELETE FROM notification_preferences
+        WHERE user_settings_id = ${existingUser.userSettings.id}
+      `;
+
+      // Create new default notification preferences
+      for (const pref of defaultNotificationPreferences) {
+        await tx.exec`
+          INSERT INTO notification_preferences (
+            id, user_settings_id, type, category, frequency, email, push, in_app, sms
+          ) VALUES (
+            gen_random_uuid()::text,
+            ${existingUser.userSettings.id},
+            ${pref.type},
+            ${pref.category},
+            ${pref.frequency},
+            ${pref.email},
+            ${pref.push},
+            ${pref.inApp},
+            ${pref.sms}
+          )
+        `;
+      }
+    } catch (error) {
+      throw APIError.aborted("Failed to reset notification preferences");
+    }
 
     return { reset: true };
   }

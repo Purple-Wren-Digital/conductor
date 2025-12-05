@@ -67,7 +67,7 @@ export default function MarketCenterUsers({
   marketCenterName?: string;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  invalidateMarketCenter: Promise<void>;
+  invalidateMarketCenter: () => void;
   handleSendMarketCenterNotifications: ({
     templateName,
     trigger,
@@ -251,8 +251,8 @@ export default function MarketCenterUsers({
       console.error("Failed to remove user", error);
       toast.error("Failed to remove user");
     },
-    onSettled: async () => {
-      await invalidateMarketCenter;
+    onSettled: () => {
+      invalidateMarketCenter();
       setIsLoading(false);
     },
   });
