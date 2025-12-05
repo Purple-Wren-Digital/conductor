@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db, withTransaction, fromTimestamp, toJson } from "../ticket/db";
 import { MarketCenter } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -37,62 +37,87 @@ export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
       );
     }
 
-    let where: any = {
-      ...scopeFilter,
-    };
-
-    const marketCenter = await prisma.marketCenter.findUnique({
-      where,
-      include: { users: true },
-    });
+    const marketCenter = await db.queryRow<{ id: string }>`
+      SELECT id FROM market_centers WHERE id = ${req.id}
+    `;
     if (!marketCenter) {
       throw APIError.notFound("Cannot find Market Center");
     }
 
-    // const updatedMarketCenter = await prisma.marketCenter.update({
-    //   where,
-    //   include: { users: true },
-    //   data: {
-    //     users: {
-    //       disconnect: req.users.map((u) => ({ id: u.id })),
-    //     },
-    //   },
-    // });
+    const result = await withTransaction(async (tx) => {
+      // Remove users from market center by setting their market_center_id to NULL
+      for (const user of req.users) {
+        await tx.exec`
+          UPDATE users
+          SET market_center_id = NULL, updated_at = NOW()
+          WHERE id = ${user.id}
+        `;
+      }
 
-    const result = await prisma.$transaction(async (pr) => {
-      const updatedMarketCenter = await pr.marketCenter.update({
-        where: { id: req.id },
-        include: { users: true },
-        data: {
-          users: {
-            disconnect: req.users.map((u) => ({ id: u.id })),
-          },
-        },
-      });
+      // Create history entries for removed users
+      for (const user of req.users) {
+        await tx.exec`
+          INSERT INTO market_center_history (
+            id, market_center_id, changed_by_id, action, field, previous_value
+          ) VALUES (
+            gen_random_uuid()::text,
+            ${marketCenter.id},
+            ${userContext.userId},
+            'REMOVE',
+            'team',
+            ${toJson({ id: user.id, name: user.name })}
+          )
+        `;
+      }
 
-      const removedUsersData = req.users.map((user) => {
-        const removedUser = {
-          marketCenterId: marketCenter.id,
-          changedById: userContext.userId,
-          action: "REMOVE",
-          field: "team",
-          previousValue: JSON.stringify({ id: user.id, name: user.name }),
-        };
-        return removedUser;
-      });
+      // Fetch updated market center with users
+      const marketCenterRow = await tx.queryRow<{
+        id: string;
+        name: string;
+        settings: any;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        SELECT id, name, settings, created_at, updated_at
+        FROM market_centers
+        WHERE id = ${req.id}
+      `;
 
-      const marketCenterLog = await pr.marketCenterHistory.createMany({
-        data: removedUsersData,
-      });
+      const userRows = await tx.queryAll<{
+        id: string;
+        email: string;
+        name: string | null;
+        role: string;
+        clerk_id: string;
+        is_active: boolean;
+        market_center_id: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        SELECT id, email, name, role, clerk_id, is_active, market_center_id, created_at, updated_at
+        FROM users
+        WHERE market_center_id = ${req.id} AND is_active = true
+      `;
 
-      return { updatedMarketCenter, marketCenterLog };
+      return { marketCenterRow, userRows };
     });
 
-    const formattedMarketCenter = {
-      ...result.updatedMarketCenter,
-      users: result.updatedMarketCenter.users.map((user) => ({
-        ...user,
+    const formattedMarketCenter: MarketCenter = {
+      id: result.marketCenterRow!.id,
+      name: result.marketCenterRow!.name,
+      settings: result.marketCenterRow!.settings,
+      createdAt: fromTimestamp(result.marketCenterRow!.created_at)!,
+      updatedAt: fromTimestamp(result.marketCenterRow!.updated_at)!,
+      users: result.userRows.map((user) => ({
+        id: user.id,
+        email: user.email,
         name: user.name ?? "",
+        role: user.role as any,
+        clerkId: user.clerk_id,
+        isActive: user.is_active,
+        marketCenterId: user.market_center_id ?? null,
+        createdAt: fromTimestamp(user.created_at)!,
+        updatedAt: fromTimestamp(user.updated_at)!,
       })),
     };
 

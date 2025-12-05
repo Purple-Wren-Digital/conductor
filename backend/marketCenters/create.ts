@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { canCreateMarketCenters } from "../auth/permissions";
 import { getUserContext } from "../auth/user-context";
-import { prisma } from "../ticket/db";
+import { db, marketCenterRepository, withTransaction, fromTimestamp, toJson } from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
 
@@ -37,79 +37,88 @@ export const create = api<
       throw APIError.permissionDenied("Only Amin can create market centers");
     }
 
-    // const marketCenter = await prisma.marketCenter.create({
-    //   data: {
-    //     name: req.name,
-    //     createdAt: new Date(),
-    //     updatedAt: new Date(),
-    //     users: {
-    //       connect: req.users?.map((u) => ({ id: u.id })),
-    //     },
-    //   },
-    //   include: { users: true },
-    // });
+    const result = await withTransaction(async (tx) => {
+      // Create market center
+      const marketCenterRow = await tx.queryRow<{
+        id: string;
+        name: string;
+        settings: any;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        INSERT INTO market_centers (id, name, settings, created_at, updated_at)
+        VALUES (gen_random_uuid()::text, ${req.name}, ${toJson({})}::jsonb, NOW(), NOW())
+        RETURNING id, name, settings, created_at, updated_at
+      `;
 
-    const result = await prisma.$transaction(async (pr) => {
-      const marketCenter = await pr.marketCenter.create({
-        data: {
-          name: req.name,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          users: {
-            connect: req.users?.map((u) => ({ id: u.id })),
-          },
-        },
-        include: { users: true },
-      });
+      if (!marketCenterRow) {
+        throw APIError.internal("Failed to create market center");
+      }
 
-      const marketCenterHistory = await pr.marketCenterHistory.create({
-        data: {
-          marketCenterId: marketCenter?.id,
-          action: "CREATE",
-          snapshot: {},
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        },
-      });
+      // Associate users with market center
+      if (req.users && req.users.length > 0) {
+        for (const user of req.users) {
+          await tx.exec`
+            UPDATE users
+            SET market_center_id = ${marketCenterRow.id}, updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+        }
+      }
 
-      // const ticketCategoriesData =
-      //   req.ticketCategories &&
-      //   req.ticketCategories.map((category) => ({
-      //     name: category.name,
-      //     description: category?.description || undefined,
-      //     marketCenterId: category.marketCenterId || undefined,
-      //     defaultAssigneeId: category?.defaultAssigneeId || undefined,
-      //     createdAt: new Date(),
-      //     updatedAt: new Date(),
-      //   }));
-      // let categories: any;
-      // if (ticketCategoriesData && ticketCategoriesData.length) {
-      //   const categories = await pr.ticketCategory.createMany({
-      //     data: { ticketCategoriesData },
-      //   });
-      // }
+      // Create history entry
+      await tx.exec`
+        INSERT INTO market_center_history (
+          id, market_center_id, action, snapshot, changed_at, changed_by_id
+        ) VALUES (
+          gen_random_uuid()::text,
+          ${marketCenterRow.id},
+          'CREATE',
+          ${toJson({})}::jsonb,
+          NOW(),
+          ${userContext.userId}
+        )
+      `;
 
-      return {
-        marketCenter,
-        marketCenterHistory,
+      // Fetch users associated with the market center
+      const userRows = await tx.queryAll<{
+        id: string;
+        email: string;
+        name: string | null;
+        role: string;
+        clerk_id: string;
+        is_active: boolean;
+        market_center_id: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        SELECT id, email, name, role, clerk_id, is_active, market_center_id, created_at, updated_at
+        FROM users
+        WHERE market_center_id = ${marketCenterRow.id} AND is_active = true
+      `;
+
+      const marketCenter: MarketCenter = {
+        id: marketCenterRow.id,
+        name: marketCenterRow.name,
+        settings: marketCenterRow.settings,
+        createdAt: fromTimestamp(marketCenterRow.created_at)!,
+        updatedAt: fromTimestamp(marketCenterRow.updated_at)!,
+        users: userRows.map(u => ({
+          id: u.id,
+          email: u.email,
+          name: u.name ?? "",
+          role: u.role as any,
+          clerkId: u.clerk_id,
+          isActive: u.is_active,
+          marketCenterId: u.market_center_id ?? null,
+          createdAt: fromTimestamp(u.created_at)!,
+          updatedAt: fromTimestamp(u.updated_at)!,
+        })),
       };
+
+      return { marketCenter };
     });
 
-    // TODO: Prisma Transaction
-    //         ticketCategories: { connect: req.ticketCategories?.map((category) => ({ id: category.id })) }, // TicketCategory[]
-
-    if (!result) {
-      // || !!result?.marketCenter
-      throw APIError.unimplemented("Unable to create market center");
-    }
-
-    const formattedMarketCenter = {
-      ...result.marketCenter,
-      users: result.marketCenter.users.map((user) => ({
-        ...user,
-        name: user.name ?? "",
-      })),
-    };
-    return { marketCenter: formattedMarketCenter };
+    return { marketCenter: result.marketCenter };
   }
 );

@@ -1,7 +1,6 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
-import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
 
 export interface BacklogRequest {
@@ -16,6 +15,11 @@ export interface BacklogResponse {
   total: number;
 }
 
+interface TicketRow {
+  id: string;
+  status: string;
+}
+
 export const backlog = api<BacklogRequest, BacklogResponse>(
   {
     expose: true,
@@ -26,57 +30,78 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    let where: Prisma.TicketWhereInput = {
-      status: { in: ["CREATED", "UNASSIGNED"] },
-    };
+    let ticketsFound: TicketRow[] = [];
+
+    // Convert arrays to filter params (null if empty)
+    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
 
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
         if (!userContext.marketCenterId) {
-          where = {
-            OR: [
-              { assigneeId: userContext.userId },
-              { assigneeId: null },
-              { creatorId: userContext.userId },
-            ],
-          };
+          // User without market center - see tickets they're assigned to, created, or unassigned
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT t.id, t.status
+            FROM tickets t
+            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.assignee_id IS NULL
+                OR t.creator_id = ${userContext.userId}
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         } else {
-          const baseScope: Prisma.TicketWhereInput = {
-            OR: [
-              { category: { marketCenterId: userContext.marketCenterId } },
-              { creator: { marketCenterId: userContext.marketCenterId } },
-              { assignee: { marketCenterId: userContext.marketCenterId } },
-              { assigneeId: null },
-            ],
-          };
-
-          where = baseScope;
+          // User with market center - see tickets in their market center scope
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.status
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (
+                tc.market_center_id = ${userContext.marketCenterId}
+                OR creator.market_center_id = ${userContext.marketCenterId}
+                OR assignee.market_center_id = ${userContext.marketCenterId}
+                OR t.assignee_id IS NULL
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         }
         break;
       case "ADMIN":
-        const baseScopeAdmin: Prisma.TicketWhereInput = {};
-        if (req.marketCenterIds && req.marketCenterIds.length > 0) {
-          baseScopeAdmin.OR = [
-            { category: { marketCenterId: { in: req.marketCenterIds } } },
-            { creator: { marketCenterId: { in: req.marketCenterIds } } },
-            { assignee: { marketCenterId: { in: req.marketCenterIds } } },
-            { assigneeId: null },
-          ];
+        if (marketCenterIds) {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.status
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (
+                tc.market_center_id = ANY(${marketCenterIds})
+                OR creator.market_center_id = ANY(${marketCenterIds})
+                OR assignee.market_center_id = ANY(${marketCenterIds})
+                OR t.assignee_id IS NULL
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
+        } else {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT t.id, t.status
+            FROM tickets t
+            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         }
-        where = baseScopeAdmin;
         break;
       default:
         throw APIError.permissionDenied(
           "User not permitted to generate ticket reports"
         );
     }
-
-    if (req.categoryIds && req.categoryIds.length > 0) {
-      where.categoryId = { in: req.categoryIds as string[] };
-    }
-
-    const ticketsFound = await prisma.ticket.findMany({ where });
 
     return {
       created: ticketsFound.filter((t) => t.status === "CREATED").length,

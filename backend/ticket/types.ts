@@ -78,6 +78,34 @@ export interface Ticket {
 
   surveyId?: string | null;
   survey?: Survey | null;
+
+  // SLA fields
+  slaResponseDueAt?: Date | null;
+  firstResponseAt?: Date | null;
+  slaBreached?: boolean;
+  slaWarning50Sent?: boolean;
+  slaWarning75Sent?: boolean;
+  slaPolicyId?: string | null;
+  slaPolicy?: SlaPolicy | null;
+}
+
+export type SlaEventType = 'WARNING_50' | 'WARNING_75' | 'BREACHED' | 'MET';
+
+export interface SlaPolicy {
+  id: string;
+  urgency: Urgency;
+  responseTimeMinutes: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SlaEvent {
+  id: string;
+  ticketId: string;
+  eventType: SlaEventType;
+  notificationSent: boolean;
+  createdAt: Date;
 }
 
 export interface Comment {

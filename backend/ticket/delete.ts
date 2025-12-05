@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
+import { db, ticketRepository } from "./db";
 import { getUserContext } from "../auth/user-context";
-// import { canDeleteTicket } from "../auth/permissions";
+import { canDeleteTicket } from "../auth/permissions";
 import { TicketHistory } from "./types";
 
 export interface DeleteTicketRequest {
@@ -24,16 +24,14 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    const canDelete = await canDeleteTicket(userContext);
+    const canDelete = await canDeleteTicket(userContext, req.ticketId);
     if (!canDelete) {
       throw APIError.permissionDenied(
         "You do not have permission to delete tickets"
       );
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: req.ticketId },
-    });
+    const ticket = await ticketRepository.findById(req.ticketId);
 
     if (!ticket) {
       throw APIError.notFound("Ticket not found");
@@ -42,28 +40,27 @@ export const deleteTicket = api<DeleteTicketRequest, DeleteTicketResponse>(
       throw APIError.invalidArgument("Resolved tickets cannot be deleted");
     }
 
-    // const history = await prisma.ticketHistory.create({
-    //   data: {
-    //     ticketId: ticket.id,
-    //     action: "DELETE",
-    //     field: "ticket",
-    //     snapshot: ticket,
-    //     changedById: userContext.userId,
-    //   },
-    //   // include: {
-    //   //   ticket: true
-    //   // }
-    // });
+    // Create history record (optional - commented out in original)
+    // const history = await db.queryRow<{ id: string }>`
+    //   INSERT INTO "TicketHistory" (
+    //     id, "ticketId", action, field, snapshot, "changedById", "changedAt", "createdAt", "updatedAt"
+    //   )
+    //   VALUES (
+    //     gen_random_uuid()::text, ${ticket.id}, 'DELETE', 'ticket',
+    //     ${JSON.stringify(ticket)}, ${userContext.userId}, NOW(), NOW(), NOW()
+    //   )
+    //   RETURNING id
+    // `;
 
     // Delete ticket (comments will cascade delete due to schema relation)
-    await prisma.ticket.delete({
-      where: { id: req.ticketId },
-    });
+    await db.exec`
+      DELETE FROM tickets WHERE id = ${req.ticketId}
+    `;
 
     return {
       success: true,
       message: "Ticket deleted successfully",
-      history: history,
+      // history: history,
     };
   }
 );

@@ -1,11 +1,14 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { Notification } from "./types";
-import { mygw } from "../auth/auth";
 
 // Store active streams for broadcasting
-// Map key is clerkId, value is the stream instance
-const activeStreams = new Map<string, api.StreamOut<Notification>>();
+// Map key is clerkId, value is the stream instance and a flag to indicate if it's active
+interface StreamEntry {
+  stream: { send: (msg: Notification) => Promise<void>; close: () => Promise<void> };
+  active: boolean;
+}
+const activeStreams = new Map<string, StreamEntry>();
 
 /**
  * Streaming endpoint for real-time notifications
@@ -16,9 +19,10 @@ export const notificationStream = api.streamOut<Notification>(
     expose: true,
     auth: true,
     path: "/notifications/stream",
-    method: "GET",
   },
   async (stream) => {
+    let clerkId: string | null = null;
+
     try {
       // Get authenticated user data
       const authData = await getAuthData();
@@ -26,32 +30,27 @@ export const notificationStream = api.streamOut<Notification>(
         throw APIError.unauthenticated("User not authenticated");
       }
 
-      const clerkId = authData.userID;
+      clerkId = authData.userID;
       console.log(`📡 Notification stream connected: ${clerkId}`);
 
       // Store the stream for broadcasting
-      activeStreams.set(clerkId, stream);
+      activeStreams.set(clerkId, { stream, active: true });
 
-      // Keep the stream alive until client disconnects
-      // We'll send notifications as they come in via the broadcast function
-      await new Promise<void>((resolve, reject) => {
-        // Handle stream closure
-        stream.on("close", () => {
-          activeStreams.delete(clerkId);
-          console.log(`❌ Notification stream disconnected: ${clerkId}`);
-          resolve();
-        });
-
-        // Handle stream errors
-        stream.on("error", (error) => {
-          activeStreams.delete(clerkId);
-          console.error(`⚠️ Notification stream error for ${clerkId}:`, error);
-          reject(error);
-        });
-      });
+      // Keep the stream alive by periodically checking if it's still active
+      // The stream will automatically close when the client disconnects
+      while (activeStreams.get(clerkId)?.active) {
+        // Wait for a short period before checking again
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     } catch (error) {
       console.error("Notification stream error:", error);
       throw error;
+    } finally {
+      // Cleanup when stream ends
+      if (clerkId) {
+        activeStreams.delete(clerkId);
+        console.log(`❌ Notification stream disconnected: ${clerkId}`);
+      }
     }
   }
 );
@@ -64,15 +63,16 @@ export async function broadcastNotification(
   clerkId: string,
   notification: Notification
 ): Promise<void> {
-  const stream = activeStreams.get(clerkId);
+  const entry = activeStreams.get(clerkId);
 
-  if (stream) {
+  if (entry && entry.active) {
     try {
-      await stream.send(notification);
+      await entry.stream.send(notification);
       console.log(`✅ Notification sent to ${clerkId}`);
     } catch (error) {
       // Stream might be closed or errored
       console.warn(`⚠️ Failed to send notification to ${clerkId}:`, error);
+      entry.active = false;
       activeStreams.delete(clerkId);
     }
   } else {
@@ -92,10 +92,15 @@ export function getConnectedUsers(): string[] {
  * Disconnect a specific user's stream
  * Useful for forcing reconnection or cleanup
  */
-export function disconnectUser(clerkId: string): void {
-  const stream = activeStreams.get(clerkId);
-  if (stream) {
-    stream.close();
+export async function disconnectUser(clerkId: string): Promise<void> {
+  const entry = activeStreams.get(clerkId);
+  if (entry) {
+    entry.active = false;
+    try {
+      await entry.stream.close();
+    } catch {
+      // Ignore close errors
+    }
     activeStreams.delete(clerkId);
     console.log(`🔌 Forcefully disconnected user: ${clerkId}`);
   }

@@ -20,13 +20,15 @@ import { TeamSwitcher } from "@/components//ui/team-switcher";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import { BarChartIcon, Building2, InfoIcon, TrendingUp } from "lucide-react";
+import { BarChartIcon, Building2, Clock, InfoIcon, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useListAdminTickets, useListAllRatings } from "@/hooks/use-tickets";
+import { useSlaMetrics } from "@/hooks/use-sla";
+import { getComplianceColor } from "@/lib/api/sla";
 import {
   chartColors,
   getResolvedInBusinessDays,
@@ -111,6 +113,17 @@ export function AdminDashboard() {
     ["admin-dashboard-global-ratings", role ?? "AGENT"],
     role
   );
+
+  // SLA Metrics - last 30 days
+  const slaDateFilters = useMemo(() => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return {
+      dateFrom: thirtyDaysAgo.toISOString().split("T")[0],
+      dateTo: now.toISOString().split("T")[0],
+    };
+  }, []);
+  const { data: slaMetricsData } = useSlaMetrics(slaDateFilters);
 
   const tickets = ticketsData?.tickets || [];
   const allUsers = usersData?.users || [];
@@ -716,6 +729,80 @@ export function AdminDashboard() {
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">Normal</span>
                 <Badge variant="secondary">Healthy</Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SLA COMPLIANCE */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>SLA Compliance</CardTitle>
+            <CardDescription>
+              Response time performance (last 30 days)
+            </CardDescription>
+          </div>
+          <Link href="/dashboard/sla">
+            <Button variant="outline" size="sm">
+              <Clock className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div>
+              <p className="text-sm font-medium">Compliance Rate</p>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-bold ${slaMetricsData?.metrics ? getComplianceColor(slaMetricsData.metrics.complianceRate) : ""}`}>
+                  {slaMetricsData?.metrics ? `${slaMetricsData.metrics.complianceRate.toFixed(1)}%` : "N/A"}
+                </span>
+                {slaMetricsData?.metrics && (
+                  <Badge
+                    variant={
+                      slaMetricsData.metrics.complianceRate >= 90
+                        ? "success"
+                        : slaMetricsData.metrics.complianceRate >= 75
+                          ? "warning"
+                          : "orange"
+                    }
+                  >
+                    {slaMetricsData.metrics.complianceRate >= 90
+                      ? "Excellent"
+                      : slaMetricsData.metrics.complianceRate >= 75
+                        ? "Fair"
+                        : "Needs Improvement"}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Tickets with SLA</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold">
+                  {slaMetricsData?.metrics?.ticketsWithSla ?? 0}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  of {slaMetricsData?.metrics?.totalTickets ?? 0} total
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium">SLA Met</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-green-600">
+                  {slaMetricsData?.metrics?.ticketsMet ?? 0}
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium">SLA Breached</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-red-600">
+                  {slaMetricsData?.metrics?.ticketsBreached ?? 0}
+                </span>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
-import { prisma } from "../../ticket/db";
+import { marketCenterRepository, userRepository } from "../../ticket/db";
 
 export interface DeleteCategoryRequest {
   id: string;
@@ -33,38 +33,34 @@ export const deleteCategory = api<
       throw APIError.invalidArgument("Missing ticket category id");
     }
 
-    const ticketCategoryToDelete = await prisma.ticketCategory.findUnique({
-      where: { id: req.id },
-      include: { defaultAssignee: true },
-    });
+    const ticketCategoryToDelete = await marketCenterRepository.findCategoryById(req.id);
 
     if (!ticketCategoryToDelete) {
       throw APIError.notFound("Ticket Category not found");
     }
 
-    const result = await prisma.$transaction(async (pr) => {
-      const marketCenterHistory = await pr.marketCenterHistory.create({
-        data: {
-          marketCenterId: ticketCategoryToDelete.marketCenterId,
-          action: "DELETE",
-          field: "category",
-          previousValue: ticketCategoryToDelete?.name,
-          newValue: "-",
-          snapshot: ticketCategoryToDelete,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        },
-      });
+    // Get default assignee if exists
+    let defaultAssignee = null;
+    if (ticketCategoryToDelete.defaultAssigneeId) {
+      defaultAssignee = await userRepository.findById(ticketCategoryToDelete.defaultAssigneeId);
+    }
 
-      const ticketCategory = await prisma.ticketCategory.delete({
-        where: { id: req.id },
-      });
-
-      return {
-        ticketCategory,
-        marketCenterHistory,
-      };
+    // Create history record before deletion
+    await marketCenterRepository.createHistory({
+      marketCenterId: ticketCategoryToDelete.marketCenterId,
+      action: "DELETE",
+      field: "category",
+      previousValue: ticketCategoryToDelete?.name,
+      newValue: "-",
+      snapshot: {
+        ...ticketCategoryToDelete,
+        defaultAssignee: defaultAssignee ?? undefined,
+      },
+      changedById: userContext.userId,
     });
+
+    // Delete the category
+    await marketCenterRepository.deleteCategory(req.id);
 
     return { deleted: true };
   }

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../../ticket/db";
+import { db, toJson } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
 import {
   notificationTemplatesDefault,
@@ -28,10 +28,27 @@ export const resetNotificationTemplate = api(
     }
 
     // Reset all templates to default
-    await prisma.notificationTemplate.deleteMany({});
-    await prisma.notificationTemplate.createMany({
-      data: notificationTemplatesDefault,
-    });
+    await db.exec`DELETE FROM notification_templates`;
+
+    // Insert default templates one by one
+    for (const template of notificationTemplatesDefault) {
+      await db.exec`
+        INSERT INTO notification_templates (
+          id, template_name, template_description, subject, body, category, channel, is_default, created_at, variables
+        ) VALUES (
+          gen_random_uuid()::text,
+          ${template.templateName},
+          ${template.templateDescription},
+          ${template.subject ?? null},
+          ${template.body},
+          ${template.category},
+          ${template.channel},
+          ${template.isDefault},
+          NOW(),
+          ${toJson(template.variables)}::jsonb
+        )
+      `;
+    }
 
     return { success: true };
   }

@@ -1,13 +1,14 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
+import { ticketRepository, todoRepository, userRepository } from "./db";
 import type { Ticket, Urgency } from "./types";
-// import { applyAutoAssignment } from "./auto-assignment";
 import { getUserContext } from "../auth/user-context";
 import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";
 import { UsersToNotify } from "../notifications/types";
 import { checkCanCreateTicket } from "../auth/subscription-check";
-import { trackUsage } from "../subscription/subscription";
+import { slaService } from "../sla/sla.service";
+// Subscription usage tracking disabled - unlimited tickets allowed
+// import { trackUsage } from "../subscription/subscription";
 
 export interface CreateTicketRequest {
   title: string;
@@ -48,102 +49,99 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         await checkCanCreateTicket(userContext.marketCenterId);
       }
 
-      // Apply auto-assignment (checks category defaults first, then rules)
-
-      // const assigneeId = await applyAutoAssignment({
-      //   category: req.categoryId,
-      //   urgency: req.urgency,
-      //   title: req.title,
-      //   description: req.description,
-      //   creatorId: userContext.userId, // Change local-dev-user in userContext for different roles
-      //   // assigneeId: req?.assigneeId,
-      // });
-
-      const result = await prisma.$transaction(async (tx) => {
-        const ticket = await tx.ticket.create({
-          data: {
-            title: req.title,
-            description: req.description,
-            categoryId: req.categoryId ?? null,
-            urgency: req.urgency,
-            creatorId: userContext.userId,
-            assigneeId:
-              req?.assigneeId && req?.assigneeId !== "Unassigned"
-                ? req.assigneeId
-                : null,
-            status:
-              req?.assigneeId && req?.assigneeId !== "Unassigned"
-                ? "ASSIGNED"
-                : "CREATED",
-            dueDate: req.dueDate,
-          },
-          include: {
-            creator: true,
-            assignee: true,
-            _count: { select: { comments: true } },
-          },
-        });
-
-        if (req.todos && req.todos.length > 0) {
-          const subtasks = await tx.todo.createMany({
-            data: req.todos?.map((todo) => ({
-              title: todo,
-              ticketId: ticket.id,
-              complete: false,
-              createdById: userContext.userId,
-              createdAt: ticket.createdAt,
-            })),
-          });
-        }
-
-        const history = await tx.ticketHistory.create({
-          data: {
-            ticketId: ticket.id,
-            action: "CREATE",
-            field: "ticket",
-            changedById: userContext.userId,
-          },
-        });
-
-        return { ticket, history };
+      // Create ticket
+      const ticket = await ticketRepository.create({
+        title: req.title,
+        description: req.description,
+        categoryId: req.categoryId ?? null,
+        urgency: req.urgency,
+        creatorId: userContext.userId,
+        assigneeId:
+          req?.assigneeId && req?.assigneeId !== "Unassigned"
+            ? req.assigneeId
+            : null,
+        status:
+          req?.assigneeId && req?.assigneeId !== "Unassigned"
+            ? "ASSIGNED"
+            : "CREATED",
+        dueDate: req.dueDate,
       });
 
-      // Track usage for billing
-      if (userContext.marketCenterId) {
-        await trackUsage(userContext.marketCenterId, "tickets");
+      // Set SLA due date based on urgency
+      await slaService.setTicketSla(ticket.id, req.urgency, ticket.createdAt);
+
+      // If ticket is assigned on creation, record that as first response
+      if (req?.assigneeId && req?.assigneeId !== "Unassigned") {
+        await slaService.recordFirstResponse(ticket.id);
       }
+
+      // Create todos if provided
+      if (req.todos && req.todos.length > 0) {
+        await todoRepository.createMany(
+          req.todos.map((todo) => ({
+            title: todo,
+            ticketId: ticket.id,
+            createdById: userContext.userId,
+          }))
+        );
+      }
+
+      // Create history record
+      await ticketRepository.createHistory({
+        ticketId: ticket.id,
+        action: "CREATE",
+        field: "ticket",
+        changedById: userContext.userId,
+      });
+
+      // Get creator and assignee details
+      const creator = await userRepository.findById(userContext.userId);
+      let assignee = null;
+      if (ticket.assigneeId) {
+        assignee = await userRepository.findById(ticket.assigneeId);
+      }
+
+      // Subscription usage tracking disabled - unlimited tickets allowed
+      // if (userContext.marketCenterId) {
+      //   await trackUsage(userContext.marketCenterId, "tickets");
+      // }
 
       const usersToNotify: UsersToNotify[] = [
         {
           id: userContext?.userId,
-          name: result.ticket.creator.name ?? "No name",
+          name: creator?.name ?? "No name",
           email: userContext.email,
           updateType: "created",
         },
       ];
-      if (result?.ticket?.assigneeId && result?.ticket?.assignee) {
+
+      if (ticket.assigneeId && assignee) {
         usersToNotify.push({
-          id: result.ticket.assigneeId,
-          name: result.ticket.assignee.name ?? "No name",
-          email: result.ticket.assignee.email,
+          id: ticket.assigneeId,
+          name: assignee.name ?? "No name",
+          email: assignee.email,
           updateType: "added",
         });
       }
 
+      // Get comment count
+      const commentCount = 0; // New ticket has no comments
+
       return {
         ticket: {
-          ...result.ticket,
-          commentCount: result.ticket._count.comments,
-          ticketHistory: mapHistorySnapshot([result.history]),
-          categoryId: result?.ticket?.categoryId ?? null,
-          creator: {
-            ...result.ticket.creator,
-            name: result.ticket.creator.name ?? "",
-          },
-          assignee: result.ticket.assignee
+          ...ticket,
+          commentCount,
+          categoryId: ticket.categoryId ?? null,
+          creator: creator
             ? {
-                ...result.ticket.assignee,
-                name: result.ticket.assignee.name ?? "",
+                ...creator,
+                name: creator.name ?? "",
+              }
+            : undefined,
+          assignee: assignee
+            ? {
+                ...assignee,
+                name: assignee.name ?? "",
               }
             : null,
         },

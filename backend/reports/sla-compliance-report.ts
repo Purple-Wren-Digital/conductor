@@ -1,7 +1,6 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
-import { Prisma } from "@prisma/client";
 import { getUserContext } from "../auth/user-context";
 import { getTicketSlaStatus } from "./utils";
 
@@ -18,6 +17,13 @@ export interface SLAResponse {
   overdue: number;
 }
 
+interface TicketRow {
+  id: string;
+  created_at: Date;
+  resolved_at: Date | null;
+  due_date: Date | null;
+}
+
 export const slaCompliance = api<SLARequest, SLAResponse>(
   {
     expose: true,
@@ -28,40 +34,76 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    let where: Prisma.TicketWhereInput = {};
+    // Convert arrays to filter params (null if empty)
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const statusList = req.status && req.status.length > 0 ? req.status : null;
+    const marketCenterIds =
+      req.marketCenterIds && req.marketCenterIds.length > 0
+        ? req.marketCenterIds
+        : null;
+
+    let ticketsFound: TicketRow[] = [];
 
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
         if (!userContext.marketCenterId) {
-          where = {
-            OR: [
-              { assigneeId: userContext.userId },
-              { creatorId: userContext.userId },
-            ],
-          };
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT t.id, t.created_at, t.resolved_at, t.due_date
+            FROM tickets t
+            WHERE (
+              t.assignee_id = ${userContext.userId}
+              OR t.creator_id = ${userContext.userId}
+              OR t.assignee_id IS NULL
+            )
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         } else {
-          const baseScope: Prisma.TicketWhereInput = {
-            OR: [
-              { category: { marketCenterId: userContext.marketCenterId } },
-              { creator: { marketCenterId: userContext.marketCenterId } },
-              { assignee: { marketCenterId: userContext.marketCenterId } },
-            ],
-          };
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE (
+              tc.market_center_id = ${userContext.marketCenterId}
+              OR creator.market_center_id = ${userContext.marketCenterId}
+              OR assignee.market_center_id = ${userContext.marketCenterId}
+              OR t.assignee_id IS NULL
 
-          where = baseScope;
+            )
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         }
         break;
       case "ADMIN":
-        const baseScopeAdmin: Prisma.TicketWhereInput = {};
-        if (req.marketCenterIds && req.marketCenterIds.length > 0) {
-          baseScopeAdmin.OR = [
-            { category: { marketCenterId: { in: req.marketCenterIds } } },
-            { creator: { marketCenterId: { in: req.marketCenterIds } } },
-            { assignee: { marketCenterId: { in: req.marketCenterIds } } },
-          ];
+        if (marketCenterIds) {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE (
+              tc.market_center_id = ANY(${marketCenterIds})
+              OR creator.market_center_id = ANY(${marketCenterIds})
+              OR assignee.market_center_id = ANY(${marketCenterIds})
+              OR t.assignee_id IS NULL
+            )
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
+        } else {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT t.id, t.created_at, t.resolved_at, t.due_date
+            FROM tickets t
+            WHERE (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+          `;
         }
-        where = baseScopeAdmin;
         break;
       default:
         throw APIError.permissionDenied(
@@ -69,16 +111,6 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
         );
     }
 
-    if (req.status && req.status.length > 0) {
-      where.status = { in: req.status as TicketStatus[] };
-    }
-    if (req.categoryIds && req.categoryIds.length > 0) {
-      where.categoryId = { in: req.categoryIds as string[] };
-    }
-
-    const ticketsFound = await prisma.ticket.findMany({
-      where,
-    });
     const report = {
       compliant: 0,
       onTrack: 0,
@@ -88,9 +120,9 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
 
     for (const ticket of ticketsFound) {
       const slaStatus = getTicketSlaStatus({
-        createdAt: ticket.createdAt,
-        resolvedAt: ticket?.resolvedAt ? ticket.resolvedAt : undefined,
-        dueDate: ticket?.dueDate ? ticket.dueDate : undefined,
+        createdAt: ticket.created_at,
+        resolvedAt: ticket.resolved_at ? ticket.resolved_at : undefined,
+        dueDate: ticket.due_date ? ticket.due_date : undefined,
       });
       report[slaStatus]++;
     }

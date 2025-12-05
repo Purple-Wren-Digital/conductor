@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db, withTransaction } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canDeleteMarketCenters } from "../auth/permissions";
 
@@ -36,22 +36,25 @@ export const deleteMarketCenter = api<
       throw APIError.invalidArgument("Missing request data");
     }
 
-    const marketCenter = await prisma.marketCenter.findUnique({
-      where: { id: req.id },
-    });
+    const marketCenter = await db.queryRow<{ id: string }>`
+      SELECT id FROM market_centers WHERE id = ${req.id}
+    `;
 
     if (!marketCenter) {
       throw APIError.notFound("Market Center not found");
     }
 
-    await prisma.$transaction([
-      prisma.marketCenterHistory.deleteMany({
-        where: { marketCenterId: req.id },
-      }),
-      prisma.marketCenter.delete({
-        where: { id: req.id },
-      }),
-    ]);
+    await withTransaction(async (tx) => {
+      await tx.exec`
+        DELETE FROM market_center_history
+        WHERE market_center_id = ${req.id}
+      `;
+
+      await tx.exec`
+        DELETE FROM market_centers
+        WHERE id = ${req.id}
+      `;
+    });
 
     return {
       success: true,

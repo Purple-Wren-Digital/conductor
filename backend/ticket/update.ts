@@ -1,11 +1,18 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "./db";
-import type { Ticket, TicketStatus, Urgency } from "./types";
+import {
+  ticketRepository,
+  userRepository,
+  marketCenterRepository,
+  surveyRepository,
+  todoRepository,
+  withTransaction,
+} from "./db";
+import type { Ticket, TicketStatus, Urgency, TicketHistory } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket, canReassignTicket } from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";
-import { TicketHistory } from "@prisma/client";
 import { UsersToNotify } from "../notifications/types";
+import { slaService } from "../sla/sla.service";
 
 export interface UpdateTicketRequest {
   ticketId: string;
@@ -47,10 +54,9 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       newAssigneeId: req?.assigneeId,
     });
 
-    const oldTicket = await prisma.ticket.findUnique({
-      where: { id: req.ticketId },
-      include: { creator: true, assignee: true, category: true },
-    });
+    const oldTicket = await ticketRepository.findByIdWithRelations(
+      req.ticketId
+    );
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
     }
@@ -66,9 +72,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     // Check if assignee exists and is in the same market center for STAFF users
     let newAssignee = null;
     if (canAssign && req.assigneeId && !unassignTicket) {
-      const user = await prisma.user.findUnique({
-        where: { id: req.assigneeId },
-      });
+      const user = await userRepository.findById(req.assigneeId);
       if (!user) {
         throw APIError.notFound("New assignee not found");
       }
@@ -85,8 +89,26 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       );
     }
 
-    const updateData: any = {};
-    let ticketHistoryData: any = [];
+    const updateData: Partial<{
+      title: string | null;
+      description: string | null;
+      status: TicketStatus;
+      urgency: Urgency;
+      categoryId: string | null;
+      dueDate: Date | null;
+      assigneeId: string | null;
+      resolvedAt: Date | null;
+      surveyId: string | null;
+    }> = {};
+    let ticketHistoryData: Array<{
+      ticketId: string;
+      action: string;
+      field: string | null;
+      previousValue: string | null;
+      newValue: string | null;
+      snapshot: any;
+      changedById: string;
+    }> = [];
     let usersToNotify: UsersToNotify[] = [];
 
     if (req?.title && req.title !== oldTicket.title) {
@@ -98,7 +120,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         previousValue: oldTicket?.title ?? null,
         newValue: req?.title ?? null,
         snapshot: oldTicket,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
@@ -111,7 +132,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         previousValue: oldTicket?.description ?? null,
         newValue: req?.description ?? null,
         snapshot: oldTicket,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
@@ -124,14 +144,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         previousValue: oldTicket.urgency,
         newValue: req.urgency,
         snapshot: oldTicket,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
     if (req?.categoryId && req.categoryId !== oldTicket.categoryId) {
-      const newCategory = await prisma.ticketCategory.findUnique({
-        where: { id: req.categoryId },
-      });
+      const newCategory = await marketCenterRepository.findCategoryById(
+        req.categoryId
+      );
       updateData.categoryId = req.categoryId;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -140,7 +159,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         previousValue: oldTicket?.category?.name ?? null,
         newValue: newCategory?.name ?? null,
         snapshot: oldTicket,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
     }
@@ -157,9 +175,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
             ? oldTicket.dueDate.toISOString()
             : null,
           newValue: req.dueDate ? req.dueDate.toISOString() : null,
-
           snapshot: oldTicket,
-          changedAt: new Date(),
           changedById: userContext.userId,
         });
       }
@@ -178,7 +194,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         previousValue: oldTicket.status,
         newValue: req.status,
         snapshot: oldTicket,
-        changedAt: new Date(),
         changedById: userContext.userId,
       });
       if (req.status === "RESOLVED") {
@@ -190,17 +205,15 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           null;
 
         if (marketCenterId) {
-          const survey = await prisma.survey.create({
-            data: {
-              ticketId: req.ticketId,
-              surveyorId: oldTicket.creatorId,
-              assigneeId: oldTicket.assigneeId || null,
-              marketCenterId: marketCenterId,
-            },
+          const survey = await surveyRepository.create({
+            ticketId: req.ticketId,
+            surveyorId: oldTicket.creatorId!,
+            assigneeId: oldTicket.assigneeId || null,
+            marketCenterId: marketCenterId,
           });
           updateData.surveyId = survey.id;
           usersToNotify.push({
-            id: oldTicket.creatorId,
+            id: oldTicket.creatorId ?? "N/a",
             name: oldTicket.creator?.name ?? "",
             email: oldTicket.creator?.email ?? "",
             updateType: "ticketSurvey",
@@ -238,7 +251,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           previousValue: previousAssigneeName,
           newValue: "Unassigned",
           snapshot: oldTicket,
-          changedAt: new Date(),
           changedById: userContext.userId,
         },
         {
@@ -248,7 +260,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           previousValue: oldTicket?.status ?? null,
           newValue: "UNASSIGNED",
           snapshot: oldTicket,
-          changedAt: new Date(),
           changedById: userContext.userId,
         }
       );
@@ -285,7 +296,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           previousValue: previousAssigneeName,
           newValue: newAssignee?.name ?? "No name listed",
           snapshot: oldTicket,
-          changedAt: new Date(),
           changedById: userContext.userId,
         },
         {
@@ -295,10 +305,12 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           previousValue: oldTicket?.status ?? "CREATED",
           newValue: "ASSIGNED",
           snapshot: oldTicket,
-          changedAt: new Date(),
           changedById: userContext.userId,
         }
       );
+
+      // Record first response for SLA tracking (assignment counts as first response)
+      await slaService.recordFirstResponse(req.ticketId);
     } else if (
       canAssign &&
       !unassignTicket &&
@@ -313,7 +325,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       });
     } else {
       usersToNotify.push({
-        id: oldTicket?.creatorId,
+        id: oldTicket?.creatorId!,
         name: oldTicket?.creator?.name ?? "No name listed",
         email: oldTicket?.creator?.email ?? "N/a",
         updateType: "unchanged",
@@ -325,27 +337,26 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     }
 
     try {
-      const [ticket] = await prisma.$transaction([
-        prisma.ticket.update({
-          where: { id: req.ticketId },
-          data: updateData,
-        }),
-        prisma.ticketHistory.createMany({
-          data: ticketHistoryData,
-        }),
-      ]);
+      // Update ticket
+      const ticket = await ticketRepository.update(req.ticketId, updateData);
+
+      if (!ticket) {
+        throw APIError.notFound("Ticket not found");
+      }
+
+      // Create history records
+      await ticketRepository.createManyHistory(ticketHistoryData);
+
+      // Create todos if provided
       if (req.todos && req.todos.length > 0) {
-        const subtasks = await prisma.todo.createMany({
-          data: req.todos?.map((todo) => ({
+        await todoRepository.createMany(
+          req.todos.map((todo) => ({
             title: todo,
             ticketId: ticket.id,
             complete: false,
             createdById: userContext.userId,
-            updatedById: userContext.userId,
-            createdAt: ticket.updatedAt,
-            updatedAt: ticket.updatedAt,
-          })),
-        });
+          }))
+        );
       }
 
       const formattedTicket: Ticket = {
@@ -362,15 +373,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
             : "MEDIUM",
       };
 
-      const allChanges: ActivityUpdates[] = ticketHistoryData.map(
-        (history: TicketHistory) => {
-          return {
-            label: history.field,
-            originalValue: history.previousValue,
-            newValue: history.newValue,
-          };
-        }
-      );
+      const allChanges: ActivityUpdates[] = ticketHistoryData.map((history) => {
+        return {
+          label: history.field || "N/a",
+          originalValue: history.previousValue ?? "",
+          newValue: history.newValue ?? "",
+        };
+      });
 
       return {
         ticket: formattedTicket,
@@ -378,7 +387,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedDetails: allChanges,
       };
     } catch (error: any) {
-      if (error.code === "P2025") {
+      if (error.code === "P2025" || error.message?.includes("not found")) {
         throw APIError.notFound("Ticket not found");
       }
       throw error;

@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
-import { prisma } from "../../ticket/db";
+import { marketCenterRepository, userRepository, db, toJson } from "../../ticket/db";
 
 export interface CreateCategoryRequest {
   name: string;
@@ -38,85 +38,77 @@ export const createCategory = api<
       throw APIError.invalidArgument("Missing ticket category information");
     }
 
-    const marketCenter = await prisma.marketCenter.findUnique({
-      where: { id: marketCenterId },
-    });
+    const marketCenter = await marketCenterRepository.findById(marketCenterId);
 
     if (!marketCenter) {
       throw APIError.notFound("Market center not found");
     }
 
-    const result = await prisma.$transaction(async (pr) => {
-      const ticketCategory = await prisma.ticketCategory.create({
-        data: {
-          marketCenterId: marketCenter.id,
-          name: req.name,
-          description: req.description || null,
-          defaultAssigneeId: req.defaultAssigneeId || null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        include: {
-          defaultAssignee: true,
-        },
-      });
+    // Create ticket category
+    // Handle "none" as null (frontend uses "none" for no selection)
+    const defaultAssigneeId = req.defaultAssigneeId && req.defaultAssigneeId !== "none"
+      ? req.defaultAssigneeId
+      : null;
 
-      const marketCenterHistoryItems = [
-        {
-          marketCenterId: marketCenter.id,
-          action: "CREATE",
-          field: "category",
-          newValue: req.name,
-          snapshot: ticketCategory,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        },
-      ];
-
-      const userHistoryItems = [
-        {
-          userId: userContext.userId,
-          marketCenterId: marketCenter.id,
-          action: "CREATE",
-          field: "category",
-          newValue: req.name,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        },
-      ];
-
-      if (req?.defaultAssigneeId) {
-        userHistoryItems.push({
-          userId: req.defaultAssigneeId,
-          marketCenterId: marketCenter.id,
-          action: "ASSIGNMENT",
-          field: "category",
-          newValue: req.name,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        });
-        marketCenterHistoryItems.push({
-          marketCenterId: marketCenter.id,
-          action: "ASSIGNMENT",
-          field: "category",
-          newValue: req.name,
-          snapshot: ticketCategory,
-          changedAt: new Date(),
-          changedById: userContext.userId,
-        });
-      }
-
-      await pr.marketCenterHistory.createMany({
-        data: marketCenterHistoryItems,
-      });
-
-      await pr.userHistory.createMany({
-        data: userHistoryItems,
-      });
-
-      return { ticketCategory };
+    const ticketCategory = await marketCenterRepository.createCategory({
+      name: req.name,
+      description: req.description ?? null,
+      marketCenterId: marketCenter.id,
+      defaultAssigneeId,
     });
 
-    return { category: result.ticketCategory };
+    // Get default assignee if exists
+    let defaultAssignee = null;
+    if (ticketCategory.defaultAssigneeId) {
+      defaultAssignee = await userRepository.findById(ticketCategory.defaultAssigneeId);
+    }
+
+    // Create market center history for category creation
+    await marketCenterRepository.createHistory({
+      marketCenterId: marketCenter.id,
+      action: "CREATE",
+      field: "category",
+      newValue: req.name,
+      snapshot: ticketCategory,
+      changedById: userContext.userId,
+    });
+
+    // Create user history for creator
+    await userRepository.createHistory({
+      userId: userContext.userId,
+      marketCenterId: marketCenter.id,
+      action: "CREATE",
+      field: "category",
+      newValue: req.name,
+      changedById: userContext.userId,
+    });
+
+    // If there's a default assignee, create additional history records
+    if (req?.defaultAssigneeId) {
+      await userRepository.createHistory({
+        userId: req.defaultAssigneeId,
+        marketCenterId: marketCenter.id,
+        action: "ASSIGNMENT",
+        field: "category",
+        newValue: req.name,
+        changedById: userContext.userId,
+      });
+
+      await marketCenterRepository.createHistory({
+        marketCenterId: marketCenter.id,
+        action: "ASSIGNMENT",
+        field: "category",
+        newValue: req.name,
+        snapshot: ticketCategory,
+        changedById: userContext.userId,
+      });
+    }
+
+    return {
+      category: {
+        ...ticketCategory,
+        defaultAssignee: defaultAssignee ?? undefined,
+      },
+    };
   }
 );

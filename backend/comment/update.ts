@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { commentRepository, db } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { processCommentContent } from "./sanitize";
 import { getUserContext } from "../auth/user-context";
@@ -28,69 +28,81 @@ export const update = api<UpdateCommentRequest, UpdateCommentResponse>(
     const userContext = await getUserContext();
     const userId = userContext?.userId;
 
-    const existingComment = await prisma.comment.findFirst({
-      where: {
-        id: req.commentId,
-        ticketId: req.ticketId,
-      },
-    });
+    const existingComment = await commentRepository.findById(req.commentId);
 
     if (!existingComment) {
       throw APIError.notFound("Comment not found");
+    }
+
+    if (existingComment.ticketId !== req.ticketId) {
+      throw APIError.notFound("Comment not found for this ticket");
     }
 
     if (existingComment.userId !== userId) {
       throw APIError.permissionDenied("You can only edit your own comments");
     }
 
-    // const updatedComment = await prisma.comment.update({
-    //   where: { id: req.commentId },
-    //   data: {
-    //     content: processCommentContent(req.content),
-    //     internal:
-    //       req.internal !== undefined ? req.internal : existingComment.internal,
-    //     updatedAt: new Date(),
-    //   },
-    //   include: {
-    //     user: true,
-    //   },
-    // });
-    const result = await prisma.$transaction(async (p) => {
-      const updatedComment = await p.comment.update({
-        where: { id: req.commentId },
-        data: {
-          content: processCommentContent(req.content),
-          internal:
-            req.internal !== undefined
-              ? req.internal
-              : existingComment.internal,
-          updatedAt: new Date(),
-        },
-        include: {
-          user: true,
-        },
-      });
+    // Process the new content and determine internal flag
+    const processedContent = processCommentContent(req.content);
+    const internal = req.internal !== undefined ? req.internal : existingComment.internal;
 
-      const history = await p.ticketHistory.create({
-        data: {
-          ticketId: existingComment?.ticketId,
-          action: "UPDATE",
-          field: "comment",
-          previousValue: processCommentContent(existingComment?.content),
-          newValue: processCommentContent(req.content),
-          changedById: userContext.userId,
-        },
-      });
+    // Use a transaction to update comment and create history
+    await using tx = await db.begin();
 
-      return { updatedComment, history };
-    });
+    try {
+      // Update the comment
+      await tx.exec`
+        UPDATE comments
+        SET
+          content = ${processedContent},
+          internal = ${internal},
+          updated_at = NOW()
+        WHERE id = ${req.commentId}
+      `;
 
-    const safeUpdatedComment = {
-      ...result.updatedComment,
-      user: {
-        ...result.updatedComment.user,
-        name: result.updatedComment.user.name ?? "",
-      },
+      // Create history record
+      await tx.exec`
+        INSERT INTO ticket_history (
+          ticket_id,
+          action,
+          field,
+          previous_value,
+          new_value,
+          changed_by_id,
+          created_at
+        ) VALUES (
+          ${existingComment.ticketId},
+          'UPDATE',
+          'comment',
+          ${processCommentContent(existingComment.content)},
+          ${processedContent},
+          ${userContext.userId},
+          NOW()
+        )
+      `;
+    } catch (error) {
+      throw error;
+    }
+
+    // Fetch the updated comment with user details
+    const updatedComment = await commentRepository.findByIdWithUser(req.commentId);
+
+    if (!updatedComment) {
+      throw APIError.internal("Failed to fetch updated comment");
+    }
+
+    // Ensure user name is not null for the response
+    const safeUpdatedComment: Comment = {
+      id: updatedComment.id,
+      content: updatedComment.content,
+      ticketId: updatedComment.ticketId,
+      userId: updatedComment.userId,
+      internal: updatedComment.internal,
+      createdAt: updatedComment.createdAt,
+      user: updatedComment.user ? {
+        ...updatedComment.user,
+        name: updatedComment.user.name ?? "",
+      } : undefined,
     };
 
     // Publish comment updated event for real-time updates

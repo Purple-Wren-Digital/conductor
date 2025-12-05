@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 
@@ -24,9 +24,7 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     const userContext = await getUserContext();
 
     if (userContext?.role === "AGENT") {
-      const user = await prisma.user.findUnique({
-        where: { id: userContext.userId },
-      });
+      const user = await userRepository.findById(userContext.userId);
 
       return {
         users: user
@@ -40,30 +38,28 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
       };
     }
 
-    let where: any = {};
+    // Build search parameters
+    const searchParams: any = {
+      sortBy: 'name' as const,
+      sortDir: 'asc' as const,
+    };
 
     if (req?.role) {
-      where.role = req.role;
+      searchParams.role = [req.role];
     }
+
     if (
       (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
       userContext?.marketCenterId
     ) {
-      where.marketCenterId = userContext.marketCenterId;
+      searchParams.marketCenterId = userContext.marketCenterId;
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      include: {
-        marketCenter: true,
-      },
-      orderBy: { name: "asc" },
-    });
+    const { users } = await userRepository.search(searchParams);
 
     const formattedUsers = users.map((user) => ({
       ...user,
       name: user.name ?? "",
-      marketCenter: user?.marketCenter ?? undefined,
     }));
 
     return { users: formattedUsers };

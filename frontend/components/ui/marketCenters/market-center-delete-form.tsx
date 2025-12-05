@@ -30,8 +30,8 @@ type DeleteMarketCenterProps = {
   >;
   showDeleteModal: boolean;
   setShowDeleteModal: React.Dispatch<React.SetStateAction<boolean>>;
-  refreshMarketCenters: Promise<void>;
-  refreshUsers: Promise<void>;
+  refreshMarketCenters: () => void;
+  refreshUsers: () => void;
   handleSendMarketCenterNotifications: ({
     trigger,
     receivingUser,
@@ -132,9 +132,9 @@ export default function DeleteMarketCenter({
       console.error("Unable to remove market center", error);
       toast.error("Error: Unable to remove market center");
     },
-    onSettled: async () => {
-      await refreshMarketCenters;
-      await refreshUsers;
+    onSettled: () => {
+      refreshMarketCenters();
+      refreshUsers();
       setDeleting(false);
     },
   });

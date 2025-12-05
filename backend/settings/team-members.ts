@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { TeamMember } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { getUserScopeFilter } from "../auth/permissions";
@@ -21,52 +21,48 @@ export const getTeamMembers = api(
     // const userScopeFilter = getUserScopeFilter(userContext);
 
     // Get active team members
-    const members = await prisma.user.findMany({
-      where: {
-        // ...userScopeFilter,
-        deletedAt: null,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: [{ role: "asc" }, { name: "asc" }],
-    });
+    const members = await db.queryAll<{
+      id: string;
+      email: string;
+      name: string | null;
+      role: string;
+      isActive: boolean;
+      createdAt: Date;
+    }>`
+      SELECT id, email, name, role, is_active as "isActive", created_at as "createdAt"
+      FROM users
+      WHERE deleted_at IS NULL AND is_active = true
+      ORDER BY role ASC, name ASC
+    `;
 
     // Get pending invitations
-    const invitations = await prisma.teamInvitation.findMany({
-      where: {
-        marketCenterId: userContext.marketCenterId || undefined,
-        status: "PENDING",
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        expiresAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const invitations = await db.queryAll<{
+      id: string;
+      email: string;
+      role: string;
+      createdAt: Date;
+      expiresAt: Date;
+    }>`
+      SELECT id, email, role, created_at as "createdAt", expires_at as "expiresAt"
+      FROM team_invitations
+      WHERE market_center_id = ${userContext.marketCenterId || null}
+        AND status = 'PENDING'
+        AND expires_at > NOW()
+      ORDER BY created_at DESC
+    `;
     let safeMembers: TeamMember[] | [];
 
     if (!members || !members.length) {
       safeMembers = [] as TeamMember[];
     } else {
-      safeMembers = members.map((member) => {
-        return {
-          ...member,
-          name: member?.name || "",
-        };
-      });
+      safeMembers = members.map((member) => ({
+        id: member.id,
+        email: member.email,
+        name: member.name || "",
+        role: member.role as TeamMember["role"],
+        isActive: member.isActive,
+        createdAt: member.createdAt,
+      }));
     }
 
     return {

@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { userRepository, db, toJson } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canDeactivateUsers } from "../auth/permissions";
 
@@ -26,44 +26,48 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
       throw APIError.permissionDenied("Only admins delete/deactivate users");
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: req.id, isActive: true },
-      select: { id: true, isActive: true, deletedAt: true },
-    });
-    if (!user) throw APIError.notFound("User not found");
+    const user = await userRepository.findById(req.id);
+    if (!user || !user.isActive) {
+      throw APIError.notFound("User not found");
+    }
 
-    if (user?.deletedAt) {
+    // Check if already deleted
+    const deletedCheck = await db.queryRow<{ deleted_at: Date | null }>`
+      SELECT deleted_at FROM users WHERE id = ${req.id}
+    `;
+
+    if (deletedCheck?.deleted_at) {
       return { success: true, message: "User already deactivated" };
     }
 
-    const result = await prisma.$transaction(async (u) => {
-      const deactivatedUser = await u.user.update({
-        where: { id: req.id },
-        data: {
-          isActive: false,
-          deletedAt: new Date(),
-        },
-        include: {
-          userHistory: true,
-        },
-      });
+    // Perform deactivation and create history in a transaction
+    await using tx = await db.begin();
 
-      const history = await u.userHistory.create({
-        data: {
-          userId: user.id,
-          action: "DELETE",
-          field: "isActive",
-          previousValue: "true",
-          newValue: "false",
-          changedById: userContext.userId,
-          snapshot: user,
-        },
-      });
+    try {
+      // Deactivate user
+      await tx.exec`
+        UPDATE users
+        SET is_active = false, deleted_at = NOW(), updated_at = NOW()
+        WHERE id = ${req.id}
+      `;
 
-      return { deactivatedUser, history };
-    });
-
-    if (!result || !result?.deactivatedUser) {
+      // Create user history record
+      await tx.exec`
+        INSERT INTO user_history (
+          id, user_id, action, field, previous_value, new_value, changed_by_id, changed_at, snapshot
+        ) VALUES (
+          gen_random_uuid()::text,
+          ${user.id},
+          ${'DELETE'},
+          ${'isActive'},
+          ${'true'},
+          ${'false'},
+          ${userContext.userId},
+          NOW(),
+          ${toJson(user)}::jsonb
+        )
+      `;
+    } catch (error) {
       throw APIError.aborted("User was not deactivated");
     }
 

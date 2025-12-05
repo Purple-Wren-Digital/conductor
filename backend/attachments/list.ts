@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canViewTicket } from "../auth/permissions";
 
@@ -44,31 +44,40 @@ export const list = api<ListAttachmentsRequest, ListAttachmentsResponse>(
       }
 
       // Get all attachments for the ticket
-      const attachments = await prisma.attachment.findMany({
-        where: { ticketId },
-        include: {
-          uploader: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      const attachments = await db.queryAll<{
+        id: string;
+        file_name: string;
+        file_size: number;
+        mime_type: string;
+        uploaded_by: string;
+        created_at: Date;
+        uploader_name: string | null;
+        uploader_email: string;
+      }>`
+        SELECT
+          a.id,
+          a.file_name,
+          a.file_size,
+          a.mime_type,
+          a.uploaded_by,
+          a.created_at,
+          u.name as uploader_name,
+          u.email as uploader_email
+        FROM attachments a
+        LEFT JOIN users u ON a.uploaded_by = u.id
+        WHERE a.ticket_id = ${ticketId}
+        ORDER BY a.created_at DESC
+      `;
 
       return {
         attachments: attachments.map((attachment) => ({
           id: attachment.id,
-          fileName: attachment.fileName,
-          fileSize: attachment.fileSize,
-          mimeType: attachment.mimeType,
-          uploadedBy: attachment.uploadedBy,
-          uploaderName: attachment.uploader.name || attachment.uploader.email,
-          createdAt: attachment.createdAt,
+          fileName: attachment.file_name,
+          fileSize: attachment.file_size,
+          mimeType: attachment.mime_type,
+          uploadedBy: attachment.uploaded_by,
+          uploaderName: attachment.uploader_name || attachment.uploader_email,
+          createdAt: attachment.created_at,
         })),
       };
     } catch (error) {

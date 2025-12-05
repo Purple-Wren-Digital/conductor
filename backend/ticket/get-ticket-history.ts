@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { db, fromTimestamp, fromJson } from "./db";
 import { TicketHistory } from "../ticket/types";
+import { UserRole } from "../user/types";
 import { mapHistorySnapshot } from "../utils";
 
 export interface GetTicketHistoryRequest {
@@ -17,6 +18,27 @@ export interface GetTicketHistoryResponse {
   total: number;
 }
 
+interface TicketHistoryRow {
+  id: string;
+  ticket_id: string;
+  action: string;
+  field: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  snapshot: string | null;
+  changed_at: Date;
+  changed_by_id: string;
+  // joined user fields
+  user_clerk_id: string;
+  user_email: string;
+  user_name: string;
+  user_image_url: string | null;
+  user_role: string;
+  user_is_active: boolean;
+  user_created_at(user_created_at: any): Date;
+  user_updated_at(user_updated_at: any): Date;
+}
+
 export const getTicketHistory = api<
   GetTicketHistoryRequest,
   GetTicketHistoryResponse
@@ -31,22 +53,99 @@ export const getTicketHistory = api<
     const limit =
       req.limit && Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = req.offset && Math.max(Number(req.offset ?? 0), 0);
+    const isDescending = req.orderBy === "desc";
 
-    const [history, total] = await Promise.all([
-      prisma.ticketHistory.findMany({
-        where: { ticketId: req.id },
-        include: { ticket: true, changedBy: true },
-        orderBy: { changedAt: req.orderBy === "desc" ? "desc" : "asc" },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.ticketHistory.count({
-        where: { ticketId: req.id },
-      }),
-    ]);
+    // Query for history with joined user data
+    // Note: ORDER BY direction must be hardcoded since Encore's SQL doesn't support raw interpolation
+    const history = isDescending
+      ? await db.queryAll<TicketHistoryRow>`
+          SELECT
+            th.id,
+            th.ticket_id,
+            th.action,
+            th.field,
+            th.previous_value as "previousValue",
+            th.new_value as "newValue",
+            th.snapshot::text as snapshot,
+            th.changed_at as changed_at,
+            th.changed_by_id,
+            u.clerk_id as user_clerk_id,
+            u.email as user_email,
+            u.name as user_name,
+            u.image_url as user_image_url,
+            u.role as user_role,
+            u.is_active as user_is_active
+          FROM ticket_history th
+          LEFT JOIN users u ON u.id = th.changed_by_id
+          WHERE th.ticket_id = ${req.id}
+          ORDER BY th.changed_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `
+      : await db.queryAll<TicketHistoryRow>`
+          SELECT
+            th.id,
+            th.ticket_id,
+            th.action,
+            th.field,
+            th.previous_value as "previousValue",
+            th.new_value as "newValue",
+            th.snapshot::text as snapshot,
+            th.changed_at as changed_at,
+            th.changed_by_id,
+            u.clerk_id as user_clerk_id,
+            u.email as user_email,
+            u.name as user_name,
+            u.image_url as user_image_url,
+            u.role as user_role,
+            u.is_active as user_is_active
+          FROM ticket_history th
+          LEFT JOIN users u ON u.id = th.changed_by_id
+          WHERE th.ticket_id = ${req.id}
+          ORDER BY th.changed_at ASC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+
+    // Count total records
+    const totalResult = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count
+      FROM ticket_history
+      WHERE ticket_id = ${req.id}
+    `;
+    const total = totalResult?.count ?? 0;
+
+    // Transform rows to TicketHistory format
+    const ticketHistory: TicketHistory[] = history.map((row) => ({
+      id: row.id,
+      ticketId: row.ticket_id,
+      action: row.action,
+      field: row.field,
+      previousValue: row.previousValue,
+      newValue: row.newValue,
+      snapshot: row?.snapshot
+        ? (fromJson(row.snapshot) ?? undefined)
+        : undefined,
+      changedAt: fromTimestamp(row.changed_at) ?? new Date(),
+      changedById: row.changed_by_id,
+      changedBy: row.user_clerk_id
+        ? {
+            id: row.changed_by_id ?? "Unknown",
+            clerkId: row.user_clerk_id ?? "Unknown",
+            email: row.user_email ?? "Unknown",
+            name: row.user_name ?? "Unknown",
+            imageUrl: row.user_image_url || null,
+            role: (row.user_role as UserRole) || ("AGENT" as UserRole),
+            isActive: row.user_is_active,
+            marketCenterId: null,
+            createdAt: fromTimestamp(row.user_created_at) ?? new Date(),
+            updatedAt: fromTimestamp(row.user_updated_at) ?? new Date(),
+          }
+        : undefined,
+    }));
 
     return {
-      ticketHistory: mapHistorySnapshot(history),
+      ticketHistory: mapHistorySnapshot(ticketHistory),
       total,
     };
   }

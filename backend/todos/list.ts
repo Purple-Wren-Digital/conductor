@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { prisma } from "../ticket/db";
+import { todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
 import type { Todo } from "./types";
@@ -11,6 +11,7 @@ export interface ListTodosRequest {
 export interface ListTodosResponse {
   todos: Todo[];
 }
+
 export const list = api<ListTodosRequest, ListTodosResponse>(
   {
     expose: true,
@@ -27,11 +28,8 @@ export const list = api<ListTodosRequest, ListTodosResponse>(
       );
     }
 
-    const todos = await prisma.todo.findMany({
-      where: { ticketId: req.ticketId },
-      orderBy: { complete: "asc" },
-    });
+    const todos = await todoRepository.findByTicketId(req.ticketId);
 
-    return { todos: todos };
+    return { todos };
   }
 );
