@@ -54,7 +54,9 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       newAssigneeId: req?.assigneeId,
     });
 
-    const oldTicket = await ticketRepository.findByIdWithRelations(req.ticketId);
+    const oldTicket = await ticketRepository.findByIdWithRelations(
+      req.ticketId
+    );
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
     }
@@ -146,7 +148,9 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       });
     }
     if (req?.categoryId && req.categoryId !== oldTicket.categoryId) {
-      const newCategory = await marketCenterRepository.findCategoryById(req.categoryId);
+      const newCategory = await marketCenterRepository.findCategoryById(
+        req.categoryId
+      );
       updateData.categoryId = req.categoryId;
       ticketHistoryData.push({
         ticketId: req.ticketId,
@@ -209,7 +213,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           });
           updateData.surveyId = survey.id;
           usersToNotify.push({
-            id: oldTicket.creatorId,
+            id: oldTicket.creatorId ?? "N/a",
             name: oldTicket.creator?.name ?? "",
             email: oldTicket.creator?.email ?? "",
             updateType: "ticketSurvey",
@@ -369,15 +373,13 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
             : "MEDIUM",
       };
 
-      const allChanges: ActivityUpdates[] = ticketHistoryData.map(
-        (history) => {
-          return {
-            label: history.field,
-            originalValue: history.previousValue,
-            newValue: history.newValue,
-          };
-        }
-      );
+      const allChanges: ActivityUpdates[] = ticketHistoryData.map((history) => {
+        return {
+          label: history.field || "N/a",
+          originalValue: history.previousValue ?? "",
+          newValue: history.newValue ?? "",
+        };
+      });
 
       return {
         ticket: formattedTicket,

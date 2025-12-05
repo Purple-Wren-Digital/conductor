@@ -133,7 +133,12 @@ export const slaApi = {
   // Get SLA metrics summary
   getMetrics: async (
     token: string,
-    filters?: { dateFrom?: string; dateTo?: string; assigneeId?: string; categoryId?: string }
+    filters?: {
+      dateFrom?: string;
+      dateTo?: string;
+      assigneeId?: string;
+      categoryId?: string;
+    }
   ): Promise<{ metrics: SlaMetrics }> => {
     const params = new URLSearchParams();
     if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);

@@ -34,14 +34,16 @@ export const getPolicies = api<{}, GetPoliciesResponse>(
     const policies = await slaRepository.findAllPolicies();
 
     return {
-      policies: policies.map((p) => ({
-        id: p.id,
-        urgency: p.urgency,
-        responseTimeMinutes: p.responseTimeMinutes,
-        isActive: p.isActive,
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-      })),
+      policies: policies
+        ? policies.map((p) => ({
+            id: p.id,
+            urgency: p.urgency,
+            responseTimeMinutes: p.responseTimeMinutes,
+            isActive: p.isActive,
+            createdAt: p.createdAt.toISOString(),
+            updatedAt: p.updatedAt.toISOString(),
+          }))
+        : [],
     };
   }
 );

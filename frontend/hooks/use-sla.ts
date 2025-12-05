@@ -82,9 +82,18 @@ export function useSlaReport(filters?: SlaReportFilters) {
   return useQuery({
     queryKey: slaKeys.report(filters),
     queryFn: async () => {
-      const token = await getToken();
-      if (!token) throw new Error("Not authenticated");
-      return slaApi.getReport(token, filters);
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Not authenticated");
+        const data = await slaApi.getReport(token, filters);
+        if (!data || !data.metrics) {
+          throw new Error("Invalid SLA report data");
+        }
+        return data;
+      } catch (error) {
+        console.error("Error fetching SLA report:", error);
+        return { metrics: null, trends: [], byUrgency: [], byAssignee: [] };
+      }
     },
   });
 }

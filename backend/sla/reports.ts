@@ -52,7 +52,7 @@ export const getMetrics = api<GetMetricsRequest, GetMetricsResponse>(
 interface GetReportRequest {
   dateFrom?: Query<string>;
   dateTo?: Query<string>;
-  groupBy?: Query<'day' | 'week' | 'month'>;
+  groupBy?: Query<"day" | "week" | "month">;
 }
 
 /**
@@ -75,15 +75,21 @@ export const getReport = api<GetReportRequest, SlaReportResponse>(
       );
     }
 
-    const dateFrom = req.dateFrom ? new Date(req.dateFrom) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
+    const dateFrom = req.dateFrom
+      ? new Date(req.dateFrom)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
     const dateTo = req.dateTo ? new Date(req.dateTo) : new Date();
-    const groupBy = req.groupBy || 'day';
+    const groupBy = req.groupBy || "day";
 
     const [metrics, byUrgency, byAssignee, trends] = await Promise.all([
       slaRepository.getSlaMetrics({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByUrgency({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByAssignee({ dateFrom, dateTo }),
-      slaRepository.getSlaTrends({ dateFrom, dateTo, groupBy }),
+      slaRepository.getSlaTrends({
+        dateFrom,
+        dateTo,
+        groupBy: groupBy as "day" | "week" | "month",
+      }),
     ]);
 
     return {
@@ -125,7 +131,9 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
       );
     }
 
-    const dateFrom = req.dateFrom ? new Date(req.dateFrom) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const dateFrom = req.dateFrom
+      ? new Date(req.dateFrom)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const dateTo = req.dateTo ? new Date(req.dateTo) : new Date();
 
     const [metrics, byUrgency, byAssignee] = await Promise.all([
@@ -138,35 +146,45 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
     const lines: string[] = [];
 
     // Summary section
-    lines.push('SLA Report Summary');
-    lines.push(`Date Range,${dateFrom.toISOString().split('T')[0]},${dateTo.toISOString().split('T')[0]}`);
-    lines.push('');
-    lines.push('Metric,Value');
+    lines.push("SLA Report Summary");
+    lines.push(
+      `Date Range,${dateFrom.toISOString().split("T")[0]},${dateTo.toISOString().split("T")[0]}`
+    );
+    lines.push("");
+    lines.push("Metric,Value");
     lines.push(`Total Tickets,${metrics.totalTickets}`);
     lines.push(`Tickets with SLA,${metrics.ticketsWithSla}`);
     lines.push(`SLA Met,${metrics.ticketsMet}`);
     lines.push(`SLA Breached,${metrics.ticketsBreached}`);
     lines.push(`Compliance Rate,${metrics.complianceRate}%`);
-    lines.push(`Avg Response Time (min),${metrics.avgResponseTimeMinutes ?? 'N/A'}`);
-    lines.push('');
+    lines.push(
+      `Avg Response Time (min),${metrics.avgResponseTimeMinutes ?? "N/A"}`
+    );
+    lines.push("");
 
     // By Urgency section
-    lines.push('By Urgency');
-    lines.push('Urgency,Total,Met,Breached,Compliance Rate');
+    lines.push("By Urgency");
+    lines.push("Urgency,Total,Met,Breached,Compliance Rate");
     for (const u of byUrgency) {
-      lines.push(`${u.urgency},${u.totalTickets},${u.ticketsMet},${u.ticketsBreached},${u.complianceRate}%`);
+      lines.push(
+        `${u.urgency},${u.totalTickets},${u.ticketsMet},${u.ticketsBreached},${u.complianceRate}%`
+      );
     }
-    lines.push('');
+    lines.push("");
 
     // By Assignee section
-    lines.push('By Assignee');
-    lines.push('Assignee,Total,Met,Breached,Compliance Rate,Avg Response (min)');
+    lines.push("By Assignee");
+    lines.push(
+      "Assignee,Total,Met,Breached,Compliance Rate,Avg Response (min)"
+    );
     for (const a of byAssignee) {
-      lines.push(`${a.assigneeName || 'Unassigned'},${a.totalTickets},${a.ticketsMet},${a.ticketsBreached},${a.complianceRate}%,${a.avgResponseTimeMinutes ?? 'N/A'}`);
+      lines.push(
+        `${a.assigneeName || "Unassigned"},${a.totalTickets},${a.ticketsMet},${a.ticketsBreached},${a.complianceRate}%,${a.avgResponseTimeMinutes ?? "N/A"}`
+      );
     }
 
-    const csv = lines.join('\n');
-    const filename = `sla-report-${dateFrom.toISOString().split('T')[0]}-${dateTo.toISOString().split('T')[0]}.csv`;
+    const csv = lines.join("\n");
+    const filename = `sla-report-${dateFrom.toISOString().split("T")[0]}-${dateTo.toISOString().split("T")[0]}.csv`;
 
     return { csv, filename };
   }

@@ -3,7 +3,13 @@
  */
 
 import { db, fromTimestamp } from "../../ticket/db";
-import type { SlaPolicy, SlaEvent, SlaEventType, Urgency, Ticket } from "../../ticket/types";
+import type {
+  SlaPolicy,
+  SlaEvent,
+  SlaEventType,
+  Urgency,
+  Ticket,
+} from "../../ticket/types";
 
 // Database row types (snake_case from PostgreSQL)
 interface SlaPolicyRow {
@@ -68,14 +74,23 @@ export const slaRepository = {
     const rows = await db.query<SlaPolicyRow>`
       SELECT * FROM sla_policies ORDER BY urgency
     `;
-    return rows.map(rowToSlaPolicy);
+    const allRows: SlaPolicyRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+
+    return allRows.map(rowToSlaPolicy);
   },
 
   async findActivePolicies(): Promise<SlaPolicy[]> {
     const rows = await db.query<SlaPolicyRow>`
       SELECT * FROM sla_policies WHERE is_active = true ORDER BY urgency
     `;
-    return rows.map(rowToSlaPolicy);
+    const allRows: SlaPolicyRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+    return allRows.map(rowToSlaPolicy);
   },
 
   async findPolicyByUrgency(urgency: Urgency): Promise<SlaPolicy | null> {
@@ -92,11 +107,14 @@ export const slaRepository = {
     return row ? rowToSlaPolicy(row) : null;
   },
 
-  async updatePolicy(id: string, data: {
-    responseTimeMinutes?: number;
-    isActive?: boolean;
-  }): Promise<SlaPolicy | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async updatePolicy(
+    id: string,
+    data: {
+      responseTimeMinutes?: number;
+      isActive?: boolean;
+    }
+  ): Promise<SlaPolicy | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -113,7 +131,7 @@ export const slaRepository = {
 
     const sql = `
       UPDATE sla_policies
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -143,7 +161,11 @@ export const slaRepository = {
     const rows = await db.query<SlaEventRow>`
       SELECT * FROM sla_events WHERE ticket_id = ${ticketId} ORDER BY created_at DESC
     `;
-    return rows.map(rowToSlaEvent);
+    const allRows: SlaEventRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+    return allRows.map(rowToSlaEvent);
   },
 
   async hasEvent(ticketId: string, eventType: SlaEventType): Promise<boolean> {
@@ -159,7 +181,11 @@ export const slaRepository = {
   // Ticket SLA Operations
   // ==================
 
-  async setTicketSlaDueDate(ticketId: string, slaDueAt: Date, policyId: string): Promise<void> {
+  async setTicketSlaDueDate(
+    ticketId: string,
+    slaDueAt: Date,
+    policyId: string
+  ): Promise<void> {
     await db.exec`
       UPDATE tickets
       SET sla_response_due_at = ${slaDueAt},
@@ -169,7 +195,10 @@ export const slaRepository = {
     `;
   },
 
-  async recordFirstResponse(ticketId: string, respondedAt: Date): Promise<void> {
+  async recordFirstResponse(
+    ticketId: string,
+    respondedAt: Date
+  ): Promise<void> {
     // Only set if not already set
     await db.exec`
       UPDATE tickets
@@ -221,7 +250,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_response_due_at - created_at) * 0.5
     `;
-    return rows;
+    const allRows: TicketSlaRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+    return allRows;
   },
 
   // Find tickets needing 75% warning
@@ -238,7 +271,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_response_due_at - created_at) * 0.75
     `;
-    return rows;
+    const allRows: TicketSlaRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+    return allRows;
   },
 
   // Find tickets that have breached SLA
@@ -254,7 +291,12 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() > sla_response_due_at
     `;
-    return rows;
+
+    const allRows: TicketSlaRow[] = [];
+    for await (const row of rows) {
+      allRows.push(row);
+    }
+    return allRows;
   },
 
   // ==================
@@ -274,7 +316,7 @@ export const slaRepository = {
     complianceRate: number;
     avgResponseTimeMinutes: number | null;
   }> {
-    let conditions = ['sla_response_due_at IS NOT NULL'];
+    let conditions = ["sla_response_due_at IS NOT NULL"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -295,7 +337,8 @@ export const slaRepository = {
       values.push(options.categoryId);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const sql = `
       SELECT
@@ -322,7 +365,8 @@ export const slaRepository = {
 
     const ticketsWithSla = row?.tickets_with_sla ?? 0;
     const ticketsMet = row?.tickets_met ?? 0;
-    const complianceRate = ticketsWithSla > 0 ? (ticketsMet / ticketsWithSla) * 100 : 100;
+    const complianceRate =
+      ticketsWithSla > 0 ? (ticketsMet / ticketsWithSla) * 100 : 100;
 
     return {
       totalTickets: row?.total_tickets ?? 0,
@@ -339,14 +383,16 @@ export const slaRepository = {
   async getSlaMetricsByUrgency(options?: {
     dateFrom?: Date;
     dateTo?: Date;
-  }): Promise<Array<{
-    urgency: Urgency;
-    totalTickets: number;
-    ticketsMet: number;
-    ticketsBreached: number;
-    complianceRate: number;
-  }>> {
-    let conditions = ['sla_response_due_at IS NOT NULL'];
+  }): Promise<
+    Array<{
+      urgency: Urgency;
+      totalTickets: number;
+      ticketsMet: number;
+      ticketsBreached: number;
+      complianceRate: number;
+    }>
+  > {
+    let conditions = ["sla_response_due_at IS NOT NULL"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -359,7 +405,8 @@ export const slaRepository = {
       values.push(options.dateTo);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const sql = `
       SELECT
@@ -380,30 +427,33 @@ export const slaRepository = {
       tickets_breached: number;
     }>(sql, ...values);
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       urgency: row.urgency,
       totalTickets: row.total_tickets,
       ticketsMet: row.tickets_met,
       ticketsBreached: row.tickets_breached,
-      complianceRate: row.total_tickets > 0
-        ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
-        : 100,
+      complianceRate:
+        row.total_tickets > 0
+          ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
+          : 100,
     }));
   },
 
   async getSlaMetricsByAssignee(options?: {
     dateFrom?: Date;
     dateTo?: Date;
-  }): Promise<Array<{
-    assigneeId: string | null;
-    assigneeName: string | null;
-    totalTickets: number;
-    ticketsMet: number;
-    ticketsBreached: number;
-    complianceRate: number;
-    avgResponseTimeMinutes: number | null;
-  }>> {
-    let conditions = ['t.sla_response_due_at IS NOT NULL'];
+  }): Promise<
+    Array<{
+      assigneeId: string | null;
+      assigneeName: string | null;
+      totalTickets: number;
+      ticketsMet: number;
+      ticketsBreached: number;
+      complianceRate: number;
+      avgResponseTimeMinutes: number | null;
+    }>
+  > {
+    let conditions = ["t.sla_response_due_at IS NOT NULL"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -416,7 +466,8 @@ export const slaRepository = {
       values.push(options.dateTo);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const sql = `
       SELECT
@@ -446,15 +497,16 @@ export const slaRepository = {
       avg_response_time_minutes: number | null;
     }>(sql, ...values);
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       assigneeId: row.assignee_id,
       assigneeName: row.assignee_name,
       totalTickets: row.total_tickets,
       ticketsMet: row.tickets_met,
       ticketsBreached: row.tickets_breached,
-      complianceRate: row.total_tickets > 0
-        ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
-        : 100,
+      complianceRate:
+        row.total_tickets > 0
+          ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
+          : 100,
       avgResponseTimeMinutes: row.avg_response_time_minutes
         ? Math.round(row.avg_response_time_minutes * 100) / 100
         : null,
@@ -464,17 +516,22 @@ export const slaRepository = {
   async getSlaTrends(options: {
     dateFrom: Date;
     dateTo: Date;
-    groupBy: 'day' | 'week' | 'month';
-  }): Promise<Array<{
-    period: string;
-    totalTickets: number;
-    ticketsMet: number;
-    ticketsBreached: number;
-    complianceRate: number;
-  }>> {
-    const dateFormat = options.groupBy === 'day' ? 'YYYY-MM-DD'
-      : options.groupBy === 'week' ? 'IYYY-IW'
-      : 'YYYY-MM';
+    groupBy: "day" | "week" | "month";
+  }): Promise<
+    Array<{
+      period: string;
+      totalTickets: number;
+      ticketsMet: number;
+      ticketsBreached: number;
+      complianceRate: number;
+    }>
+  > {
+    const dateFormat =
+      options.groupBy === "day"
+        ? "YYYY-MM-DD"
+        : options.groupBy === "week"
+          ? "IYYY-IW"
+          : "YYYY-MM";
 
     const sql = `
       SELECT
@@ -497,14 +554,15 @@ export const slaRepository = {
       tickets_breached: number;
     }>(sql, options.dateFrom, options.dateTo);
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       period: row.period,
       totalTickets: row.total_tickets,
       ticketsMet: row.tickets_met,
       ticketsBreached: row.tickets_breached,
-      complianceRate: row.total_tickets > 0
-        ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
-        : 100,
+      complianceRate:
+        row.total_tickets > 0
+          ? Math.round((row.tickets_met / row.total_tickets) * 10000) / 100
+          : 100,
     }));
   },
 };
