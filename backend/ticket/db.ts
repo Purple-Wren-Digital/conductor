@@ -44,11 +44,13 @@ export interface Transaction {
 export async function withTransaction<T>(
   fn: (tx: Transaction) => Promise<T>
 ): Promise<T> {
-  await using tx = await db.begin();
+  const tx = await db.begin();
   try {
     const result = await fn(tx as unknown as Transaction);
+    await tx.commit();
     return result;
   } catch (error) {
+    await tx.rollback();
     throw error;
   }
 }

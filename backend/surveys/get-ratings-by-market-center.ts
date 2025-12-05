@@ -36,16 +36,10 @@ export const getByMarketCenter = api<
           ? userContext.marketCenterId
           : "";
 
-    const hasSurveys = await surveyRepository.hasCompletedSurveysForMarketCenter(marketCenterId);
-
-    if (!hasSurveys) {
-      throw APIError.notFound(
-        "Surveys not found for the given market center Id"
-      );
-    }
-
     const result = await surveyRepository.getMarketCenterAverages(marketCenterId);
 
+    // Return zero values if no surveys exist instead of 404
+    // This allows the UI to display "no data" gracefully
     return {
       totalSurveys: result.totalSurveys,
       overallAverageRating: result.overallAverageRating ?? 0,

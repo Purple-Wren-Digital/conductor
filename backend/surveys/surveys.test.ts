@@ -376,13 +376,11 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.8,
       };
 
-      mockSurveyRepository.hasCompletedSurveysForMarketCenter.mockResolvedValue(true);
       mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(mockAverages);
 
       const result = await getByMarketCenter({ marketCenterId: "mc-456" });
 
       expect(result).toEqual(mockAverages);
-      expect(mockSurveyRepository.hasCompletedSurveysForMarketCenter).toHaveBeenCalledWith("mc-456");
       expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith("mc-456");
     });
 
@@ -400,7 +398,6 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.2,
       };
 
-      mockSurveyRepository.hasCompletedSurveysForMarketCenter.mockResolvedValue(true);
       mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(mockAverages);
 
       const result = await getByMarketCenter({ marketCenterId: "ignored" });
@@ -408,12 +405,23 @@ describe("Survey Service Tests", () => {
       expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith("user-mc-123");
     });
 
-    it("should throw not found when no surveys exist for market center", async () => {
-      mockSurveyRepository.hasCompletedSurveysForMarketCenter.mockResolvedValue(false);
+    it("should return zero values when no surveys exist for market center", async () => {
+      const emptyAverages = {
+        totalSurveys: 0,
+        overallAverageRating: null,
+        assigneeAverageRating: null,
+        marketCenterAverageRating: null,
+      };
+      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(emptyAverages);
 
-      await expect(
-        getByMarketCenter({ marketCenterId: "mc-no-surveys" })
-      ).rejects.toThrow("Surveys not found for the given market center Id");
+      const result = await getByMarketCenter({ marketCenterId: "mc-no-surveys" });
+
+      expect(result).toEqual({
+        totalSurveys: 0,
+        overallAverageRating: 0,
+        assigneeAverageRating: 0,
+        marketCenterAverageRating: 0,
+      });
     });
 
     it("should throw permission denied when non-admin has no market center", async () => {
