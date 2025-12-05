@@ -133,7 +133,7 @@ export default function ResolvedTicketsByMonthReport({
               aspectRatio: 1.618,
             }}
             data={resolvedTicketsByMonth}
-            margin={{ top: 0, right: 30, left: 30, bottom: 30 }}
+            margin={{ top: 15, right: 30, left: 30, bottom: 30 }}
             aria-label="Line chart showing the amount of resolved tickets each month"
           >
             <CartesianGrid strokeDasharray="7 7" />

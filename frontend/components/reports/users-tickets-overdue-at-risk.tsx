@@ -155,7 +155,7 @@ export default function SlaComplianceByUsersReport({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={slaByUsers}
-            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
             barSize={30}
             aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
           >

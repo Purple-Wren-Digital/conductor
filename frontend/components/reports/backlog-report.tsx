@@ -137,7 +137,7 @@ export default function TicketBacklogReport({ isSelected }: ReportProps) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={ticketsByStatus}
-            margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
+            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
             barSize={75}
             aria-label="Bar chart showing the amount of tickets by their backlog status (created vs unassigned)"
           >

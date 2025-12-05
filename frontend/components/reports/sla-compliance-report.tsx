@@ -120,7 +120,7 @@ export default function SlaComplianceReport({ isSelected }: ReportProps) {
           <h2 className="text-xl font-semibold text-[#6D1C24]">
             SLA Compliance: Overview
           </h2>
-          <p>Determined by a ticket's status and due date</p>
+          <p>Determined by a ticket&apos;s status and due date</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="px-2 py-1">
@@ -136,12 +136,12 @@ export default function SlaComplianceReport({ isSelected }: ReportProps) {
       {/* REPORT CONTENT */}
       <ChartContainer
         config={slaComplianceChartConfig}
-        className="w-[99%] md:w-full "
+        className="w-[99%] md:w-full"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={ticketsBySlaStatus}
-            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
             barSize={75}
             aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
           >

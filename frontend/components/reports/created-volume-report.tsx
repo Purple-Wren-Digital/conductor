@@ -140,7 +140,7 @@ export default function CreatedTicketsByMonthReport({
               aspectRatio: 1.618,
             }}
             data={createdTicketsByMonth}
-            margin={{ top: 0, right: 30, left: 30, bottom: 30 }}
+            margin={{ top: 15, right: 30, left: 30, bottom: 30 }}
             aria-label="Line chart showing the amount of created tickets each month"
           >
             <CartesianGrid strokeDasharray="7 7" />

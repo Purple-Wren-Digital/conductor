@@ -27,7 +27,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
     const userContext = await getUserContext();
 
     let where: Prisma.TicketWhereInput = {
-      status: { in: ["CREATED", "ASSIGNED"] },
+      status: { in: ["CREATED", "UNASSIGNED"] },
     };
 
     switch (userContext.role) {
@@ -37,6 +37,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
           where = {
             OR: [
               { assigneeId: userContext.userId },
+              { assigneeId: null },
               { creatorId: userContext.userId },
             ],
           };
@@ -46,6 +47,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
               { category: { marketCenterId: userContext.marketCenterId } },
               { creator: { marketCenterId: userContext.marketCenterId } },
               { assignee: { marketCenterId: userContext.marketCenterId } },
+              { assigneeId: null },
             ],
           };
 
@@ -59,6 +61,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
             { category: { marketCenterId: { in: req.marketCenterIds } } },
             { creator: { marketCenterId: { in: req.marketCenterIds } } },
             { assignee: { marketCenterId: { in: req.marketCenterIds } } },
+            { assigneeId: null },
           ];
         }
         where = baseScopeAdmin;
