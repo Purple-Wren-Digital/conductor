@@ -119,7 +119,6 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarMenu>
           <SidebarGroup>
-            {/* DASHBOARD */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
