@@ -199,6 +199,12 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
             },
           });
           updateData.surveyId = survey.id;
+          usersToNotify.push({
+            id: oldTicket.creatorId,
+            name: oldTicket.creator?.name ?? "",
+            email: oldTicket.creator?.email ?? "",
+            updateType: "ticketSurvey",
+          });
         }
       }
     }

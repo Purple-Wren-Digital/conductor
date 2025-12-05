@@ -4,6 +4,8 @@ import {
   CreatedTicketNotificationProps,
   MarketCenterAssignmentProps,
   NewCommentNotificationProps,
+  SurveyResultsProps,
+  TicketSurveyProps,
   UpdatedTicketProps,
 } from "@/emails/types";
 import type { NotificationCategory, NotificationChannel } from "../types";
@@ -72,6 +74,17 @@ export const NotificationTemplateVariables = {
     comment: "{{comment}}",
     isInternal: "{{isInternal}}",
   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
+
+  TicketSurveyProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    surveyorName: "{{surveyorName}}",
+  } satisfies VariablePlaceholders<TicketSurveyProps>,
+  SurveyResultsProps: {
+    ticketNumber: "{{ticketNumber}}",
+    ticketTitle: "{{ticketTitle}}",
+    staffName: "{{staffName}}",
+  } satisfies VariablePlaceholders<SurveyResultsProps>,
 } as const;
 
 export const notificationTemplatesDefault = [
@@ -173,5 +186,28 @@ export const notificationTemplatesDefault = [
     body: `{{commenterName}} added a new comment to "{{ticketTitle}}": {{comment}}`,
     isDefault: true,
     variables: NotificationTemplateVariables.NewCommentNotificationProps,
+  },
+  {
+    templateName: "Ticket Survey",
+    templateDescription: "Sent to the ticket's creator when marked as resolved",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Survey",
+    subject: "Survey for {{ticketTitle}}",
+    body: "Please take a moment to provide feedback about your experience",
+    isDefault: true,
+    variables: NotificationTemplateVariables.TicketSurveyProps,
+  },
+  {
+    templateName: "Ticket Survey Results",
+    templateDescription:
+      "Sent to the ticket's assignee and market center manager(s) when new survey results are available",
+    category: "ACTIVITY" as NotificationCategory,
+    channel: "IN_APP" as NotificationChannel,
+    type: "Ticket Survey Results",
+    subject: "Survey Completed for {{ticketTitle}}",
+    body: "You may now view the ratings and comments provided by the ticket's creator",
+    isDefault: true,
+    variables: NotificationTemplateVariables.SurveyResultsProps,
   },
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   Card,
@@ -56,8 +56,8 @@ import type {
   TicketHistory,
   UsersToNotify,
   UserRole,
+  Survey,
 } from "@/lib/types";
-
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
 import {
@@ -77,10 +77,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-interface TicketDetailViewProps {
-  ticketId: string;
-  onClose?: () => void;
-}
 
 export const ticketDetailQueryParams = new URLSearchParams(
   "orderBy=desc&limit=5"
@@ -184,10 +180,16 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
   const { data: surveyData, isLoading: isSurveyLoading } =
     useFetchTicketSurveyResults(ticket?.status, ticket?.surveyId ?? undefined);
-
-  const invalidateSurvey = queryClient.invalidateQueries({
-    queryKey: ["ticket-survey", ticket?.surveyId ?? undefined],
-  });
+  const survey: Survey = useMemo(() => {
+    return surveyData ? surveyData : ({} as Survey);
+  }, [surveyData]);
+  const invalidateSurvey = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ["ticket-survey", ticket?.surveyId ?? undefined],
+      }),
+    [queryClient, ticket?.surveyId]
+  );
 
   const canTakeSurvey =
     ticket?.status === "RESOLVED" && surveyData?.surveyorId === currentUser?.id;
@@ -202,7 +204,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
     changedDetails: ActivityUpdates[] | null;
   }) => {
     const title = ticket?.title ?? "";
-    const notifySomeone = userToNotify.updateType === "unchanged";
+
+    const notifyCreator = userToNotify.updateType === "unchanged";
     const notifyAssigneeChanges =
       userToNotify.updateType === "added" ||
       userToNotify.updateType === "removed";
@@ -224,7 +227,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         },
         data: {
           updatedTicket:
-            notifySomeone && changedDetails
+            notifyCreator && changedDetails
               ? {
                   ticketNumber: ticket.id,
                   ticketTitle: ticket?.title ?? "No title provided",
@@ -255,7 +258,65 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       });
     } catch (error) {
       console.error(
-        "TicketDetailView - Unable to generate notifications",
+        "TicketDetailView - Unable to generate Ticket notifications",
+        error
+      );
+    }
+  };
+
+  const handleSendTicketClosedNotifications = async ({
+    userToNotify,
+    ticket,
+  }: {
+    userToNotify: UsersToNotify;
+    ticket: Ticket;
+  }) => {
+    const notifyCreator = userToNotify.updateType === "unchanged";
+    const notifySurvey =
+      userToNotify?.updateType === "ticketSurvey" ||
+      userToNotify?.updateType === "ticketSurveyResults";
+    try {
+      const response = await createAndSendNotification({
+        getToken: getToken,
+        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+        receivingUser: {
+          id: userToNotify?.id,
+          name: userToNotify?.name,
+          email: userToNotify?.email,
+        },
+        data: {
+          ticketSurvey:
+            notifySurvey && !notifyCreator
+              ? {
+                  ticketNumber: ticketId,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  surveyorName: userToNotify?.name ?? "No name provided",
+                }
+              : undefined,
+          updatedTicket:
+            !notifySurvey && notifyCreator
+              ? {
+                  ticketNumber: ticketId,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  createdOn: ticket?.createdAt,
+                  updatedOn: ticket?.updatedAt,
+                  editorName: userToNotify?.name ?? "Unknown",
+                  editorId: userToNotify?.id ?? "",
+                  changedDetails: [
+                    {
+                      label: "Status",
+                      newValue: "RESOLVED",
+                      originalValue: "ASSIGNED",
+                    },
+                  ],
+                }
+              : undefined,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "TicketDetailView - Unable to generate Survey notifications",
         error
       );
     }
@@ -282,35 +343,15 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      if (
-        !data ||
-        !data?.usersToNotify ||
-        !data?.usersToNotify.length ||
-        !data?.changedDetails
-      ) {
+      if (!data || !data?.usersToNotify || !data?.usersToNotify.length) {
         throw new Error("No data returned from close ticket");
       }
-      const { usersToNotify, changedDetails } = data;
       await Promise.all(
-        usersToNotify.map(
+        data?.usersToNotify.map(
           async (user: UsersToNotify) =>
-            await handleSendTicketNotifications({
-              ticket: {
-                id: ticketId,
-                title: ticket?.title ?? "No title provided",
-                createdAt: ticket.createdAt,
-                updatedAt: new Date(ticket.updatedAt || new Date()),
-                resolvedAt: new Date(ticket.resolvedAt || new Date()),
-                description: null,
-                status: "RESOLVED",
-                urgency: ticket.urgency as Urgency,
-                dueDate: ticket.dueDate ?? null,
-                ticketHistory: [],
-                attachments: [],
-                creator: ticket.creator,
-              },
+            await handleSendTicketClosedNotifications({
               userToNotify: user,
-              changedDetails: changedDetails,
+              ticket: ticket,
             })
         )
       );
@@ -509,15 +550,13 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           )}
           {canTakeSurvey && (
             <Button
-              variant={"destructive"}
+              variant={!surveyData?.completed ? "destructive" : "secondary"}
               onClick={() => setShowSurveyModal(true)}
-              disabled={
-                isLoading || isSurveyLoading || surveyData?.completed === true
-              }
+              disabled={isLoading || isSurveyLoading}
               className="gap-2"
             >
               <ClipboardListIcon className="h-4 w-4" />
-              Take Survey
+              {!surveyData?.completed ? "Take Survey" : "Retake Survey"}
             </Button>
           )}
         </div>
@@ -650,7 +689,10 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                 </div>
               </div>
               <div className="space-y-4">
-                <TicketTodos ticketId={ticket.id} />
+                <TicketTodos
+                  ticketId={ticket.id}
+                  disabled={!canEditTicket || isLoading || canTakeSurvey}
+                />
               </div>
             </CardContent>
           </Card>
@@ -780,9 +822,9 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                       onValueChange={async (value: TicketStatus) => {
                         if (value === "RESOLVED") {
                           await handleCloseTicket();
-                        } else {
-                          await handleUpdateTicket("status", value);
+                          return;
                         }
+                        await handleUpdateTicket("status", value);
                       }}
                       disabled={!canEditTicket || isLoading}
                     >
@@ -997,7 +1039,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
       <TicketSurveyModal
         ticketId={ticket.id}
-        surveyId={ticket.surveyId ?? ""}
+        survey={survey}
         showSurveyModal={showSurveyModal}
         setShowSurveyModal={setShowSurveyModal}
         refreshSurvey={invalidateSurvey}

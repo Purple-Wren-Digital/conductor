@@ -2,7 +2,9 @@ export type AssignmentUpdateType =
   | "added"
   | "removed"
   | "created"
-  | "unchanged";
+  | "unchanged"
+  | "ticketSurvey"
+  | "ticketSurveyResults";
 
 export type ActivityUpdates = {
   label: string;
@@ -103,4 +105,18 @@ export type NewCommentNotificationProps = {
   commenterId: string;
   comment: string;
   isInternal: boolean;
+};
+
+// SURVEYS
+
+export type TicketSurveyProps = {
+  ticketNumber: string;
+  ticketTitle: string;
+  surveyorName: string;
+};
+
+export type SurveyResultsProps = {
+  ticketNumber: string;
+  ticketTitle: string;
+  staffName: string;
 };

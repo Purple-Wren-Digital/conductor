@@ -1,9 +1,9 @@
 import * as React from "react";
 import { Resend } from "resend";
-import type { CreateEmailResponse } from "resend";
 import { secret } from "encore.dev/config";
-import type { Notification } from "../../types";
 import { formatEmailNotification } from "./utils";
+import type { CreateEmailResponse } from "resend";
+import type { Notification } from "../../types";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");
 
@@ -38,8 +38,9 @@ export async function sendEmailNotification({
 
     const resendClient = getResendClient();
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <noreply@reply.conductorticket.com>",
+      from: "Conductor Ticketing <noreply@reply.conductorticket.com>", // "Conductor Ticketing <onboarding@resend.dev>", //
       to: [userEmail],
+      // replyTo: "<reply>@<conductor.com>",
       subject: `Conductor: ${notification.title}`,
       react: emailContent,
     });

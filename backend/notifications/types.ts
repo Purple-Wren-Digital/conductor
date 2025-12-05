@@ -9,6 +9,8 @@ import {
   NewUserInvitationProps,
   AssignedTicketNotificationProps,
   AssignmentUpdateType,
+  TicketSurveyProps,
+  SurveyResultsProps,
 } from "@/emails/types";
 import { Urgency } from "../ticket/types";
 import { User } from "../user/types";
@@ -84,6 +86,8 @@ export interface NotificationData {
   updatedTicket?: UpdatedTicketProps;
   ticketAssignment?: AssignedTicketNotificationProps;
   newComment?: NewCommentNotificationProps;
+  ticketSurvey?: TicketSurveyProps;
+  surveyResults?: SurveyResultsProps;
 }
 
 export interface UsersToNotify {
@@ -109,5 +113,12 @@ export interface NotificationTemplate {
 
 export interface NotificationTemplateFormData {
   subject: string;
+  body: string;
+}
+
+export interface PushNotificationPayload {
+  token: string;
+  userId: string;
+  title: string;
   body: string;
 }

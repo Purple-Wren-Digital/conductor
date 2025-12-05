@@ -7,7 +7,7 @@ import type { MarketCenter } from "./types";
 
 export interface ListMarketCentersRequest {
   id?: Query<string>;
-  categoryId?: Query<string[]>;
+  categoryIds?: Query<string[]>;
   userIds?: Query<string[]>;
 
   query?: Query<string>;
@@ -104,22 +104,14 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
       ];
     }
 
-    if (req?.categoryId && req.categoryId?.length > 0) {
+    if (req?.categoryIds && req?.categoryIds.length > 0) {
       where.ticketCategories = {
-        some: {
-          id: { in: req.categoryId },
-        },
+        some: { id: { in: req.categoryIds as string[] } },
       };
     }
 
     if (req?.userIds && req?.userIds.length > 0) {
-      where.users = {
-        some: {
-          id: {
-            in: req.userIds as string[],
-          },
-        },
-      };
+      where.users = { some: { id: { in: req.userIds as string[] } } };
     }
 
     const [marketCenters, total] = await Promise.all([

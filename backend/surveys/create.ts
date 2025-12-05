@@ -1,7 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { prisma } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
-// TODO: Generate notification for creator to rate the ticket
+import type { UsersToNotify } from "../notifications/types";
 
 export interface CreateSurveyRequest {
   ticketId: string;
@@ -11,6 +11,7 @@ export interface CreateSurveyRequest {
 
 export interface CreateSurveyResponse {
   success: boolean;
+  usersToNotify: UsersToNotify[];
 }
 
 export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
@@ -56,6 +57,17 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
       },
     });
 
-    return { success: true };
+    const usersToNotify: UsersToNotify[] = [];
+
+    if (ticket?.creator && ticket?.creator?.id) {
+      usersToNotify.push({
+        id: ticket.creator.id,
+        name: ticket.creator.name || "",
+        email: ticket.creator.email,
+        updateType: "ticketSurvey",
+      });
+    }
+
+    return { success: true, usersToNotify: usersToNotify };
   }
 );

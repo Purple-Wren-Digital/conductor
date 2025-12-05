@@ -1,23 +1,26 @@
 import { API_BASE } from "@/lib/api/utils";
+import { CreateNotificationPayload, NotificationData } from "@/lib/types";
+import { arrayToCommaSeparatedListWithConjunction } from "@/lib/utils";
 import {
-  CreateNotificationPayload,
-  NotificationData,
-  NotificationTemplate,
-} from "@/lib/types";
-import { arrayToCommaSeparatedListWithConjunction } from "../utils";
+  fetchTemplate,
+  NotificationContext,
+  renderTemplate,
+} from "@/lib/utils/notification-templates";
 import {
   ActivityUpdates,
   NewUserInvitationProps,
 } from "@/packages/transactional/emails/types";
 
-type GetTokenOptions = {
+// TODO: MOVE ALL THIS TO BACKEND
+
+export type GetTokenOptions = {
   template?: string | undefined;
   organizationId?: string | undefined;
   leewayInSeconds?: number | undefined;
   skipCache?: boolean | undefined;
 };
 
-type GetToken = (options?: GetTokenOptions) => Promise<string | null>;
+export type GetToken = (options?: GetTokenOptions) => Promise<string | null>;
 
 export type NotificationContent = {
   getToken: GetToken;
@@ -32,95 +35,15 @@ export type NotificationContent = {
     | "Mentions"
     | "New Comments"
     | "Market Center Assignment"
-    | "Category Assignment";
+    | "Category Assignment"
+    | "Ticket Survey"
+    | "Ticket Survey Results";
   receivingUser: {
     id: string;
     name: string;
     email: string;
   };
   data?: NotificationData;
-};
-
-type NotificationContext = {
-  assigneeId?: string;
-  assigneeName?: string;
-  categoryName?: string;
-  categoryDescription?: string;
-  changedDetails?: string;
-  comment?: string;
-  commenterId?: string;
-  commenterName?: string;
-  currentAssignment?: string;
-  creatorId?: string;
-  creatorName?: string;
-  createdOn?: string;
-  dueDate?: string;
-  editorEmail?: string;
-  editorName?: string;
-  editorId?: string;
-  isInternal?: string;
-  marketCenterId?: string;
-  marketCenterName?: string;
-  previousAssignment?: string;
-  ticketNumber?: string;
-  ticketTitle?: string;
-  updatedOn?: string;
-  updateType?: string;
-  userEmail?: string;
-  userName?: string;
-  userUpdate?: string;
-  [key: string]: string | undefined; // fallback for any new ones
-};
-
-function renderTemplate({
-  templateContent,
-  context,
-}: {
-  templateContent: string;
-  context: NotificationContext;
-}): string {
-  return templateContent.replace(/{{\s*(\w+)\s*}}/g, (_, key) => {
-    const value = context[key];
-    return value ?? `{{${key}}}`; // fallback: leave placeholder intact if no value
-  });
-}
-
-const fetchTemplate = async (templateName: string, getToken?: GetToken) => {
-  if (!getToken) {
-    console.error("No auth token provided for fetching template");
-    return null;
-  }
-  try {
-    const token = await getToken();
-    if (!token) {
-      throw new Error("Failed to get authentication token");
-    }
-    const response = await fetch(
-      `${API_BASE}/notifications/templates/${templateName}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    if (!response.ok) {
-      throw new Error(
-        response?.statusText
-          ? response.statusText
-          : "Failed to fetch notification template"
-      );
-    }
-    const data = await response.json();
-    if (!data || !data?.notificationTemplate) {
-      throw new Error("No parsed template data");
-    }
-    return data?.notificationTemplate as NotificationTemplate;
-  } catch (error) {
-    console.error("Unable to fetch notification template:", error);
-    return null;
-  }
 };
 
 export const formatNotificationContent = async (
@@ -390,11 +313,19 @@ export const formatNotificationContent = async (
       return formattedNotification;
     }
     const updates: string[] = [];
-    const rawUpdates = content.data.updatedTicket
-      .changedDetails as ActivityUpdates[];
-    rawUpdates.forEach((update: ActivityUpdates) => {
-      updates.push(update.label);
-    });
+    const rawChangedDetails = content.data.updatedTicket?.changedDetails;
+
+    if (
+      rawChangedDetails &&
+      Array.isArray(rawChangedDetails) &&
+      typeof rawChangedDetails[0] === "object" &&
+      typeof rawChangedDetails[0] !== "string" &&
+      "label" in rawChangedDetails[0]
+    ) {
+      rawChangedDetails.map((update: ActivityUpdates) => {
+        updates.push(update.label);
+      });
+    }
 
     const context: NotificationContext = {
       ticketNumber: content.data.updatedTicket?.ticketNumber,
@@ -473,6 +404,83 @@ export const formatNotificationContent = async (
     });
   }
 
+  if (content.trigger === "Ticket Survey" && content?.data?.ticketSurvey) {
+    const ticketSurveyTemplate = await fetchTemplate(
+      content.templateName,
+      content.getToken
+    );
+
+    if (!ticketSurveyTemplate) {
+      console.error(
+        "Unable to format new Ticket Survey notification - Missing template"
+      );
+      return formattedNotification;
+    }
+    const context: NotificationContext = {
+      ticketNumber: content.data.ticketSurvey?.ticketNumber,
+      ticketTitle: content.data.ticketSurvey?.ticketTitle,
+      surveyorName: content.data.ticketSurvey?.surveyorName,
+    };
+    const subject = renderTemplate({
+      templateContent: ticketSurveyTemplate.subject,
+      context: context,
+    });
+    const body = renderTemplate({
+      templateContent: ticketSurveyTemplate.body,
+      context: context,
+    });
+
+    return (formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: subject,
+      body: body,
+      priority: "MEDIUM",
+      data: { ticketSurvey: content.data.ticketSurvey },
+    });
+  }
+
+  if (
+    content.trigger === "Ticket Survey Results" &&
+    content?.data?.surveyResults
+  ) {
+    const surveyResultsTemplate = await fetchTemplate(
+      content.templateName,
+      content.getToken
+    );
+
+    if (!surveyResultsTemplate) {
+      console.error(
+        "Unable to format Ticket Survey Results notification - Missing template"
+      );
+      return formattedNotification;
+    }
+    const context: NotificationContext = {
+      ticketNumber: content.data.surveyResults?.ticketNumber,
+      ticketTitle: content.data.surveyResults?.ticketTitle,
+      staffName: content.data.surveyResults?.staffName,
+    };
+    const subject = renderTemplate({
+      templateContent: surveyResultsTemplate.subject,
+      context: context,
+    });
+    const body = renderTemplate({
+      templateContent: surveyResultsTemplate.body,
+      context: context,
+    });
+
+    return (formattedNotification = {
+      userId: content?.receivingUser?.id,
+      category: "ACTIVITY",
+      type: content.trigger,
+      title: subject,
+      body: body,
+      priority: "MEDIUM",
+      data: { surveyResults: content.data.surveyResults },
+    });
+  }
+
   return formattedNotification;
 };
 
@@ -484,6 +492,7 @@ export async function createAndSendNotification(
   }
   const payload: CreateNotificationPayload | null =
     await formatNotificationContent(content);
+
   if (!payload || !payload?.userId)
     throw new Error("Payload not formatted correctly");
   try {
@@ -502,6 +511,7 @@ export async function createAndSendNotification(
         body: JSON.stringify(payload),
       }
     );
+
     if (!response.ok) {
       throw new Error(
         response?.statusText

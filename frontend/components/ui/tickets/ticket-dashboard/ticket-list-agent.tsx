@@ -81,14 +81,11 @@ import type {
 } from "@/lib/types";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
-import {
-  useMutation,
-  useQueryClient,
-  UseQueryResult,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function AgentTicketList() {
   const [isLoading, setIsLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -127,6 +124,72 @@ export default function AgentTicketList() {
   const { getToken } = useAuth();
 
   useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+        showFilters,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    dateFrom,
+    dateTo,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
       setCurrentPage(1);
@@ -140,6 +203,9 @@ export default function AgentTicketList() {
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     selectedStatuses.forEach((s) => params.append("status", s));
     selectedUrgencies.forEach((u) => params.append("urgency", u));
+
+    if (selectedAssignee !== "all")
+      params.append("assigneeId", selectedAssignee);
 
     if (selectedCategory !== "all")
       params.append("categoryId", selectedCategory);
@@ -157,6 +223,7 @@ export default function AgentTicketList() {
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
+    selectedAssignee,
     dateFrom,
     dateTo,
     sortBy,
@@ -169,6 +236,7 @@ export default function AgentTicketList() {
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
     [queryParams]
   );
+
   const agentTicketsQueryKey = useMemo(
     () => ["agent-tickets", queryKeyParams] as const,
     [queryKeyParams]
@@ -177,13 +245,8 @@ export default function AgentTicketList() {
   const agentTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey });
 
-  const {
-    data: ticketsData,
-    isFetching: ticketsLoading,
-  }: UseQueryResult<TicketsResponse, Error> = useFetchAgentTickets({
-    queryParams,
-    agentTicketsQueryKey,
-  });
+  const { data: ticketsData, isFetching: ticketsLoading } =
+    useFetchAgentTickets({ queryParams, agentTicketsQueryKey, hydrated });
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);
@@ -253,45 +316,59 @@ export default function AgentTicketList() {
     setIsEditOpen(true);
   };
 
-  const handleSendTicketNotifications = async ({
-    ticket,
+  const handleSendTicketClosedNotifications = async ({
     userToNotify,
-    changedDetails,
+    ticket,
   }: {
-    ticket: {
-      id: string;
-      title: string;
-      createdAt: Date;
-      updatedOn: Date;
-    };
     userToNotify: UsersToNotify;
-    changedDetails: ActivityUpdates;
+    ticket: { id: string; title: string; createdAt: Date };
   }) => {
+    const notifyCreator = userToNotify.updateType === "unchanged";
+    const notifySurvey =
+      userToNotify?.updateType === "ticketSurvey" ||
+      userToNotify?.updateType === "ticketSurveyResults";
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: "Ticket Updated",
-        trigger: "Ticket Updated",
+        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
           name: userToNotify?.name,
           email: userToNotify?.email,
         },
         data: {
-          updatedTicket: {
-            ticketNumber: ticket.id,
-            ticketTitle: ticket?.title ?? "No title provided",
-            createdOn: ticket?.createdAt,
-            updatedOn: ticket?.updatedOn,
-            editorName: currentUser?.name ?? "Unknown",
-            editorId: currentUser?.id ?? "",
-            changedDetails: [changedDetails],
-          },
+          ticketSurvey:
+            notifySurvey && !notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  surveyorName: userToNotify?.name ?? "No name provided",
+                }
+              : undefined,
+          updatedTicket:
+            !notifySurvey && notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  createdOn: ticket?.createdAt,
+                  updatedOn: new Date(),
+                  editorName: userToNotify?.name ?? "Unknown",
+                  editorId: userToNotify?.id ?? "",
+                  changedDetails: [
+                    {
+                      label: "Status",
+                      newValue: "RESOLVED",
+                      originalValue: "ASSIGNED",
+                    },
+                  ],
+                }
+              : undefined,
         },
       });
     } catch (error) {
       console.error(
-        "AgentTicketList - Unable to generate notifications for closed ticket:",
+        "TicketListAgent - Unable to generate Survey notifications",
         error
       );
     }
@@ -318,12 +395,7 @@ export default function AgentTicketList() {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      if (
-        !data ||
-        !data?.usersToNotify ||
-        !data?.usersToNotify.length ||
-        !data?.changedDetails
-      )
+      if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
         throw new Error("No data returned from close ticket");
       return { ...data, ticket: ticket };
     },
@@ -335,15 +407,13 @@ export default function AgentTicketList() {
       const { usersToNotify, changedDetails, ticket } = data;
       await Promise.all(
         usersToNotify.map((user) =>
-          handleSendTicketNotifications({
+          handleSendTicketClosedNotifications({
             ticket: {
               id: ticket.id,
               title: ticket?.title ?? "No title provided",
               createdAt: ticket.createdAt,
-              updatedOn: new Date(),
             },
             userToNotify: user,
-            changedDetails,
           })
         )
       );

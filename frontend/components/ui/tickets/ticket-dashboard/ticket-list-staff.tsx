@@ -93,6 +93,7 @@ export default function TicketListStaff() {
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
 
+  const [hydrated, setHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
@@ -136,6 +137,77 @@ export default function TicketListStaff() {
   const [bulkStatus, setBulkStatus] = useState<TicketStatus | "">("");
 
   const { getToken } = useAuth();
+
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      "ticket-filters",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+        currentPage,
+        showFilters,
+      })
+    );
+  }, [
+    hydrated,
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    dateTo,
+    dateFrom,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+    currentPage,
+    showFilters,
+  ]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("ticket-filters");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+
+      setSearchQuery(fetchedFilters.searchQuery || "");
+      setSelectedStatuses(
+        fetchedFilters.selectedStatuses || defaultActiveStatuses
+      );
+      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
+      setSelectedCategory(fetchedFilters.selectedCategory || "all");
+      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
+      setSelectedCreator(fetchedFilters.selectedCreator || "all");
+      setDateFrom(
+        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
+      );
+      setDateTo(
+        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
+      );
+      setOpenFrom(fetchedFilters.openFrom || false);
+      setOpenTo(fetchedFilters.openTo || false);
+      setSortBy(fetchedFilters.sortBy || "updatedAt");
+      setSortDir(fetchedFilters.sortDir || "desc");
+      setCurrentPage(fetchedFilters.currentPage || 1);
+
+      setShowFilters(fetchedFilters.showFilters || false);
+    }
+
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -200,10 +272,7 @@ export default function TicketListStaff() {
   );
 
   const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
-    {
-      queryParams,
-      staffTicketsQueryKey,
-    }
+    { queryParams, staffTicketsQueryKey, hydrated }
   );
 
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
@@ -296,45 +365,59 @@ export default function TicketListStaff() {
     });
   };
 
-  const handleSendTicketNotifications = async ({
-    ticket,
+  const handleSendTicketClosedNotifications = async ({
     userToNotify,
-    changedDetails,
+    ticket,
   }: {
-    ticket: {
-      id: string;
-      title: string;
-      createdAt: Date;
-      updatedOn: Date;
-    };
     userToNotify: UsersToNotify;
-    changedDetails: ActivityUpdates;
+    ticket: { id: string; title: string; createdAt: Date };
   }) => {
+    const notifyCreator = userToNotify.updateType === "unchanged";
+    const notifySurvey =
+      userToNotify?.updateType === "ticketSurvey" ||
+      userToNotify?.updateType === "ticketSurveyResults";
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: "Ticket Updated",
-        trigger: "Ticket Updated",
+        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
           name: userToNotify?.name,
           email: userToNotify?.email,
         },
         data: {
-          updatedTicket: {
-            ticketNumber: ticket.id,
-            ticketTitle: ticket?.title ?? "No title provided",
-            createdOn: ticket?.createdAt,
-            updatedOn: ticket?.updatedOn,
-            editorName: currentUser?.name ?? "Unknown",
-            editorId: currentUser?.id ?? "",
-            changedDetails: [changedDetails],
-          },
+          ticketSurvey:
+            notifySurvey && !notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  surveyorName: userToNotify?.name ?? "No name provided",
+                }
+              : undefined,
+          updatedTicket:
+            !notifySurvey && notifyCreator
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: ticket?.title ?? "No title provided",
+                  createdOn: ticket?.createdAt,
+                  updatedOn: new Date(),
+                  editorName: userToNotify?.name ?? "Unknown",
+                  editorId: userToNotify?.id ?? "",
+                  changedDetails: [
+                    {
+                      label: "Status",
+                      newValue: "RESOLVED",
+                      originalValue: "ASSIGNED",
+                    },
+                  ],
+                }
+              : undefined,
         },
       });
     } catch (error) {
       console.error(
-        "AgentTicketList - Unable to generate notifications for closed ticket:",
+        "TicketListStaff - Unable to generate Survey notifications",
         error
       );
     }
@@ -361,12 +444,8 @@ export default function TicketListStaff() {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      if (
-        !data ||
-        !data?.usersToNotify ||
-        !data?.usersToNotify.length ||
-        !data?.changedDetails
-      )
+      console.log("Close ticket response data:", data);
+      if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
         throw new Error("No data returned from close ticket");
       return { ...data, ticket: ticket };
     },
@@ -378,15 +457,14 @@ export default function TicketListStaff() {
       const { usersToNotify, changedDetails, ticket } = data;
       await Promise.all(
         usersToNotify.map((user) =>
-          handleSendTicketNotifications({
+          handleSendTicketClosedNotifications({
             ticket: {
               id: ticket.id,
               title: ticket?.title ?? "No title provided",
               createdAt: ticket.createdAt,
-              updatedOn: new Date(),
             },
             userToNotify: user,
-            changedDetails,
+            // changedDetails,
           })
         )
       );
