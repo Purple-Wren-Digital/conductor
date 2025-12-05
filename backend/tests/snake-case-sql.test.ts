@@ -391,6 +391,78 @@ describe("Snake Case SQL Patterns", () => {
     });
   });
 
+  describe("Seed file table names", () => {
+    it("should use 'user_settings' for INSERT", () => {
+      const validSql = `
+        INSERT INTO user_settings (id, user_id, created_at, updated_at)
+        VALUES (gen_random_uuid()::text, $1, NOW(), NOW())
+      `;
+      assertSnakeCaseTable(validSql, "user_settings");
+      expect(validSql).toContain("user_id");
+      expect(validSql).toContain("created_at");
+      expect(validSql).toContain("updated_at");
+      assertNoQuotedPascalCase(validSql);
+    });
+
+    it("should use 'notification_preferences' for INSERT", () => {
+      const validSql = `
+        INSERT INTO notification_preferences (
+          id, user_settings_id, type, email, push, in_app, category, frequency, sms
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `;
+      assertSnakeCaseTable(validSql, "notification_preferences");
+      expect(validSql).toContain("user_settings_id");
+      expect(validSql).toContain("in_app");
+      assertNoQuotedPascalCase(validSql);
+    });
+
+    it("should use 'notifications' for INSERT", () => {
+      const validSql = `
+        INSERT INTO notifications (
+          id, user_id, channel, category, priority, type, title, body,
+          delivered_at, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `;
+      assertSnakeCaseTable(validSql, "notifications");
+      expect(validSql).toContain("user_id");
+      expect(validSql).toContain("delivered_at");
+      expect(validSql).toContain("created_at");
+      assertNoQuotedPascalCase(validSql);
+    });
+
+    it("should use 'notification_templates' for INSERT", () => {
+      const validSql = `
+        INSERT INTO notification_templates (
+          id, template_name, template_description, type, channel, category,
+          subject, body, is_default, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `;
+      assertSnakeCaseTable(validSql, "notification_templates");
+      expect(validSql).toContain("template_name");
+      expect(validSql).toContain("template_description");
+      expect(validSql).toContain("is_default");
+      expect(validSql).toContain("created_at");
+      assertNoQuotedPascalCase(validSql);
+    });
+
+    it("should use snake_case for DELETE statements in seed cleanup", () => {
+      const validDeletes = [
+        "DELETE FROM ticket_history",
+        "DELETE FROM notifications",
+        "DELETE FROM notification_preferences",
+        "DELETE FROM notification_templates",
+        "DELETE FROM user_history",
+        "DELETE FROM user_settings",
+        "DELETE FROM market_center_history",
+      ];
+
+      for (const sql of validDeletes) {
+        assertNoQuotedPascalCase(sql);
+        expect(sql).not.toMatch(/"[A-Z]/);
+      }
+    });
+  });
+
   describe("JOIN statements", () => {
     it("should use snake_case in JOIN with users table", () => {
       const validSql = `

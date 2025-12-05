@@ -91,15 +91,15 @@ export const surveyRepository = {
     let paramIndex = 1;
 
     if (data.assigneeRating !== undefined) {
-      updates.push(`"assigneeRating" = $${paramIndex++}`);
+      updates.push(`assignee_rating = $${paramIndex++}`);
       values.push(data.assigneeRating);
     }
     if (data.marketCenterRating !== undefined) {
-      updates.push(`"marketCenterRating" = $${paramIndex++}`);
+      updates.push(`market_center_rating = $${paramIndex++}`);
       values.push(data.marketCenterRating);
     }
     if (data.overallRating !== undefined) {
-      updates.push(`"overallRating" = $${paramIndex++}`);
+      updates.push(`overall_rating = $${paramIndex++}`);
       values.push(data.overallRating);
     }
     if (data.comment !== undefined) {
@@ -139,9 +139,9 @@ export const surveyRepository = {
     }>`
       SELECT
         COUNT(*)::int as total,
-        AVG("assigneeRating")::decimal(3,2) as assignee_avg,
-        AVG("overallRating")::decimal(3,2) as overall_avg,
-        AVG("marketCenterRating")::decimal(3,2) as mc_avg
+        AVG(assignee_rating)::decimal(3,2) as assignee_avg,
+        AVG(overall_rating)::decimal(3,2) as overall_avg,
+        AVG(market_center_rating)::decimal(3,2) as mc_avg
       FROM ticket_ratings
       WHERE assignee_id = ${assigneeId} AND completed = true
     `;
@@ -169,9 +169,9 @@ export const surveyRepository = {
     }>`
       SELECT
         COUNT(*)::int as total,
-        AVG("assigneeRating")::decimal(3,2) as assignee_avg,
-        AVG("overallRating")::decimal(3,2) as overall_avg,
-        AVG("marketCenterRating")::decimal(3,2) as mc_avg
+        AVG(assignee_rating)::decimal(3,2) as assignee_avg,
+        AVG(overall_rating)::decimal(3,2) as overall_avg,
+        AVG(market_center_rating)::decimal(3,2) as mc_avg
       FROM ticket_ratings
       WHERE completed = true
     `;
@@ -215,9 +215,9 @@ export const surveyRepository = {
     }>`
       SELECT
         COUNT(*)::int as total,
-        AVG("marketCenterRating")::decimal(3,2) as mc_avg,
-        AVG("overallRating")::decimal(3,2) as overall_avg,
-        AVG("assigneeRating")::decimal(3,2) as assignee_avg
+        AVG(market_center_rating)::decimal(3,2) as mc_avg,
+        AVG(overall_rating)::decimal(3,2) as overall_avg,
+        AVG(assignee_rating)::decimal(3,2) as assignee_avg
       FROM ticket_ratings
       WHERE market_center_id = ${marketCenterId} AND completed = true
     `;

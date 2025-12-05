@@ -21,7 +21,7 @@ export const seedData = api<void, SeedResponse>(
 
     // Clean up in correct order using raw SQL
     // Use correct table names matching the migration schema
-    await db.exec`DELETE FROM "TicketHistory"`;
+    await db.exec`DELETE FROM ticket_history`;
     await db.exec`DELETE FROM comments`;
     await db.exec`DELETE FROM attachments`;
     await db.exec`DELETE FROM todos`;
@@ -29,16 +29,16 @@ export const seedData = api<void, SeedResponse>(
     await db.exec`DELETE FROM ticket_ratings`;
     await db.exec`DELETE FROM tickets`;
 
-    await db.exec`DELETE FROM "Notification"`;
-    await db.exec`DELETE FROM "NotificationPreferences"`;
-    await db.exec`DELETE FROM "NotificationTemplate"`;
+    await db.exec`DELETE FROM notifications`;
+    await db.exec`DELETE FROM notification_preferences`;
+    await db.exec`DELETE FROM notification_templates`;
 
     await db.exec`DELETE FROM ticket_categories`;
 
-    await db.exec`DELETE FROM "UserHistory"`;
-    await db.exec`DELETE FROM "UserSettings"`;
+    await db.exec`DELETE FROM user_history`;
+    await db.exec`DELETE FROM user_settings`;
 
-    await db.exec`DELETE FROM "MarketCenterHistory"`;
+    await db.exec`DELETE FROM market_center_history`;
 
     // Delete subscriptions before market centers (foreign key)
     await db.exec`DELETE FROM subscription_invoices`;
@@ -66,7 +66,7 @@ export const seedData = api<void, SeedResponse>(
       await db.exec`
         INSERT INTO subscriptions (
           id, stripe_subscription_id, stripe_customer_id, market_center_id,
-          status, "planType", price_id, included_seats, additional_seats,
+          status, plan_type, price_id, included_seats, additional_seats,
           seat_price, current_period_start, current_period_end, features,
           created_at, updated_at
         )
@@ -168,7 +168,7 @@ export const seedData = api<void, SeedResponse>(
     for (const user of createdUsers) {
       // Create user settings with notification preferences
       const userSettingsId = (await db.queryRow<{ id: string }>`
-        INSERT INTO "UserSettings" (id, "userId", "createdAt", "updatedAt")
+        INSERT INTO user_settings (id, user_id, created_at, updated_at)
         VALUES (gen_random_uuid()::text, ${user.id}, NOW(), NOW())
         RETURNING id
       `)?.id;
@@ -176,8 +176,8 @@ export const seedData = api<void, SeedResponse>(
       if (userSettingsId) {
         // Create notification preferences
         await db.exec`
-          INSERT INTO "NotificationPreferences" (
-            id, "userSettingsId", type, email, push, "inApp", category, frequency, sms
+          INSERT INTO notification_preferences (
+            id, user_settings_id, type, email, push, in_app, category, frequency, sms
           )
           VALUES (
             gen_random_uuid()::text, ${userSettingsId}, 'default', true, true,
@@ -188,9 +188,9 @@ export const seedData = api<void, SeedResponse>(
 
       // Create welcome notification
       await db.exec`
-        INSERT INTO "Notification" (
-          id, "userId", channel, category, priority, type, title, body,
-          "deliveredAt", "createdAt"
+        INSERT INTO notifications (
+          id, user_id, channel, category, priority, type, title, body,
+          delivered_at, created_at
         )
         VALUES (
           gen_random_uuid()::text, ${user.id}, 'IN_APP', 'ACCOUNT', 'HIGH',
@@ -528,7 +528,7 @@ export const seedData = api<void, SeedResponse>(
       const survey = await db.queryRow<{ id: string }>`
         INSERT INTO ticket_ratings (
           id, ticket_id, surveyor_id, assignee_id, market_center_id,
-          "overallRating", "assigneeRating", "marketCenterRating", comment,
+          overall_rating, assignee_rating, market_center_rating, comment,
           completed, created_at, updated_at
         )
         VALUES (
@@ -584,10 +584,10 @@ export const seedData = api<void, SeedResponse>(
     // Create notification templates
     for (const template of notificationTemplatesDefault) {
       await db.exec`
-        INSERT INTO "NotificationTemplate" (
-          id, "templateName", "templateDescription", type, channel, category,
-          subject, body, "isDefault",
-          "createdAt"
+        INSERT INTO notification_templates (
+          id, template_name, template_description, type, channel, category,
+          subject, body, is_default,
+          created_at
         )
         VALUES (
           gen_random_uuid()::text, ${template.templateName}, ${template.templateDescription},

@@ -11,12 +11,12 @@ async function initialize() {
 
     // Check if database has data
     const userCountResult = await db.queryRow<{ count: number }>`
-      SELECT COUNT(*)::int as count FROM "User"
+      SELECT COUNT(*)::int as count FROM users
     `;
     const userCount = userCountResult?.count ?? 0;
 
     const ticketCountResult = await db.queryRow<{ count: number }>`
-      SELECT COUNT(*)::int as count FROM "Ticket"
+      SELECT COUNT(*)::int as count FROM tickets
     `;
     const ticketCount = ticketCountResult?.count ?? 0;
 

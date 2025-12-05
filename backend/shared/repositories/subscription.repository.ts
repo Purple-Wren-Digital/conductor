@@ -152,7 +152,7 @@ export const subscriptionRepository = {
   }): Promise<Subscription> {
     const row = await db.queryRow<SubscriptionRow>`
       INSERT INTO subscriptions (
-        stripe_subscription_id, stripe_customer_id, market_center_id, status, "planType",
+        stripe_subscription_id, stripe_customer_id, market_center_id, status, plan_type,
         price_id, included_seats, additional_seats, seat_price,
         current_period_start, current_period_end, trial_end, features, created_at, updated_at
       ) VALUES (
@@ -201,7 +201,7 @@ export const subscriptionRepository = {
       values.push(data.status);
     }
     if (data.planType !== undefined) {
-      updates.push(`"planType" = $${paramIndex++}`);
+      updates.push(`plan_type = $${paramIndex++}`);
       values.push(data.planType);
     }
     if (data.priceId !== undefined) {
