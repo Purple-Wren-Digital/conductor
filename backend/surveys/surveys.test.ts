@@ -21,8 +21,10 @@ const { mockSurveyRepository, mockTicketRepository, mockUserContext } = vi.hoist
   },
   mockUserContext: {
     userId: "user-123",
-    role: "ADMIN",
+    email: "admin@test.com",
+    role: "ADMIN" as const,
     marketCenterId: "mc-123",
+    clerkId: "clerk-123",
   },
 }));
 
@@ -323,8 +325,10 @@ describe("Survey Service Tests", () => {
     it("should throw permission denied for non-admin users", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "user-123",
-        role: "STAFF",
+        email: "staff@test.com",
+        role: "STAFF" as const,
         marketCenterId: "mc-123",
+        clerkId: "clerk-staff",
       });
 
       await expect(getAllRatings({})).rejects.toThrow(
@@ -387,8 +391,10 @@ describe("Survey Service Tests", () => {
     it("should use user's market center for non-admin users", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "user-123",
-        role: "STAFF",
+        email: "staff@test.com",
+        role: "STAFF" as const,
         marketCenterId: "user-mc-123",
+        clerkId: "clerk-staff",
       });
 
       const mockAverages = {
@@ -427,8 +433,10 @@ describe("Survey Service Tests", () => {
     it("should throw permission denied when non-admin has no market center", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "user-123",
-        role: "STAFF",
+        email: "staff@test.com",
+        role: "STAFF" as const,
         marketCenterId: null,
+        clerkId: "clerk-staff",
       });
 
       await expect(

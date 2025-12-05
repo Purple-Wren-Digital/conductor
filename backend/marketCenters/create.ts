@@ -110,7 +110,7 @@ export const create = api<
           role: u.role as any,
           clerkId: u.clerk_id,
           isActive: u.is_active,
-          marketCenterId: u.market_center_id ?? undefined,
+          marketCenterId: u.market_center_id ?? null,
           createdAt: fromTimestamp(u.created_at)!,
           updatedAt: fromTimestamp(u.updated_at)!,
         })),

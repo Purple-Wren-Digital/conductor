@@ -51,14 +51,14 @@ export const get = api<
         id: notificationTemplate.id,
         templateName: notificationTemplate.template_name,
         templateDescription: notificationTemplate.template_description,
-        subject: notificationTemplate.subject,
+        subject: notificationTemplate.subject ?? "",
         body: notificationTemplate.body,
         category: notificationTemplate.category,
         channel: notificationTemplate.channel,
+        type: notificationTemplate.category, // Use category as type
         isDefault: notificationTemplate.is_default,
         createdAt: fromTimestamp(notificationTemplate.created_at)!,
         variables: fromJson(notificationTemplate.variables) ?? undefined,
-        data: null,
       },
     };
   }

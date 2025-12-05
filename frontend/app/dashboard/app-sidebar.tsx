@@ -25,6 +25,7 @@ import {
   Info,
   BookMarked,
   Folder,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -185,6 +186,20 @@ export function AppSidebar({
                   >
                     <BookMarked className="text-muted-foreground" />
                     Market Center
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {role && role !== "AGENT" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link href={`/dashboard/reports`}>
+                    <ChartNoAxesCombined className="text-muted-foreground" />
+                    Reports
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -16,7 +16,7 @@ const { mockDb, mockWithTransaction, mockUserContext } = vi.hoisted(() => ({
   mockUserContext: {
     userId: "admin-123",
     email: "admin@test.com",
-    role: "ADMIN",
+    role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-admin",
   },
@@ -58,7 +58,7 @@ vi.mock("../auth/user-context", () => ({
 }));
 
 vi.mock("../auth/permissions", () => ({
-  canManageMarketCenters: vi.fn(() => true),
+  canManageMarketCenters: vi.fn(() => Promise.resolve(true)),
 }));
 
 import { update } from "./update";
@@ -71,7 +71,7 @@ describe("Market Center Update", () => {
 
     // Default admin user context
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    vi.mocked(canManageMarketCenters).mockReturnValue(true);
+    vi.mocked(canManageMarketCenters).mockResolvedValue(true);
   });
 
   describe("User removal from market center", () => {

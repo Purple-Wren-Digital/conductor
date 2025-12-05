@@ -115,7 +115,7 @@ export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
         role: user.role as any,
         clerkId: user.clerk_id,
         isActive: user.is_active,
-        marketCenterId: user.market_center_id ?? undefined,
+        marketCenterId: user.market_center_id ?? null,
         createdAt: fromTimestamp(user.created_at)!,
         updatedAt: fromTimestamp(user.updated_at)!,
       })),

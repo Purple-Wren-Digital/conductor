@@ -1,0 +1,120 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import SlaComplianceReport from "@/components/reports/sla-compliance-report";
+import SlaComplianceByUsersReport from "@/components/reports/users-tickets-overdue-at-risk";
+import TicketBacklogReport from "@/components/reports/backlog-report";
+import CreatedVolumeByMonthReport from "@/components/reports/created-volume-report";
+import ResolvedTicketsByMonthReport from "@/components/reports/resolved-volume-report";
+import { Separator } from "@/components/ui/separator";
+
+export type ReportProps = { isSelected: boolean };
+
+const reportType = [
+  { value: "sla-compliance", label: "SLA Compliance Overview" },
+  {
+    value: "sla-compliance-by-users",
+    label: "SLA Compliance by Ticket Assignees",
+  },
+  { value: "ticket-backlog", label: "Ticket Backlog (Current)" },
+  { value: "ticket-created-volume", label: "Created Tickets By Month" },
+  { value: "ticket-resolved-volume", label: "Resolved Tickets By Month" },
+];
+
+export default function ReportsDashboard() {
+  const [hydrated, setHydrated] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState<string | null>(
+    null
+  );
+
+  // FILTERS STATE PERSISTENCE
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(
+      "report-selection",
+      JSON.stringify({
+        selectedReportType,
+      })
+    );
+  }, [hydrated, selectedReportType]);
+
+  useEffect(() => {
+    const filtersString = localStorage.getItem("report-selection");
+    if (filtersString) {
+      const fetchedFilters = JSON.parse(filtersString);
+      setSelectedReportType(fetchedFilters.selectedReportType || "none");
+    }
+
+    setHydrated(true);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold text-[#6D1C24]">
+        Metrics and Reporting
+      </h1>
+
+      <div className="grid gap-4 md:grid-cols-12 mt-10">
+        <section className="md:col-span-3 space-y-4">
+          <p className="font-semibold">Reports</p>
+          <Separator />
+
+          <div className="flex flex-col gap-2 items-start">
+            <Button
+              variant={"link"}
+              size="sm"
+              className="font-medium p-0 text-muted-foreground opacity-50 hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
+              onClick={() => setSelectedReportType(null)}
+              disabled={!selectedReportType}
+            >
+              {!selectedReportType ? "Select a report" : "Select none"}
+            </Button>
+            {reportType.map((report) => (
+              <Button
+                key={report.value}
+                variant={"link"}
+                size="sm"
+                className={`font-medium p-0
+                ${
+                  selectedReportType === report.value
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
+                }`}
+                onClick={() => setSelectedReportType(report?.value)}
+              >
+                {report.label}
+              </Button>
+            ))}
+          </div>
+        </section>
+        <div className="md:col-span-9">
+          {selectedReportType ? (
+            <Card className="space-y-4">
+              <SlaComplianceReport
+                isSelected={selectedReportType === "sla-compliance"}
+              />
+              <SlaComplianceByUsersReport
+                isSelected={selectedReportType === "sla-compliance-by-users"}
+              />
+              <TicketBacklogReport
+                isSelected={selectedReportType === "ticket-backlog"}
+              />
+              <CreatedVolumeByMonthReport
+                isSelected={selectedReportType === "ticket-created-volume"}
+              />
+              <ResolvedTicketsByMonthReport
+                isSelected={selectedReportType === "ticket-resolved-volume"}
+              />
+            </Card>
+          ) : (
+            <p className="flex items-center justify-center h-24 font-medium text-muted-foreground   ">
+              Please make a selection
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
