@@ -6,7 +6,7 @@ export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 export interface MarketCenter {
   id: string;
   name: string;
-  // settings?: MarketCenterSettings;
+  settings?: any; // JSON settings stored in database
   createdAt: Date;
   updatedAt: Date;
   teamInvitations?: TeamInvitation[];

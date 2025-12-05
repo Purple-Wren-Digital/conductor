@@ -78,13 +78,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export const ticketDetailQueryParams = new URLSearchParams(
-  "orderBy=desc&limit=5"
-);
-export const ticketDetailQueryKeyParams = Object.fromEntries(
-  ticketDetailQueryParams.entries()
-) as Record<string, string>;
-
 export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const { getToken } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -169,14 +162,25 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const { data: ticketHistoryData, isLoading: isHistoryLoading } =
     useFetchTicketHistory({
       id: ticketId,
-      queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
-      queryParams: ticketDetailQueryParams,
+      queryKey: [
+        "ticket-history-recent",
+        ticketId,
+        { orderBy: "desc", limit: "5" },
+      ],
+      queryParams: new URLSearchParams("orderBy=desc&limit=5"),
     });
-
   const ticketHistory: TicketHistory[] = ticketHistoryData?.ticketHistory || [];
-  const invalidateTicketHistory = queryClient.invalidateQueries({
-    queryKey: ["ticket-history-recent", ticketId, ticketDetailQueryKeyParams],
-  });
+  const invalidateTicketHistory = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: [
+          "ticket-history-recent",
+          ticketId,
+          { orderBy: "desc", limit: "5" },
+        ],
+      }),
+    [queryClient, ticketId]
+  );
 
   const { data: surveyData, isLoading: isSurveyLoading } =
     useFetchTicketSurveyResults(ticket?.status, ticket?.surveyId ?? undefined);

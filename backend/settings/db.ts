@@ -6,12 +6,12 @@
  */
 
 export {
-  db,
   userRepository,
   ticketRepository,
   marketCenterRepository,
   notificationRepository,
   settingsAuditRepository,
-  toJson,
-  fromJson,
 } from "../shared/repositories";
+
+export { db } from "../ticket/db";
+export { toJson, fromJson } from "../shared/db";

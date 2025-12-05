@@ -32,7 +32,7 @@ export const update = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    const canManage = canManageMarketCenters(userContext);
+    const canManage = await canManageMarketCenters(userContext);
 
     if (!canManage) {
       throw APIError.permissionDenied("Only Admin can update market centers");
@@ -228,7 +228,6 @@ export const update = api<
     const updatedMarketCenter: MarketCenter = {
       id: result.updatedMarketCenterRow!.id,
       name: result.updatedMarketCenterRow!.name,
-      settings: result.updatedMarketCenterRow!.settings,
       createdAt: fromTimestamp(result.updatedMarketCenterRow!.created_at)!,
       updatedAt: fromTimestamp(result.updatedMarketCenterRow!.updated_at)!,
     };

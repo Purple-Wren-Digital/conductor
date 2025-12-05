@@ -6,7 +6,6 @@ import type { Comment, UsersToNotify } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
-import { ticketDetailQueryKeyParams } from "@/components/ui/tickets/ticket-detail-view";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 
@@ -241,7 +240,7 @@ export function useCreateComment() {
         queryKey: [
           "ticket-history-recent",
           ticketId,
-          ticketDetailQueryKeyParams,
+          { orderBy: "desc", limit: "5" },
         ],
       });
     },
@@ -251,7 +250,6 @@ export function useCreateComment() {
 // ------------------- useUpdateComment -------------------
 
 export function useUpdateComment() {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
@@ -318,7 +316,7 @@ export function useUpdateComment() {
         queryKey: [
           "ticket-history-recent",
           ticketId,
-          ticketDetailQueryKeyParams,
+          { orderBy: "desc", limit: "5" },
         ],
       });
     },
@@ -328,7 +326,6 @@ export function useUpdateComment() {
 // ------------------- useDeleteComment -------------------
 
 export function useDeleteComment() {
-  const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
   const queryClient = useQueryClient();
@@ -386,7 +383,7 @@ export function useDeleteComment() {
         queryKey: [
           "ticket-history-recent",
           ticketId,
-          ticketDetailQueryKeyParams,
+          { orderBy: "desc", limit: "5" },
         ],
       });
     },

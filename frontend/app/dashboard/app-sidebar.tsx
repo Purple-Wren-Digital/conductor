@@ -26,6 +26,7 @@ import {
   BookMarked,
   Folder,
   Clock,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -190,15 +191,26 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {/* ADMIN/STAFF_LEADER - SLA MANAGEMENT */}
-            {(role === "ADMIN" || role === "STAFF_LEADER") && (
+            {role && role !== "AGENT" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link href={`/dashboard/reports`}>
+                    <ChartNoAxesCombined className="text-muted-foreground" />
+                    Reports
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
                   <Link href="/dashboard/sla">
                     <Clock className="text-muted-foreground" /> SLA Management
-                  </Link>
+                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+                    </>
             )}
           </SidebarGroup>
 

@@ -51,6 +51,6 @@ export const update = api<
 
     const updatedNotification = await notificationRepository.markAsRead(existingNotification.id);
 
-    return { success: updatedNotification?.read };
+    return { success: updatedNotification?.read ?? false };
   }
 );
