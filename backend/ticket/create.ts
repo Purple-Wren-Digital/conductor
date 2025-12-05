@@ -6,6 +6,7 @@ import { canCreateTicket } from "../auth/permissions";
 import { mapHistorySnapshot } from "../utils";
 import { UsersToNotify } from "../notifications/types";
 import { checkCanCreateTicket } from "../auth/subscription-check";
+import { slaService } from "../sla/sla.service";
 // Subscription usage tracking disabled - unlimited tickets allowed
 // import { trackUsage } from "../subscription/subscription";
 
@@ -65,6 +66,14 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
             : "CREATED",
         dueDate: req.dueDate,
       });
+
+      // Set SLA due date based on urgency
+      await slaService.setTicketSla(ticket.id, req.urgency, ticket.createdAt);
+
+      // If ticket is assigned on creation, record that as first response
+      if (req?.assigneeId && req?.assigneeId !== "Unassigned") {
+        await slaService.recordFirstResponse(ticket.id);
+      }
 
       // Create todos if provided
       if (req.todos && req.todos.length > 0) {

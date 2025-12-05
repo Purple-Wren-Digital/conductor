@@ -127,6 +127,27 @@ export const userRepository = {
     return user;
   },
 
+  // Find users by role
+  async findByRole(role: UserRole, options?: { activeOnly?: boolean }): Promise<User[]> {
+    const activeOnly = options?.activeOnly ?? true;
+
+    if (activeOnly) {
+      const rows = await db.queryAll<UserRow>`
+        SELECT * FROM users
+        WHERE role = ${role} AND is_active = true
+        ORDER BY name ASC
+      `;
+      return rows.map(rowToUser);
+    } else {
+      const rows = await db.queryAll<UserRow>`
+        SELECT * FROM users
+        WHERE role = ${role}
+        ORDER BY name ASC
+      `;
+      return rows.map(rowToUser);
+    }
+  },
+
   // Find users by market center
   async findByMarketCenterId(marketCenterId: string): Promise<User[]> {
     const rows = await db.queryAll<UserRow>`

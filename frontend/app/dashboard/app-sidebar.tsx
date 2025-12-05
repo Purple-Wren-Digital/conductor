@@ -25,6 +25,7 @@ import {
   Info,
   BookMarked,
   Folder,
+  Clock,
   ChartNoAxesCombined,
 } from "lucide-react";
 import Link from "next/link";
@@ -106,8 +107,8 @@ export function AppSidebar({
                   {currentUser?.role === "ADMIN"
                     ? "Global"
                     : currentUser?.marketCenter?.name
-                      ? currentUser?.marketCenter?.name
-                      : "No Market Center Assigned"}
+                    ? currentUser?.marketCenter?.name
+                    : "No Market Center Assigned"}
                 </p>
               </div>
             )}
@@ -190,19 +191,27 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
             {role && role !== "AGENT" && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  disabled={isLoading || !currentUser?.marketCenterId}
-                >
-                  <Link href={`/dashboard/reports`}>
-                    <ChartNoAxesCombined className="text-muted-foreground" />
-                    Reports
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    disabled={isLoading || !currentUser?.marketCenterId}
+                  >
+                    <Link href={`/dashboard/reports`}>
+                      <ChartNoAxesCombined className="text-muted-foreground" />
+                      Reports
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild disabled={isLoading}>
+                    <Link href="/dashboard/sla">
+                      <Clock className="text-muted-foreground" /> SLA Management
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
           </SidebarGroup>
 

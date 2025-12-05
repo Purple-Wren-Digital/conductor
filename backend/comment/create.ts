@@ -15,6 +15,7 @@ import {
 } from "../auth/permissions";
 import { CommentEventPublisher } from "./publisher";
 import type { UsersToNotify } from "../notifications/types";
+import { slaService } from "../sla/sla.service";
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -131,6 +132,12 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       source: "WEB",
       metadata: { source: "WEB" },
     });
+
+    // Record first response for SLA tracking if staff member comments
+    // A staff/admin comment counts as a response to the ticket
+    if (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER" || userContext.role === "ADMIN") {
+      await slaService.recordFirstResponse(req.ticketId);
+    }
 
     // Create ticket history
     await ticketRepository.createHistory({
