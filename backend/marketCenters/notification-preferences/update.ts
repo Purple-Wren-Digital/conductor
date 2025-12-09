@@ -14,6 +14,12 @@ interface MarketCenterRow {
   created_at: Date;
   updated_at: Date;
 }
+interface NotificationTemplateRow {
+  id: string;
+  market_center_id: string | null;
+  type: string;
+  isActive: boolean;
+}
 
 export interface UpdateMCNotificationPreferencesRequest {
   marketCenterId: string;
@@ -66,7 +72,38 @@ export const updateMCNotificationPreferences = api<
       settings: newSettings,
     });
 
-    console.log("Updated notification pref for MC:", result);
+    const notificationPreferences: MarketCenterNotificationPreferences[] =
+      result?.settings?.notificationPreferences ?? [];
+    const templates = await db.queryRow<NotificationTemplateRow[]>`
+      SELECT id, market_center_id, type, is_active FROM notification_templates
+      WHERE market_center_id = ${req.marketCenterId}
+    `;
+
+    if (
+      templates &&
+      templates.length > 0 &&
+      notificationPreferences &&
+      notificationPreferences.length > 0
+    ) {
+      const templateToUpdate = templates.find((template) =>
+        notificationPreferences.find(
+          (pref) =>
+            template.id &&
+            pref?.type === template?.type &&
+            pref.inApp !== undefined &&
+            template.isActive !== undefined &&
+            pref.inApp !== template.isActive
+        )
+      );
+
+      if (templateToUpdate) {
+        await db.rawExec(`
+        UPDATE notification_templates
+        SET is_active = ${templateToUpdate.isActive}
+        WHERE id = ${templateToUpdate.id}
+      `);
+      }
+    }
 
     return { success: true };
   }

@@ -1,7 +1,13 @@
 import { api, APIError, Query } from "encore.dev/api";
 import { db, fromTimestamp, fromJson } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
-import type { NotificationTemplate, NotificationCategory, NotificationChannel } from "../types";
+import type {
+  NotificationTemplate,
+  NotificationCategory,
+  NotificationChannel,
+  MarketCenterDefaultTemplates,
+} from "../types";
+import type { MarketCenter } from "../../marketCenters/types";
 
 export interface ListNotificationTemplatesRequest {
   templateName?: Query<string>;
@@ -18,10 +24,15 @@ interface NotificationTemplateRow {
   subject: string | null;
   body: string;
   category: NotificationCategory;
+  type: string;
   channel: NotificationChannel;
   is_default: boolean;
   created_at: Date;
   variables: any;
+  is_active: boolean;
+  market_center_id: string | null;
+  market_center: MarketCenter;
+  market_center_default_templates: MarketCenterDefaultTemplates[] | undefined;
 }
 
 export const listTemplates = api<
@@ -50,10 +61,13 @@ export const listTemplates = api<
       body: t.body,
       category: t.category,
       channel: t.channel,
-      type: t.category, // Use category as type
+      type: t.type,
       isDefault: t.is_default,
       createdAt: fromTimestamp(t.created_at)!,
       variables: fromJson(t.variables) ?? undefined,
+      isActive: t.is_active,
+      marketCenterId: t.market_center_id,
+      marketCenterDefaultTemplates: t.market_center_default_templates,
     }));
 
     return {

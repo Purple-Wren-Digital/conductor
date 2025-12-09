@@ -70,8 +70,10 @@ export const seedData = api<void, SeedResponse>(
       RETURNING id, name
     `;
 
-    // Create active subscriptions and notification templates for each market center
+    // Create active subscriptions, notification preferences,
+    // and notification templates for each market center
     for (const marketCenter of mc) {
+      // Create subscription
       await db.exec`
         INSERT INTO subscriptions (
           id, stripe_subscription_id, stripe_customer_id, market_center_id,
@@ -97,41 +99,48 @@ export const seedData = api<void, SeedResponse>(
           NOW()
         )
       `;
+      // Update market center with settings and notification preferences
+      await db.exec`
+        UPDATE market_centers
+        SET settings = ${JSON.stringify({
+          notificationPreferences: defaultNotificationPreferences,
+        })}::jsonb
+        WHERE id = ${marketCenter.id}
+      `;
+      // Create notification templates for this market center
       for (const template of notificationTemplatesDefault) {
         await db.exec`
-          INSERT INTO notification_templates (
-            id,
-            template_name,
-            template_description,
-            category,
-            channel,
-            type,
-            subject,
-            body,
-            is_default,
-            created_at,
-            variables,
-            is_active,
-            market_center_id,
-            market_center_name
-          )
-          VALUES (
-            gen_random_uuid()::text,
-            ${template.templateName},
-            ${template.templateDescription ?? ""},
-            ${template.category},
-            ${template.channel},
-            ${template.type},
-            ${template.subject ?? ""},
-            ${template.body},
-            ${template.isDefault ?? true},
-            NOW(),
-            ${template.variables ?? null}::jsonb,
-            ${template.isActive ?? true},
-            ${marketCenter.id},
-            ${marketCenter.name}
-          )
-      `;
+      INSERT INTO notification_templates (
+        id,
+        template_name,
+        template_description,
+        category,
+        channel,
+        type,
+        subject,
+        body,
+        is_default,
+        created_at,
+        variables,
+        is_active,
+        market_center_id
+      )
+      VALUES (
+        gen_random_uuid()::text,
+        ${template.templateName},
+        ${template.templateDescription ?? ""},
+        ${template.category},
+        ${template.channel},
+        ${template.type},
+        ${template.subject ?? ""},
+        ${template.body},
+        ${template.isDefault ?? true},
+        NOW(),
+        ${template.variables ?? null}::jsonb,
+        ${template.isActive ?? true},
+        ${marketCenter.id}
+      )
+    `;
       }
     }
 

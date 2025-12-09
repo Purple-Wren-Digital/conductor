@@ -4,13 +4,13 @@ import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
 // GET ALL MARKET CENTERS
-export function useFetchAllMarketCenters(role: UserRole | undefined) {
+export function useFetchAllMarketCenters(role?: UserRole) {
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["all-market-centers"],
     queryFn: async () => {
-      if (!role) {
+      if (!role || role === "AGENT") {
         throw new Error(
           "Only Admin and Staff users can view all market centers"
         );

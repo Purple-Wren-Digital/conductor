@@ -14,6 +14,7 @@ import {
 } from "@/emails/types";
 import { Urgency } from "../ticket/types";
 import { User } from "../user/types";
+import { MarketCenter } from "../marketCenters/types";
 
 export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
 export type NotificationFrequency =
@@ -102,6 +103,14 @@ export interface UsersToNotify {
   updateType: AssignmentUpdateType;
 }
 
+export interface MarketCenterDefaultTemplates {
+  marketCenterId: string;
+  notificationTemplateId: string;
+  createdAt: Date;
+  marketCenter?: MarketCenter;
+  notificationTemplate?: NotificationTemplate;
+}
+
 export interface NotificationTemplate {
   id: string;
   templateName: string;
@@ -116,13 +125,15 @@ export interface NotificationTemplate {
   variables: any;
   isActive: boolean;
   marketCenterId: string | null;
-  marketCenterName: string | null;
+  marketCenter?: MarketCenter;
+  marketCenterDefaultTemplates?: MarketCenterDefaultTemplates[];
 }
 
-export interface NotificationTemplateFormData {
-  subject: string;
-  body: string;
-}
+// export interface NotificationTemplateFormData {
+//   subject: string;
+//   body: string;
+//   isActive: boolean;
+// }
 
 export interface PushNotificationPayload {
   token: string;
