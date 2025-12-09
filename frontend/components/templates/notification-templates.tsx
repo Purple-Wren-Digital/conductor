@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/api/utils";
 import type { NotificationTemplateFormData } from "@/lib/types";
-import { Edit, Save, X } from "lucide-react";
+import { Edit, RotateCcw, Save, X } from "lucide-react";
 import NotificationEditor from "@/components/ui/TextArea/NotificationEditor";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -89,6 +89,52 @@ export default function NotificationTemplates({
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
 
+      const response = await fetch(
+        `${API_BASE}/notifications/templates/reset`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            templateIds: editingTemplates.marketCenters.map(
+              (mc) => mc.templateId
+            ),
+            type: editingTemplates.type,
+            name: editingTemplates.templateName,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to update template: ${text}`);
+      }
+    },
+    onSuccess: () => {
+      resetForm();
+      toast.success(`Template reset successfully`);
+    },
+    onError: (error) => {
+      console.error("Failed to update template", error);
+      toast.error("Failed to update template");
+    },
+  });
+
+  const resetTemplatesMutation = useMutation({
+    mutationFn: async () => {
+      setIsSubmitting(true);
+
+      if (
+        !editingTemplates ||
+        !editingTemplates.marketCenters ||
+        !editingTemplates.marketCenters.length
+      )
+        throw new Error("No templates found to edit");
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
       let lastUpdatedMarketCenterName = "";
 
       for (const marketCenter of editingTemplates.marketCenters) {
@@ -128,7 +174,24 @@ export default function NotificationTemplates({
       console.error("Failed to update template", error);
       toast.error("Failed to update template");
     },
+    onSettled: async () => {
+      await refreshTemplates();
+      setIsSubmitting(false);
+    },
   });
+
+  const handleResetTemplateToDefault = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !editingTemplates ||
+      !editingTemplates?.marketCenters ||
+      !editingTemplates?.marketCenters.length
+    ) {
+      return;
+    }
+
+    resetTemplatesMutation.mutateAsync();
+  };
 
   const handleUpdateTemplates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,41 +256,31 @@ export default function NotificationTemplates({
                       {template.templateDescription}
                     </p>
                   </div>
-                  <div className="flex gap-2 items-center flex-wrap">
-                    {isEditing ? (
-                      <>
-                        <Button
-                          type="button"
-                          onClick={resetForm}
-                          className="flex gap-2 items-center"
-                          variant={"secondary"}
-                          disabled={isSubmitting}
-                        >
-                          <X className="h-4 w-4" />
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="flex gap-2 items-center"
-                          disabled={isSubmitting}
-                        >
-                          <Save className="h-4 w-4" />
-                          Save
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        onClick={() => handleStartEditingTemplate(template)}
-                        className="flex gap-2 items-center"
-                        variant={"secondary"}
-                        disabled={isSubmitting}
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit Template
-                      </Button>
-                    )}
-                  </div>
+                  {isEditing ? (
+                    <Button
+                      type="button"
+                      onClick={resetForm}
+                      className="flex gap-2 items-center"
+                      variant={"outline"}
+                      size={"sm"}
+                      disabled={isSubmitting}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => handleStartEditingTemplate(template)}
+                      className="flex gap-2 items-center"
+                      variant={"outline"}
+                      size={"sm"}
+                      disabled={isSubmitting || isEditing}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit Template
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -325,6 +378,30 @@ export default function NotificationTemplates({
                       disabled={isSubmitting}
                     />
                   </div>
+                  {isEditing && (
+                    <div className="pt-5 flex flex-wrap items-center gap-2 md:justify-end ">
+                      <Button
+                        onClick={handleResetTemplateToDefault}
+                        className="flex gap-2 items-center w-full md:w-fit"
+                        variant={"outline"}
+                        size={"sm"}
+                        disabled={isSubmitting}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Reset Subject & Body to Default
+                      </Button>
+
+                      <Button
+                        type="submit"
+                        className="flex gap-2 items-center w-full md:w-fit"
+                        size={"sm"}
+                        disabled={isSubmitting}
+                      >
+                        <Save className="h-4 w-4" />
+                        Save All Changes
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </form>
             </Card>

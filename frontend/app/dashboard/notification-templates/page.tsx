@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-// import { useAuth } from "@clerk/nextjs";
+import { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useFetchAllTemplatesQuery } from "@/hooks/use-templates";
-// import { API_BASE } from "@/lib/api/utils";
 import NotificationTemplates from "@/components/templates/notification-templates";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -27,9 +25,6 @@ interface NotificationTemplatesByMarketCenter {
 }
 
 export default function NotificationTemplatesPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // const { getToken } = useAuth();
   const { role } = useUserRole();
   const queryClient = useQueryClient();
 
@@ -44,7 +39,8 @@ export default function NotificationTemplatesPage() {
     });
   }, [queryClient]);
 
-  const { data: marketCenterData } = useFetchAllMarketCenters(role);
+  const { data: marketCenterData, isLoading: isMarketCentersLoading } =
+    useFetchAllMarketCenters(role);
   const allMarketCenters: MarketCenter[] = useMemo(() => {
     return marketCenterData?.marketCenters || [];
   }, [marketCenterData]);
@@ -105,32 +101,6 @@ export default function NotificationTemplatesPage() {
       );
     }, [templateData, allMarketCenters, findMarketCenterNameById]);
 
-  // const handleResetAllToDefault = async () => {
-  //   setIsSubmitting(true);
-  //   try {
-  //     const token = await getToken();
-  //     if (!token) {
-  //       console.error("Failed to get authentication token");
-  //       return;
-  //     }
-  //     const response = await fetch(
-  //       `${API_BASE}/notifications/templates/reset-all`,
-  //       {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       }
-  //     );
-  //   } catch (error) {
-  //     console.error("Error resetting notification templates:", error);
-  //   } finally {
-  //     await invalidateFetchAllUserNotifications();
-  //     setIsSubmitting(false);
-  //   }
-  // };
-
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -152,8 +122,8 @@ export default function NotificationTemplatesPage() {
         </p>
       </div>
       <NotificationTemplates
-        notificationTemplates={templatesWithMarketCenters || []}
-        isLoading={isLoading || isSubmitting}
+        notificationTemplates={templatesWithMarketCenters}
+        isLoading={isLoading || isMarketCentersLoading}
         refreshTemplates={invalidateFetchAllUserNotifications}
       />
     </div>

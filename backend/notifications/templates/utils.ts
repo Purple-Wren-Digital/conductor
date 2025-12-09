@@ -143,7 +143,7 @@ export const notificationTemplatesDefault = [
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Created",
     subject: "Ticket Created",
-    body: `{{ticketTitle}} was created}`,
+    body: `{{ticketTitle}} was created by {{creatorName}}`,
     variables: NotificationTemplateVariables.CreatedTicketNotificationProps,
     isDefault: true,
     isActive: true,
