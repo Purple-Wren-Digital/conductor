@@ -8,6 +8,8 @@ export interface SLARequest {
   marketCenterIds?: Query<string[]>;
   status?: Query<TicketStatus[]>;
   categoryIds?: Query<string[]>;
+  dateFrom?: Query<string>;
+  dateTo?: Query<string>;
 }
 
 export interface SLAResponse {
@@ -43,6 +45,19 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
         ? req.marketCenterIds
         : null;
 
+    // Parse date filters
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+
+    if (req.dateFrom) {
+      const from = new Date(req.dateFrom);
+      if (!isNaN(from.getTime())) dateFrom = from;
+    }
+    if (req.dateTo) {
+      const to = new Date(req.dateTo);
+      if (!isNaN(to.getTime())) dateTo = to;
+    }
+
     let ticketsFound: TicketRow[] = [];
 
     switch (userContext.role) {
@@ -59,6 +74,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           ticketsFound = await db.queryAll<TicketRow>`
@@ -72,10 +89,11 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
               OR creator.market_center_id = ${userContext.marketCenterId}
               OR assignee.market_center_id = ${userContext.marketCenterId}
               OR t.assignee_id IS NULL
-
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;
@@ -95,6 +113,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             )
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           ticketsFound = await db.queryAll<TicketRow>`
@@ -102,6 +122,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             FROM tickets t
             WHERE (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;

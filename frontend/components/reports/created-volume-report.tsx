@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ChartConfig,
   ChartContainer,
@@ -12,7 +12,6 @@ import { ReportProps } from "@/components/reports/reports-dashboard";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { startOfDay, endOfDay } from "date-fns";
 import { useFetchTicketsCreatedReport } from "@/hooks/use-reports";
-import type { TicketStatus } from "@/lib/types";
 import { InfoIcon } from "lucide-react";
 import {
   CartesianGrid,
@@ -26,48 +25,33 @@ import {
 export const defaultCreatedTicketsByMonthValues = {
   ticketsCreated: [],
   total: 0,
+  granularity: "monthly" as const,
 };
 
 export default function CreatedTicketsByMonthReport({
   isSelected,
+  filters,
 }: ReportProps) {
-  const [hydrated, setHydrated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
-  const [selectedStatuses, setSelectedStatuses] = useState<TicketStatus[]>([]);
-  const [dateFrom, setDateFrom] = useState<Date>();
-  const [dateTo, setDateTo] = useState<Date>();
-
-  const clearFilters = useCallback(() => {
-    setSelectedStatuses([]);
-    setDateFrom(undefined);
-    setDateTo(undefined);
-  }, []);
-  const hasActiveFilters = useMemo(() => {
-    return (
-      selectedStatuses.length > 0 ||
-      dateFrom !== undefined ||
-      dateTo !== undefined
-    );
-  }, [selectedStatuses, dateFrom, dateTo]);
-
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (selectedStatuses.length > 0) {
-      selectedStatuses.forEach((s) => params.append("status", s));
+    if (filters.dateFrom) params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
+    if (filters.dateTo) params.append("dateTo", endOfDay(filters.dateTo).toISOString());
+    if (filters.marketCenterIds.length > 0) {
+      filters.marketCenterIds.forEach((id) => params.append("marketCenterIds", id));
     }
-    if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
-    if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
+    if (filters.categoryIds.length > 0) {
+      filters.categoryIds.forEach((id) => params.append("categoryIds", id));
+    }
 
     return params;
-  }, [selectedStatuses, dateFrom, dateTo]);
+  }, [filters.dateFrom, filters.dateTo, filters.marketCenterIds, filters.categoryIds]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
     [queryParams]
   );
   const createdTicketsByMonthQueryKey = useMemo(
-    () => ["created-tickets-by-month", queryKeyParams] as const,
+    () => ["created-tickets-by-period", queryKeyParams] as const,
     [queryKeyParams]
   );
 
@@ -77,10 +61,13 @@ export default function CreatedTicketsByMonthReport({
     isSelected,
   });
 
+  const granularity = reportData?.granularity || "monthly";
+
   const totalTickets = useMemo(() => {
     return reportData?.total ? reportData.total : 0;
   }, [reportData]);
-  const createdTicketsByMonth = useMemo(() => {
+
+  const createdTicketsData = useMemo(() => {
     if (
       !reportData ||
       !reportData?.ticketsCreated ||
@@ -88,30 +75,67 @@ export default function CreatedTicketsByMonthReport({
     )
       return [];
     return reportData.ticketsCreated.map((item) => ({
-      label: item.createdMonthYear,
+      label: item.period,
       value: item.createdCount,
     }));
   }, [reportData]);
 
-  const createdTicketsByMonthChartConfig: ChartConfig = useMemo(() => {
-    if (!createdTicketsByMonth) return {};
+  const createdTicketsChartConfig: ChartConfig = useMemo(() => {
+    if (!createdTicketsData) return {};
     return Object.fromEntries(
-      createdTicketsByMonth.map((entry) => [
+      createdTicketsData.map((entry) => [
         entry.label,
         { label: entry.label, value: entry.value, color: "#027A48" },
       ])
     ) as ChartConfig;
-  }, [createdTicketsByMonth]);
+  }, [createdTicketsData]);
+
+  // Dynamic labels based on granularity
+  const getXAxisLabel = () => {
+    switch (granularity) {
+      case "daily":
+        return "Date";
+      case "weekly":
+        return "Week";
+      case "monthly":
+      default:
+        return "Month";
+    }
+  };
+
+  const getReportTitle = () => {
+    switch (granularity) {
+      case "daily":
+        return "Created Tickets By Day";
+      case "weekly":
+        return "Created Tickets By Week";
+      case "monthly":
+      default:
+        return "Created Tickets By Month";
+    }
+  };
+
+  const getReportDescription = () => {
+    switch (granularity) {
+      case "daily":
+        return "Amount of tickets created each day";
+      case "weekly":
+        return "Amount of tickets created each week";
+      case "monthly":
+      default:
+        return "Amount of tickets created each month";
+    }
+  };
 
   return (
     <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
-            Created Tickets By Month
+            {getReportTitle()}
           </h2>
           <p className="text-muted-foreground">
-            Amount of tickets created each month
+            {getReportDescription()}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -120,14 +144,14 @@ export default function CreatedTicketsByMonthReport({
           </Badge>
           <ToolTip
             trigger={<InfoIcon className="size-4.5" />}
-            content={"Displays the number of tickets created each month"}
+            content={`Displays the number of tickets created. Granularity auto-adjusts: daily (≤31 days), weekly (32-90 days), monthly (>90 days).`}
           />
         </div>
       </div>
 
       {/* REPORT CONTENT */}
       <ChartContainer
-        config={createdTicketsByMonthChartConfig}
+        config={createdTicketsChartConfig}
         className="w-[99%] md:w-full "
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -139,22 +163,22 @@ export default function CreatedTicketsByMonthReport({
               padding: "0",
               aspectRatio: 1.618,
             }}
-            data={createdTicketsByMonth}
+            data={createdTicketsData}
             margin={{ top: 15, right: 30, left: 30, bottom: 30 }}
-            aria-label="Line chart showing the amount of created tickets each month"
+            aria-label={`Line chart showing the amount of created tickets by ${granularity}`}
           >
             <CartesianGrid strokeDasharray="7 7" />
             <XAxis
               dataKey="label"
               tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-              angle={window.innerWidth < 640 ? 0 : -15}
+              angle={granularity === "daily" ? -45 : -15}
               tickMargin={10}
               tickFormatter={(value) =>
-                value.length > 10 ? value.slice(0, 10) + "..." : value
+                value.length > 12 ? value.slice(0, 12) + "..." : value
               }
-              aria-label="X-Axis Label: Month and Year (MM/YYYY)"
+              aria-label={`X-Axis Label: ${getXAxisLabel()}`}
               label={{
-                value: "Month and Year (MM/YYYY)",
+                value: getXAxisLabel(),
                 angle: 0,
                 position: "insideBottom",
                 dy: 25,
