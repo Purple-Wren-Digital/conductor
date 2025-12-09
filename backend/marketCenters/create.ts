@@ -1,9 +1,16 @@
 import { api, APIError } from "encore.dev/api";
 import { canCreateMarketCenters } from "../auth/permissions";
 import { getUserContext } from "../auth/user-context";
-import { db, marketCenterRepository, withTransaction, fromTimestamp, toJson } from "../ticket/db";
+import {
+  db,
+  marketCenterRepository,
+  withTransaction,
+  fromTimestamp,
+  toJson,
+} from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
+import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 
 export interface CreateMarketCenterRequest {
   name: string;
@@ -103,7 +110,7 @@ export const create = api<
         settings: marketCenterRow.settings,
         createdAt: fromTimestamp(marketCenterRow.created_at)!,
         updatedAt: fromTimestamp(marketCenterRow.updated_at)!,
-        users: userRows.map(u => ({
+        users: userRows.map((u) => ({
           id: u.id,
           email: u.email,
           name: u.name ?? "",
@@ -115,6 +122,11 @@ export const create = api<
           updatedAt: fromTimestamp(u.updated_at)!,
         })),
       };
+
+      const settings = await marketCenterRepository.update(marketCenterRow.id, {
+        ...marketCenterRow.settings,
+        notificationPreferences: defaultMarketCenterNotificationPreferences,
+      });
 
       return { marketCenter };
     });

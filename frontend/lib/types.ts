@@ -303,7 +303,9 @@ export interface DashboardMetrics {
 export interface MarketCenter {
   id: string;
   name: string;
-  settings?: {} | null;
+  settings?: {
+    notificationPreferences?: NotificationPreferences[];
+  } | null;
   createdAt: Date;
   updatedAt: Date;
   marketCenterHistory: MarketCenterHistory[];
@@ -616,9 +618,11 @@ export interface NotificationTemplate {
   isDefault: boolean;
   createdAt: Date;
   variables: any;
+  isActive: boolean;
 }
 
 export interface NotificationTemplateFormData {
   subject: string;
   body: string;
+  isActive: boolean;
 }

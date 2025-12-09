@@ -90,7 +90,7 @@ export interface NotificationData {
   surveyResults?: SurveyResultsProps;
 
   // SLA
-  slaEventType?: 'WARNING_50' | 'WARNING_75' | 'BREACHED' | 'MET';
+  slaEventType?: "WARNING_50" | "WARNING_75" | "BREACHED" | "MET";
   urgency?: Urgency;
   assigneeId?: string | null;
 }
@@ -114,6 +114,9 @@ export interface NotificationTemplate {
   isDefault: boolean;
   createdAt: Date;
   variables: any;
+  isActive: boolean;
+  marketCenterId: string | null;
+  marketCenterName: string | null;
 }
 
 export interface NotificationTemplateFormData {

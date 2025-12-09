@@ -319,3 +319,42 @@ export function useUpdateMarketCenter({
     enabled: !!marketCenterId && role && role !== "AGENT",
   });
 }
+
+// MARKET CENTER SETTINGS HOOKS
+export function useFetchMarketCenterNotificationPreferences({
+  id,
+  notificationsQueryKey,
+}: {
+  id?: string;
+  notificationsQueryKey: (string | undefined)[];
+}) {
+  const { getToken } = useAuth();
+
+  return useQuery({
+    queryKey: notificationsQueryKey,
+    queryFn: async () => {
+      if (!id) throw new Error("Missing market center id");
+
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/settings/market-center/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch user settings");
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch user settings", error);
+        return {};
+      }
+    },
+    enabled: !!id,
+  });
+}
