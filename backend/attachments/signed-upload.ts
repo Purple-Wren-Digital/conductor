@@ -4,6 +4,26 @@ import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canViewTicket } from "../auth/permissions";
 
+// File upload security constraints
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const ALLOWED_MIME_TYPES = [
+  // Documents
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/csv",
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
 export interface GetSignedUploadUrlRequest {
   ticketId: string;
   fileName: string;
@@ -40,6 +60,20 @@ export const getSignedUploadUrl = api<
       if (!hasPermission) {
         throw APIError.permissionDenied(
           "You do not have permission to add attachments to this ticket"
+        );
+      }
+
+      // Validate file size
+      if (req.fileSize > MAX_FILE_SIZE) {
+        throw APIError.invalidArgument(
+          `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / (1024 * 1024)}MB`
+        );
+      }
+
+      // Validate mime type
+      if (!ALLOWED_MIME_TYPES.includes(req.mimeType)) {
+        throw APIError.invalidArgument(
+          "File type not allowed. Allowed types: PDF, Word, Excel, CSV, TXT, and images (JPEG, PNG, GIF, WebP, HEIC)"
         );
       }
 
@@ -96,7 +130,6 @@ export const getSignedUploadUrl = api<
         attachmentId: attachment.id,
       };
     } catch (error) {
-      console.error("Failed to generate signed upload URL:", error);
       if (error instanceof APIError) {
         throw error;
       }

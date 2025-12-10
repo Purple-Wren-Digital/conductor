@@ -31,7 +31,6 @@ export const notificationStream = api.streamOut<Notification>(
       }
 
       clerkId = authData.userID;
-      console.log(`📡 Notification stream connected: ${clerkId}`);
 
       // Store the stream for broadcasting
       activeStreams.set(clerkId, { stream, active: true });
@@ -43,13 +42,11 @@ export const notificationStream = api.streamOut<Notification>(
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
-      console.error("Notification stream error:", error);
       throw error;
     } finally {
       // Cleanup when stream ends
       if (clerkId) {
         activeStreams.delete(clerkId);
-        console.log(`❌ Notification stream disconnected: ${clerkId}`);
       }
     }
   }
@@ -68,15 +65,11 @@ export async function broadcastNotification(
   if (entry && entry.active) {
     try {
       await entry.stream.send(notification);
-      console.log(`✅ Notification sent to ${clerkId}`);
-    } catch (error) {
+    } catch {
       // Stream might be closed or errored
-      console.warn(`⚠️ Failed to send notification to ${clerkId}:`, error);
       entry.active = false;
       activeStreams.delete(clerkId);
     }
-  } else {
-    console.warn(`⚠️ User ${clerkId} not connected to notification stream`);
   }
 }
 
@@ -102,6 +95,5 @@ export async function disconnectUser(clerkId: string): Promise<void> {
       // Ignore close errors
     }
     activeStreams.delete(clerkId);
-    console.log(`🔌 Forcefully disconnected user: ${clerkId}`);
   }
 }

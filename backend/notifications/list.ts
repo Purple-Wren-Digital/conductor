@@ -26,11 +26,8 @@ export const listInApp = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    if (
-      !userContext?.email &&
-      !req?.email &&
-      userContext?.email !== req?.email
-    ) {
+    // Ensure user can only access their own notifications
+    if (!userContext?.email || userContext.email !== req.email) {
       throw APIError.permissionDenied(
         "You do not have permission to access this user's notifications"
       );

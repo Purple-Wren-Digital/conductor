@@ -63,7 +63,6 @@ export default function NotificationPreferences({
     }
 
     if (!oldNotificationPreferences || !oldNotificationPreferences.length) {
-      console.error("Nothing to update");
       return updateNotificationPreferences;
     }
     const updatedPreferences: NotificationPreferences[] = [];
@@ -96,10 +95,6 @@ export default function NotificationPreferences({
   const hasNotificationPreferenceUpdates = useMemo(() => {
     return formatUpdatedPreferences();
   }, [formatUpdatedPreferences]);
-  console.log(
-    "Has Notification Preference Updates:",
-    hasNotificationPreferenceUpdates
-  );
 
   const notificationPermissions =
     updateNotificationPreferences && updateNotificationPreferences.length > 0
@@ -164,9 +159,8 @@ export default function NotificationPreferences({
       );
 
       toast.success("Preferences saved!");
-    } catch (error) {
+    } catch {
       toast.error("Error: Unable to save preferences");
-      console.error("Failed to save notifications", error);
     } finally {
       await invalidateUserSettingsQuery;
       // await invalidateUserQuery;
@@ -267,8 +261,7 @@ export default function NotificationPreferences({
         }
       );
       toast.success("Preferences reset!");
-    } catch (error) {
-      console.error("Failed to reset user notification preferences");
+    } catch {
       toast.error("Error: Preferences were not reset");
     } finally {
       await invalidateUserSettingsQuery;

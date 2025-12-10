@@ -56,7 +56,6 @@ export const formatNotificationContent = async (
     !content?.receivingUser ||
     !content?.receivingUser?.id
   ) {
-    console.error("Unable to format - Missing notification content:", content);
     return formattedNotification;
   }
   //  NO TEMPLATE NEEDED FOR NON-ACTIVITY NOTIFICATIONS
@@ -110,7 +109,6 @@ export const formatNotificationContent = async (
   // FETCH TEMPLATE FOR ACTIVITY NOTIFICATIONS
   const template = await fetchTemplate(content.templateName, content.getToken);
   if (!template) {
-    console.error("Unable to format notification - Missing template");
     return formattedNotification;
   }
 
@@ -159,9 +157,6 @@ export const formatNotificationContent = async (
     );
 
     if (!categoryTemplate) {
-      console.error(
-        "Unable to format Category Assignment notification - Missing template"
-      );
       return formattedNotification;
     }
     const context: NotificationContext = {
@@ -200,9 +195,6 @@ export const formatNotificationContent = async (
       content.getToken
     );
     if (!ticketCreatedTemplate) {
-      console.error(
-        "Unable to format Ticket Created notification - Missing template"
-      );
       return formattedNotification;
     }
 
@@ -250,9 +242,6 @@ export const formatNotificationContent = async (
       content.getToken
     );
     if (!ticketAssignmentTemplate) {
-      console.error(
-        "Unable to format Ticket Assignment notification - Missing template"
-      );
       return formattedNotification;
     }
     const context: NotificationContext = {
@@ -307,9 +296,6 @@ export const formatNotificationContent = async (
       content.getToken
     );
     if (!template) {
-      console.error(
-        "Unable to format Ticket Updated notification - Missing template"
-      );
       return formattedNotification;
     }
     const updates: string[] = [];
@@ -364,9 +350,6 @@ export const formatNotificationContent = async (
       content.getToken
     );
     if (!newCommentTemplate) {
-      console.error(
-        "Unable to format New Comments notification - Missing template"
-      );
       return formattedNotification;
     }
 
@@ -411,9 +394,6 @@ export const formatNotificationContent = async (
     );
 
     if (!ticketSurveyTemplate) {
-      console.error(
-        "Unable to format new Ticket Survey notification - Missing template"
-      );
       return formattedNotification;
     }
     const context: NotificationContext = {
@@ -451,9 +431,6 @@ export const formatNotificationContent = async (
     );
 
     if (!surveyResultsTemplate) {
-      console.error(
-        "Unable to format Ticket Survey Results notification - Missing template"
-      );
       return formattedNotification;
     }
     const context: NotificationContext = {
@@ -521,8 +498,7 @@ export async function createAndSendNotification(
     }
 
     return response.ok;
-  } catch (error) {
-    console.error("Unable to generate notification:", error);
+  } catch {
     return false;
   }
 }

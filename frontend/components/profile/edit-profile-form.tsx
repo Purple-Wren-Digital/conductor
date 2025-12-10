@@ -89,8 +89,7 @@ const EditUserProfile = () => {
         setCurrentUser(data.user);
         toast.success("Profile updated");
       }
-    } catch (error) {
-      console.error("Profile update failed:", error);
+    } catch {
       toast.error("Server error: Profile not updated");
       setIsFormLoading(false);
     } finally {

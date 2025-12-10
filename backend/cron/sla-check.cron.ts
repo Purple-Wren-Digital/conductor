@@ -62,7 +62,6 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.responseWarnings50Sent++;
-    console.log(`Response SLA 50% warning sent for ticket ${ticket.id}`);
   }
 
   // Check for tickets needing 75% response warning
@@ -95,7 +94,6 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.responseWarnings75Sent++;
-    console.log(`Response SLA 75% warning sent for ticket ${ticket.id}`);
   }
 
   // Check for tickets that have breached response SLA
@@ -147,7 +145,6 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.responseBreachesMarked++;
-    console.log(`Response SLA breached for ticket ${ticket.id}`);
   }
 
   // ==================
@@ -184,7 +181,6 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.resolutionWarnings50Sent++;
-    console.log(`Resolution SLA 50% warning sent for ticket ${ticket.id}`);
   }
 
   // Check for tickets needing 75% resolution warning
@@ -217,7 +213,6 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.resolutionWarnings75Sent++;
-    console.log(`Resolution SLA 75% warning sent for ticket ${ticket.id}`);
   }
 
   // Check for tickets that have breached resolution SLA
@@ -269,10 +264,8 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.resolutionBreachesMarked++;
-    console.log(`Resolution SLA breached for ticket ${ticket.id}`);
   }
 
-  console.log(`SLA Check completed: Response - ${result.responseWarnings50Sent} 50% warnings, ${result.responseWarnings75Sent} 75% warnings, ${result.responseBreachesMarked} breaches | Resolution - ${result.resolutionWarnings50Sent} 50% warnings, ${result.resolutionWarnings75Sent} 75% warnings, ${result.resolutionBreachesMarked} breaches`);
   return result;
 });
 

@@ -31,7 +31,7 @@ export const getDashboardData = api(
   {
     method: "GET",
     expose: true,
-    auth: false, //true
+    auth: true,
   },
   (): DashboardData => {
     return {

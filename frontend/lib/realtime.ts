@@ -40,7 +40,6 @@ class RealTimeCommentService {
     }
 
     if (!this.authToken) {
-      console.warn("No auth token available for comment stream");
       return;
     }
 
@@ -49,12 +48,10 @@ class RealTimeCommentService {
       const stream = await client.comment.commentStream(ticketId);
 
       this.streams.set(ticketId, stream);
-      console.log(`💬 Connected to comment stream for ticket ${ticketId}`);
 
       // Process incoming events
       this.processStream(ticketId, stream);
-    } catch (error) {
-      console.error(`Failed to connect to comment stream for ticket ${ticketId}:`, error);
+    } catch {
       this.scheduleReconnect(ticketId);
     }
   }
@@ -71,12 +68,11 @@ class RealTimeCommentService {
           this.emit(event);
         }
       }
-    } catch (error) {
-      console.error(`Comment stream error for ticket ${ticketId}:`, error);
+    } catch {
+      // Stream error
     } finally {
       // Stream closed, clean up
       this.streams.delete(ticketId);
-      console.log(`❌ Comment stream closed for ticket ${ticketId}`);
 
       // If we still have handlers for this ticket, try to reconnect
       if (this.handlers.has(ticketId) && this.handlers.get(ticketId)!.size > 0) {
@@ -124,8 +120,8 @@ class RealTimeCommentService {
       handlers.forEach(handler => {
         try {
           handler(event);
-        } catch (error) {
-          console.error("Error in comment event handler:", error);
+        } catch {
+          // Handler error
         }
       });
     }
@@ -136,7 +132,6 @@ class RealTimeCommentService {
    */
   private scheduleReconnect(ticketId: string) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`Max reconnection attempts reached for ticket ${ticketId}`);
       return;
     }
 

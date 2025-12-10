@@ -55,10 +55,8 @@ export function Header() {
             return;
           }
         }
-        console.error("Failed to fetch/create user:", response.status);
         setCurrentUser(null);
-      } catch (error) {
-        console.error("Error fetching user:", error);
+      } catch {
         setCurrentUser(null);
       }
     };

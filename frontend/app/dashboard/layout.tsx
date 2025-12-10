@@ -33,15 +33,11 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isLoaded) return;
     if (isLoaded && !clerkUser) {
-      console.error(
-        "DashboardLayout: No Clerk user found, cannot persist App Context"
-      );
       setCurrentUser(null);
       return;
     }
     const persistUserContext = async () => {
       if (!clerkUser?.id) {
-        console.error("DashboardLayout: no Clerk user");
         setCurrentUser(null);
         return;
       }
@@ -69,9 +65,7 @@ export default function DashboardLayout({
         } else {
           throw new Error("User not found");
         }
-      } catch (error) {
-        isLoaded;
-        console.error("Error fetching user:", error);
+      } catch {
         setCurrentUser(null);
       }
     };
@@ -150,11 +144,8 @@ export default function DashboardLayout({
       isConnecting = true;
 
       try {
-        console.log("📡 Connecting to notification stream...");
-
         const token = await getToken();
         if (!token) {
-          console.error("Failed to get authentication token");
           return;
         }
 
@@ -162,20 +153,17 @@ export default function DashboardLayout({
 
         // Connect to the notification stream
         stream = await client.notifications.notificationStream();
-        console.log("✅ Notification stream connected");
 
         // Listen for notifications
         for await (const notification of stream) {
-          console.log("✅ Notification received!", notification);
           toast.info(`${notification?.title}`);
           setNewestNotification(notification);
           await invalidateFetchAllUserNotifications();
         }
-      } catch (err) {
-        console.error("❌ Notification stream error:", err);
+      } catch {
+        // Stream error - will reconnect
       } finally {
         isConnecting = false;
-        console.log("❌ Notification stream closed");
       }
     };
 

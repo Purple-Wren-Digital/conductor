@@ -292,8 +292,7 @@ export default function UserManagement() {
       resetEditUserFormAndClose();
       userQueryInvalidator;
     },
-    onError: (error) => {
-      console.error("Failed to update user", error);
+    onError: () => {
       toast.error("Failed to update user");
     },
   });
@@ -348,8 +347,7 @@ export default function UserManagement() {
       setConfirmOpen(false);
       setUserToDelete(null);
     },
-    onError: (error) => {
-      console.error("Failed to deactivate user", error);
+    onError: () => {
       toast.error("Failed to deactivate user");
     },
     onSettled: () => {

@@ -67,7 +67,6 @@ export const getDownloadUrl = api<GetDownloadUrlRequest, GetDownloadUrlResponse>
         mimeType: attachment.mime_type,
       };
     } catch (error) {
-      console.error("Failed to get download URL:", error);
       if (error instanceof APIError) {
         throw error;
       }

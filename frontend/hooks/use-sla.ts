@@ -90,8 +90,7 @@ export function useSlaReport(filters?: SlaReportFilters) {
           throw new Error("Invalid SLA report data");
         }
         return data;
-      } catch (error) {
-        console.error("Error fetching SLA report:", error);
+      } catch {
         return {
           metrics: null,
           byUrgency: [],

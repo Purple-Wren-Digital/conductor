@@ -50,9 +50,8 @@ export default clerkMiddleware(async (auth, request) => {
             return NextResponse.redirect(new URL('/dashboard/subscription?expired=true', request.url));
           }
         }
-      } catch (error) {
-        console.error('Failed to check subscription status:', error);
-        // Allow access on error to prevent lockout, but log for monitoring
+      } catch {
+        // Allow access on error to prevent lockout
       }
     }
   }

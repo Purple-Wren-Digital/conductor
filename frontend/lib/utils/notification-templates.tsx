@@ -57,7 +57,6 @@ export const fetchTemplate = async (
   getToken?: GetToken
 ) => {
   if (!getToken) {
-    console.error("No auth token provided for fetching template");
     return null;
   }
   try {
@@ -89,8 +88,7 @@ export const fetchTemplate = async (
     // console.log("fetchTemplate() - DATA - Notification template:", data);
 
     return data?.notificationTemplate as NotificationTemplate;
-  } catch (error) {
-    console.error("Unable to fetch notification template:", error);
+  } catch {
     return null;
   }
 };

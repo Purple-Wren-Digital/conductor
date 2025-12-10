@@ -65,9 +65,8 @@ function SubscriptionPageContent() {
         // No subscription found
         setSubscription(null);
       }
-    } catch (error) {
-      console.error("Failed to fetch subscription:", error);
-      // Don't throw, just log and continue without subscription data
+    } catch {
+      // Continue without subscription data
       setSubscription(null);
     } finally {
       setLoading(false);
@@ -109,8 +108,7 @@ function SubscriptionPageContent() {
         const error = await response.text();
         alert(`Failed to create checkout session: ${error}`);
       }
-    } catch (error) {
-      console.error("Failed to create checkout session:", error);
+    } catch {
       alert("Failed to create checkout session. Please try again.");
     } finally {
       setCheckoutLoading(false);
@@ -131,8 +129,7 @@ function SubscriptionPageContent() {
         const error = await response.text();
         alert(`Failed to open billing portal: ${error}`);
       }
-    } catch (error) {
-      console.error("Failed to open billing portal:", error);
+    } catch {
       alert("Failed to open billing portal. Please try again.");
     } finally {
       setPortalLoading(false);

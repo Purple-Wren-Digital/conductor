@@ -40,7 +40,6 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-    console.log("User CONTEXT:", userContext);
 
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);

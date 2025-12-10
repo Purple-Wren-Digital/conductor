@@ -40,8 +40,6 @@ export const create = api<CreateNotificationRequest>(
     auth: true,
   },
   async (req) => {
-    console.log("****** START: Create/Send Notifications ******", req);
-
     const user = await userRepository.findByIdWithSettings(req.userId);
 
     // Also try to find by clerkId if not found
@@ -131,9 +129,6 @@ export const create = api<CreateNotificationRequest>(
     }
 
     if (notificationsToCreate.length === 0) {
-      console.log(
-        `User ${foundUser.id} has opted out of all channels for notification type ${req.type}. Skipping notification creation.`
-      );
       return { success: true };
     }
 
@@ -173,7 +168,6 @@ export const create = api<CreateNotificationRequest>(
         }
       })
     );
-    console.log("****** END: Create/Send Notifications ******");
 
     return { success: true };
   }

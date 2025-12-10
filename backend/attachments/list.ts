@@ -81,7 +81,6 @@ export const list = api<ListAttachmentsRequest, ListAttachmentsResponse>(
         })),
       };
     } catch (error) {
-      console.error("Failed to list attachments:", error);
       if (error instanceof APIError) {
         throw error;
       }

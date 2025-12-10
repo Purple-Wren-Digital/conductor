@@ -96,8 +96,8 @@ export function DashboardOverview() {
       if (!response.ok) throw new Error("Failed to fetch dashboard metrics");
       const data = await response.json();
       setMetrics(data.metrics);
-    } catch (error) {
-      console.error(error);
+    } catch {
+      // Failed to fetch metrics
     } finally {
       setLoading(false);
     }

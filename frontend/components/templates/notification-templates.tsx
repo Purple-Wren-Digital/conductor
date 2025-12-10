@@ -116,8 +116,7 @@ export default function NotificationTemplates({
       resetForm();
       toast.success(`Template reset successfully`);
     },
-    onError: (error) => {
-      console.error("Failed to update template", error);
+    onError: () => {
       toast.error("Failed to update template");
     },
   });
@@ -170,8 +169,7 @@ export default function NotificationTemplates({
       resetForm();
       toast.success(`Template updated for ${marketCenterName}`);
     },
-    onError: (error) => {
-      console.error("Failed to update template", error);
+    onError: () => {
       toast.error("Failed to update template");
     },
     onSettled: async () => {

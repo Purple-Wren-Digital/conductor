@@ -40,8 +40,8 @@ export function useFetchAllUserNotifications({
           await response.json();
         // console.log("Data - USER NOTIFICATIONS", data);
         return data;
-      } catch (error) {
-        console.error("Failed to fetch user notifications", error);
+      } catch {
+        return { unReadAmount: 0, notifications: [] };
       }
     },
     enabled: isAccountLoaded,

@@ -39,8 +39,6 @@ export const softReset = api<ResetDatabaseRequest>(
       throw APIError.invalidArgument("Must confirm reset");
     }
 
-    console.log("⚠️  SOFT RESET initiated by admin");
-
     try {
       // Delete in correct order (respect FK constraints)
       const deletedComments = await db.exec`DELETE FROM comments`;
@@ -77,8 +75,7 @@ export const softReset = api<ResetDatabaseRequest>(
           users: 0,
         },
       };
-    } catch (error) {
-      console.error("Soft reset failed:", error);
+    } catch {
       throw APIError.internal("Reset failed");
     }
   }

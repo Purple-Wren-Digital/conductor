@@ -382,11 +382,8 @@ export default function MarketCenterManagement() {
           receivingUser: receivingUser,
           data: data,
         });
-      } catch (error) {
-        console.error(
-          "MarketCenterManagement - Unable to generate notifications",
-          error
-        );
+      } catch {
+        // Notification failed silently
       }
     },
     [getToken]

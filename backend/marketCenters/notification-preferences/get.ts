@@ -39,12 +39,6 @@ export const getMCNotificationPreferences = api<
         ? mc.settings.notificationPreferences
         : [];
 
-    console.log(
-      "Returning notification preferences:",
-      `${mc?.settings?.notificationPreferences ? mc?.settings?.notificationPreferences.length : 0} existing`,
-      notificationPreferences
-    );
-
     return { notificationPreferences: notificationPreferences };
   }
 );

@@ -31,7 +31,6 @@ class EmailService {
         html,
       });
     } catch (error) {
-      console.error('Failed to send email:', error);
       throw error;
     }
   }

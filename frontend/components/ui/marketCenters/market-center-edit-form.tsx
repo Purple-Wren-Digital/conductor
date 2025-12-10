@@ -117,11 +117,8 @@ export default function EditMarketCenter({
         receivingUser: receivingUser,
         data: data,
       });
-    } catch (error) {
-      console.error(
-        "MarketCenterManagement - Unable to generate notifications",
-        error
-      );
+    } catch {
+      // Notification failed silently
     }
   };
 
@@ -189,8 +186,7 @@ export default function EditMarketCenter({
       setIsSubmitting(false);
       resetAndCloseForm();
     },
-    onError: (error) => {
-      console.error("Failed to edit new market center", error);
+    onError: () => {
       toast.error(`Error: Unable to save changes`);
     },
     onSettled: () => {

@@ -167,8 +167,7 @@ export const importMarketCenterSettings = api(
         importedSettings: finalSettings
       };
 
-    } catch (error) {
-      console.error("Settings import error:", error);
+    } catch {
       throw APIError.internal("Failed to import settings");
     }
   }

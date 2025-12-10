@@ -122,8 +122,7 @@ export function useFetchMarketCenter(
           throw new Error("Failed to market center");
         const data = await response.json();
         return data?.marketCenter;
-      } catch (error) {
-        console.error("Failed to fetch market center - ", error);
+      } catch {
         return null;
       }
     },
@@ -163,16 +162,13 @@ export function useFetchMarketCenterUsers({
             },
           }
         );
-        // console.log("useFetchMarketCenterUsers - response", response);
         if (!response || !response.ok)
           throw new Error(
             "Failed to fetch ticket categories for market center"
           );
         const data = await response.json();
-        // console.log("useFetchMarketCenterUsers - data", data);
         return data;
-      } catch (error) {
-        console.error("Failed to fetch market center - ", error);
+      } catch {
         return null;
       }
     },
@@ -207,8 +203,7 @@ export function useFetchMarketCenterCategories(marketCenterId?: string) {
           );
         const data = await response.json();
         return data;
-      } catch (error) {
-        console.error("Failed to fetch market center - ", error);
+      } catch {
         return null;
       }
     },
@@ -253,8 +248,7 @@ export function useFetchMarketCenterTickets({
           throw new Error("Failed to fetch tickets");
         const data = await response.json();
         return data;
-      } catch (error) {
-        console.error("Staff Dashboard - Failed to fetch team tickets", error);
+      } catch {
         return [];
       }
     },
@@ -311,8 +305,7 @@ export function useUpdateMarketCenter({
           throw new Error("Failed to update market center");
         const data = await response.json();
         return await data?.marketCenter;
-      } catch (error) {
-        console.error("Failed to update market center - ", error);
+      } catch {
         return null;
       }
     },
@@ -350,8 +343,7 @@ export function useFetchMarketCenterNotificationPreferences({
         if (!response.ok) throw new Error("Failed to fetch user settings");
         const data = await response.json();
         return data;
-      } catch (error) {
-        console.error("Failed to fetch user settings", error);
+      } catch {
         return {};
       }
     },

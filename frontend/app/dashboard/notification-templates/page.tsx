@@ -65,12 +65,6 @@ export default function NotificationTemplatesPage() {
             template: NotificationTemplate
           ) => {
             const key = template.templateName;
-            console.log(
-              "Processing template:",
-              template.templateName,
-              `"SUBJECT:"`,
-              template.subject
-            );
 
             if (!acc[key]) {
               acc[key] = {

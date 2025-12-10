@@ -126,8 +126,7 @@ export function FileUpload({
           if (onUploadComplete) {
             onUploadComplete(data.attachment);
           }
-        } catch (error) {
-          console.error("Upload error:", error);
+        } catch {
           toast.error(`Failed to upload ${file.name}`);
 
           // Remove from uploading list

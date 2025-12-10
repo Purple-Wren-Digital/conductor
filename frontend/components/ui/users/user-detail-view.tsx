@@ -144,8 +144,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
         body: JSON.stringify(body),
       });
       return response;
-    } catch (error) {
-      console.error("Prisma - Failed to update user", error);
+    } catch {
       return null;
     }
   };
@@ -171,8 +170,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       const data = await response.json();
       if (!data) throw new Error("No data from Clerk");
       return true;
-    } catch (error) {
-      console.error("CLERK - Failed to update user", error);
+    } catch {
       return false;
     }
   };
@@ -187,11 +185,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           receivingUser: receivingUser,
           data: data,
         });
-      } catch (error) {
-        console.error(
-          "UserDetailView - Unable to generate notifications",
-          error
-        );
+      } catch {
+        // Notification failed silently
       }
     },
     [getToken]
@@ -273,8 +268,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       });
       resetFormAndClose();
     },
-    onError: (error: any) => {
-      console.error("Failed to update user", error);
+    onError: () => {
       toast.error("Failed to update user");
     },
     onSettled: async () => {
@@ -318,7 +312,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     (userData?.resolvedTicketsCount ?? 0) > 0,
     user?.id
   );
-  console.log("USER RATINGS DATA", userRatingsData);
 
   return (
     <div className="space-y-6">

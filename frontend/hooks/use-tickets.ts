@@ -42,8 +42,7 @@ export function useFetchAgentTickets({
         if (!response.ok) throw new Error("Failed to fetch tickets");
         const data = await response.json();
         return data;
-      } catch (error) {
-        console.error("Agent - Failed to fetch user tickets", error);
+      } catch {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
@@ -88,8 +87,7 @@ export function useFetchStaffTickets({
           throw new Error("Failed to fetch tickets");
         const data = await response.json();
         return data;
-      } catch (error) {
-        console.error("StaffDashboard - Failed to fetch team tickets", error);
+      } catch {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
@@ -140,8 +138,7 @@ export function useFetchAdminTickets({
         if (!res.ok) throw new Error("Failed to fetch tickets");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error("Admin - Failed to fetch all tickets", error);
+      } catch {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
@@ -189,8 +186,7 @@ export function useListAdminTickets({
         if (!res.ok) throw new Error("Failed to fetch tickets");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error("Admin - Failed to fetch all tickets", error);
+      } catch {
         return { tickets: [], total: 0 } as TicketsResponse;
       }
     },
@@ -229,13 +225,11 @@ export function useFetchTicketSurveyResults(
           throw new Error("Failed to fetch survey data");
         }
         const data = await res.json();
-        // console.log("Fetched survey data:", data);
         if (!data || !data?.survey) {
           throw new Error("No survey data found");
         }
         return data.survey as Survey;
       } catch (error) {
-        console.error("Error fetching ticket survey results:", error);
         throw error;
       }
     },
@@ -274,7 +268,6 @@ export function useListAllRatings(
         const data = await res.json();
         return data;
       } catch (error) {
-        console.error("Error fetching ticket survey results:", error);
         throw error;
       }
     },
@@ -317,7 +310,6 @@ export function useFetchRatingsByAssignee(
         const data = await res.json();
         return data;
       } catch (error) {
-        console.error("Error fetching ticket survey results:", error);
         throw error;
       }
     },
@@ -359,7 +351,6 @@ export function useFetchRatingsByMarketCenter(
         const data = await res.json();
         return data;
       } catch (error) {
-        console.error("Error fetching ticket survey results:", error);
         throw error;
       }
     },
