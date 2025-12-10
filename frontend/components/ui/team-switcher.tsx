@@ -34,10 +34,6 @@ export function TeamSwitcher({
   const { role } = useUserRole();
   const { data, isLoading } = useFetchAllMarketCenters(role);
 
-  if (role === "AGENT") {
-    return null;
-  }
-
   const marketCenters: MarketCenter[] = useMemo(
     () => data?.marketCenters ?? [],
     [data]
