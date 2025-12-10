@@ -45,6 +45,7 @@ import {
   checkCanAddCategory,
   getSubscriptionContext,
   checkFeatureAccess,
+  checkCanCreateMarketCenter,
 } from "./subscription-check";
 import { SubscriptionStatus } from "../subscription/types";
 import type { User } from "../user/types";
@@ -544,6 +545,186 @@ describe("Subscription Check", () => {
       const result = await checkFeatureAccess("mc-123", "customBranding");
 
       expect(result).toBe(true);
+    });
+  });
+
+  describe("checkCanCreateMarketCenter", () => {
+    describe("first market center creation (no existing market center)", () => {
+      it("should allow creating first market center when user has no market center", async () => {
+        await expect(checkCanCreateMarketCenter(null)).resolves.not.toThrow();
+        // Should not even check subscription since user has no market center
+        expect(mockSubscriptionRepository.findByMarketCenterId).not.toHaveBeenCalled();
+      });
+
+      it("should allow creating first market center with undefined market center id", async () => {
+        await expect(checkCanCreateMarketCenter(null)).resolves.not.toThrow();
+      });
+    });
+
+    describe("additional market center creation (user has existing market center)", () => {
+      it("should throw when no subscription exists for existing market center", async () => {
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(null);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "No active subscription found. Please subscribe to continue."
+        );
+      });
+
+      it("should throw for STARTER plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.ACTIVE,
+          planType: "STARTER",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Multiple market centers require an Enterprise subscription"
+        );
+      });
+
+      it("should throw for TEAM plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.ACTIVE,
+          planType: "TEAM",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Multiple market centers require an Enterprise subscription"
+        );
+      });
+
+      it("should throw for BUSINESS plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.ACTIVE,
+          planType: "BUSINESS",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Multiple market centers require an Enterprise subscription"
+        );
+      });
+
+      it("should allow ENTERPRISE plan to create additional market centers", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.ACTIVE,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).resolves.not.toThrow();
+      });
+
+      it("should allow ENTERPRISE plan with TRIALING status", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.TRIALING,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).resolves.not.toThrow();
+      });
+    });
+
+    describe("subscription status checks", () => {
+      it("should throw for CANCELED subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.CANCELED,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is CANCELED. Please update your billing to continue."
+        );
+      });
+
+      it("should throw for PAST_DUE subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.PAST_DUE,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is PAST_DUE. Please update your billing to continue."
+        );
+      });
+
+      it("should throw for UNPAID subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.UNPAID,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is UNPAID. Please update your billing to continue."
+        );
+      });
+
+      it("should throw for PAUSED subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.PAUSED,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is PAUSED. Please update your billing to continue."
+        );
+      });
+
+      it("should throw for INCOMPLETE subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.INCOMPLETE,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is INCOMPLETE. Please update your billing to continue."
+        );
+      });
+
+      it("should throw for INCOMPLETE_EXPIRED subscription even with ENTERPRISE plan", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.INCOMPLETE_EXPIRED,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          "Subscription is INCOMPLETE_EXPIRED. Please update your billing to continue."
+        );
+      });
+    });
+
+    describe("error messages", () => {
+      it("should include upgrade suggestion in error for non-Enterprise plans", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.ACTIVE,
+          planType: "BUSINESS",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          /Please upgrade to create additional market centers/
+        );
+      });
+
+      it("should include billing update suggestion for inactive subscriptions", async () => {
+        const subscription = createSubscription({
+          status: SubscriptionStatus.CANCELED,
+          planType: "ENTERPRISE",
+        });
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(subscription);
+
+        await expect(checkCanCreateMarketCenter("mc-123")).rejects.toThrow(
+          /Please update your billing to continue/
+        );
+      });
     });
   });
 });

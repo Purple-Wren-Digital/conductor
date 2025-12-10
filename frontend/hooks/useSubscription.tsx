@@ -92,3 +92,16 @@ export function useCanPerformAction(action: "createTicket" | "addUser" | "addCat
       return { canPerform: false, reason: "Unknown action", isLoading: false };
   }
 }
+
+/**
+ * Check if the user has an Enterprise subscription
+ * Only Enterprise users can create multiple market centers
+ */
+export function useIsEnterprise() {
+  const { data: subscription, isLoading } = useSubscription();
+
+  return {
+    isEnterprise: subscription?.planType === "ENTERPRISE",
+    isLoading,
+  };
+}
