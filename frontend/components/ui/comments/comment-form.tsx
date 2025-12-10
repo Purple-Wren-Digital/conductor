@@ -6,7 +6,7 @@ import { Button } from "../button";
 import { Textarea } from "../textarea";
 import { Switch } from "../switch";
 import { Label } from "../label";
-import { Send } from "lucide-react";
+import { Send, Bold, Italic, Code } from "lucide-react";
 import type { Ticket } from "@/lib/types";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -171,30 +171,30 @@ export function CommentForm({ ticketId }: CommentFormProps) {
           />
 
           {/* Simple formatting toolbar */}
-          <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
+          <div className="flex gap-1 mt-2">
             <button
               type="button"
               onClick={() => insertText("**", "**")}
-              className="hover:text-foreground"
-              title="Bold"
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Bold (select text first)"
             >
-              **Bold**
+              <Bold className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => insertText("*", "*")}
-              className="hover:text-foreground"
-              title="Italic"
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Italic (select text first)"
             >
-              *Italic*
+              <Italic className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => insertText("`", "`")}
-              className="hover:text-foreground"
-              title="Code"
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Code (select text first)"
             >
-              `Code`
+              <Code className="w-4 h-4" />
             </button>
           </div>
         </div>

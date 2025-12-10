@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   ChartConfig,
@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/chart";
 import { ReportProps } from "@/components/reports/reports-dashboard";
 import { useFetchSlaComplianceByUsersReport } from "@/hooks/use-reports";
-import type { TicketStatus } from "@/lib/types";
 import {
   Bar,
   BarChart,
@@ -31,44 +30,22 @@ export const complianceByUsersDefaultValues = {
 
 export default function SlaComplianceByUsersReport({
   isSelected,
+  filters,
 }: ReportProps) {
-  // const [hydrated, setHydrated] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [showFilters, setShowFilters] = useState(true);
-
-  const [selectedMarketCenterIds, setSelectedMarketCenterIds] = useState([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<TicketStatus[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-
-  const clearFilters = useCallback(() => {
-    setSelectedStatuses([]);
-    setSelectedMarketCenterIds([]);
-    setSelectedCategories([]);
-  }, []);
-  const hasActiveFilters = useMemo(() => {
-    return (
-      selectedMarketCenterIds.length > 0 ||
-      selectedStatuses.length > 0 ||
-      selectedCategories.length > 0
-    );
-  }, [selectedMarketCenterIds, selectedStatuses, selectedCategories]);
-
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (selectedStatuses.length > 0) {
-      selectedStatuses.forEach((s) => params.append("status", s));
-    }
-    if (selectedMarketCenterIds.length > 0) {
-      selectedMarketCenterIds.forEach((id) =>
-        params.append("marketCenterId", id)
+    // SLA reports don't use date filtering - they show current compliance status
+    if (filters.marketCenterIds.length > 0) {
+      filters.marketCenterIds.forEach((id) =>
+        params.append("marketCenterIds", id)
       );
     }
-    if (selectedCategories.length > 0) {
-      selectedCategories.forEach((id) => params.append("categoryId", id));
+    if (filters.categoryIds.length > 0) {
+      filters.categoryIds.forEach((id) => params.append("categoryIds", id));
     }
 
     return params;
-  }, [selectedStatuses, selectedMarketCenterIds, selectedCategories]);
+  }, [filters.marketCenterIds, filters.categoryIds]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,

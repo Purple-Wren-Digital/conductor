@@ -7,7 +7,7 @@ import {
   todoRepository,
   withTransaction,
 } from "./db";
-import type { Ticket, TicketStatus, Urgency, TicketHistory } from "./types";
+import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canModifyTicket, canReassignTicket } from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";

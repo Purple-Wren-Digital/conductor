@@ -2,8 +2,21 @@
  * Ticket Repository - Raw SQL queries for ticket operations
  */
 
-import { db, fromTimestamp, toJson, fromJson, withTransaction } from "../../ticket/db";
-import type { Ticket, TicketStatus, Urgency, TicketHistory, Comment, Attachment } from "../../ticket/types";
+import {
+  db,
+  fromTimestamp,
+  toJson,
+  fromJson,
+  withTransaction,
+} from "../../ticket/db";
+import type {
+  Ticket,
+  TicketStatus,
+  Urgency,
+  TicketHistory,
+  Comment,
+  Attachment,
+} from "../../ticket/types";
 import type { User, UserRole } from "../../user/types";
 import type { TicketCategory } from "../../marketCenters/types";
 import type { Todo } from "../../todos/types";
@@ -178,8 +191,8 @@ export const ticketRepository = {
       ) VALUES (
         ${data.title ?? null},
         ${data.description ?? null},
-        ${data.status ?? 'CREATED'},
-        ${data.urgency ?? 'MEDIUM'},
+        ${data.status ?? "CREATED"},
+        ${data.urgency ?? "MEDIUM"},
         ${data.creatorId},
         ${data.assigneeId ?? null},
         ${data.categoryId ?? null},
@@ -193,18 +206,21 @@ export const ticketRepository = {
   },
 
   // Update ticket
-  async update(id: string, data: Partial<{
-    title: string | null;
-    description: string | null;
-    status: TicketStatus;
-    urgency: Urgency;
-    assigneeId: string | null;
-    categoryId: string | null;
-    dueDate: Date | null;
-    resolvedAt: Date | null;
-    surveyId: string | null;
-  }>): Promise<Ticket | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async update(
+    id: string,
+    data: Partial<{
+      title: string | null;
+      description: string | null;
+      status: TicketStatus;
+      urgency: Urgency;
+      assigneeId: string | null;
+      categoryId: string | null;
+      dueDate: Date | null;
+      resolvedAt: Date | null;
+      surveyId: string | null;
+    }>
+  ): Promise<Ticket | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -249,7 +265,7 @@ export const ticketRepository = {
 
     const sql = `
       UPDATE tickets
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -259,13 +275,16 @@ export const ticketRepository = {
   },
 
   // Update many tickets
-  async updateMany(ids: string[], data: Partial<{
-    status: TicketStatus;
-    assigneeId: string | null;
-  }>): Promise<number> {
+  async updateMany(
+    ids: string[],
+    data: Partial<{
+      status: TicketStatus;
+      assigneeId: string | null;
+    }>
+  ): Promise<number> {
     if (ids.length === 0) return 0;
 
-    const updates: string[] = ['updated_at = NOW()'];
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -278,12 +297,12 @@ export const ticketRepository = {
       values.push(data.assigneeId);
     }
 
-    const placeholders = ids.map((_, i) => `$${paramIndex + i}`).join(', ');
+    const placeholders = ids.map((_, i) => `$${paramIndex + i}`).join(", ");
     values.push(...ids);
 
     const sql = `
       UPDATE tickets
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id IN (${placeholders})
     `;
 
@@ -300,7 +319,7 @@ export const ticketRepository = {
     status?: TicketStatus[];
     categoryId?: string;
   }): Promise<number> {
-    let sql = 'SELECT COUNT(*)::int as count FROM tickets WHERE 1=1';
+    let sql = "SELECT COUNT(*)::int as count FROM tickets WHERE 1=1";
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -313,7 +332,9 @@ export const ticketRepository = {
       values.push(where.assigneeId);
     }
     if (where?.status && where.status.length > 0) {
-      const placeholders = where.status.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = where.status
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       sql += ` AND status IN (${placeholders})`;
       values.push(...where.status);
       paramIndex += where.status.length;
@@ -340,11 +361,12 @@ export const ticketRepository = {
     assigneeId?: string | null;
     creatorId?: string;
     categoryId?: string[];
+    marketCenterIds?: string[];
     dateFrom?: Date;
     dateTo?: Date;
     // Sorting
-    sortBy?: 'updatedAt' | 'createdAt' | 'urgency' | 'status';
-    sortDir?: 'asc' | 'desc';
+    sortBy?: "updatedAt" | "createdAt" | "urgency" | "status";
+    sortDir?: "asc" | "desc";
     // Pagination
     limit?: number;
     offset?: number;
@@ -354,10 +376,13 @@ export const ticketRepository = {
     let paramIndex = 1;
 
     // Role-based access control
-    if (params.userRole === 'AGENT' && params.userId) {
+    if (params.userRole === "AGENT" && params.userId) {
       conditions.push(`t.creator_id = $${paramIndex++}`);
       values.push(params.userId);
-    } else if ((params.userRole === 'STAFF' || params.userRole === 'STAFF_LEADER') && params.userMarketCenterId) {
+    } else if (
+      (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
+      params.userMarketCenterId
+    ) {
       conditions.push(`(
         tc.market_center_id = $${paramIndex} OR
         creator.market_center_id = $${paramIndex} OR
@@ -365,16 +390,36 @@ export const ticketRepository = {
       )`);
       values.push(params.userMarketCenterId);
       paramIndex++;
-    } else if ((params.userRole === 'STAFF' || params.userRole === 'STAFF_LEADER') && !params.userMarketCenterId && params.userId) {
-      conditions.push(`(t.assignee_id = $${paramIndex} OR t.creator_id = $${paramIndex})`);
+    } else if (
+      (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
+      !params.userMarketCenterId &&
+      params.userId
+    ) {
+      conditions.push(
+        `(t.assignee_id = $${paramIndex} OR t.creator_id = $${paramIndex})`
+      );
       values.push(params.userId);
       paramIndex++;
     }
     // ADMIN has no restrictions
+    if (
+      params.userRole === "ADMIN" &&
+      params.marketCenterIds &&
+      params.marketCenterIds.length > 0
+    ) {
+      const placeholders = params.marketCenterIds
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+      conditions.push(`tc.market_center_id IN (${placeholders})`);
+      values.push(...params.marketCenterIds);
+      paramIndex += params.marketCenterIds.length;
+    }
 
     // Filter conditions
     if (params.status && params.status.length > 0) {
-      const placeholders = params.status.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = params.status
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       conditions.push(`t.status IN (${placeholders})`);
       values.push(...params.status);
       paramIndex += params.status.length;
@@ -384,14 +429,16 @@ export const ticketRepository = {
     }
 
     if (params.urgency && params.urgency.length > 0) {
-      const placeholders = params.urgency.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = params.urgency
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       conditions.push(`t.urgency IN (${placeholders})`);
       values.push(...params.urgency);
       paramIndex += params.urgency.length;
     }
 
     if (params.assigneeId !== undefined) {
-      if (params.assigneeId === null || params.assigneeId === 'Unassigned') {
+      if (params.assigneeId === null || params.assigneeId === "Unassigned") {
         conditions.push(`t.assignee_id IS NULL`);
       } else {
         conditions.push(`t.assignee_id = $${paramIndex++}`);
@@ -405,14 +452,18 @@ export const ticketRepository = {
     }
 
     if (params.categoryId && params.categoryId.length > 0) {
-      const placeholders = params.categoryId.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = params.categoryId
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       conditions.push(`t.category_id IN (${placeholders})`);
       values.push(...params.categoryId);
       paramIndex += params.categoryId.length;
     }
 
     if (params.query) {
-      conditions.push(`(t.title ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`);
+      conditions.push(
+        `(t.title ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`
+      );
       values.push(`%${params.query}%`);
       paramIndex++;
     }
@@ -427,17 +478,19 @@ export const ticketRepository = {
       values.push(params.dateTo);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // Sorting
     const sortColumnMap: Record<string, string> = {
-      updatedAt: 't.updated_at',
-      createdAt: 't.created_at',
-      urgency: 't.urgency',
-      status: 't.status',
+      updatedAt: "t.updated_at",
+      createdAt: "t.created_at",
+      urgency: "t.urgency",
+      status: "t.status",
     };
-    const sortColumn = sortColumnMap[params.sortBy ?? 'updatedAt'] ?? 't.updated_at';
-    const sortDir = params.sortDir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const sortColumn =
+      sortColumnMap[params.sortBy ?? "updatedAt"] ?? "t.updated_at";
+    const sortDir = params.sortDir?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
     const offset = Math.max(params.offset ?? 0, 0);
@@ -451,7 +504,10 @@ export const ticketRepository = {
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       ${whereClause}
     `;
-    const countResult = await db.rawQueryRow<{ count: number }>(countSql, ...values);
+    const countResult = await db.rawQueryRow<{ count: number }>(
+      countSql,
+      ...values
+    );
     const total = countResult?.count ?? 0;
 
     // Get tickets with relations
@@ -469,7 +525,9 @@ export const ticketRepository = {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const rows = await db.rawQueryAll<TicketRow & { comment_count: number; attachment_count: number }>(sql, ...values);
+    const rows = await db.rawQueryAll<
+      TicketRow & { comment_count: number; attachment_count: number }
+    >(sql, ...values);
 
     // Fetch related data for each ticket
     const tickets: Ticket[] = [];
@@ -480,18 +538,21 @@ export const ticketRepository = {
       ticket.attachmentCount = row.attachment_count;
 
       // Get creator
-      const creatorRow = await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
+      const creatorRow =
+        await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
       if (creatorRow) ticket.creator = rowToUser(creatorRow);
 
       // Get assignee
       if (row.assignee_id) {
-        const assigneeRow = await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
+        const assigneeRow =
+          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
         if (assigneeRow) ticket.assignee = rowToUser(assigneeRow);
       }
 
       // Get category
       if (row.category_id) {
-        const categoryRow = await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
+        const categoryRow =
+          await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
         if (categoryRow) ticket.category = rowToCategory(categoryRow);
       }
 
@@ -529,15 +590,17 @@ export const ticketRepository = {
   },
 
   // Create many ticket history records
-  async createManyHistory(records: Array<{
-    ticketId: string;
-    action: string;
-    field?: string | null;
-    previousValue?: string | null;
-    newValue?: string | null;
-    snapshot?: any;
-    changedById: string;
-  }>): Promise<void> {
+  async createManyHistory(
+    records: Array<{
+      ticketId: string;
+      action: string;
+      field?: string | null;
+      previousValue?: string | null;
+      newValue?: string | null;
+      snapshot?: any;
+      changedById: string;
+    }>
+  ): Promise<void> {
     for (const record of records) {
       await this.createHistory(record);
     }
@@ -549,7 +612,7 @@ export const ticketRepository = {
     data: { assigneeId: string | null },
     options?: { statusIn?: TicketStatus[] }
   ): Promise<number> {
-    const updates: string[] = ['updated_at = NOW()'];
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -560,12 +623,14 @@ export const ticketRepository = {
 
     let sql = `
       UPDATE tickets
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE assignee_id = $${paramIndex++}
     `;
 
     if (options?.statusIn && options.statusIn.length > 0) {
-      const placeholders = options.statusIn.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = options.statusIn
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       sql += ` AND status IN (${placeholders})`;
       values.push(...options.statusIn);
     }
@@ -579,7 +644,7 @@ export const ticketRepository = {
   async findByIds(ids: string[]): Promise<Ticket[]> {
     if (ids.length === 0) return [];
 
-    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
     const sql = `SELECT * FROM tickets WHERE id IN (${placeholders})`;
     const rows = await db.rawQueryAll<TicketRow>(sql, ...ids);
 
@@ -587,14 +652,17 @@ export const ticketRepository = {
   },
 
   // Find tickets by IDs with relations (for bulk operations)
-  async findByIdsWithRelations(ids: string[], options?: {
-    includeCreator?: boolean;
-    includeAssignee?: boolean;
-    includeCategory?: boolean;
-  }): Promise<Ticket[]> {
+  async findByIdsWithRelations(
+    ids: string[],
+    options?: {
+      includeCreator?: boolean;
+      includeAssignee?: boolean;
+      includeCategory?: boolean;
+    }
+  ): Promise<Ticket[]> {
     if (ids.length === 0) return [];
 
-    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
     const sql = `SELECT * FROM tickets WHERE id IN (${placeholders})`;
     const rows = await db.rawQueryAll<TicketRow>(sql, ...ids);
 
@@ -604,17 +672,20 @@ export const ticketRepository = {
       const ticket = rowToTicket(row);
 
       if (options?.includeCreator) {
-        const creatorRow = await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
+        const creatorRow =
+          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
         if (creatorRow) ticket.creator = rowToUser(creatorRow);
       }
 
       if (options?.includeAssignee && row.assignee_id) {
-        const assigneeRow = await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
+        const assigneeRow =
+          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
         if (assigneeRow) ticket.assignee = rowToUser(assigneeRow);
       }
 
       if (options?.includeCategory && row.category_id) {
-        const categoryRow = await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
+        const categoryRow =
+          await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
         if (categoryRow) ticket.category = rowToCategory(categoryRow);
       }
 

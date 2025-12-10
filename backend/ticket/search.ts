@@ -64,6 +64,14 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       assigneeId = null;
     }
 
+    let categoryId: string[] | undefined = undefined;
+    if (req.categoryIdsMultiple && req.categoryIdsMultiple.length > 0) {
+      categoryId = req.categoryIdsMultiple;
+    }
+    if (req.categoryId) {
+      categoryId = [req.categoryId];
+    }
+
     // Use repository search with role-based access control built in
     const { tickets, total } = await ticketRepository.search({
       userId: userContext.userId,
@@ -74,9 +82,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       urgency: req.urgency as Urgency[] | undefined,
       assigneeId,
       creatorId: req.creatorId,
-      categoryId: req.categoryId,
-      categoryIds: req.categoryIdsMultiple,
-      marketCenterId: req.marketCenterId,
+      categoryId,
+      marketCenterIds: req.marketCenterId ? [req.marketCenterId] : undefined,
       dateFrom,
       dateTo,
       sortBy: req.sortBy as any,

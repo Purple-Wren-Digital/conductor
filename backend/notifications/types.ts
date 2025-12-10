@@ -14,6 +14,7 @@ import {
 } from "@/emails/types";
 import { Urgency } from "../ticket/types";
 import { User } from "../user/types";
+import { MarketCenter } from "../marketCenters/types";
 
 export type NotificationChannel = "EMAIL" | "PUSH" | "IN_APP" | "SMS";
 export type NotificationFrequency =
@@ -90,7 +91,7 @@ export interface NotificationData {
   surveyResults?: SurveyResultsProps;
 
   // SLA
-  slaEventType?: 'WARNING_50' | 'WARNING_75' | 'BREACHED' | 'MET';
+  slaEventType?: "WARNING_50" | "WARNING_75" | "BREACHED" | "MET";
   urgency?: Urgency;
   assigneeId?: string | null;
 }
@@ -100,6 +101,14 @@ export interface UsersToNotify {
   name: string;
   email: string;
   updateType: AssignmentUpdateType;
+}
+
+export interface MarketCenterDefaultTemplates {
+  marketCenterId: string;
+  notificationTemplateId: string;
+  createdAt: Date;
+  marketCenter?: MarketCenter;
+  notificationTemplate?: NotificationTemplate;
 }
 
 export interface NotificationTemplate {
@@ -114,12 +123,17 @@ export interface NotificationTemplate {
   isDefault: boolean;
   createdAt: Date;
   variables: any;
+  isActive: boolean;
+  marketCenterId: string | null;
+  marketCenter?: MarketCenter;
+  marketCenterDefaultTemplates?: MarketCenterDefaultTemplates[];
 }
 
-export interface NotificationTemplateFormData {
-  subject: string;
-  body: string;
-}
+// export interface NotificationTemplateFormData {
+//   subject: string;
+//   body: string;
+//   isActive: boolean;
+// }
 
 export interface PushNotificationPayload {
   token: string;

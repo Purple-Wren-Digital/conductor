@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ChartConfig,
   ChartContainer,
@@ -26,52 +26,50 @@ import { InfoIcon } from "lucide-react";
 export const defaultResolvedTicketsByMonthValues = {
   ticketsResolved: [],
   total: 0,
+  granularity: "monthly" as const,
 };
 
 export default function ResolvedTicketsByMonthReport({
   isSelected,
+  filters,
 }: ReportProps) {
-  const [hydrated, setHydrated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
-  const [dateFrom, setDateFrom] = useState<Date>();
-  const [dateTo, setDateTo] = useState<Date>();
-
-  const clearFilters = useCallback(() => {
-    setDateFrom(undefined);
-    setDateTo(undefined);
-  }, []);
-  const hasActiveFilters = useMemo(() => {
-    return dateFrom !== undefined || dateTo !== undefined;
-  }, [dateFrom, dateTo]);
-
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
 
-    if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
-    if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
+    if (filters.dateFrom) params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
+    if (filters.dateTo) params.append("dateTo", endOfDay(filters.dateTo).toISOString());
+    if (filters.marketCenterIds.length > 0) {
+      filters.marketCenterIds.forEach((id) => params.append("marketCenterIds", id));
+    }
+    if (filters.categoryIds.length > 0) {
+      filters.categoryIds.forEach((id) => params.append("categoryIds", id));
+    }
 
     return params;
-  }, [dateFrom, dateTo]);
+  }, [filters.dateFrom, filters.dateTo, filters.marketCenterIds, filters.categoryIds]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
     [queryParams]
   );
-  const resolvedTicketsByMonthQueryKey = useMemo(
-    () => ["resolved-tickets-by-month", queryKeyParams] as const,
+  const resolvedTicketsQueryKey = useMemo(
+    () => ["resolved-tickets-by-period", queryKeyParams] as const,
     [queryKeyParams]
   );
 
   const { data: reportData } = useFetchTicketsResolvedReport({
-    ticketsReportQueryKey: resolvedTicketsByMonthQueryKey,
+    ticketsReportQueryKey: resolvedTicketsQueryKey,
     queryParams: queryParams,
     isSelected,
   });
+
+  const granularity = reportData?.granularity || "monthly";
+
   const totalTickets = useMemo(() => {
     return reportData?.total ? reportData.total : 0;
   }, [reportData]);
-  const resolvedTicketsByMonth = useMemo(() => {
+
+  const resolvedTicketsData = useMemo(() => {
     if (
       !reportData ||
       !reportData?.ticketsResolved ||
@@ -79,30 +77,67 @@ export default function ResolvedTicketsByMonthReport({
     )
       return [];
     return reportData.ticketsResolved.map((item) => ({
-      label: item.resolvedMonthYear,
+      label: item.period,
       value: item.resolvedCount,
     }));
   }, [reportData]);
 
-  const resolvedTicketsByMonthChartConfig: ChartConfig = useMemo(() => {
-    if (!resolvedTicketsByMonth) return {};
+  const resolvedTicketsChartConfig: ChartConfig = useMemo(() => {
+    if (!resolvedTicketsData) return {};
     return Object.fromEntries(
-      resolvedTicketsByMonth.map((entry) => [
+      resolvedTicketsData.map((entry) => [
         entry.label,
         { label: entry.label, value: entry.value, color: "#6D1C24" },
       ])
     ) as ChartConfig;
-  }, [resolvedTicketsByMonth]);
+  }, [resolvedTicketsData]);
+
+  // Dynamic labels based on granularity
+  const getXAxisLabel = () => {
+    switch (granularity) {
+      case "daily":
+        return "Date";
+      case "weekly":
+        return "Week";
+      case "monthly":
+      default:
+        return "Month";
+    }
+  };
+
+  const getReportTitle = () => {
+    switch (granularity) {
+      case "daily":
+        return "Resolved Tickets By Day";
+      case "weekly":
+        return "Resolved Tickets By Week";
+      case "monthly":
+      default:
+        return "Resolved Tickets By Month";
+    }
+  };
+
+  const getReportDescription = () => {
+    switch (granularity) {
+      case "daily":
+        return "Amount of tickets resolved each day";
+      case "weekly":
+        return "Amount of tickets resolved each week";
+      case "monthly":
+      default:
+        return "Amount of tickets resolved each month";
+    }
+  };
 
   return (
     <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
-            Resolved Tickets By Month
+            {getReportTitle()}
           </h2>
           <p className="text-muted-foreground">
-            Amount of tickets resolved each month
+            {getReportDescription()}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -111,16 +146,14 @@ export default function ResolvedTicketsByMonthReport({
           </Badge>
           <ToolTip
             trigger={<InfoIcon className="size-4.5" />}
-            content={
-              "Displays the number of tickets resolved in the last 6 months, grouped by month"
-            }
+            content={`Displays the number of tickets resolved. Granularity auto-adjusts: daily (≤31 days), weekly (32-90 days), monthly (>90 days).`}
           />
         </div>
       </div>
 
       {/* REPORT CONTENT */}
       <ChartContainer
-        config={resolvedTicketsByMonthChartConfig}
+        config={resolvedTicketsChartConfig}
         className="w-[99%] md:w-full "
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -132,22 +165,22 @@ export default function ResolvedTicketsByMonthReport({
               padding: "0",
               aspectRatio: 1.618,
             }}
-            data={resolvedTicketsByMonth}
+            data={resolvedTicketsData}
             margin={{ top: 15, right: 30, left: 30, bottom: 30 }}
-            aria-label="Line chart showing the amount of resolved tickets each month"
+            aria-label={`Line chart showing the amount of resolved tickets by ${granularity}`}
           >
             <CartesianGrid strokeDasharray="7 7" />
             <XAxis
               dataKey="label"
               tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-              angle={window.innerWidth < 640 ? 0 : -15}
+              angle={granularity === "daily" ? -45 : -15}
               tickMargin={10}
               tickFormatter={(value) =>
-                value.length > 10 ? value.slice(0, 10) + "..." : value
+                value.length > 12 ? value.slice(0, 12) + "..." : value
               }
-              aria-label="X-Axis Label: Month and Year (MM/YYYY)"
+              aria-label={`X-Axis Label: ${getXAxisLabel()}`}
               label={{
-                value: "Month and Year (MM/YYYY)",
+                value: getXAxisLabel(),
                 angle: 0,
                 position: "insideBottom",
                 dy: 25,

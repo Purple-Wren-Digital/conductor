@@ -7,6 +7,8 @@ export interface BacklogRequest {
   marketCenterIds?: Query<string[]>;
   status?: Query<TicketStatus[]>;
   categoryIds?: Query<string[]>;
+  dateFrom?: Query<string>;
+  dateTo?: Query<string>;
 }
 
 export interface BacklogResponse {
@@ -36,6 +38,19 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
     const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
     const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
 
+    // Parse date filters
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+
+    if (req.dateFrom) {
+      const from = new Date(req.dateFrom);
+      if (!isNaN(from.getTime())) dateFrom = from;
+    }
+    if (req.dateTo) {
+      const to = new Date(req.dateTo);
+      if (!isNaN(to.getTime())) dateTo = to;
+    }
+
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
@@ -51,6 +66,8 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
                 OR t.creator_id = ${userContext.userId}
               )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           // User with market center - see tickets in their market center scope
@@ -68,6 +85,8 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
                 OR t.assignee_id IS NULL
               )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;
@@ -87,6 +106,8 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
                 OR t.assignee_id IS NULL
               )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           ticketsFound = await db.queryAll<TicketRow>`
@@ -94,6 +115,8 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
             FROM tickets t
             WHERE t.status IN ('CREATED', 'UNASSIGNED')
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;

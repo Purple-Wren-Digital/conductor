@@ -8,9 +8,13 @@ import SlaComplianceByUsersReport from "@/components/reports/users-tickets-overd
 import TicketBacklogReport from "@/components/reports/backlog-report";
 import CreatedVolumeByMonthReport from "@/components/reports/created-volume-report";
 import ResolvedTicketsByMonthReport from "@/components/reports/resolved-volume-report";
+import { ReportFilters, ReportFiltersState, DEFAULT_FILTERS } from "@/components/reports/report-filters";
 import { Separator } from "@/components/ui/separator";
 
-export type ReportProps = { isSelected: boolean };
+export type ReportProps = {
+  isSelected: boolean;
+  filters: ReportFiltersState;
+};
 
 const reportType = [
   { value: "sla-compliance", label: "SLA Compliance Overview" },
@@ -28,6 +32,7 @@ export default function ReportsDashboard() {
   const [selectedReportType, setSelectedReportType] = useState<string | null>(
     null
   );
+  const [filters, setFilters] = useState<ReportFiltersState>(DEFAULT_FILTERS);
 
   // FILTERS STATE PERSISTENCE
   useEffect(() => {
@@ -36,15 +41,29 @@ export default function ReportsDashboard() {
       "report-selection",
       JSON.stringify({
         selectedReportType,
+        filters: {
+          ...filters,
+          // Convert dates to ISO strings for storage
+          dateFrom: filters.dateFrom?.toISOString(),
+          dateTo: filters.dateTo?.toISOString(),
+        },
       })
     );
-  }, [hydrated, selectedReportType]);
+  }, [hydrated, selectedReportType, filters]);
 
   useEffect(() => {
     const filtersString = localStorage.getItem("report-selection");
     if (filtersString) {
       const fetchedFilters = JSON.parse(filtersString);
       setSelectedReportType(fetchedFilters.selectedReportType || "none");
+      if (fetchedFilters.filters) {
+        setFilters({
+          ...fetchedFilters.filters,
+          // Parse dates from ISO strings
+          dateFrom: fetchedFilters.filters.dateFrom ? new Date(fetchedFilters.filters.dateFrom) : undefined,
+          dateTo: fetchedFilters.filters.dateTo ? new Date(fetchedFilters.filters.dateTo) : undefined,
+        });
+      }
     }
 
     setHydrated(true);
@@ -66,10 +85,12 @@ export default function ReportsDashboard() {
               variant={"link"}
               size="sm"
               className="font-medium p-0 text-muted-foreground opacity-50 hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
-              onClick={() => setSelectedReportType(null)}
-              disabled={!selectedReportType}
+              onClick={() => setSelectedReportType("none")}
+              disabled={!selectedReportType || selectedReportType === "none"}
             >
-              {!selectedReportType ? "Select a report" : "Select none"}
+              {!selectedReportType || selectedReportType === "none"
+                ? "Select a report"
+                : "Select none"}
             </Button>
             {reportType.map((report) => (
               <Button
@@ -89,25 +110,39 @@ export default function ReportsDashboard() {
             ))}
           </div>
         </section>
-        <div className="md:col-span-9">
+        <div className="md:col-span-9 space-y-4">
           {selectedReportType ? (
-            <Card className="space-y-4">
-              <SlaComplianceReport
-                isSelected={selectedReportType === "sla-compliance"}
+            <>
+              <ReportFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                showDateFilter={["ticket-created-volume", "ticket-resolved-volume", "ticket-backlog"].includes(selectedReportType)}
+                showMarketCenterFilter={true}
+                showCategoryFilter={true}
               />
-              <SlaComplianceByUsersReport
-                isSelected={selectedReportType === "sla-compliance-by-users"}
-              />
-              <TicketBacklogReport
-                isSelected={selectedReportType === "ticket-backlog"}
-              />
-              <CreatedVolumeByMonthReport
-                isSelected={selectedReportType === "ticket-created-volume"}
-              />
-              <ResolvedTicketsByMonthReport
-                isSelected={selectedReportType === "ticket-resolved-volume"}
-              />
-            </Card>
+              <Card className="space-y-4">
+                <SlaComplianceReport
+                  isSelected={selectedReportType === "sla-compliance"}
+                  filters={filters}
+                />
+                <SlaComplianceByUsersReport
+                  isSelected={selectedReportType === "sla-compliance-by-users"}
+                  filters={filters}
+                />
+                <TicketBacklogReport
+                  isSelected={selectedReportType === "ticket-backlog"}
+                  filters={filters}
+                />
+                <CreatedVolumeByMonthReport
+                  isSelected={selectedReportType === "ticket-created-volume"}
+                  filters={filters}
+                />
+                <ResolvedTicketsByMonthReport
+                  isSelected={selectedReportType === "ticket-resolved-volume"}
+                  filters={filters}
+                />
+              </Card>
+            </>
           ) : (
             <p className="flex items-center justify-center h-24 font-medium text-muted-foreground   ">
               Please make a selection

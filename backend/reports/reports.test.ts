@@ -173,11 +173,11 @@ describe("Reports", () => {
 
       expect(result.total).toBe(3);
       expect(result.ticketsCreated).toContainEqual({
-        createdMonthYear: "01/2024",
+        period: "01/2024",
         createdCount: 2,
       });
       expect(result.ticketsCreated).toContainEqual({
-        createdMonthYear: "02/2024",
+        period: "02/2024",
         createdCount: 1,
       });
     });
@@ -252,11 +252,11 @@ describe("Reports", () => {
 
       expect(result.total).toBe(3);
       expect(result.ticketsResolved).toContainEqual({
-        resolvedMonthYear: "01/2024",
+        period: "01/2024",
         resolvedCount: 2,
       });
       expect(result.ticketsResolved).toContainEqual({
-        resolvedMonthYear: "02/2024",
+        period: "02/2024",
         resolvedCount: 1,
       });
     });
