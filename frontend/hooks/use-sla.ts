@@ -92,7 +92,15 @@ export function useSlaReport(filters?: SlaReportFilters) {
         return data;
       } catch (error) {
         console.error("Error fetching SLA report:", error);
-        return { metrics: null, trends: [], byUrgency: [], byAssignee: [] };
+        return {
+          metrics: null,
+          byUrgency: [],
+          byAssignee: [],
+          trends: [],
+          resolutionMetrics: null,
+          resolutionByUrgency: [],
+          resolutionTrends: [],
+        };
       }
     },
   });
