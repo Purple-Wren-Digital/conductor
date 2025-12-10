@@ -107,8 +107,8 @@ export function AppSidebar({
                   {currentUser?.role === "ADMIN"
                     ? "Global"
                     : currentUser?.marketCenter?.name
-                    ? currentUser?.marketCenter?.name
-                    : "No Market Center Assigned"}
+                      ? currentUser?.marketCenter?.name
+                      : "No Market Center Assigned"}
                 </p>
               </div>
             )}
@@ -203,13 +203,16 @@ export function AppSidebar({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild disabled={isLoading}>
-                    <Link href="/dashboard/sla">
-                      <Clock className="text-muted-foreground" /> SLA Management
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {role !== "STAFF" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild disabled={isLoading}>
+                      <Link href="/dashboard/sla">
+                        <Clock className="text-muted-foreground" /> SLA
+                        Management
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </>
             )}
           </SidebarGroup>

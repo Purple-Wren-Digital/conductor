@@ -123,12 +123,14 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     let body: any = {};
     if (quickEdit) {
       body.role = formData.role;
+      body.marketCenterId = user?.marketCenterId ?? null;
     } else {
       body.name = `${formData.firstName} ${formData.lastName}`;
-      // body.email = formData.email;
+      // body.email = formData.email; // TODO: CLERK EMAIL API ROUTES
       body.role = formData.role;
       body.marketCenterId = formData?.marketCenterId;
     }
+
     if (!body) throw new Error("Nothing to update");
     try {
       const token = await getToken();
@@ -300,6 +302,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
       toast.error("You do not have permission to update users");
       return;
     }
+    setIsSubmitting(true);
+
     updateUserMutation.mutate({
       userId: user?.id,
       clerkId: user?.clerkId,
@@ -582,18 +586,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       return null;
                     return (
                       <SelectItem key={option} value={option}>
-                        <Badge
-                          variant={
-                            (user?.role
-                              ? user.role.toLowerCase()
-                              : "user") as any
-                          }
-                          title={user?.role}
-                          className="text-xs px-2 py-0.5"
-                        >
-                          {getRoleIcon(option)}
-                          {option ? option.split("_").join(" ") : "N/A"}
-                        </Badge>
+                        {getRoleIcon(option)}
+                        {option ? option.split("_").join(" ") : "N/A"}
                       </SelectItem>
                     );
                   })}

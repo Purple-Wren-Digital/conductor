@@ -27,6 +27,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+
     // Permission checks
     const existingUser = await userRepository.findById(req.id);
 
@@ -59,7 +60,9 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       req?.marketCenterId !== existingUser?.marketCenterId &&
       userContext?.role === "ADMIN"
     ) {
-      const marketCenter = await marketCenterRepository.findById(req.marketCenterId);
+      const marketCenter = await marketCenterRepository.findById(
+        req.marketCenterId
+      );
 
       marketCenterId = marketCenter?.id ?? null;
       if (marketCenter) {
@@ -76,12 +79,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       }
     }
 
-    if (
-      !isEditingSelf &&
-      req?.role &&
-      req.role !== existingUser?.role &&
-      userContext?.role === "ADMIN"
-    ) {
+    if (!isEditingSelf && req?.role && req.role !== existingUser?.role) {
       updateUserData.role = req.role;
       userHistoryData.push({
         userId: req.id,
@@ -95,11 +93,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       });
     }
 
-    if (
-      !isEditingSelf &&
-      req?.isActive !== undefined &&
-      userContext?.role === "ADMIN"
-    ) {
+    if (!isEditingSelf && req?.isActive !== undefined) {
       updateUserData.isActive = req.isActive;
       userHistoryData.push({
         userId: req.id,
@@ -147,7 +141,9 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     // Get market center if needed
     let marketCenter;
     if (updatedUser.marketCenterId) {
-      marketCenter = await marketCenterRepository.findById(updatedUser.marketCenterId);
+      marketCenter = await marketCenterRepository.findById(
+        updatedUser.marketCenterId
+      );
     }
 
     const safeUser = {
