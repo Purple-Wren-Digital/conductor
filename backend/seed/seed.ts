@@ -1,8 +1,17 @@
 import { api } from "encore.dev/api";
-import { db, userRepository, ticketRepository, commentRepository, notificationRepository, marketCenterRepository, surveyRepository } from "../ticket/db";
+import {
+  db,
+  userRepository,
+  ticketRepository,
+  commentRepository,
+  notificationRepository,
+  marketCenterRepository,
+  surveyRepository,
+} from "../ticket/db";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
 import { ticket } from "~encore/clients";
+// TODO: Notification templates for each market center
 
 export interface SeedResponse {
   message: string;
@@ -61,8 +70,10 @@ export const seedData = api<void, SeedResponse>(
       RETURNING id, name
     `;
 
-    // Create active subscriptions for each market center
+    // Create active subscriptions, notification preferences,
+    // and notification templates for each market center
     for (const marketCenter of mc) {
+      // Create subscription
       await db.exec`
         INSERT INTO subscriptions (
           id, stripe_subscription_id, stripe_customer_id, market_center_id,
@@ -72,8 +83,8 @@ export const seedData = api<void, SeedResponse>(
         )
         VALUES (
           gen_random_uuid()::text,
-          ${'sub_seed_' + marketCenter.id.substring(0, 8)},
-          ${'cus_seed_' + marketCenter.id.substring(0, 8)},
+          ${"sub_seed_" + marketCenter.id.substring(0, 8)},
+          ${"cus_seed_" + marketCenter.id.substring(0, 8)},
           ${marketCenter.id},
           'ACTIVE',
           'TEAM',
@@ -88,11 +99,54 @@ export const seedData = api<void, SeedResponse>(
           NOW()
         )
       `;
+      // Update market center with settings and notification preferences
+      await db.exec`
+        UPDATE market_centers
+        SET settings = ${JSON.stringify({
+          notificationPreferences: defaultNotificationPreferences,
+        })}::jsonb
+        WHERE id = ${marketCenter.id}
+      `;
+      // Create notification templates for this market center
+      for (const template of notificationTemplatesDefault) {
+        await db.exec`
+      INSERT INTO notification_templates (
+        id,
+        template_name,
+        template_description,
+        category,
+        channel,
+        type,
+        subject,
+        body,
+        is_default,
+        created_at,
+        variables,
+        is_active,
+        market_center_id
+      )
+      VALUES (
+        gen_random_uuid()::text,
+        ${template.templateName},
+        ${template.templateDescription ?? ""},
+        ${template.category},
+        ${template.channel},
+        ${template.type},
+        ${template.subject ?? ""},
+        ${template.body},
+        ${template.isDefault ?? true},
+        NOW(),
+        ${template.variables ?? null}::jsonb,
+        ${template.isActive ?? true},
+        ${marketCenter.id}
+      )
+    `;
+      }
     }
 
     // Upsert developer user - create if not exists, update if exists
     // This ensures the local development user always exists with proper access
-    const devEmail = 'calebmcquaid+1@gmail.com';
+    const devEmail = "calebmcquaid+1@gmail.com";
     const existingDevUser = await db.queryRow<{ id: string }>`
       SELECT id FROM users WHERE email = ${devEmail}
     `;
@@ -167,11 +221,13 @@ export const seedData = api<void, SeedResponse>(
     // Create user settings and notifications for each user
     for (const user of createdUsers) {
       // Create user settings with notification preferences
-      const userSettingsId = (await db.queryRow<{ id: string }>`
+      const userSettingsId = (
+        await db.queryRow<{ id: string }>`
         INSERT INTO user_settings (id, user_id, created_at, updated_at)
         VALUES (gen_random_uuid()::text, ${user.id}, NOW(), NOW())
         RETURNING id
-      `)?.id;
+      `
+      )?.id;
 
       if (userSettingsId) {
         // Create notification preferences
@@ -195,7 +251,7 @@ export const seedData = api<void, SeedResponse>(
         VALUES (
           gen_random_uuid()::text, ${user.id}, 'IN_APP', 'ACCOUNT', 'HIGH',
           'General', 'Welcome to Conductor',
-          ${'Hello ' + user.name + ', we\'re excited to have you on board.'},
+          ${"Hello " + user.name + ", we're excited to have you on board."},
           NOW(), NOW()
         )
       `;
@@ -216,7 +272,12 @@ export const seedData = api<void, SeedResponse>(
       { name: "Showing Request", marketCenterIds: mc.map((m) => m.id) },
     ];
 
-    const categories: { id: string; name: string; market_center_id: string; default_assignee_id: string | null }[] = [];
+    const categories: {
+      id: string;
+      name: string;
+      market_center_id: string;
+      default_assignee_id: string | null;
+    }[] = [];
 
     for (const category of categoryNames) {
       for (const mcId of category.marketCenterIds) {
@@ -582,21 +643,21 @@ export const seedData = api<void, SeedResponse>(
     }
 
     // Create notification templates
-    for (const template of notificationTemplatesDefault) {
-      await db.exec`
-        INSERT INTO notification_templates (
-          id, template_name, template_description, type, channel, category,
-          subject, body, is_default,
-          created_at
-        )
-        VALUES (
-          gen_random_uuid()::text, ${template.templateName}, ${template.templateDescription},
-          ${template.type}, ${template.channel}, ${template.category},
-          ${template.subject}, ${template.body}, ${template.isDefault},
-          NOW()
-        )
-      `;
-    }
+    // for (const template of notificationTemplatesDefault) {
+    //   await db.exec`
+    //     INSERT INTO notification_templates (
+    //       id, template_name, template_description, type, channel, category,
+    //       subject, body, is_default,
+    //       created_at
+    //     )
+    //     VALUES (
+    //       gen_random_uuid()::text, ${template.templateName}, ${template.templateDescription},
+    //       ${template.type}, ${template.channel}, ${template.category},
+    //       ${template.subject}, ${template.body}, ${template.isDefault},
+    //       NOW()
+    //     )
+    //   `;
+    // }
 
     // Create attachments for some tickets
     const ticketsWithAttachments = tickets.slice(0, 5);
@@ -652,7 +713,7 @@ export const seedData = api<void, SeedResponse>(
           VALUES (
             gen_random_uuid()::text, ${fileInfo.name}, ${fileInfo.size},
             ${fileInfo.mimeType},
-            ${ticket.id + '/' + timestamp + '_' + fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")},
+            ${ticket.id + "/" + timestamp + "_" + fileInfo.name.replace(/[^a-zA-Z0-9.-]/g, "_")},
             ${ticket.id}, ${uploadedBy}, NOW(), NOW()
           )
         `;

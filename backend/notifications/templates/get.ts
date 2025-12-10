@@ -1,7 +1,11 @@
 import { api, APIError } from "encore.dev/api";
 import { db, fromTimestamp, fromJson } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
-import { NotificationTemplate, NotificationCategory, NotificationChannel } from "../types";
+import {
+  NotificationTemplate,
+  NotificationCategory,
+  NotificationChannel,
+} from "../types";
 
 export interface GetNotificationTemplateRequest {
   id: string;
@@ -22,6 +26,8 @@ interface NotificationTemplateRow {
   is_default: boolean;
   created_at: Date;
   variables: any;
+  is_active: boolean;
+  market_center_id: string | null;
 }
 
 export const get = api<
@@ -39,7 +45,7 @@ export const get = api<
 
     const notificationTemplate = await db.queryRow<NotificationTemplateRow>`
       SELECT * FROM notification_templates
-      WHERE template_name = ${req.id}
+      WHERE template_id = ${req.id}
     `;
 
     if (!notificationTemplate) {
@@ -59,6 +65,9 @@ export const get = api<
         isDefault: notificationTemplate.is_default,
         createdAt: fromTimestamp(notificationTemplate.created_at)!,
         variables: fromJson(notificationTemplate.variables) ?? undefined,
+        isActive: notificationTemplate.is_active,
+        marketCenterId: notificationTemplate.market_center_id,
+        marketCenterDefaultTemplates: [],
       },
     };
   }

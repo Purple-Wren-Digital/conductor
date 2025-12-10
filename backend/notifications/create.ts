@@ -1,5 +1,9 @@
 import { api, APIError } from "encore.dev/api";
-import { userRepository, notificationRepository } from "../ticket/db";
+import {
+  userRepository,
+  notificationRepository,
+  marketCenterRepository,
+} from "../ticket/db";
 import { broadcastNotification } from "./stream";
 import { sendEmailNotification } from "./channels/email/email";
 import type {
@@ -9,6 +13,8 @@ import type {
   Notification,
 } from "./types";
 import { Urgency } from "../ticket/types";
+import { MarketCenterNotificationPreferences } from "../settings/types";
+import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 
 export interface CreateNotificationRequest {
   userId: string;
@@ -19,6 +25,7 @@ export interface CreateNotificationRequest {
   body: string;
   data: NotificationData;
   priority?: Urgency;
+  notificationType?: NotificationChannel[];
 }
 
 export interface CreateNotificationResponse {
@@ -51,11 +58,31 @@ export const create = api<CreateNotificationRequest>(
       throw APIError.notFound("User not found");
     }
 
+    let marketCenterNotificationPreferences: MarketCenterNotificationPreferences[] =
+      defaultMarketCenterNotificationPreferences;
+
+    if (foundUser?.marketCenterId) {
+      const mc = await marketCenterRepository.findById(
+        foundUser.marketCenterId
+      );
+      if (mc && mc?.settings && mc?.settings?.notificationPreferences) {
+        marketCenterNotificationPreferences =
+          mc.settings.notificationPreferences;
+      } else {
+        marketCenterNotificationPreferences =
+          defaultMarketCenterNotificationPreferences;
+      }
+    }
+
     // USER PREFERENCE CHECKING
-    const notificationTypeSettings =
+    const userTypeSettings =
       foundUser.userSettings?.notificationPreferences?.find(
         (preference) => preference.type === req.type
       );
+
+    const marketCenterTypeSettings = marketCenterNotificationPreferences.find(
+      (preference) => preference.type === req.type
+    );
 
     let notificationsToCreate: Array<{
       userId: string;
@@ -68,7 +95,12 @@ export const create = api<CreateNotificationRequest>(
       priority?: Urgency;
     }> = [];
 
-    if (notificationTypeSettings && notificationTypeSettings.inApp === true) {
+    if (
+      marketCenterTypeSettings &&
+      marketCenterTypeSettings.inApp === true &&
+      userTypeSettings &&
+      userTypeSettings.inApp === true
+    ) {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "IN_APP",
@@ -80,7 +112,12 @@ export const create = api<CreateNotificationRequest>(
         priority: req?.priority ?? "LOW",
       });
     }
-    if (notificationTypeSettings && notificationTypeSettings.email === true) {
+    if (
+      marketCenterTypeSettings &&
+      marketCenterTypeSettings.email === true &&
+      userTypeSettings &&
+      userTypeSettings.email === true
+    ) {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "EMAIL",
@@ -100,7 +137,8 @@ export const create = api<CreateNotificationRequest>(
       return { success: true };
     }
 
-    const createdNotifications = await notificationRepository.createManyAndReturn(notificationsToCreate);
+    const createdNotifications =
+      await notificationRepository.createManyAndReturn(notificationsToCreate);
 
     if (!createdNotifications || !createdNotifications.length) {
       throw APIError.internal("Failed to create notification(s)");

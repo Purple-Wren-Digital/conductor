@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { UserRole } from "@/lib/types";
 
 export interface FetchAllTemplates {
-  role: UserRole;
+  role?: UserRole;
   queryKey: readonly [string];
 }
 
@@ -38,6 +38,6 @@ export function useFetchAllTemplatesQuery({
         throw error;
       }
     },
-    enabled: role === "ADMIN",
+    enabled: !!role && role === "ADMIN",
   });
 }

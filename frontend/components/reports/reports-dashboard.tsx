@@ -85,10 +85,12 @@ export default function ReportsDashboard() {
               variant={"link"}
               size="sm"
               className="font-medium p-0 text-muted-foreground opacity-50 hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
-              onClick={() => setSelectedReportType(null)}
-              disabled={!selectedReportType}
+              onClick={() => setSelectedReportType("none")}
+              disabled={!selectedReportType || selectedReportType === "none"}
             >
-              {!selectedReportType ? "Select a report" : "Select none"}
+              {!selectedReportType || selectedReportType === "none"
+                ? "Select a report"
+                : "Select none"}
             </Button>
             {reportType.map((report) => (
               <Button
