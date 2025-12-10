@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 // GET ALL USERS
 type SearchUsersQuery = {
   usersQueryKey: readonly [string, Record<string, string>];
-  queryParams: URLSearchParams;
+  queryParams?: URLSearchParams;
   role?: UserRole;
   marketCenterId?: string;
 };
@@ -29,17 +29,16 @@ export function useFetchAllUsers({
 
       try {
         const response = await fetch(
-          `${API_BASE}/users/search?${queryParams.toString()}`,
+          `${API_BASE}/users/search${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
           }
         );
-        // console.log("USERS - RESPONSE", response);
         if (!response.ok) throw new Error("Failed to fetch users");
         const data = await response.json();
-        // console.log("USERS DATA", data);
         if (!data || !data?.users || !data?.total)
           throw new Error("Failed to fetch users");
         const usersWithStats: UserWithStats[] = data.users.map(
@@ -56,6 +55,7 @@ export function useFetchAllUsers({
         return { users: [] as UserWithStats[] };
       }
     },
+    staleTime: 5 * 60 * 1000,
     enabled: role === "ADMIN",
   });
 }
@@ -80,9 +80,12 @@ export function useFetchUsersWithinMarketCenter({
 
       try {
         const response = await fetch(
-          `${API_BASE}/users/search?marketCenterId=${marketCenterId}&${queryParams.toString()}`,
+          `${API_BASE}/users/search?marketCenterId=${marketCenterId}${
+            queryParams ? `&${queryParams.toString()}` : ""
+          }`,
           {
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
           }
@@ -121,6 +124,7 @@ export function useFetchOneUser({ id }: { id?: string }) {
 
       const response = await fetch(`${API_BASE}/users/${id}`, {
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
@@ -143,6 +147,7 @@ export function useFetchOneUserByEmail({ email }: { email?: string }) {
 
       const response = await fetch(`${API_BASE}/users/email/${email}`, {
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
@@ -174,6 +179,7 @@ export function useFetchUserSettings({
       try {
         const response = await fetch(`${API_BASE}/users/${id}/settings`, {
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         });

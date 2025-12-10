@@ -444,7 +444,6 @@ export default function TicketListStaff() {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      console.log("Close ticket response data:", data);
       if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
         throw new Error("No data returned from close ticket");
       return { ...data, ticket: ticket };
@@ -654,10 +653,20 @@ export default function TicketListStaff() {
                             teamMembers.length > 0 &&
                             teamMembers.map((user: PrismaUser) => (
                               <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                                {user?.role === "STAFF_LEADER"
-                                  ? " (Staff Leader)"
-                                  : ""}
+                                <div className="flex flex-col gap-0.5">
+                                  {user.name}
+                                  <span className="text-xs text-muted-foreground capitalize">
+                                    {user?.role
+                                      ? user.role
+                                          .split("_")
+                                          .join(" ")
+                                          .toLowerCase()
+                                      : "No role"}{" "}
+                                    •{" "}
+                                    {marketCenter?.name ??
+                                      "No Market Center Assigned"}
+                                  </span>
+                                </div>
                               </SelectItem>
                             ))}
                         </>
@@ -691,15 +700,21 @@ export default function TicketListStaff() {
                           <SelectItem value="all">All Team Members</SelectItem>
                           {teamMembers &&
                             teamMembers.map((user: PrismaUser) => (
-                              <SelectItem
-                                key={user.id}
-                                value={user.id}
-                                className="capitalize"
-                              >
-                                {user?.name}:{" "}
-                                {user?.role
-                                  ? `${user.role.split("_").join(" ").toLowerCase()}`
-                                  : "Unassigned"}
+                              <SelectItem key={user.id} value={user.id}>
+                                <div className="flex flex-col gap-0.5">
+                                  {user.name}
+                                  <span className="text-xs text-muted-foreground capitalize">
+                                    {user?.role
+                                      ? user.role
+                                          .split("_")
+                                          .join(" ")
+                                          .toLowerCase()
+                                      : "No role"}{" "}
+                                    •{" "}
+                                    {marketCenter?.name ??
+                                      "No Market Center Assigned"}
+                                  </span>
+                                </div>
                               </SelectItem>
                             ))}
                         </>

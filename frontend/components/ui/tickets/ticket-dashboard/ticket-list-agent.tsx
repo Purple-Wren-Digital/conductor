@@ -570,13 +570,18 @@ export default function AgentTicketList() {
                         {teamMembersAssignedToTickets &&
                           teamMembersAssignedToTickets.length > 0 &&
                           teamMembersAssignedToTickets.map((user) => (
-                            <SelectItem
-                              key={user.id}
-                              value={user.id}
-                              className="flex items-center gap-2"
-                            >
-                              {getRoleIcon(user.role)}
-                              {user.name}
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex flex-col gap-0.5">
+                                {user.name}
+                                <span className="text-xs text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}
+                                </span>
+                              </div>
                             </SelectItem>
                           ))}
                       </SelectContent>
