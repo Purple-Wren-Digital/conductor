@@ -47,7 +47,9 @@ function SubscriptionPageContent() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null
   );
-  const [selectedPlan, setSelectedPlan] = useState<string>(plans[0].stripePriceId);
+  const [selectedPlan, setSelectedPlan] = useState<string>(
+    plans[0].stripePriceId
+  );
   const [additionalSeats, setAdditionalSeats] = useState(0);
   const [organizationName, setOrganizationName] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -63,9 +65,8 @@ function SubscriptionPageContent() {
         // No subscription found
         setSubscription(null);
       }
-    } catch (error) {
-      console.error("Failed to fetch subscription:", error);
-      // Don't throw, just log and continue without subscription data
+    } catch {
+      // Continue without subscription data
       setSubscription(null);
     } finally {
       setLoading(false);
@@ -107,8 +108,7 @@ function SubscriptionPageContent() {
         const error = await response.text();
         alert(`Failed to create checkout session: ${error}`);
       }
-    } catch (error) {
-      console.error("Failed to create checkout session:", error);
+    } catch {
       alert("Failed to create checkout session. Please try again.");
     } finally {
       setCheckoutLoading(false);
@@ -129,8 +129,7 @@ function SubscriptionPageContent() {
         const error = await response.text();
         alert(`Failed to open billing portal: ${error}`);
       }
-    } catch (error) {
-      console.error("Failed to open billing portal:", error);
+    } catch {
       alert("Failed to open billing portal. Please try again.");
     } finally {
       setPortalLoading(false);
@@ -157,7 +156,7 @@ function SubscriptionPageContent() {
 
   const calculateTotalPrice = () => {
     const plan = plans.find((p) => p.stripePriceId === selectedPlan);
-    if (!plan) return 0;
+    if (!plan || plan.monthlyPrice === null) return 0;
     return plan.monthlyPrice + additionalSeats * plan.additionalSeatPrice;
   };
 
@@ -348,14 +347,20 @@ function SubscriptionPageContent() {
                             </div>
                             <div className="text-right">
                               <p className="text-2xl font-bold">
-                                ${plan.monthlyPrice}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                  /month
-                                </span>
+                                {plan.monthlyPrice
+                                  ? `$${plan.monthlyPrice}`
+                                  : "Request a quote"}
+                                {plan.monthlyPrice && (
+                                  <span className="text-sm font-normal text-muted-foreground">
+                                    /month
+                                  </span>
+                                )}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {plan.includedSeats} seats included
-                              </p>
+                              {plan.monthlyPrice && (
+                                <p className="text-sm text-muted-foreground">
+                                  {plan.includedSeats} seats included
+                                </p>
+                              )}
                             </div>
                           </div>
 

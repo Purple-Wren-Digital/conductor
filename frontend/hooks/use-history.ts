@@ -39,7 +39,6 @@ export function useFetchUserHistory({
         const data = await response.json();
         return data;
       } catch (error) {
-        console.error("Error fetching user history:", error);
         throw error;
       }
     },
@@ -78,7 +77,6 @@ export function useFetchUserTicketHistory({
         const data = await response.json();
         return data;
       } catch (error) {
-        console.error("Error fetching user ticket history:", error);
         throw error;
       }
     },
@@ -117,7 +115,6 @@ export function useFetchTicketHistory({
         const data = await response.json();
         return data;
       } catch (error) {
-        console.error("Error fetching ticket history:", error);
         throw error;
       }
     },
@@ -157,7 +154,6 @@ export function useFetchMarketCenterHistory({
         const data = await response.json();
         return data;
       } catch (error) {
-        console.error("Error fetching market center history:", error);
         throw error;
       }
     },

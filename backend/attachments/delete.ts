@@ -72,7 +72,6 @@ export const deleteAttachment = api<
         success: true,
       };
     } catch (error) {
-      console.error("Failed to delete attachment:", error);
       if (error instanceof APIError) {
         throw error;
       }

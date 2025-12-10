@@ -34,7 +34,6 @@ export function useFetchAllTemplatesQuery({
         const data = await response.json();
         return data?.templates;
       } catch (error) {
-        console.error("Error fetching templates:", error);
         throw error;
       }
     },

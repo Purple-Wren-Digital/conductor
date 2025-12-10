@@ -52,8 +52,7 @@ export function useFetchAllUsers({
           })
         );
         return { users: usersWithStats as UserWithStats[], total: data?.total };
-      } catch (error) {
-        console.error("Failed to fetch all users", error);
+      } catch {
         return { users: [] as UserWithStats[] };
       }
     },
@@ -102,8 +101,7 @@ export function useFetchUsersWithinMarketCenter({
           })
         );
         return { users: usersWithStats as UserWithStats[], total: data?.total };
-      } catch (error) {
-        console.error("Failed to fetch all users", error);
+      } catch {
         return { users: [] as UserWithStats[] };
       }
     },
@@ -183,8 +181,7 @@ export function useFetchUserSettings({
         const data = await response.json();
 
         return data;
-      } catch (error) {
-        console.error("Failed to fetch user settings", error);
+      } catch {
         return {};
       }
     },

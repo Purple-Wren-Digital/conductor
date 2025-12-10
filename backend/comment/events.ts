@@ -44,15 +44,4 @@ class CommentEventBus {
 // Global comment event bus instance
 export const commentEventBus = new CommentEventBus();
 
-// Set up default event handlers
-commentEventBus.subscribe("comment.created", async (event) => {
-  console.log(`New comment created on ticket ${event.ticketId}: ${(event as CommentCreatedEvent).comment.id}`);
-});
-
-commentEventBus.subscribe("comment.updated", async (event) => {
-  console.log(`Comment updated on ticket ${event.ticketId}: ${(event as CommentUpdatedEvent).comment.id}`);
-});
-
-commentEventBus.subscribe("comment.deleted", async (event) => {
-  console.log(`Comment deleted from ticket ${event.ticketId}: ${(event as CommentDeletedEvent).commentId}`);
-});
+// Event handlers can be added by other modules as needed

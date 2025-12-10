@@ -127,7 +127,6 @@ export const webhookHandler = api.raw(
       const stripeSignature = req.headers["stripe-signature"] as string;
 
       if (!stripeSignature) {
-        console.error("❌ Webhook error: No stripe-signature header");
         res.writeHead(400);
         res.write(JSON.stringify({ error: "No stripe-signature header" }));
         res.end();
@@ -142,7 +141,6 @@ export const webhookHandler = api.raw(
           stripeWebhookSigningSecret()
         );
       } catch (err: any) {
-        console.error("❌ Webhook signature verification failed:", err.message);
         res.writeHead(400);
         res.write(JSON.stringify({ error: "Webhook signature verification failed" }));
         res.end();
@@ -150,7 +148,6 @@ export const webhookHandler = api.raw(
       }
 
       log.info("received stripe webhook", { event: event.type, id: event.id });
-      console.log(`✅ Processing webhook: ${event.type}`);
 
       switch (event.type) {
         // Handle subscription creation/update
@@ -158,21 +155,9 @@ export const webhookHandler = api.raw(
         case "customer.subscription.updated": {
           const subscription = event.data.object as Stripe.Subscription;
 
-          console.log("📊 Processing subscription event:", {
-            id: subscription.id,
-            customer: subscription.customer,
-            metadata: subscription.metadata,
-            status: subscription.status,
-          });
-
           // Extract market center ID from metadata
           const marketCenterId = subscription.metadata?.marketCenterId;
           if (!marketCenterId) {
-            console.error("❌ No marketCenterId in subscription metadata", {
-              subscriptionId: subscription.id,
-              metadata: subscription.metadata,
-              customer: subscription.customer,
-            });
             log.error("No marketCenterId in subscription metadata", {
               subscriptionId: subscription.id,
             });
@@ -245,12 +230,6 @@ export const webhookHandler = api.raw(
             });
           }
 
-          console.log("✅ Subscription saved successfully:", {
-            id: subscription.id,
-            marketCenterId,
-            status: mapStripeStatus(subscription.status),
-            planType,
-          });
           break;
         }
 
@@ -318,8 +297,6 @@ export const webhookHandler = api.raw(
       res.write(JSON.stringify({ received: true }));
       res.end();
     } catch (error: any) {
-      console.error("❌ Webhook processing error:", error.message || error);
-      console.error("Full error:", error);
       log.error("stripe webhook error", error);
       res.writeHead(400);
       res.write(JSON.stringify({ error: error.message || "Webhook processing failed" }));

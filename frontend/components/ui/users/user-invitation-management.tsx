@@ -133,8 +133,8 @@ export default function UserInvitationManagement() {
 
       setClerkUsers(data?.data ?? []);
       setTotalClerkUsers(data?.data?.length ?? 0);
-    } catch (error) {
-      console.error("Error fetching clerk users:", error);
+    } catch {
+      // Failed to fetch clerk users
     } finally {
       setLoadingUsers(false);
     }
@@ -164,8 +164,7 @@ export default function UserInvitationManagement() {
         );
       }
       return true;
-    } catch (error) {
-      console.error("Failed to update user metadata:", error);
+    } catch {
       return false;
     }
   };
@@ -214,8 +213,8 @@ export default function UserInvitationManagement() {
           throw new Error("Clerk failed to update");
         }
         toast.success(`Invitation sent!`);
-      } catch (error) {
-        console.error("Failed to invite user", error);
+      } catch {
+        toast.error("Failed to invite user");
       } finally {
         setIsSendingInvitation(false);
         await fetchClerkUsers();
@@ -243,14 +242,12 @@ export default function UserInvitationManagement() {
       const failed = results.filter((r) => r.status === "rejected");
 
       if (failed.length) {
-        console.error("Some users failed to update:", failed);
         toast.error(`Failed to update ${failed.length} user(s)`);
       } else {
         toast.success("All selected users marked as accepted");
       }
       setSelectedNewUsers([]);
-    } catch (error) {
-      console.error("Failed to mark user(s) as accepted in Clerk:", error);
+    } catch {
       toast.error("Failed to mark user(s) as accepted");
     } finally {
       await fetchClerkUsers();

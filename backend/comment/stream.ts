@@ -60,9 +60,6 @@ export const commentStream = api.streamOut<
       }
 
       userId = userContext.userId;
-      console.log(
-        `💬 Comment stream connected: User ${userId} for ticket ${ticketId}`
-      );
 
       // Initialize ticket stream map if it doesn't exist
       if (!activeStreams.has(ticketId)) {
@@ -81,14 +78,7 @@ export const commentStream = api.streamOut<
           if (entry && entry.active) {
             try {
               await entry.stream.send({ event });
-              console.log(
-                `✅ Comment event sent to user ${userId} for ticket ${ticketId}: ${event.type}`
-              );
-            } catch (error) {
-              console.warn(
-                `⚠️ Failed to send comment event to user ${userId}:`,
-                error
-              );
+            } catch {
               entry.active = false;
               ticketStreams.delete(userId!);
               if (ticketStreams.size === 0) {
@@ -109,7 +99,6 @@ export const commentStream = api.streamOut<
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
-      console.error("Comment stream error:", error);
       throw error;
     } finally {
       // Cleanup when stream ends
@@ -121,9 +110,6 @@ export const commentStream = api.streamOut<
             activeStreams.delete(ticketId);
           }
         }
-        console.log(
-          `❌ Comment stream disconnected: User ${userId} for ticket ${ticketId}`
-        );
       }
     }
   }
@@ -139,7 +125,6 @@ export async function broadcastCommentEvent(
   const ticketStreams = activeStreams.get(event.ticketId);
 
   if (!ticketStreams || ticketStreams.size === 0) {
-    console.log(`No active streams for ticket ${event.ticketId}`);
     return;
   }
 
@@ -149,14 +134,7 @@ export async function broadcastCommentEvent(
       if (entry.active) {
         try {
           await entry.stream.send({ event });
-          console.log(
-            `✅ Comment event broadcast to user ${userId}: ${event.type}`
-          );
-        } catch (error) {
-          console.warn(
-            `⚠️ Failed to broadcast comment event to user ${userId}:`,
-            error
-          );
+        } catch {
           entry.active = false;
           ticketStreams.delete(userId);
         }

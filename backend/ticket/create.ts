@@ -32,7 +32,6 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
     auth: true,
   },
   async (req) => {
-    console.log("********** Create ticket request received:", req);
     try {
       const userContext = await getUserContext();
 
@@ -147,8 +146,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         },
         usersToNotify: usersToNotify,
       } as CreateTicketResponse;
-    } catch (error) {
-      console.error("Failed to create ticket", error);
+    } catch {
       throw new Error("Failed to create ticket");
     }
   }

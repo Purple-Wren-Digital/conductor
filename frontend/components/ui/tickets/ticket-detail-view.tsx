@@ -147,8 +147,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
       setTicket(ticketData.ticket);
       setUsers(usersData?.users ?? []);
-    } catch (err) {
-      console.error("Error refreshing data:", err);
+    } catch {
       setTicket(null);
     } finally {
       setIsLoading(false);
@@ -260,11 +259,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
             : undefined,
         },
       });
-    } catch (error) {
-      console.error(
-        "TicketDetailView - Unable to generate Ticket notifications",
-        error
-      );
+    } catch {
+      // Notification failed silently
     }
   };
 
@@ -318,11 +314,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
               : undefined,
         },
       });
-    } catch (error) {
-      console.error(
-        "TicketDetailView - Unable to generate Survey notifications",
-        error
-      );
+    } catch {
+      // Notification failed silently
     }
   };
 
@@ -361,8 +354,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       );
 
       toast.success("Ticket closed successfully.");
-    } catch (error) {
-      console.error("Failed to close ticket:", error);
+    } catch {
       toast.error("Error: Failed to close ticket. Please try again.");
     } finally {
       await refreshAllData();
@@ -412,8 +404,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           })
         );
       }
-    } catch (error) {
-      console.error("Failed to update ticket:", error);
+    } catch {
       setTicket(prev);
     } finally {
       await refreshAllData();
@@ -477,8 +468,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           })
         );
       }
-    } catch (error) {
-      console.error("Failed to assign ticket", error);
+    } catch {
       toast.error("Error: Failed to update ticket");
       setTicket(prev);
     } finally {

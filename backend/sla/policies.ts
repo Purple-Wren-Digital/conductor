@@ -39,6 +39,7 @@ export const getPolicies = api<{}, GetPoliciesResponse>(
             id: p.id,
             urgency: p.urgency,
             responseTimeMinutes: p.responseTimeMinutes,
+            resolutionTimeMinutes: p.resolutionTimeMinutes,
             isActive: p.isActive,
             createdAt: p.createdAt.toISOString(),
             updatedAt: p.updatedAt.toISOString(),
@@ -74,6 +75,7 @@ export const updatePolicy = api<UpdateSlaPolicyRequest, UpdatePolicyResponse>(
 
     const policy = await slaRepository.updatePolicy(req.id, {
       responseTimeMinutes: req.responseTimeMinutes,
+      resolutionTimeMinutes: req.resolutionTimeMinutes,
       isActive: req.isActive,
     });
 
@@ -86,6 +88,7 @@ export const updatePolicy = api<UpdateSlaPolicyRequest, UpdatePolicyResponse>(
         id: policy.id,
         urgency: policy.urgency,
         responseTimeMinutes: policy.responseTimeMinutes,
+        resolutionTimeMinutes: policy.resolutionTimeMinutes,
         isActive: policy.isActive,
         createdAt: policy.createdAt.toISOString(),
         updatedAt: policy.updatedAt.toISOString(),

@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 
 const URL = process.env.CLERK_BACKEND_API_URL;
 const TOKEN = process.env.CLERK_SECRET_KEY;
+
+// Generate a cryptographically secure random password
+function generateSecurePassword(length: number = 24): string {
+  const charset =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  const randomBytes = crypto.randomBytes(length);
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset[randomBytes[i] % charset.length];
+  }
+  return password;
+}
 
 export async function POST(req: NextRequest) {
   const requestData = await req.json();
@@ -18,7 +31,7 @@ export async function POST(req: NextRequest) {
     email_address: requestData.email,
     first_name: requestData.firstName,
     last_name: requestData.lastName,
-    password: `${Math.floor(Math.random() * 999) + 100}-${requestData.firstName}${requestData.lastName}-${Math.floor(Math.random() * 999) + 100}`, // at least 8 characters // null,
+    password: generateSecurePassword(),
     public_metadata: {
       role: requestData?.role ?? "AGENT",
       marketCenterId: requestData?.marketCenterId ?? null,

@@ -40,7 +40,6 @@ export const deleteNotifications = api<
         SELECT COUNT(*)::int as count FROM deleted
       `;
       deletedCount = result?.count ?? 0;
-      console.log(`🧹 Deleted ${deletedCount} notifications, as requested`);
     } else {
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
@@ -56,10 +55,6 @@ export const deleteNotifications = api<
         SELECT COUNT(*)::int as count FROM deleted
       `;
       deletedCount = result?.count ?? 0;
-
-      console.log(
-        `🧹 Deleted ${deletedCount} read notifications older than 10 days for user`
-      );
     }
 
     return {

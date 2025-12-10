@@ -55,8 +55,7 @@ export function useFetchSlaComplianceReport({
         if (!res.ok) throw new Error("Failed to fetch SLA compliance report");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error("Failed to fetch SLA compliance report", error);
+      } catch {
         return reportDefaultValues;
       }
     },
@@ -106,11 +105,7 @@ export function useFetchSlaComplianceByUsersReport({
           );
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error(
-          "Failed to fetch SLA compliance By Ticket Assignees report",
-          error
-        );
+      } catch {
         return complianceByUsersDefaultValues;
       }
     },
@@ -158,8 +153,7 @@ export function useFetchTicketBacklogReport({
         if (!res.ok) throw new Error("Failed to fetch tickets backlog");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error("Failed to fetch tickets backlog report", error);
+      } catch {
         return backlogDefaultValues;
       }
     },
@@ -214,8 +208,7 @@ export function useFetchTicketsCreatedReport({
         if (!res.ok) throw new Error("Failed to fetch tickets");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error("Failed to fetch tickets created by month report", error);
+      } catch {
         return defaultCreatedTicketsByMonthValues;
       }
     },
@@ -268,11 +261,7 @@ export function useFetchTicketsResolvedReport({
         if (!res.ok) throw new Error("Failed to fetch tickets");
         const data = await res.json();
         return data;
-      } catch (error) {
-        console.error(
-          "Failed to fetch tickets resolved by month report",
-          error
-        );
+      } catch {
         return defaultResolvedTicketsByMonthValues;
       }
     },

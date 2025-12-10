@@ -137,8 +137,7 @@ export default function UserProfileLayout() {
       resetFormAndClose();
       toast.success(`${user?.name || "User"} was updated`);
     },
-    onError: (error) => {
-      console.error("Failed to update user", error);
+    onError: () => {
       toast.error("Failed to update user");
     },
   });

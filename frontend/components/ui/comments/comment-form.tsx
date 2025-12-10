@@ -77,8 +77,8 @@ export function CommentForm({ ticketId }: CommentFormProps) {
 
       const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
       return ticketData.ticket;
-    } catch (error) {
-      console.error("Failed to fetch ticket for new comment email");
+    } catch {
+      return undefined;
     }
   };
 

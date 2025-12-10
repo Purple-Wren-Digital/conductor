@@ -82,11 +82,8 @@ export default function TicketSurveyModal({
           },
         },
       });
-    } catch (error) {
-      console.error(
-        "TicketSurveyModal - Unable to generate notifications",
-        error
-      );
+    } catch {
+      // Notification failed silently
     }
   };
 
@@ -147,8 +144,7 @@ export default function TicketSurveyModal({
       toast.success(`Rating submitted successfully!`);
       setShowSurveyModal(false);
     },
-    onError: (error) => {
-      console.error("Error submitting survey:", error);
+    onError: () => {
       toast.error("Failed to submit survey");
     },
     onSettled: async () => {

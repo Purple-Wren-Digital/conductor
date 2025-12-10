@@ -45,7 +45,5 @@ export const getUserHistory = api<GetUserSettingsRequest>(
       FROM user_history
       WHERE id = ${req.id}
     `;
-
-    console.log("USER SETTINGS FOUND", settings);
   }
 );

@@ -75,8 +75,7 @@ export function AttachmentsList({
 
       const data = await response.json();
       setAttachments(data.attachments || []);
-    } catch (error) {
-      console.error("Error fetching attachments:", error);
+    } catch {
       toast.error("Failed to load attachments");
     } finally {
       setLoading(false);
@@ -114,8 +113,7 @@ export function AttachmentsList({
       document.body.removeChild(a);
 
       toast.success(`Downloading ${fileName}`);
-    } catch (error) {
-      console.error("Error downloading attachment:", error);
+    } catch {
       toast.error("Failed to download file");
     } finally {
       setDownloadingId(null);
@@ -148,8 +146,7 @@ export function AttachmentsList({
       if (onAttachmentDeleted) {
         onAttachmentDeleted(attachmentId);
       }
-    } catch (error) {
-      console.error("Error deleting attachment:", error);
+    } catch {
       toast.error("Failed to delete attachment");
     } finally {
       setDeletingId(null);

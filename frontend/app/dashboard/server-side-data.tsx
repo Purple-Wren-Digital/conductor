@@ -26,7 +26,6 @@ export async function ServerSideData() {
   }
 
   const apiClient = await getApiClient();
-  console.log({ apiClient });
   const data = await apiClient.admin.getDashboardData();
 
   return (

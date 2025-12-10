@@ -92,7 +92,6 @@ const EditUserProfile = ({
     try {
       const token = await getToken();
       if (!token) {
-        console.error("No authentication token available");
         return null;
       }
 
@@ -108,8 +107,7 @@ const EditUserProfile = ({
         }),
       });
       return response;
-    } catch (error) {
-      console.error("Prisma - Failed to update user", error);
+    } catch {
       return null;
     }
   };
@@ -177,8 +175,7 @@ const EditUserProfile = ({
       setCurrentUser(data);
       toast.success("Profile updated");
     },
-    onError: (error) => {
-      console.error("Failed to update user", error);
+    onError: () => {
       toast.error("Failed to update user");
     },
     onSettled: async () => {

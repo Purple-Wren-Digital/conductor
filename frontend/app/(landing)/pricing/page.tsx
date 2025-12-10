@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { plans } from "@/lib/plans";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
@@ -16,21 +17,51 @@ export default function PricingPage() {
       <div className="flex flex-col items-center py-12">
         <h1 className="text-4xl font-bold mb-4">Pricing</h1>
         <p className="font-bold text-muted-foreground">
-          Our pricing plans are designed to fit your needs.
+          Simple, transparent pricing for your market center.
         </p>
       </div>
 
       <div className="flex gap-4 justify-center items-stretch">
         {plans.map((plan) => (
-          <Card key={plan.name} className="relative group">
-            <Link href="/dashboard/subscription" className="absolute inset-0" />
+          <Card
+            key={plan.name}
+            className={`relative group ${
+              "popular" in plan && plan.popular
+                ? "border-primary border-2"
+                : ""
+            }`}
+          >
+            {"popular" in plan && plan.popular && (
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+                Limited Time
+              </Badge>
+            )}
+            <Link
+              href={
+                plan.monthlyPrice === null
+                  ? "mailto:tony@conductorticket.com?subject=Enterprise%20Inquiry"
+                  : "/dashboard/subscription"
+              }
+              className="absolute inset-0"
+            />
 
             <CardHeader className="min-w-60">
               <CardTitle>{plan.name}</CardTitle>
               <CardDescription>
-                <span className="text-4xl font-semibold">${plan.monthlyPrice}</span> /
-                month
+                {plan.monthlyPrice !== null ? (
+                  <>
+                    <span className="text-4xl font-semibold">
+                      ${plan.monthlyPrice}
+                    </span>{" "}
+                    / month
+                  </>
+                ) : (
+                  <span className="text-2xl font-semibold">Contact us</span>
+                )}
               </CardDescription>
+              <p className="text-sm text-muted-foreground mt-1">
+                {plan.description}
+              </p>
             </CardHeader>
 
             <CardContent className="grow">
@@ -38,7 +69,7 @@ export default function PricingPage() {
               <ul className="text-muted-foreground">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center">
-                    <Check className="size-4 mr-2" />
+                    <Check className="size-4 mr-2 text-green-600" />
                     {feature}
                   </li>
                 ))}
@@ -46,7 +77,15 @@ export default function PricingPage() {
             </CardContent>
 
             <CardFooter className="flex justify-center gap-2 group-hover:underline">
-              Get started <ArrowRight className="size-4" />
+              {plan.monthlyPrice !== null ? (
+                <>
+                  Get started <ArrowRight className="size-4" />
+                </>
+              ) : (
+                <>
+                  Contact sales <ArrowRight className="size-4" />
+                </>
+              )}
             </CardFooter>
           </Card>
         ))}

@@ -100,7 +100,6 @@ export async function canReassignTicket({
   userContext: UserContext;
   newAssigneeId?: string;
 }): Promise<boolean> {
-  console.log("canReassignTicket", { userContext, newAssigneeId });
   if (!newAssigneeId || !userContext?.role || userContext?.role === "AGENT") {
     return false;
   }

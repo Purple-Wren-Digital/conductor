@@ -101,9 +101,8 @@ export function TicketTodos({
       });
       const data = await response.json();
       setTodos(data?.todos ?? []);
-      // Process subtasks data as needed
-    } catch (error) {
-      console.error("Failed to fetch subtasks:", error);
+    } catch {
+      // Failed to fetch subtasks
     }
   }, [ticketId, getToken]);
 
@@ -159,9 +158,8 @@ export function TicketTodos({
       resetCreateSubtask();
       setTodos((prevTodos) => [...prevTodos, data.todo]);
       await fetchSubtasks();
-    } catch (error) {
+    } catch {
       toast.error("Error: Could not create subtask");
-      console.error("Error creating subtask:", error);
     } finally {
       setIsLoading(false);
     }
@@ -196,8 +194,8 @@ export function TicketTodos({
       }
 
       await fetchSubtasks();
-    } catch (error) {
-      console.error("Error updating subtask:", error);
+    } catch {
+      // Failed to update subtask
     } finally {
       setIsLoading(false);
     }
@@ -238,9 +236,8 @@ export function TicketTodos({
       toast.info("Subtask updated");
       closeEditSubtask();
       await fetchSubtasks();
-    } catch (error) {
+    } catch {
       toast.error("Error: Could not update subtask");
-      console.error("Error updating subtask:", error);
     } finally {
       setIsLoading(false);
     }
@@ -274,9 +271,8 @@ export function TicketTodos({
       toast.info("Subtask removed");
       closeEditSubtask();
       await fetchSubtasks();
-    } catch (error) {
+    } catch {
       toast.error("Error: Could not remove subtask");
-      console.error("Error removing subtask:", error);
     } finally {
       setIsLoading(false);
     }

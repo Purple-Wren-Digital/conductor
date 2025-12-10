@@ -50,8 +50,6 @@ export async function getUserContext(): Promise<UserContext> {
       role: "AGENT", // New users default to AGENT role
       name: name,
     });
-
-    console.log(`Created new user: ${name} (${email}) with role AGENT`);
   }
 
   return {

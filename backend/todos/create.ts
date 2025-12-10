@@ -22,7 +22,6 @@ export const create = api<CreateTodoRequest, CreateTodoResponse>(
     auth: true,
   },
   async (req) => {
-    console.log("Creating todo with request:", req);
     const userContext = await getUserContext();
 
     const hasAccess = await canAccessTicket(userContext, req.ticketId);

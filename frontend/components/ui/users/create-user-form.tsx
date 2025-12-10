@@ -111,8 +111,7 @@ export default function CreateUser({
       }
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error("Unable to create Clerk User", error);
+    } catch {
       return null;
     }
   };
@@ -145,8 +144,7 @@ export default function CreateUser({
       });
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error("Failed to create prisma user", error);
+    } catch {
       return null;
     }
   };
@@ -176,8 +174,7 @@ export default function CreateUser({
       setShowCreateUserForm(false);
       setFormErrors({});
     },
-    onError: (error) => {
-      console.error("Failed to create new user: ", error);
+    onError: () => {
       toast.error("Failed to create new user");
     },
     onSettled: async () => {

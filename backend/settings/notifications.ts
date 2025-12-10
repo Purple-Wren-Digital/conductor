@@ -13,7 +13,6 @@ export async function notifySettingsChange(
     });
 
     if (admins.length === 0) {
-      console.warn(`No admins found for market center ${marketCenterId}`);
       return;
     }
 
@@ -21,7 +20,6 @@ export async function notifySettingsChange(
     const marketCenter = await marketCenterRepository.findById(marketCenterId);
 
     if (!marketCenter) {
-      console.error(`Market center ${marketCenterId} not found`);
       return;
     }
 
@@ -42,7 +40,6 @@ export async function notifySettingsChange(
       .map(admin => admin.email);
 
     if (adminEmails.length === 0) {
-      console.log('No other admins to notify (only the user who made changes exists)');
       return;
     }
 
@@ -55,9 +52,7 @@ export async function notifySettingsChange(
       marketCenter.name
     );
 
-    console.log(`Settings change notification sent to ${adminEmails.length} admins`);
-  } catch (error) {
-    console.error('Failed to send settings change notification:', error);
+  } catch {
     // Don't throw the error to avoid breaking the settings update
   }
 }

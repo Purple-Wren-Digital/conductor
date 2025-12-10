@@ -32,7 +32,6 @@ export async function sendEmailNotification({
       formatEmailNotification(notification);
 
     if (!emailContent) {
-      console.error("Email Content is null");
       return;
     }
 
@@ -46,13 +45,11 @@ export async function sendEmailNotification({
     });
 
     if (response.error) {
-      console.error("Resend email error:", response.error);
       throw new Error(response.error.message);
     }
 
     return response;
   } catch (err) {
-    console.error("Failed to send email notification:", err);
     throw err;
   }
 }
