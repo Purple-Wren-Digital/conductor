@@ -168,7 +168,9 @@ export function useFetchTicketBacklogReport({
   });
 }
 
-// Created Tickets by Month
+export type Granularity = "daily" | "weekly" | "monthly";
+
+// Created Tickets by Period (auto-adjusts granularity based on date range)
 export function useFetchTicketsCreatedReport({
   ticketsReportQueryKey,
   queryParams,
@@ -184,10 +186,11 @@ export function useFetchTicketsCreatedReport({
     queryKey: ticketsReportQueryKey,
     queryFn: async (): Promise<{
       ticketsCreated: {
-        createdMonthYear: string;
+        period: string;
         createdCount: number;
       }[];
       total: number;
+      granularity: Granularity;
     }> => {
       if (!queryParams) {
         return defaultCreatedTicketsByMonthValues;
@@ -221,7 +224,7 @@ export function useFetchTicketsCreatedReport({
   });
 }
 
-// Resolved Tickets by Month
+// Resolved Tickets by Period (auto-adjusts granularity based on date range)
 export function useFetchTicketsResolvedReport({
   ticketsReportQueryKey,
   queryParams,
@@ -237,10 +240,11 @@ export function useFetchTicketsResolvedReport({
     queryKey: ticketsReportQueryKey,
     queryFn: async (): Promise<{
       ticketsResolved: {
-        resolvedMonthYear: string;
+        period: string;
         resolvedCount: number;
       }[];
       total: number;
+      granularity: Granularity;
     }> => {
       if (!queryParams) {
         return defaultResolvedTicketsByMonthValues;

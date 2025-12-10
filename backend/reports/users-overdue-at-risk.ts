@@ -9,6 +9,8 @@ export interface UsersSLARequest {
   assigneeIds?: Query<string[]>;
   status?: Query<TicketStatus[]>;
   categoryIds?: Query<string[]>;
+  dateFrom?: Query<string>;
+  dateTo?: Query<string>;
 }
 
 type UserSLAStats = {
@@ -50,6 +52,19 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
     const statusList = req.status && req.status.length > 0 ? req.status : null;
     const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
 
+    // Parse date filters
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+
+    if (req.dateFrom) {
+      const from = new Date(req.dateFrom);
+      if (!isNaN(from.getTime())) dateFrom = from;
+    }
+    if (req.dateTo) {
+      const to = new Date(req.dateTo);
+      if (!isNaN(to.getTime())) dateTo = to;
+    }
+
     let ticketsFound: TicketRow[] = [];
 
     switch (userContext.role) {
@@ -65,6 +80,8 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           ticketsFound = await db.queryAll<TicketRow>`
@@ -80,6 +97,8 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;
@@ -94,6 +113,8 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
           ticketsFound = await db.queryAll<TicketRow>`
@@ -104,6 +125,8 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             WHERE (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         }
         break;

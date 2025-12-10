@@ -2,6 +2,8 @@ import { api, APIError, Query } from "encore.dev/api";
 import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
+export type Granularity = "daily" | "weekly" | "monthly";
+
 export interface CreatedVolumeRequest {
   marketCenterIds?: Query<string[]>;
   creatorIds?: Query<string[]>;
@@ -9,14 +11,16 @@ export interface CreatedVolumeRequest {
   categoryIds?: Query<string[]>;
   dateFrom?: Query<string>;
   dateTo?: Query<string>;
+  granularity?: Query<Granularity>;
 }
 
 export interface CreatedVolumeResponse {
   ticketsCreated: {
-    createdMonthYear: string;
+    period: string;
     createdCount: number;
   }[];
   total: number;
+  granularity: Granularity;
 }
 
 interface TicketRow {
@@ -136,31 +140,97 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
         );
     }
 
+    // Determine granularity - auto-detect if not provided
+    let granularity: Granularity = req.granularity || "monthly";
+
+    if (!req.granularity && dateFrom && dateTo) {
+      const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysDiff <= 31) {
+        granularity = "daily";
+      } else if (daysDiff <= 90) {
+        granularity = "weekly";
+      } else {
+        granularity = "monthly";
+      }
+    } else if (!req.granularity && dateFrom && !dateTo) {
+      const daysDiff = Math.ceil((new Date().getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysDiff <= 31) {
+        granularity = "daily";
+      } else if (daysDiff <= 90) {
+        granularity = "weekly";
+      } else {
+        granularity = "monthly";
+      }
+    }
+
     const ticketsCreated: {
-      createdMonthYear: string;
+      period: string;
       createdCount: number;
     }[] = [];
 
-    // Sort the tickets into groups by MM/YYYY
+    // Helper to get the period key based on granularity
+    const getPeriodKey = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+
+      switch (granularity) {
+        case "daily":
+          return `${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}/${year}`;
+        case "weekly":
+          // Get the Monday of the week
+          const dayOfWeek = date.getDay();
+          const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+          const monday = new Date(date);
+          monday.setDate(diff);
+          const wMonth = monday.getMonth() + 1;
+          const wDay = monday.getDate();
+          const wYear = monday.getFullYear();
+          return `Week of ${wMonth.toString().padStart(2, "0")}/${wDay.toString().padStart(2, "0")}/${wYear}`;
+        case "monthly":
+        default:
+          return `${month.toString().padStart(2, "0")}/${year}`;
+      }
+    };
+
+    // Sort the tickets into groups based on granularity
     tickets.forEach((ticket) => {
       const createdDate = new Date(ticket.created_at);
-      const month = createdDate.getMonth() + 1; // Months are zero-based
-      const year = createdDate.getFullYear();
-      const monthYearKey = `${month.toString().padStart(2, "0")}/${year}`;
+      const periodKey = getPeriodKey(createdDate);
 
       const existingGroup = ticketsCreated.find(
-        (group) => group.createdMonthYear === monthYearKey
+        (group) => group.period === periodKey
       );
       if (existingGroup) {
         existingGroup.createdCount += 1;
       } else {
         ticketsCreated.push({
-          createdMonthYear: monthYearKey,
+          period: periodKey,
           createdCount: 1,
         });
       }
     });
 
-    return { ticketsCreated, total: tickets?.length || 0 };
+    // Sort by period (chronologically)
+    ticketsCreated.sort((a, b) => {
+      // Parse the periods for comparison
+      const parseDate = (period: string): Date => {
+        if (period.startsWith("Week of ")) {
+          const parts = period.replace("Week of ", "").split("/");
+          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        } else if (period.split("/").length === 3) {
+          // Daily: MM/DD/YYYY
+          const parts = period.split("/");
+          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        } else {
+          // Monthly: MM/YYYY
+          const parts = period.split("/");
+          return new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+        }
+      };
+      return parseDate(a.period).getTime() - parseDate(b.period).getTime();
+    });
+
+    return { ticketsCreated, total: tickets?.length || 0, granularity };
   }
 );

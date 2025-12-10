@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   ChartConfig,
@@ -11,7 +11,7 @@ import {
 import { ReportProps } from "@/components/reports/reports-dashboard";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useFetchTicketBacklogReport } from "@/hooks/use-reports";
-import type { TicketStatus } from "@/lib/types";
+import { startOfDay, endOfDay } from "date-fns";
 import {
   Bar,
   BarChart,
@@ -26,31 +26,22 @@ import { InfoIcon } from "lucide-react";
 
 export const backlogDefaultValues = { created: 0, unassigned: 0, total: 0 };
 
-export default function TicketBacklogReport({ isSelected }: ReportProps) {
-  // const [hydrated, setHydrated] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [showFilters, setShowFilters] = useState(true);
-  const [selectedMarketCenterIds, setSelectedMarketCenterIds] = useState<
-    string[]
-  >([]);
-
-  const clearFilters = useCallback(() => {
-    setSelectedMarketCenterIds([]);
-  }, []);
-  const hasActiveFilters = useMemo(() => {
-    return selectedMarketCenterIds.length > 0;
-  }, [selectedMarketCenterIds]);
-
+export default function TicketBacklogReport({ isSelected, filters }: ReportProps) {
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (selectedMarketCenterIds.length > 0) {
-      selectedMarketCenterIds.forEach((id) =>
+    if (filters.dateFrom) params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
+    if (filters.dateTo) params.append("dateTo", endOfDay(filters.dateTo).toISOString());
+    if (filters.marketCenterIds.length > 0) {
+      filters.marketCenterIds.forEach((id) =>
         params.append("marketCenterIds", id)
       );
     }
+    if (filters.categoryIds.length > 0) {
+      filters.categoryIds.forEach((id) => params.append("categoryIds", id));
+    }
 
     return params;
-  }, [selectedMarketCenterIds]);
+  }, [filters.dateFrom, filters.dateTo, filters.marketCenterIds, filters.categoryIds]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
