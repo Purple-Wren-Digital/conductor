@@ -324,17 +324,13 @@ export default function NotificationPreferences({
               account
             </p>
           </div>
-          {["inApp", "push", "email", "sms"].map((channel) => {
+          {["inApp", "email"].map((channel) => {
             const notificationPref = channel as keyof NotificationPreferences;
             let isChecked = false;
             if (notificationPref === "email")
               isChecked = notificationPermissions?.[0]?.email || false;
             if (notificationPref === "inApp")
               isChecked = notificationPermissions?.[0]?.inApp || false;
-            if (notificationPref === "push")
-              isChecked = notificationPermissions?.[0]?.push || false;
-            if (notificationPref === "sms")
-              isChecked = notificationPermissions?.[0]?.sms || false;
             return (
               <div
                 key={`permissions-${channel}-${notificationPermissions?.[0]?.id}`}
@@ -355,7 +351,6 @@ export default function NotificationPreferences({
                       checked
                     )
                   }
-                  disabled={notificationPref === "sms"}
                 />
               </div>
             );
@@ -384,7 +379,7 @@ export default function NotificationPreferences({
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {["inApp", "push", "email", "sms"].map((channel) => {
+                          {["inApp", "email"].map((channel) => {
                             const { isChecked, showOption } =
                               formatNotificationPermissionsChannels(
                                 channel,
@@ -445,7 +440,7 @@ export default function NotificationPreferences({
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {["inApp", "push", "email", "sms"].map((channel) => {
+                          {["inApp", "email"].map((channel) => {
                             const { isChecked, showOption } =
                               formatNotificationPermissionsChannels(
                                 channel,
@@ -505,7 +500,7 @@ export default function NotificationPreferences({
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {["inApp", "push", "email", "sms"].map((channel) => {
+                          {["inApp", "email"].map((channel) => {
                             const { isChecked, showOption } =
                               formatNotificationPermissionsChannels(
                                 channel,
@@ -565,7 +560,7 @@ export default function NotificationPreferences({
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {["inApp", "push", "email", "sms"].map((channel) => {
+                          {["inApp", "email"].map((channel) => {
                             const { isChecked, showOption } =
                               formatNotificationPermissionsChannels(
                                 channel,
@@ -625,7 +620,7 @@ export default function NotificationPreferences({
                           </Label>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {["inApp", "push", "email", "sms"].map((channel) => {
+                          {["inApp", "email"].map((channel) => {
                             const { isChecked, showOption } =
                               formatNotificationPermissionsChannels(
                                 channel,

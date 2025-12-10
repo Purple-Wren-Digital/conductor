@@ -3,13 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EditMarketCenter from "@/components/ui/marketCenters/market-center-edit-form";
 import {
   Tabs,
@@ -28,6 +22,7 @@ import type {
 } from "@/lib/types";
 import {
   ArrowLeft,
+  Bell,
   Edit2,
   Hash,
   History,
@@ -49,6 +44,7 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
+import MarketCenterNotificationPreferences from "@/components/ui/marketCenters/market-center-details/market-center-notification-preferences";
 
 interface MarketCenterDetailProps {
   marketCenterId: string;
@@ -254,7 +250,9 @@ export default function MarketCenterDetailView({
       </Card>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList
+          className={`grid w-full ${role === "ADMIN" ? "grid-cols-4" : "grid-cols-3"}`}
+        >
           <TabsTrigger value="team" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <p className="hidden sm:inline">Team</p>
@@ -267,6 +265,15 @@ export default function MarketCenterDetailView({
             <History className="h-4 w-4" />
             <p className="hidden sm:inline">Activity</p>
           </TabsTrigger>
+          {role === "ADMIN" && (
+            <TabsTrigger
+              value="notification-preferences"
+              className="flex items-center gap-2"
+            >
+              <Bell className="h-4 w-4" />
+              <p className="hidden sm:inline">Notifications</p>
+            </TabsTrigger>
+          )}
 
           {/* <TabsTrigger
             value="import-export"
@@ -307,6 +314,18 @@ export default function MarketCenterDetailView({
         <TabsContent value="activity">
           <MarketCenterHistory marketCenterId={marketCenterId} />
         </TabsContent>
+
+        <TabsContent value="activity">
+          <MarketCenterHistory marketCenterId={marketCenterId} />
+        </TabsContent>
+
+        {role === "ADMIN" && (
+          <TabsContent value="notification-preferences">
+            <MarketCenterNotificationPreferences
+              marketCenterId={marketCenterId}
+            />
+          </TabsContent>
+        )}
 
         {/* <TabsContent value="import-export">
           <ImportExport />

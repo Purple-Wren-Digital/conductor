@@ -3,14 +3,20 @@
  */
 
 import { db, fromTimestamp, toJson, fromJson } from "../../ticket/db";
-import type { MarketCenter, TicketCategory, TeamInvitation, InvitationStatus, MarketCenterHistory } from "../../marketCenters/types";
-import type { User, UserRole } from "../../user/types";
+import type {
+  MarketCenter,
+  TicketCategory,
+  TeamInvitation,
+  InvitationStatus,
+} from "../../marketCenters/types";
+import type { UserRole } from "../../user/types";
+import { MarketCenterSettings } from "../../settings/types";
 
 // Database row types
 interface MarketCenterRow {
   id: string;
   name: string;
-  settings: any;
+  settings?: MarketCenterSettings;
   created_at: Date;
   updated_at: Date;
 }
@@ -40,12 +46,50 @@ interface TeamInvitationRow {
 }
 
 function rowToMarketCenter(row: MarketCenterRow): MarketCenter {
+  let settings: any = row.settings;
+
+  // If settings is a JSON string (rare with jsonb), parse it
+  if (typeof settings === "string") {
+    try {
+      settings = JSON.parse(settings);
+    } catch {
+      settings = undefined;
+    }
+  }
+
+  // If settings is a character-indexed object (meaning PG string → spread bug)
+  // Example: { "0": "{", "1": "\"", ... }
+  if (settings && !Array.isArray(settings) && typeof settings === "object") {
+    const keys = Object.keys(settings);
+
+    const looksLikeCharacterMap =
+      keys.every((k) => /^\d+$/.test(k)) && typeof settings[0] === "string";
+
+    if (looksLikeCharacterMap) {
+      try {
+        settings = JSON.parse(Object.values(settings).join(""));
+      } catch {
+        settings = undefined;
+      }
+    }
+  }
+
+  // Now safe to use
   return {
     id: row.id,
     name: row.name,
-    settings: fromJson(row.settings),
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
+    settings: settings
+      ? {
+          ...settings,
+          notificationPreferences: Array.isArray(
+            settings.notificationPreferences
+          )
+            ? settings.notificationPreferences
+            : settings.notificationPreferences || undefined,
+        }
+      : undefined,
   };
 }
 
@@ -110,7 +154,7 @@ export const marketCenterRepository = {
       SELECT * FROM users WHERE market_center_id = ${id} AND is_active = true
     `;
 
-    marketCenter.users = userRows.map(u => ({
+    marketCenter.users = userRows.map((u) => ({
       id: u.id,
       email: u.email,
       name: u.name,
@@ -134,7 +178,10 @@ export const marketCenterRepository = {
   },
 
   // Create market center
-  async create(data: { name: string; settings?: any }): Promise<MarketCenter> {
+  async create(data: {
+    name: string;
+    settings?: MarketCenterSettings;
+  }): Promise<MarketCenter> {
     const row = await db.queryRow<MarketCenterRow>`
       INSERT INTO market_centers (name, settings, created_at, updated_at)
       VALUES (${data.name}, ${toJson(data.settings ?? {})}::jsonb, NOW(), NOW())
@@ -144,8 +191,11 @@ export const marketCenterRepository = {
   },
 
   // Update market center
-  async update(id: string, data: Partial<{ name: string; settings: any }>): Promise<MarketCenter | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async update(
+    id: string,
+    data: Partial<{ name: string; settings?: MarketCenterSettings }>
+  ): Promise<MarketCenter | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -155,14 +205,14 @@ export const marketCenterRepository = {
     }
     if (data.settings !== undefined) {
       updates.push(`settings = $${paramIndex++}::jsonb`);
-      values.push(toJson(data.settings));
+      values.push(data.settings);
     }
 
     values.push(id);
 
     const sql = `
       UPDATE market_centers
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -179,7 +229,9 @@ export const marketCenterRepository = {
     return row ? rowToCategory(row) : null;
   },
 
-  async findCategoriesByMarketCenterId(marketCenterId: string): Promise<TicketCategory[]> {
+  async findCategoriesByMarketCenterId(
+    marketCenterId: string
+  ): Promise<TicketCategory[]> {
     const rows = await db.queryAll<TicketCategoryRow>`
       SELECT * FROM ticket_categories
       WHERE market_center_id = ${marketCenterId}
@@ -209,12 +261,15 @@ export const marketCenterRepository = {
     return rowToCategory(row!);
   },
 
-  async updateCategory(id: string, data: Partial<{
-    name: string;
-    description: string | null;
-    defaultAssigneeId: string | null;
-  }>): Promise<TicketCategory | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async updateCategory(
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string | null;
+      defaultAssigneeId: string | null;
+    }>
+  ): Promise<TicketCategory | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -235,7 +290,7 @@ export const marketCenterRepository = {
 
     const sql = `
       UPDATE ticket_categories
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -257,7 +312,9 @@ export const marketCenterRepository = {
     return row ? rowToInvitation(row) : null;
   },
 
-  async findInvitationsByMarketCenterId(marketCenterId: string): Promise<TeamInvitation[]> {
+  async findInvitationsByMarketCenterId(
+    marketCenterId: string
+  ): Promise<TeamInvitation[]> {
     const rows = await db.queryAll<TeamInvitationRow>`
       SELECT * FROM team_invitations
       WHERE market_center_id = ${marketCenterId}
@@ -293,12 +350,15 @@ export const marketCenterRepository = {
     return rowToInvitation(row!);
   },
 
-  async updateInvitationStatus(id: string, status: InvitationStatus): Promise<TeamInvitation | null> {
-    const acceptedAt = status === 'ACCEPTED' ? 'NOW()' : 'null';
+  async updateInvitationStatus(
+    id: string,
+    status: InvitationStatus
+  ): Promise<TeamInvitation | null> {
+    const acceptedAt = status === "ACCEPTED" ? "NOW()" : "null";
 
     const row = await db.queryRow<TeamInvitationRow>`
       UPDATE team_invitations
-      SET status = ${status}, accepted_at = ${status === 'ACCEPTED' ? new Date() : null}, updated_at = NOW()
+      SET status = ${status}, accepted_at = ${status === "ACCEPTED" ? new Date() : null}, updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
     `;

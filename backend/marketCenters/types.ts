@@ -1,3 +1,4 @@
+import { MarketCenterSettings } from "../settings";
 import type { SurveyResults } from "../surveys/types";
 import type { User, UserRole } from "../user/types";
 
@@ -6,20 +7,21 @@ export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 export interface MarketCenter {
   id: string;
   name: string;
-  settings?: any; // JSON settings stored in database
   createdAt: Date;
   updatedAt: Date;
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: User[];
   marketCenterHistory?: MarketCenterHistory[];
-
   totalTickets?: number;
   totalUsers?: number;
+
+  settings?: MarketCenterSettings; // JSON settings stored in database
   // settingsAuditLogs?: SettingsAuditLog[];
 
   averages?: SurveyResults;
 }
+
 export interface MarketCenterHistory {
   id: string;
   marketCenterId: string;

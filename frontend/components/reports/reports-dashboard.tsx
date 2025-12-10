@@ -25,9 +25,7 @@ const reportType = [
 
 export default function ReportsDashboard() {
   const [hydrated, setHydrated] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<string | null>(
-    null
-  );
+  const [selectedReportType, setSelectedReportType] = useState<string>("none");
 
   // FILTERS STATE PERSISTENCE
   useEffect(() => {
@@ -66,10 +64,12 @@ export default function ReportsDashboard() {
               variant={"link"}
               size="sm"
               className="font-medium p-0 text-muted-foreground opacity-50 hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
-              onClick={() => setSelectedReportType(null)}
-              disabled={!selectedReportType}
+              onClick={() => setSelectedReportType("none")}
+              disabled={!selectedReportType || selectedReportType === "none"}
             >
-              {!selectedReportType ? "Select a report" : "Select none"}
+              {!selectedReportType || selectedReportType === "none"
+                ? "Select a report"
+                : "Select none"}
             </Button>
             {reportType.map((report) => (
               <Button
@@ -90,7 +90,7 @@ export default function ReportsDashboard() {
           </div>
         </section>
         <div className="md:col-span-9">
-          {selectedReportType ? (
+          {selectedReportType && selectedReportType !== "none" ? (
             <Card className="space-y-4">
               <SlaComplianceReport
                 isSelected={selectedReportType === "sla-compliance"}

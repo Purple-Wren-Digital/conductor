@@ -1,9 +1,17 @@
 import { api, APIError } from "encore.dev/api";
 import { canCreateMarketCenters } from "../auth/permissions";
 import { getUserContext } from "../auth/user-context";
-import { db, marketCenterRepository, withTransaction, fromTimestamp, toJson } from "../ticket/db";
+import {
+  db,
+  marketCenterRepository,
+  withTransaction,
+  fromTimestamp,
+  toJson,
+} from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
+import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
+import { notificationTemplatesDefault } from "../notifications/templates/utils";
 
 export interface CreateMarketCenterRequest {
   name: string;
@@ -103,7 +111,7 @@ export const create = api<
         settings: marketCenterRow.settings,
         createdAt: fromTimestamp(marketCenterRow.created_at)!,
         updatedAt: fromTimestamp(marketCenterRow.updated_at)!,
-        users: userRows.map(u => ({
+        users: userRows.map((u) => ({
           id: u.id,
           email: u.email,
           name: u.name ?? "",
@@ -115,6 +123,47 @@ export const create = api<
           updatedAt: fromTimestamp(u.updated_at)!,
         })),
       };
+      // Default Settings
+      const settings = await marketCenterRepository.update(marketCenterRow.id, {
+        ...marketCenterRow.settings,
+        notificationPreferences: defaultMarketCenterNotificationPreferences,
+      });
+
+      // Default InApp Notification Templates
+      for (const template of notificationTemplatesDefault) {
+        await db.exec`
+          INSERT INTO notification_templates (
+            id,
+            template_name,
+            template_description,
+            category,
+            channel,
+            type,
+            subject,
+            body,
+            is_default,
+            created_at,
+            variables,
+            is_active,
+            market_center_id
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            ${template.templateName},
+            ${template.templateDescription ?? ""},
+            ${template.category},
+            ${template.channel},
+            ${template.type},
+            ${template.subject ?? ""},
+            ${template.body},
+            ${template.isDefault ?? true},
+            NOW(),
+            ${template.variables ?? null}::jsonb,
+            ${template.isActive ?? true},
+            ${marketCenter.id}
+          )
+      `;
+      }
 
       return { marketCenter };
     });

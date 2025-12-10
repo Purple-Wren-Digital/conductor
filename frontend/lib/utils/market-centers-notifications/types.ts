@@ -1,5 +1,4 @@
-import type { MarketCenter } from "../marketCenters/types";
-import { NotificationCategory } from "../notifications/types";
+import type { MarketCenter, NotificationCategory } from "@/lib/types";
 
 export interface MarketCenterNotificationPreferences {
   category: NotificationCategory;
