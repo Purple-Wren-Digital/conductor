@@ -6,10 +6,14 @@ import { slaRepository } from "../shared/repositories";
 import type { Urgency, SlaPolicy } from "../ticket/types";
 
 export const slaService = {
+  // ==================
+  // Response SLA
+  // ==================
+
   /**
-   * Calculate the SLA due date for a ticket based on urgency
+   * Calculate the Response SLA due date for a ticket based on urgency
    */
-  async calculateSlaDueDate(
+  async calculateResponseSlaDueDate(
     urgency: Urgency,
     createdAt: Date = new Date()
   ): Promise<{ slaDueAt: Date; policyId: string } | null> {
@@ -28,23 +32,63 @@ export const slaService = {
   },
 
   /**
-   * Set SLA for a ticket
+   * Calculate the Resolution SLA due date for a ticket based on urgency
+   */
+  async calculateResolutionSlaDueDate(
+    urgency: Urgency,
+    createdAt: Date = new Date()
+  ): Promise<{ slaResolutionDueAt: Date } | null> {
+    const policy = await slaRepository.findPolicyByUrgency(urgency);
+    if (!policy) {
+      return null;
+    }
+
+    const slaResolutionDueAt = new Date(createdAt);
+    slaResolutionDueAt.setMinutes(slaResolutionDueAt.getMinutes() + policy.resolutionTimeMinutes);
+
+    return {
+      slaResolutionDueAt,
+    };
+  },
+
+  /**
+   * @deprecated Use calculateResponseSlaDueDate instead
+   */
+  async calculateSlaDueDate(
+    urgency: Urgency,
+    createdAt: Date = new Date()
+  ): Promise<{ slaDueAt: Date; policyId: string } | null> {
+    return this.calculateResponseSlaDueDate(urgency, createdAt);
+  },
+
+  /**
+   * Set both Response and Resolution SLA for a ticket
    */
   async setTicketSla(
     ticketId: string,
     urgency: Urgency,
     createdAt: Date = new Date()
   ): Promise<boolean> {
-    const slaData = await this.calculateSlaDueDate(urgency, createdAt);
-    if (!slaData) {
+    const responseSlaData = await this.calculateResponseSlaDueDate(urgency, createdAt);
+    const resolutionSlaData = await this.calculateResolutionSlaDueDate(urgency, createdAt);
+
+    if (!responseSlaData || !resolutionSlaData) {
       return false;
     }
 
+    // Set response SLA
     await slaRepository.setTicketSlaDueDate(
       ticketId,
-      slaData.slaDueAt,
-      slaData.policyId
+      responseSlaData.slaDueAt,
+      responseSlaData.policyId
     );
+
+    // Set resolution SLA
+    await slaRepository.setTicketResolutionSlaDueDate(
+      ticketId,
+      resolutionSlaData.slaResolutionDueAt
+    );
+
     return true;
   },
 
@@ -56,15 +100,50 @@ export const slaService = {
   },
 
   /**
-   * Check if SLA was met for a ticket
+   * Check if Response SLA was met for a ticket
+   */
+  async checkResponseSlaMet(
+    slaDueAt: Date,
+    firstResponseAt: Date
+  ): Promise<boolean> {
+    return firstResponseAt <= slaDueAt;
+  },
+
+  /**
+   * @deprecated Use checkResponseSlaMet instead
    */
   async checkSlaMet(
     ticketId: string,
     slaDueAt: Date,
     firstResponseAt: Date
   ): Promise<boolean> {
-    return firstResponseAt <= slaDueAt;
+    return this.checkResponseSlaMet(slaDueAt, firstResponseAt);
   },
+
+  // ==================
+  // Resolution SLA
+  // ==================
+
+  /**
+   * Record resolution time for a ticket
+   */
+  async recordResolution(ticketId: string): Promise<void> {
+    await slaRepository.recordResolution(ticketId, new Date());
+  },
+
+  /**
+   * Check if Resolution SLA was met for a ticket
+   */
+  async checkResolutionSlaMet(
+    slaResolutionDueAt: Date,
+    resolvedAt: Date
+  ): Promise<boolean> {
+    return resolvedAt <= slaResolutionDueAt;
+  },
+
+  // ==================
+  // Policy Management
+  // ==================
 
   /**
    * Get all SLA policies
@@ -78,10 +157,18 @@ export const slaService = {
    */
   async updatePolicy(
     id: string,
-    data: { responseTimeMinutes?: number; isActive?: boolean }
+    data: {
+      responseTimeMinutes?: number;
+      resolutionTimeMinutes?: number;
+      isActive?: boolean
+    }
   ): Promise<SlaPolicy | null> {
     return slaRepository.updatePolicy(id, data);
   },
+
+  // ==================
+  // Utilities
+  // ==================
 
   /**
    * Format minutes into human-readable duration

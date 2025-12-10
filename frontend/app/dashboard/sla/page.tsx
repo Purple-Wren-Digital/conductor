@@ -11,16 +11,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs/base-tabs";
-import { AlertCircle, Clock, CheckCircle2, Settings, BarChart3, Loader2 } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Settings, BarChart3, Loader2, Timer } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
+
+type EditType = "response" | "resolution";
 
 export default function SlaSettingsPage() {
   const { role, isLoading: roleLoading } = useUserRole();
   const { data: policiesData, isLoading: policiesLoading, error } = useSlaPolicies();
   const updatePolicy = useUpdateSlaPolicy();
 
-  const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<{ id: string; type: EditType } | null>(null);
   const [editValues, setEditValues] = useState<{ hours: number; minutes: number }>({
     hours: 0,
     minutes: 0,
@@ -67,10 +69,10 @@ export default function SlaSettingsPage() {
 
   const policies = policiesData?.policies || [];
 
-  const startEditing = (policyId: string, currentMinutes: number) => {
+  const startEditing = (policyId: string, type: EditType, currentMinutes: number) => {
     const hours = Math.floor(currentMinutes / 60);
     const minutes = currentMinutes % 60;
-    setEditingPolicy(policyId);
+    setEditingPolicy({ id: policyId, type });
     setEditValues({ hours, minutes });
   };
 
@@ -79,15 +81,19 @@ export default function SlaSettingsPage() {
     setEditValues({ hours: 0, minutes: 0 });
   };
 
-  const savePolicy = async (policyId: string) => {
+  const savePolicy = async (policyId: string, type: EditType) => {
     const totalMinutes = editValues.hours * 60 + editValues.minutes;
     if (totalMinutes <= 0) {
       return;
     }
 
+    const data = type === "response"
+      ? { responseTimeMinutes: totalMinutes }
+      : { resolutionTimeMinutes: totalMinutes };
+
     await updatePolicy.mutateAsync({
       policyId,
-      data: { responseTimeMinutes: totalMinutes },
+      data,
     });
     setEditingPolicy(null);
   };
@@ -112,13 +118,16 @@ export default function SlaSettingsPage() {
     }
   };
 
+  const isEditing = (policyId: string, type: EditType) =>
+    editingPolicy?.id === policyId && editingPolicy?.type === type;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">SLA Management</h1>
           <p className="text-muted-foreground">
-            Configure Service Level Agreement response time targets
+            Configure Service Level Agreement targets for response and resolution times
           </p>
         </div>
         {isAdmin && (
@@ -144,19 +153,22 @@ export default function SlaSettingsPage() {
         </TabsList>
 
         <TabsContent value="policies" className="space-y-4">
+          {/* Response SLA Policies */}
           <Card>
             <CardHeader>
-              <CardTitle>Response Time Policies</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Response Time Policies
+              </CardTitle>
               <CardDescription>
-                Define the maximum response time for tickets based on their urgency level.
-                Response time is measured from ticket creation until first staff response (assignment or comment).
+                Define the maximum time for initial staff response (assignment or first comment).
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {policies.map((policy) => (
                   <div
-                    key={policy.id}
+                    key={`response-${policy.id}`}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div className="flex items-center gap-4">
@@ -171,7 +183,7 @@ export default function SlaSettingsPage() {
                             {policy.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </div>
-                        {editingPolicy === policy.id ? (
+                        {isEditing(policy.id, "response") ? (
                           <div className="flex items-center gap-2 mt-2">
                             <div className="flex items-center gap-1">
                               <Input
@@ -217,11 +229,11 @@ export default function SlaSettingsPage() {
                     <div className="flex items-center gap-2">
                       {canEdit && (
                         <>
-                          {editingPolicy === policy.id ? (
+                          {isEditing(policy.id, "response") ? (
                             <>
                               <Button
                                 size="sm"
-                                onClick={() => savePolicy(policy.id)}
+                                onClick={() => savePolicy(policy.id, "response")}
                                 disabled={updatePolicy.isPending}
                               >
                                 {updatePolicy.isPending ? (
@@ -244,7 +256,7 @@ export default function SlaSettingsPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() =>
-                                  startEditing(policy.id, policy.responseTimeMinutes)
+                                  startEditing(policy.id, "response", policy.responseTimeMinutes)
                                 }
                               >
                                 Edit
@@ -269,22 +281,142 @@ export default function SlaSettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Resolution SLA Policies */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Timer className="h-5 w-5" />
+                Resolution Time Policies
+              </CardTitle>
+              <CardDescription>
+                Define the maximum time from ticket creation to resolution.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {policies.map((policy) => (
+                  <div
+                    key={`resolution-${policy.id}`}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      {getUrgencyIcon(policy.urgency)}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{policy.urgency} Urgency</span>
+                          <Badge
+                            variant={policy.isActive ? "default" : "secondary"}
+                            className={policy.isActive ? "bg-green-100 text-green-800" : ""}
+                          >
+                            {policy.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        {isEditing(policy.id, "resolution") ? (
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="999"
+                                value={editValues.hours}
+                                onChange={(e) =>
+                                  setEditValues((v) => ({
+                                    ...v,
+                                    hours: parseInt(e.target.value) || 0,
+                                  }))
+                                }
+                                className="w-20"
+                              />
+                              <Label className="text-sm text-muted-foreground">hours</Label>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="59"
+                                value={editValues.minutes}
+                                onChange={(e) =>
+                                  setEditValues((v) => ({
+                                    ...v,
+                                    minutes: parseInt(e.target.value) || 0,
+                                  }))
+                                }
+                                className="w-20"
+                              />
+                              <Label className="text-sm text-muted-foreground">minutes</Label>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Resolve within {formatSlaDuration(policy.resolutionTimeMinutes)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {canEdit && (
+                        <>
+                          {isEditing(policy.id, "resolution") ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => savePolicy(policy.id, "resolution")}
+                                disabled={updatePolicy.isPending}
+                              >
+                                {updatePolicy.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Save"
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEditing}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                startEditing(policy.id, "resolution", policy.resolutionTimeMinutes)
+                              }
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>How SLA Tracking Works</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
-                <strong>Response Time:</strong> The clock starts when a ticket is created and stops when a staff member first responds (either by being assigned or leaving a comment).
+                <strong>Response SLA:</strong> The clock starts when a ticket is created and stops when a staff member first responds (either by being assigned or leaving a comment).
               </p>
               <p>
-                <strong>Warnings:</strong> Notifications are sent at 50% and 75% of the SLA time to remind assignees about approaching deadlines.
+                <strong>Resolution SLA:</strong> The clock starts when a ticket is created and stops when the ticket status is changed to Resolved.
               </p>
               <p>
-                <strong>Breaches:</strong> If no response is recorded before the SLA deadline, the ticket is marked as breached and admins are notified.
+                <strong>Warnings:</strong> Notifications are sent at 50% and 75% of each SLA time to remind assignees about approaching deadlines.
               </p>
               <p>
-                <strong>Compliance:</strong> SLA compliance is calculated as the percentage of tickets that received a response within the target time.
+                <strong>Breaches:</strong> If the SLA deadline passes without the required action, the ticket is marked as breached and admins are notified.
+              </p>
+              <p>
+                <strong>Compliance:</strong> SLA compliance is calculated separately for response and resolution as the percentage of tickets that met their respective targets.
               </p>
             </CardContent>
           </Card>
@@ -303,35 +435,82 @@ function SlaOverview() {
   const policies = policiesData?.policies || [];
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {policies.map((policy) => (
-        <Card key={policy.id}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Badge className={getUrgencyColor(policy.urgency)}>
-                {policy.urgency}
-              </Badge>
-              Urgency
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {formatSlaDuration(policy.responseTimeMinutes)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Target response time
-            </p>
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant={policy.isActive ? "default" : "secondary"}>
-                  {policy.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      {/* Response SLA Overview */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          Response SLA Targets
+        </h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          {policies.map((policy) => (
+            <Card key={`overview-response-${policy.id}`}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Badge className={getUrgencyColor(policy.urgency)}>
+                    {policy.urgency}
+                  </Badge>
+                  Urgency
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {formatSlaDuration(policy.responseTimeMinutes)}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Target response time
+                </p>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant={policy.isActive ? "default" : "secondary"}>
+                      {policy.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Resolution SLA Overview */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Timer className="h-5 w-5" />
+          Resolution SLA Targets
+        </h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          {policies.map((policy) => (
+            <Card key={`overview-resolution-${policy.id}`}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Badge className={getUrgencyColor(policy.urgency)}>
+                    {policy.urgency}
+                  </Badge>
+                  Urgency
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {formatSlaDuration(policy.resolutionTimeMinutes)}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Target resolution time
+                </p>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant={policy.isActive ? "default" : "secondary"}>
+                      {policy.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

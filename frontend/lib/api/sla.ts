@@ -8,6 +8,7 @@ export interface SlaPolicy {
   id: string;
   urgency: Urgency;
   responseTimeMinutes: number;
+  resolutionTimeMinutes: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -19,6 +20,7 @@ export interface SlaPoliciesResponse {
 
 export interface UpdateSlaPolicyRequest {
   responseTimeMinutes?: number;
+  resolutionTimeMinutes?: number;
   isActive?: boolean;
 }
 
@@ -29,6 +31,15 @@ export interface SlaMetrics {
   ticketsBreached: number;
   complianceRate: number;
   avgResponseTimeMinutes: number | null;
+}
+
+export interface ResolutionSlaMetrics {
+  totalTickets: number;
+  ticketsWithSla: number;
+  ticketsMet: number;
+  ticketsBreached: number;
+  complianceRate: number;
+  avgResolutionTimeMinutes: number | null;
 }
 
 export interface SlaMetricsByUrgency {
@@ -58,10 +69,15 @@ export interface SlaTrend {
 }
 
 export interface SlaReportResponse {
+  // Response SLA
   metrics: SlaMetrics;
   byUrgency: SlaMetricsByUrgency[];
   byAssignee: SlaMetricsByAssignee[];
   trends: SlaTrend[];
+  // Resolution SLA
+  resolutionMetrics: ResolutionSlaMetrics;
+  resolutionByUrgency: SlaMetricsByUrgency[];
+  resolutionTrends: SlaTrend[];
 }
 
 export interface SlaReportFilters {

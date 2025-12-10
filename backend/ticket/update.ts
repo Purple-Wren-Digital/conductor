@@ -198,6 +198,8 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       });
       if (req.status === "RESOLVED") {
         updateData.resolvedAt = new Date();
+        // Record resolution for SLA tracking
+        await slaService.recordResolution(req.ticketId);
         const marketCenterId =
           oldTicket.assignee?.marketCenterId ||
           oldTicket.category?.marketCenterId ||

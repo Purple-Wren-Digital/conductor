@@ -81,7 +81,16 @@ export const getReport = api<GetReportRequest, SlaReportResponse>(
     const dateTo = req.dateTo ? new Date(req.dateTo) : new Date();
     const groupBy = req.groupBy || "day";
 
-    const [metrics, byUrgency, byAssignee, trends] = await Promise.all([
+    const [
+      metrics,
+      byUrgency,
+      byAssignee,
+      trends,
+      resolutionMetrics,
+      resolutionByUrgency,
+      resolutionTrends,
+    ] = await Promise.all([
+      // Response SLA
       slaRepository.getSlaMetrics({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByUrgency({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByAssignee({ dateFrom, dateTo }),
@@ -90,13 +99,26 @@ export const getReport = api<GetReportRequest, SlaReportResponse>(
         dateTo,
         groupBy: groupBy as "day" | "week" | "month",
       }),
+      // Resolution SLA
+      slaRepository.getResolutionSlaMetrics({ dateFrom, dateTo }),
+      slaRepository.getResolutionSlaMetricsByUrgency({ dateFrom, dateTo }),
+      slaRepository.getResolutionSlaTrends({
+        dateFrom,
+        dateTo,
+        groupBy: groupBy as "day" | "week" | "month",
+      }),
     ]);
 
     return {
+      // Response SLA
       metrics,
       byUrgency,
       byAssignee,
       trends,
+      // Resolution SLA
+      resolutionMetrics,
+      resolutionByUrgency,
+      resolutionTrends,
     };
   }
 );
@@ -136,17 +158,19 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const dateTo = req.dateTo ? new Date(req.dateTo) : new Date();
 
-    const [metrics, byUrgency, byAssignee] = await Promise.all([
+    const [metrics, byUrgency, byAssignee, resolutionMetrics, resolutionByUrgency] = await Promise.all([
       slaRepository.getSlaMetrics({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByUrgency({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByAssignee({ dateFrom, dateTo }),
+      slaRepository.getResolutionSlaMetrics({ dateFrom, dateTo }),
+      slaRepository.getResolutionSlaMetricsByUrgency({ dateFrom, dateTo }),
     ]);
 
     // Build CSV content
     const lines: string[] = [];
 
-    // Summary section
-    lines.push("SLA Report Summary");
+    // Response SLA Summary section
+    lines.push("RESPONSE SLA Report Summary");
     lines.push(
       `Date Range,${dateFrom.toISOString().split("T")[0]},${dateTo.toISOString().split("T")[0]}`
     );
@@ -162,8 +186,8 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
     );
     lines.push("");
 
-    // By Urgency section
-    lines.push("By Urgency");
+    // Response SLA By Urgency section
+    lines.push("Response SLA By Urgency");
     lines.push("Urgency,Total,Met,Breached,Compliance Rate");
     for (const u of byUrgency) {
       lines.push(
@@ -172,14 +196,38 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
     }
     lines.push("");
 
-    // By Assignee section
-    lines.push("By Assignee");
+    // Response SLA By Assignee section
+    lines.push("Response SLA By Assignee");
     lines.push(
       "Assignee,Total,Met,Breached,Compliance Rate,Avg Response (min)"
     );
     for (const a of byAssignee) {
       lines.push(
         `${a.assigneeName || "Unassigned"},${a.totalTickets},${a.ticketsMet},${a.ticketsBreached},${a.complianceRate}%,${a.avgResponseTimeMinutes ?? "N/A"}`
+      );
+    }
+    lines.push("");
+
+    // Resolution SLA Summary section
+    lines.push("RESOLUTION SLA Report Summary");
+    lines.push("");
+    lines.push("Metric,Value");
+    lines.push(`Total Tickets,${resolutionMetrics.totalTickets}`);
+    lines.push(`Tickets with SLA,${resolutionMetrics.ticketsWithSla}`);
+    lines.push(`SLA Met,${resolutionMetrics.ticketsMet}`);
+    lines.push(`SLA Breached,${resolutionMetrics.ticketsBreached}`);
+    lines.push(`Compliance Rate,${resolutionMetrics.complianceRate}%`);
+    lines.push(
+      `Avg Resolution Time (min),${resolutionMetrics.avgResolutionTimeMinutes ?? "N/A"}`
+    );
+    lines.push("");
+
+    // Resolution SLA By Urgency section
+    lines.push("Resolution SLA By Urgency");
+    lines.push("Urgency,Total,Met,Breached,Compliance Rate");
+    for (const u of resolutionByUrgency) {
+      lines.push(
+        `${u.urgency},${u.totalTickets},${u.ticketsMet},${u.ticketsBreached},${u.complianceRate}%`
       );
     }
 

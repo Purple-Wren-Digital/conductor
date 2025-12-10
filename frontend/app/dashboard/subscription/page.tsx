@@ -47,7 +47,9 @@ function SubscriptionPageContent() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null
   );
-  const [selectedPlan, setSelectedPlan] = useState<string>(plans[0].stripePriceId);
+  const [selectedPlan, setSelectedPlan] = useState<string>(
+    plans[0].stripePriceId
+  );
   const [additionalSeats, setAdditionalSeats] = useState(0);
   const [organizationName, setOrganizationName] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -157,7 +159,7 @@ function SubscriptionPageContent() {
 
   const calculateTotalPrice = () => {
     const plan = plans.find((p) => p.stripePriceId === selectedPlan);
-    if (!plan) return 0;
+    if (!plan || plan.monthlyPrice === null) return 0;
     return plan.monthlyPrice + additionalSeats * plan.additionalSeatPrice;
   };
 
@@ -348,14 +350,20 @@ function SubscriptionPageContent() {
                             </div>
                             <div className="text-right">
                               <p className="text-2xl font-bold">
-                                ${plan.monthlyPrice}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                  /month
-                                </span>
+                                {plan.monthlyPrice
+                                  ? `$${plan.monthlyPrice}`
+                                  : "Request a quote"}
+                                {plan.monthlyPrice && (
+                                  <span className="text-sm font-normal text-muted-foreground">
+                                    /month
+                                  </span>
+                                )}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {plan.includedSeats} seats included
-                              </p>
+                              {plan.monthlyPrice && (
+                                <p className="text-sm text-muted-foreground">
+                                  {plan.includedSeats} seats included
+                                </p>
+                              )}
                             </div>
                           </div>
 
