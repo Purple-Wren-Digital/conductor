@@ -155,3 +155,38 @@ export async function checkFeatureAccess(
   const features = subscription.features as any;
   return features[feature] === true || features[feature] === -1; // -1 means unlimited
 }
+
+/**
+ * Check if user can create additional market centers
+ * Only Enterprise plan can have multiple market centers
+ */
+export async function checkCanCreateMarketCenter(marketCenterId: string | null): Promise<void> {
+  // If user has no market center yet, they can create their first one
+  if (!marketCenterId) {
+    return;
+  }
+
+  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
+
+  // If no subscription exists, they can't create additional market centers
+  if (!subscription) {
+    throw APIError.failedPrecondition(
+      "No active subscription found. Please subscribe to continue."
+    );
+  }
+
+  // Check if subscription is active
+  if (subscription.status !== SubscriptionStatus.ACTIVE &&
+      subscription.status !== SubscriptionStatus.TRIALING) {
+    throw APIError.failedPrecondition(
+      `Subscription is ${subscription.status}. Please update your billing to continue.`
+    );
+  }
+
+  // Only Enterprise plan can create multiple market centers
+  if (subscription.planType !== "ENTERPRISE") {
+    throw APIError.failedPrecondition(
+      "Multiple market centers require an Enterprise subscription. Please upgrade to create additional market centers."
+    );
+  }
+}
