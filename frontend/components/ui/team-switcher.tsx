@@ -16,10 +16,7 @@ import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 interface TeamSwitcherProps {
   selectedMarketCenterId: string;
   setSelectedMarketCenterId: React.Dispatch<React.SetStateAction<string>>;
-  handleMarketCenterSelected?: (marketCenter?: {
-    name: string;
-    id: string;
-  }) => void;
+  handleMarketCenterSelected?: (marketCenter?: MarketCenter) => void;
   setMarketCenters?: React.Dispatch<
     React.SetStateAction<{ name: string; id: string }[]>
   >;
