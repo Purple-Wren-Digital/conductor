@@ -155,16 +155,23 @@ export function AttachmentsList({
   };
 
   const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith("image/")) {
+    if (
+      mimeType &&
+      (mimeType.startsWith("image/") ||
+        mimeType.includes("png") ||
+        mimeType.includes("jpeg") ||
+        mimeType.includes("jpg"))
+    ) {
       return <ImageIcon className="h-4 w-4" />;
     }
-    if (mimeType.includes("pdf")) {
+    if (mimeType && mimeType.includes("pdf")) {
       return <FileText className="h-4 w-4" />;
     }
     if (
-      mimeType.includes("word") ||
-      mimeType.includes("document") ||
-      mimeType.includes("text")
+      mimeType &&
+      (mimeType.includes("word") ||
+        mimeType.includes("document") ||
+        mimeType.includes("text"))
     ) {
       return <FileText className="h-4 w-4" />;
     }
@@ -208,58 +215,60 @@ export function AttachmentsList({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {attachments.map((attachment) => (
-            <div
-              key={attachment.id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center space-x-3 flex-1 min-w-0">
-                {getFileIcon(attachment.mimeType)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {attachment.fileName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(attachment.fileSize)} • Uploaded by{" "}
-                    {attachment.uploaderName} •{" "}
-                    {format(new Date(attachment.createdAt), "MMM d, yyyy")}
-                  </p>
+          {attachments.map((attachment) => {
+            return (
+              <div
+                key={attachment.id}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  {getFileIcon(attachment?.mimeType ?? attachment?.fileName)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {attachment.fileName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(attachment.fileSize)} • Uploaded by{" "}
+                      {attachment.uploaderName} •{" "}
+                      {format(new Date(attachment.createdAt), "MMM d, yyyy")}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    handleDownload(attachment.id, attachment.fileName)
-                  }
-                  disabled={downloadingId === attachment.id}
-                >
-                  {downloadingId === attachment.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                </Button>
-
-                {canDelete && (
+                <div className="flex items-center space-x-2">
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setDeleteConfirmId(attachment.id)}
-                    disabled={deletingId === attachment.id}
+                    onClick={() =>
+                      handleDownload(attachment.id, attachment.fileName)
+                    }
+                    disabled={downloadingId === attachment.id}
                   >
-                    {deletingId === attachment.id ? (
+                    {downloadingId === attachment.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Download className="h-4 w-4" />
                     )}
                   </Button>
-                )}
+
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteConfirmId(attachment.id)}
+                      disabled={deletingId === attachment.id}
+                    >
+                      {deletingId === attachment.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 

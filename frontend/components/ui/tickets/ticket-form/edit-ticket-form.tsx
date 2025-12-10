@@ -222,11 +222,29 @@ export function EditTicketForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (ticket?.status === "RESOLVED") {
-      toast.info("Resolved tickets cannot be edited");
+      setErrors((prev) => ({
+        ...prev,
+        general: "Resolved tickets cannot be edited",
+      }));
+      toast.error("Resolved tickets cannot be edited");
       return;
     }
+    if (role === "STAFF" && ticket?.assigneeId !== currentUser?.id) {
+      setErrors((prev) => ({
+        ...prev,
+        general: "You do not have permission to edit this ticket",
+      }));
+      toast.error("You do not have permission to edit this ticket");
+      return;
+    }
+
     if (!validate() || !ticket?.id) {
+      setErrors((prev) => ({
+        ...prev,
+        general: "Please fix the errors above",
+      }));
       toast.error("Invalid input(s)");
       return;
     }
