@@ -87,15 +87,16 @@ function SubscriptionPageContent() {
     setCheckoutLoading(true);
     try {
       const plan = plans.find((p) => p.stripePriceId === selectedPlan);
-      const planName = plan?.name.toUpperCase() as
-        | "STARTER"
-        | "TEAM"
-        | "BUSINESS";
+      if (!plan) {
+        alert("Please select a plan");
+        setCheckoutLoading(false);
+        return;
+      }
 
       const response = await fetchWithAuth("/subscription/checkout", {
         method: "POST",
         body: JSON.stringify({
-          planType: planName,
+          planType: plan.planType,
           additionalSeats: additionalSeats,
           organizationName: organizationName || undefined,
         }),

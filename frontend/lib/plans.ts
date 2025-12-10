@@ -1,6 +1,7 @@
 export const plans = [
   {
     name: "Early Bird",
+    planType: "BUSINESS" as const,
     description: "Limited time pricing for early adopters",
     monthlyPrice: 399,
     includedSeats: 50,
@@ -27,6 +28,7 @@ export const plans = [
   },
   {
     name: "Standard",
+    planType: "BUSINESS" as const,
     description: "Full-featured plan for your market center",
     monthlyPrice: 499,
     includedSeats: 50,
@@ -52,6 +54,7 @@ export const plans = [
   },
   {
     name: "Enterprise",
+    planType: "ENTERPRISE" as const,
     description: "For organizations with multiple market centers",
     monthlyPrice: null, // Contact for pricing
     includedSeats: null, // Unlimited
