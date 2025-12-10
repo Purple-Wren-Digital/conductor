@@ -37,7 +37,23 @@ export default clerkMiddleware(async (auth, request) => {
         });
 
         if (response.status === 404) {
-          // No subscription found - redirect to subscription page
+          // No subscription found - but check if user is part of a market center
+          // (invited users don't need their own subscription)
+          const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            headers: {
+              'Authorization': `Bearer ${await authObject.getToken()}`,
+            },
+          });
+
+          if (userResponse.ok) {
+            const user = await userResponse.json();
+            // If user has a market center, they were invited - allow access
+            if (user.marketCenterId) {
+              return NextResponse.next();
+            }
+          }
+
+          // No market center - redirect to subscription page
           return NextResponse.redirect(new URL('/dashboard/subscription', request.url));
         }
 

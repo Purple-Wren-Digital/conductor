@@ -312,6 +312,30 @@ export const marketCenterRepository = {
     return row ? rowToInvitation(row) : null;
   },
 
+  async findInvitationByEmail(
+    marketCenterId: string,
+    email: string
+  ): Promise<TeamInvitation | null> {
+    const row = await db.queryRow<TeamInvitationRow>`
+      SELECT * FROM team_invitations
+      WHERE market_center_id = ${marketCenterId} AND email = ${email}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    return row ? rowToInvitation(row) : null;
+  },
+
+  async findPendingInvitationsByMarketCenterId(
+    marketCenterId: string
+  ): Promise<TeamInvitation[]> {
+    const rows = await db.queryAll<TeamInvitationRow>`
+      SELECT * FROM team_invitations
+      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING'
+      ORDER BY created_at DESC
+    `;
+    return rows.map(rowToInvitation);
+  },
+
   async findInvitationsByMarketCenterId(
     marketCenterId: string
   ): Promise<TeamInvitation[]> {

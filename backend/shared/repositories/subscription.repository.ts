@@ -96,10 +96,12 @@ export const subscriptionRepository = {
     return row ? rowToSubscription(row) : null;
   },
 
-  // Find subscription with market center user count
+  // Find subscription with market center user count (includes pending invitations)
   async findByMarketCenterIdWithUserCount(marketCenterId: string): Promise<{
     subscription: Subscription;
     activeUserCount: number;
+    pendingInvitationCount: number;
+    totalUsedSeats: number;
   } | null> {
     const subscription = await this.findByMarketCenterId(marketCenterId);
     if (!subscription) return null;
@@ -109,9 +111,19 @@ export const subscriptionRepository = {
       WHERE market_center_id = ${marketCenterId} AND is_active = true
     `;
 
+    const invitationCount = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count FROM team_invitations
+      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING'
+    `;
+
+    const activeUsers = userCount?.count ?? 0;
+    const pendingInvitations = invitationCount?.count ?? 0;
+
     return {
       subscription,
-      activeUserCount: userCount?.count ?? 0,
+      activeUserCount: activeUsers,
+      pendingInvitationCount: pendingInvitations,
+      totalUsedSeats: activeUsers + pendingInvitations,
     };
   },
 
