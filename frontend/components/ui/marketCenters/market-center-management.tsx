@@ -40,6 +40,7 @@ import type {
   UsersResponse,
 } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import {
   ArrowDown,
   ArrowDownUp,
@@ -79,6 +80,7 @@ export default function MarketCenterManagement() {
   const { user: clerkUser } = useUser();
 
   const { role } = useUserRole();
+  const { isEnterprise } = useIsEnterprise();
 
   // FORM ACTIONS
   const [showCreateMCForm, setShowCreateMCForm] = useState(false);
@@ -401,13 +403,15 @@ export default function MarketCenterManagement() {
               Create and manage all market centers
             </p>
           </div>
-          <Button
-            onClick={() => openCreateModal()}
-            className="gap-2 w-full sm:w-fit"
-          >
-            <Plus className="h-4 w-4" />
-            Add Market Center
-          </Button>
+          {isEnterprise && (
+            <Button
+              onClick={() => openCreateModal()}
+              className="gap-2 w-full sm:w-fit"
+            >
+              <Plus className="h-4 w-4" />
+              Add Market Center
+            </Button>
+          )}
         </div>
         <div className="space-y-4 my-4">
           {/* SEARCH USERS + FILTER BUTTON */}

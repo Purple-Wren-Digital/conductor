@@ -1,5 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { canCreateMarketCenters } from "../auth/permissions";
+import { checkCanCreateMarketCenter } from "../auth/subscription-check";
 import { getUserContext } from "../auth/user-context";
 import {
   db,
@@ -42,8 +43,11 @@ export const create = api<
 
     const canCreate = await canCreateMarketCenters(userContext);
     if (!canCreate) {
-      throw APIError.permissionDenied("Only Amin can create market centers");
+      throw APIError.permissionDenied("Only Admin can create market centers");
     }
+
+    // Check if user can create additional market centers (Enterprise only)
+    await checkCanCreateMarketCenter(userContext.marketCenterId);
 
     const result = await withTransaction(async (tx) => {
       // Create market center
