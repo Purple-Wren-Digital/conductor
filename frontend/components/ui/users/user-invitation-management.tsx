@@ -123,11 +123,13 @@ export default function UserInvitationManagement() {
     } finally {
       setLoadingInvitations(false);
     }
-  }, [permissions?.canManageAllUsers, fetchWithAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions?.canManageAllUsers]);
 
   useEffect(() => {
     fetchInvitations();
-  }, [fetchInvitations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions?.canManageAllUsers]);
 
   const handleResendInvitation = async (token: string) => {
     setActionLoading(token);
