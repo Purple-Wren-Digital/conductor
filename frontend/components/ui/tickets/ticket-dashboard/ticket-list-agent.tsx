@@ -469,15 +469,6 @@ export default function AgentTicketList() {
     };
   }, [tickets]);
 
-  const getRoleIcon = (userRole: UserRole | null) => {
-    const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
-    return Icon ? (
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    ) : (
-      <User className="h-4 w-4 text-muted-foreground" />
-    );
-  };
-
   return (
     <>
       <section className="space-y-4">
@@ -571,17 +562,12 @@ export default function AgentTicketList() {
                           teamMembersAssignedToTickets.length > 0 &&
                           teamMembersAssignedToTickets.map((user) => (
                             <SelectItem key={user.id} value={user.id}>
-                              <div className="flex flex-col gap-0.5">
-                                {user.name}
-                                <span className="text-xs text-muted-foreground capitalize">
-                                  {user?.role
-                                    ? user.role
-                                        .split("_")
-                                        .join(" ")
-                                        .toLowerCase()
-                                    : "No role"}
-                                </span>
-                              </div>
+                              <span className="font-medium">{user.name}:</span>
+                              <span className="hidden md:block text-muted-foreground capitalize">
+                                {user?.role
+                                  ? user.role.split("_").join(" ").toLowerCase()
+                                  : "No role"}
+                              </span>
                             </SelectItem>
                           ))}
                       </SelectContent>

@@ -653,20 +653,17 @@ export default function TicketListStaff() {
                             teamMembers.length > 0 &&
                             teamMembers.map((user: PrismaUser) => (
                               <SelectItem key={user.id} value={user.id}>
-                                <div className="flex flex-col gap-0.5">
-                                  {user.name}
-                                  <span className="text-xs text-muted-foreground capitalize">
-                                    {user?.role
-                                      ? user.role
-                                          .split("_")
-                                          .join(" ")
-                                          .toLowerCase()
-                                      : "No role"}{" "}
-                                    •{" "}
-                                    {marketCenter?.name ??
-                                      "No Market Center Assigned"}
-                                  </span>
-                                </div>
+                                <span className="font-medium">
+                                  {user.name}:
+                                </span>
+                                <span className="hidden md:block text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}{" "}
+                                </span>
                               </SelectItem>
                             ))}
                         </>
@@ -701,20 +698,17 @@ export default function TicketListStaff() {
                           {teamMembers &&
                             teamMembers.map((user: PrismaUser) => (
                               <SelectItem key={user.id} value={user.id}>
-                                <div className="flex flex-col gap-0.5">
-                                  {user.name}
-                                  <span className="text-xs text-muted-foreground capitalize">
-                                    {user?.role
-                                      ? user.role
-                                          .split("_")
-                                          .join(" ")
-                                          .toLowerCase()
-                                      : "No role"}{" "}
-                                    •{" "}
-                                    {marketCenter?.name ??
-                                      "No Market Center Assigned"}
-                                  </span>
-                                </div>
+                                <span className="font-medium">
+                                  {user.name}:
+                                </span>
+                                <span className="hidden md:block text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}
+                                </span>
                               </SelectItem>
                             ))}
                         </>

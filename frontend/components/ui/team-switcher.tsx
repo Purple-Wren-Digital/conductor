@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -43,6 +43,22 @@ export function TeamSwitcher({
     [data]
   );
 
+  useEffect(() => {
+    if (!setMarketCenters || !marketCenters) return;
+
+    setMarketCenters((prev) => {
+      const updated = [...prev];
+
+      marketCenters.forEach((mc) => {
+        if (mc && !updated.some((item) => item.id === mc.id)) {
+          updated.push({ name: mc.name, id: mc.id });
+        }
+      });
+
+      return updated;
+    });
+  }, [marketCenters, setMarketCenters]);
+
   return (
     <Select
       value={selectedMarketCenterId}
@@ -70,13 +86,6 @@ export function TeamSwitcher({
           marketCenters.length > 0 &&
           marketCenters.map((mc) => {
             if (!mc || !mc?.id) return null;
-            if (setMarketCenters) {
-              setMarketCenters((prev) => {
-                const exists = prev.find((item) => item?.id === mc?.id);
-                if (exists) return prev;
-                return [...prev, { name: mc?.name, id: mc?.id }];
-              });
-            }
             return (
               <SelectItem key={mc.id} value={mc.id}>
                 <Building className="h-4 w-4" />

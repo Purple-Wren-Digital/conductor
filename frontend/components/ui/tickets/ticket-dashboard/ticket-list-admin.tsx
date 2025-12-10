@@ -725,24 +725,19 @@ export default function AdminTicketList() {
                       <SelectItem value="Unassigned">Unassigned</SelectItem>
                       {!usersLoading &&
                         users.map((user: PrismaUser) => {
-                          const marketCenterName = findMarketCenterName(
-                            user?.marketCenterId,
-                            user?.role
-                          );
                           return (
                             <SelectItem key={user.id} value={user.id}>
-                              <div className="flex flex-col gap-0.5">
-                                {user.name}
-                                <span className="text-xs text-muted-foreground capitalize">
-                                  {user?.role
-                                    ? user.role
-                                        .split("_")
-                                        .join(" ")
-                                        .toLowerCase()
-                                    : "No role"}{" "}
-                                  • {marketCenterName}
-                                </span>
-                              </div>
+                              <span className="font-medium">{user.name}:</span>
+                              <span className="hidden md:block text-muted-foreground capitalize">
+                                {user?.role
+                                  ? user.role.split("_").join(" ").toLowerCase()
+                                  : "No role"}{" "}
+                                •{" "}
+                                {findMarketCenterName(
+                                  user?.marketCenterId,
+                                  user?.role
+                                )}
+                              </span>
                             </SelectItem>
                           );
                         })}
@@ -771,22 +766,17 @@ export default function AdminTicketList() {
                         users.map((user: PrismaUser) => {
                           return (
                             <SelectItem key={user.id} value={user.id}>
-                              <div className="flex flex-col gap-0.5">
-                                {user.name}
-                                <span className="text-xs text-muted-foreground capitalize">
-                                  {user?.role
-                                    ? user.role
-                                        .split("_")
-                                        .join(" ")
-                                        .toLowerCase()
-                                    : "No role"}{" "}
-                                  •{" "}
-                                  {findMarketCenterName(
-                                    user?.marketCenterId,
-                                    user?.role
-                                  )}
-                                </span>
-                              </div>
+                              <span className="font-medium">{user.name}:</span>
+                              <span className="hidden md:block text-muted-foreground capitalize">
+                                {user?.role
+                                  ? user.role.split("_").join(" ").toLowerCase()
+                                  : "No role"}{" "}
+                                •{" "}
+                                {findMarketCenterName(
+                                  user?.marketCenterId,
+                                  user?.role
+                                )}
+                              </span>
                             </SelectItem>
                           );
                         })}
