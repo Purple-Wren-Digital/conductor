@@ -125,6 +125,26 @@ export default function UserTicketHistoryTable({
             userTicketHistoryLogs &&
             userTicketHistoryLogs.length > 0 &&
             userTicketHistoryLogs.map((log: TicketHistory, index: number) => {
+              const field =
+                log?.field && log?.field === "dueDate"
+                  ? "due date"
+                  : log?.field
+                    ? log.field
+                    : "N/a";
+
+              const newValueFormatted =
+                log?.field === "dueDate" && log?.newValue
+                  ? new Date(log.newValue).toLocaleDateString()
+                  : log?.field === "status" && log?.newValue
+                    ? log.newValue.split("_").join(" ")
+                    : log?.newValue;
+
+              const previousValueFormatted =
+                log?.field === "dueDate" && log?.previousValue
+                  ? new Date(log.previousValue).toLocaleDateString()
+                  : log?.field === "status" && log?.previousValue
+                    ? log.previousValue.split("_").join(" ")
+                    : log?.previousValue;
               return (
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* TICKET */}
@@ -150,21 +170,21 @@ export default function UserTicketHistoryTable({
                     />
                   </TableCell>
                   {/* ACTION */}
-                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer">
+                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                     {getActionIcon(log.action)}
-                    {capitalizeEveryWord(log.action)}
+                    {log.action}
                   </TableCell>
                   {/* FIELD */}
-                  <TableCell className="font-semibold">
-                    {log?.field ? capitalizeEveryWord(log?.field) : "N/a"}
+                  <TableCell className="font-semibold capitalize">
+                    {field}
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
                     <ToolTip
-                      content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue ? log?.newValue : "N/a"}`}
+                      content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.newValue ? log?.newValue : "N/a"}
+                          {newValueFormatted ? newValueFormatted : "N/a"}
                         </p>
                       }
                     />
@@ -172,10 +192,12 @@ export default function UserTicketHistoryTable({
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
                     <ToolTip
-                      content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "N/a"}`}
+                      content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.previousValue ? log?.previousValue : "N/a"}
+                          {previousValueFormatted
+                            ? previousValueFormatted
+                            : "N/a"}
                         </p>
                       }
                     />

@@ -1,7 +1,12 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
-import { marketCenterRepository, userRepository, db, toJson } from "../../ticket/db";
+import {
+  marketCenterRepository,
+  userRepository,
+  db,
+  toJson,
+} from "../../ticket/db";
 import { UsersToNotify } from "../../notifications/types";
 
 export interface UpdateCategoryRequest {
@@ -39,7 +44,9 @@ export const updateCategory = api<
       throw APIError.invalidArgument("Missing ticket category information");
     }
 
-    const oldTicketCategory = await marketCenterRepository.findCategoryById(req.id);
+    const oldTicketCategory = await marketCenterRepository.findCategoryById(
+      req.id
+    );
 
     if (!oldTicketCategory || !oldTicketCategory?.id) {
       throw APIError.notFound("Category not found");
@@ -48,7 +55,9 @@ export const updateCategory = api<
     // Get old default assignee if exists
     let oldDefaultAssignee = null;
     if (oldTicketCategory.defaultAssigneeId) {
-      oldDefaultAssignee = await userRepository.findById(oldTicketCategory.defaultAssigneeId);
+      oldDefaultAssignee = await userRepository.findById(
+        oldTicketCategory.defaultAssigneeId
+      );
     }
 
     const updateCategoryData: Partial<{
@@ -100,7 +109,7 @@ export const updateCategory = api<
         if (user) {
           newDefaultAssignee.name = user?.name ?? "N/a";
           newDefaultAssignee.id = user.id;
-          newDefaultAssignee.email = user.email;
+          newDefaultAssignee.email = user?.email ?? "";
         } else {
           throw APIError.notFound("Default assignee user not found");
         }
@@ -136,9 +145,7 @@ export const updateCategory = api<
       if (oldTicketCategory?.defaultAssigneeId && oldDefaultAssignee) {
         usersToNotify.push({
           id: oldTicketCategory.defaultAssigneeId,
-          name: oldDefaultAssignee?.name
-            ? oldDefaultAssignee.name
-            : "",
+          name: oldDefaultAssignee?.name ? oldDefaultAssignee.name : "",
           email: oldDefaultAssignee?.email ?? "",
           updateType: "removed",
         });
@@ -159,7 +166,10 @@ export const updateCategory = api<
     }
 
     // Update the category
-    const ticketCategory = await marketCenterRepository.updateCategory(req.id, updateCategoryData);
+    const ticketCategory = await marketCenterRepository.updateCategory(
+      req.id,
+      updateCategoryData
+    );
 
     if (!ticketCategory) {
       throw APIError.notFound("Failed to update category");

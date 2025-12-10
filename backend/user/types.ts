@@ -56,16 +56,24 @@ export interface User {
 export interface UserHistory {
   id: string;
   userId: string;
-  marketCenterId: string;
+  marketCenterId: string | null;
   action: string;
   field: string | null;
   previousValue: string | null;
   newValue: string | null;
-  snapshot?: {}; // User as they were in this moment
+  snapshot?: {} | null; // User as they were in this moment
   changedAt: Date;
-  changedById: string;
-  changedBy?: User;
-  user?: User;
+  changedById: string | null;
+  changedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface UserSettings {
