@@ -43,7 +43,7 @@ interface ListCommentsResponse {
   comments: Comment[];
 }
 
-interface CommentResponse {
+export interface CommentResponse {
   comment: Comment;
   usersToNotify?: UsersToNotify[];
   ticketTitle?: string;

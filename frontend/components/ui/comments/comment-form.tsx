@@ -7,12 +7,9 @@ import { Textarea } from "../textarea";
 import { Switch } from "../switch";
 import { Label } from "../label";
 import { Send, Bold, Italic, Code } from "lucide-react";
-import type { Ticket } from "@/lib/types";
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
-import { API_BASE } from "@/lib/api/utils";
-import { parseJsonSafe } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CommentFormProps {
   ticketId: string;
@@ -21,7 +18,6 @@ interface CommentFormProps {
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
 export function CommentForm({ ticketId }: CommentFormProps) {
-  const { user: clerkUser } = useUser();
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,7 +27,6 @@ export function CommentForm({ ticketId }: CommentFormProps) {
   const { permissions } = useUserRole();
 
   const createMutation = useCreateComment();
-  const { getToken } = useAuth();
 
   // Load draft from localStorage on mount
   useEffect(() => {
@@ -57,56 +52,24 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     }
   }, [content, isInternal, draftKey]);
 
-  const fetchTicket = async (ticketId: string) => {
-    if (!ticketId) return;
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${API_BASE}/tickets/${ticketId}`, {
-        method: "GET",
-        headers,
-        cache: "no-store",
-      });
-
-      const ticketData = await parseJsonSafe<{ ticket: Ticket }>(response);
-      return ticketData.ticket;
-    } catch {
-      return undefined;
-    }
-  };
+  const onSubmitSuccess = useCallback(() => {
+    setContent("");
+    setIsInternal(false);
+    localStorage.removeItem(draftKey);
+  }, [draftKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // if (!currentUser?.id) return;
-    if (content.trim()) {
-      createMutation.mutate(
-        {
-          userId: currentUser?.id as string,
-          ticketId,
-          content: content.trim(),
-          internal: isInternal,
-        },
-        {
-          onSuccess: () => {
-            setContent("");
-            setIsInternal(false);
-            localStorage.removeItem(draftKey);
-          },
-        }
-      );
-      const ticket = await fetchTicket(ticketId);
-      // if (ticket?.assignee) {
-      //   await sendNewCommentNotifications(ticket || null);
-      // }
-
-      //  [ticket?.assignee, ticket?.creatorId].forEach(async (user)=>{await sendNewCommentNotifications(ticket || null);})
+    if (content && content.trim()) {
+      createMutation.mutate({
+        userId: currentUser?.id as string,
+        ticketId,
+        content: content.trim(),
+        internal: isInternal,
+        onSubmitSuccess,
+      });
+    } else {
+      toast.error("Comment content cannot be empty");
     }
   };
 
