@@ -29,14 +29,19 @@ const mockFetch = vi.fn();
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-      },
+      queries: { retry: false },
     },
   });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+
+  function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  }
+
+  Wrapper.displayName = "TestQueryClientWrapper-UserNotificationPreferences";
+
+  return Wrapper;
 };
 
 const mockNotificationPreferences: NotificationPreferencesType[] = [
@@ -201,7 +206,9 @@ describe("NotificationPreferences", () => {
       expect(screen.getByText("Notification Settings")).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByRole("button", { name: /save preferences/i });
+    const saveButton = screen.getByRole("button", {
+      name: /save preferences/i,
+    });
     expect(saveButton).toBeDisabled();
   });
 
@@ -219,8 +226,12 @@ describe("NotificationPreferences", () => {
       { wrapper: createWrapper() }
     );
 
-    const saveButton = screen.getByRole("button", { name: /save preferences/i });
-    const resetButton = screen.getByRole("button", { name: /reset all preferences/i });
+    const saveButton = screen.getByRole("button", {
+      name: /save preferences/i,
+    });
+    const resetButton = screen.getByRole("button", {
+      name: /reset all preferences/i,
+    });
 
     expect(saveButton).toBeDisabled();
     expect(resetButton).toBeDisabled();
@@ -251,7 +262,9 @@ describe("NotificationPreferences", () => {
     });
 
     // Save button should be disabled initially
-    const saveButton = screen.getByRole("button", { name: /save preferences/i });
+    const saveButton = screen.getByRole("button", {
+      name: /save preferences/i,
+    });
     expect(saveButton).toBeDisabled();
 
     // Find and click a switch to change a preference
@@ -296,7 +309,9 @@ describe("NotificationPreferences", () => {
     await user.click(switches[0]);
 
     // Click save
-    const saveButton = screen.getByRole("button", { name: /save preferences/i });
+    const saveButton = screen.getByRole("button", {
+      name: /save preferences/i,
+    });
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
     });
@@ -305,7 +320,9 @@ describe("NotificationPreferences", () => {
     // Verify fetch was called
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/users/test-user-id/update/settings/notifications"),
+        expect.stringContaining(
+          "/users/test-user-id/update/settings/notifications"
+        ),
         expect.objectContaining({
           method: "PATCH",
           headers: expect.objectContaining({
@@ -360,7 +377,9 @@ describe("NotificationPreferences", () => {
       expect(screen.getByText("Notification Settings")).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByRole("button", { name: /save preferences/i });
+    const saveButton = screen.getByRole("button", {
+      name: /save preferences/i,
+    });
     expect(saveButton).toBeDisabled();
 
     // Toggle any switch
