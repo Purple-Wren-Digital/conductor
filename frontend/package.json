@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run",
     "gen": "encore gen client conductor-ee92 --output=lib/api/encore-client.ts --env=staging",
     "gen:local": "encore gen client conductor-ee92 --output=lib/api/encore-client.ts --env=local"
   },
@@ -52,7 +54,6 @@
     "dompurify": "^3.2.6",
     "embla-carousel-react": "~8.5.2",
     "input-otp": "~1.4.2",
-    "jsdom": "^26.1.0",
     "lucide-react": "~0.477.0",
     "next": "^15.2.4",
     "next-themes": "~0.4.4",
@@ -71,14 +72,20 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.13.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.33",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.15"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

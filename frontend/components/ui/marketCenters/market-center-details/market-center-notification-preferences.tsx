@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { useFetchMarketCenterNotificationPreferences } from "@/hooks/use-market-center";
 import { API_BASE } from "@/lib/api/utils";
 import type { NotificationPreferences } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,13 @@ export default function MarketCenterNotificationPreferences({
   const [updatedNotificationPreferences, setUpdatedNotificationPreferences] =
     useState<NotificationPreferences[]>(marketCenterNotificationPreferences);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync local state when fetched data changes
+  useEffect(() => {
+    if (marketCenterNotificationPreferences && marketCenterNotificationPreferences.length > 0) {
+      setUpdatedNotificationPreferences(marketCenterNotificationPreferences);
+    }
+  }, [marketCenterNotificationPreferences]);
 
   function handleNotificationToggle(
     category: string,
@@ -240,7 +248,31 @@ export default function MarketCenterNotificationPreferences({
       </CardHeader>
 
       <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {updatedNotificationPreferences &&
+        {isLoadingSettings ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-5 w-32 border-b pb-2" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1 sm:px-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                    </div>
+                    <div className="flex items-center justify-between px-1 sm:px-2">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                    </div>
+                    <div className="flex items-center justify-between px-1 sm:px-2">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : updatedNotificationPreferences &&
           updatedNotificationPreferences.map((preference) => {
             return (
               <Card key={preference?.type ? preference.type : Math.random()}>
@@ -318,7 +350,8 @@ export default function MarketCenterNotificationPreferences({
                 </CardContent>
               </Card>
             );
-          })}
+          })
+        }
       </CardContent>
     </form>
   );

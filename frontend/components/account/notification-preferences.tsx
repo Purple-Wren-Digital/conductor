@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   Accordion,
@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useFetchUserSettings } from "@/hooks/use-users";
 import { API_BASE } from "@/lib/api/utils";
 import type { NotificationPreferences } from "@/lib/types";
@@ -42,9 +43,11 @@ export default function NotificationPreferences({
       notificationsQueryKey: notificationsQueryKey,
     });
 
-  const invalidateUserSettingsQuery = queryClient.invalidateQueries({
-    queryKey: notificationsQueryKey,
-  });
+  const invalidateUserSettingsQuery = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: notificationsQueryKey,
+    });
+  }, [queryClient, notificationsQueryKey]);
   const oldNotificationPreferences: NotificationPreferences[] = useMemo(
     () => userSettingsData?.settings?.notificationPreferences ?? [],
     [userSettingsData]
@@ -53,6 +56,13 @@ export default function NotificationPreferences({
   const [updateNotificationPreferences, setUpdateNotificationPreferences] =
     useState<NotificationPreferences[] | []>(oldNotificationPreferences);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync local state when fetched data changes
+  useEffect(() => {
+    if (oldNotificationPreferences && oldNotificationPreferences.length > 0) {
+      setUpdateNotificationPreferences(oldNotificationPreferences);
+    }
+  }, [oldNotificationPreferences]);
 
   const formatUpdatedPreferences = useCallback(() => {
     if (
@@ -78,13 +88,10 @@ export default function NotificationPreferences({
       }
 
       if (
-        (oldPreference &&
-          oldPreference?.email &&
-          oldPreference?.inApp &&
-          oldPreference?.push &&
-          newPreference.email !== oldPreference.email) ||
+        newPreference.email !== oldPreference.email ||
         newPreference.inApp !== oldPreference.inApp ||
-        newPreference.push !== oldPreference.push // || newPreference.sms !== oldPreference.sms
+        newPreference.push !== oldPreference.push ||
+        newPreference.sms !== oldPreference.sms
       ) {
         updatedPreferences.push(newPreference);
       }
@@ -162,8 +169,7 @@ export default function NotificationPreferences({
     } catch {
       toast.error("Error: Unable to save preferences");
     } finally {
-      await invalidateUserSettingsQuery;
-      // await invalidateUserQuery;
+      await invalidateUserSettingsQuery();
       setIsSubmitting(false);
     }
   };
@@ -264,8 +270,7 @@ export default function NotificationPreferences({
     } catch {
       toast.error("Error: Preferences were not reset");
     } finally {
-      await invalidateUserSettingsQuery;
-      // await invalidateUserQuery;
+      await invalidateUserSettingsQuery();
       setIsSubmitting(false);
     }
   };
@@ -317,39 +322,80 @@ export default function NotificationPreferences({
               account
             </p>
           </div>
-          {["inApp", "email"].map((channel) => {
-            const notificationPref = channel as keyof NotificationPreferences;
-            let isChecked = false;
-            if (notificationPref === "email")
-              isChecked = notificationPermissions?.[0]?.email || false;
-            if (notificationPref === "inApp")
-              isChecked = notificationPermissions?.[0]?.inApp || false;
-            return (
-              <div
-                key={`permissions-${channel}-${notificationPermissions?.[0]?.id}`}
-                className="flex items-center justify-between px-1 sm:px-4"
-              >
-                <Label
-                  className={`text-sm capitalize ${
-                    !isChecked && "text-muted-foreground"
-                  }`}
+          {isLoadingSettings ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between px-1 sm:px-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-10 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            ["inApp", "email"].map((channel) => {
+              const notificationPref = channel as keyof NotificationPreferences;
+              let isChecked = false;
+              if (notificationPref === "email")
+                isChecked = notificationPermissions?.[0]?.email || false;
+              if (notificationPref === "inApp")
+                isChecked = notificationPermissions?.[0]?.inApp || false;
+              return (
+                <div
+                  key={`permissions-${channel}-${notificationPermissions?.[0]?.id}`}
+                  className="flex items-center justify-between px-1 sm:px-4"
                 >
-                  {channel} Allowed
-                </Label>
-                <Switch
-                  checked={isChecked}
-                  onCheckedChange={(checked) =>
-                    handleGlobalToggle(
-                      channel as "email" | "push" | "inApp" | "text",
-                      checked
-                    )
-                  }
-                />
-              </div>
-            );
-          })}
+                  <Label
+                    className={`text-sm capitalize ${
+                      !isChecked && "text-muted-foreground"
+                    }`}
+                  >
+                    {channel} Allowed
+                  </Label>
+                  <Switch
+                    checked={isChecked}
+                    onCheckedChange={(checked) =>
+                      handleGlobalToggle(
+                        channel as "email" | "push" | "inApp" | "text",
+                        checked
+                      )
+                    }
+                  />
+                </div>
+              );
+            })
+          )}
         </CardContent>
       </Card>
+      {isLoadingSettings ? (
+        <div className="space-y-6 md:grid md:grid-cols-3 md:gap-6">
+          <div className="md:col-span-1 space-y-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="flex flex-col gap-2 h-fit">
+                <CardHeader>
+                  <Skeleton className="h-5 w-32" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[1, 2].map((j) => (
+                    <Skeleton key={j} className="h-10 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="md:col-span-2 space-y-6">
+            <Card className="flex flex-col gap-2 h-fit">
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3, 4].map((j) => (
+                  <Skeleton key={j} className="h-10 w-full" />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : (
       <div className="space-y-6 md:grid md:grid-cols-3 md:gap-6">
         {/* ACCOUNT, MARKETING, PRODUCT */}
         <div className="md:col-span-1 space-y-6">
@@ -652,6 +698,7 @@ export default function NotificationPreferences({
           </Card> */}
         </div>
       </div>
+      )}
     </div>
   );
 }
