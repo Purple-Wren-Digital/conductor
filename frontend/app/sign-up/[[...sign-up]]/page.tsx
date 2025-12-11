@@ -2,7 +2,7 @@
 
 import { SignUp, useAuth } from "@clerk/nextjs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { API_BASE } from "@/lib/api/utils";
 
 interface InvitationDetails {
@@ -47,20 +47,68 @@ function SignUpContent() {
     }
   }, [token]);
 
+  const acceptInvitationWithAuth = useCallback(
+    async (inviteToken: string) => {
+      setIsAccepting(true);
+      try {
+        // Get the auth token from Clerk for authenticated request
+        const authToken = await getToken();
+        if (!authToken) {
+          setInvitationError(
+            "Failed to get authentication token. Please try again."
+          );
+          setIsAccepting(false);
+          hasAcceptedInvitation.current = false; // Allow retry
+          return;
+        }
+
+        const response = await fetch(
+          `${API_BASE}/invitations/${inviteToken}/accept`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          // Successfully accepted - redirect to dashboard
+          router.push("/dashboard");
+        } else {
+          const error = await response.json();
+          setInvitationError(error.message || "Failed to accept invitation");
+          hasAcceptedInvitation.current = false; // Allow retry on certain errors
+        }
+      } catch {
+        setInvitationError("Failed to accept invitation");
+        hasAcceptedInvitation.current = false; // Allow retry
+      } finally {
+        setIsAccepting(false);
+      }
+    },
+    [getToken, router]
+  );
+
   // After user signs up with an invitation, accept the invitation (only once)
   useEffect(() => {
-    if (isSignedIn && token && invitation && !hasAcceptedInvitation.current && !isAccepting) {
+    if (
+      isSignedIn &&
+      token &&
+      invitation &&
+      !hasAcceptedInvitation.current &&
+      !isAccepting
+    ) {
       hasAcceptedInvitation.current = true;
       acceptInvitationWithAuth(token);
     }
-  }, [isSignedIn, token, invitation, isAccepting]);
+  }, [isSignedIn, token, invitation, isAccepting, acceptInvitationWithAuth]);
 
   async function fetchInvitation(inviteToken: string) {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE}/invitations/${inviteToken}`
-      );
+      const response = await fetch(`${API_BASE}/invitations/${inviteToken}`);
       const data: InvitationResponse = await response.json();
 
       if (data.valid && data.invitation) {
@@ -72,45 +120,6 @@ function SignUpContent() {
       setInvitationError("Failed to load invitation details");
     } finally {
       setIsLoading(false);
-    }
-  }
-
-  async function acceptInvitationWithAuth(inviteToken: string) {
-    setIsAccepting(true);
-    try {
-      // Get the auth token from Clerk for authenticated request
-      const authToken = await getToken();
-      if (!authToken) {
-        setInvitationError("Failed to get authentication token. Please try again.");
-        setIsAccepting(false);
-        hasAcceptedInvitation.current = false; // Allow retry
-        return;
-      }
-
-      const response = await fetch(
-        `${API_BASE}/invitations/${inviteToken}/accept`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Successfully accepted - redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        const error = await response.json();
-        setInvitationError(error.message || "Failed to accept invitation");
-        hasAcceptedInvitation.current = false; // Allow retry on certain errors
-      }
-    } catch {
-      setInvitationError("Failed to accept invitation");
-      hasAcceptedInvitation.current = false; // Allow retry
-    } finally {
-      setIsAccepting(false);
     }
   }
 

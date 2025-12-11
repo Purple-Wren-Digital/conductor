@@ -15,9 +15,9 @@ export default function PricingPage() {
   return (
     <main className="container">
       <div className="flex flex-col items-center py-12">
-        <h1 className="text-4xl font-bold mb-4">Pricing</h1>
-        <p className="font-bold text-muted-foreground">
-          Simple, transparent pricing for your market center.
+        <h1 className="text-3xl font-bold mb-4 text-[#4B1D22]">Pricing</h1>
+        <p className="font-medium text-muted-foreground">
+          Simple, transparent pricing for your market center
         </p>
       </div>
 
@@ -27,12 +27,12 @@ export default function PricingPage() {
             key={plan.name}
             className={`relative group ${
               "popular" in plan && plan.popular
-                ? "border-primary border-2"
+                ? " border-primary border-2"
                 : ""
             }`}
           >
             {"popular" in plan && plan.popular && (
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 font-bold">
                 Limited Time
               </Badge>
             )}
@@ -50,13 +50,15 @@ export default function PricingPage() {
               <CardDescription>
                 {plan.monthlyPrice !== null ? (
                   <>
-                    <span className="text-4xl font-semibold">
+                    <span className="text-4xl font-semibold text-[#6D1C24]">
                       ${plan.monthlyPrice}
                     </span>{" "}
                     / month
                   </>
                 ) : (
-                  <span className="text-2xl font-semibold">Contact us</span>
+                  <span className="text-2xl font-semibold text-[#6D1C24]">
+                    Contact us
+                  </span>
                 )}
               </CardDescription>
               <p className="text-sm text-muted-foreground mt-1">
@@ -76,7 +78,7 @@ export default function PricingPage() {
               </ul>
             </CardContent>
 
-            <CardFooter className="flex justify-center gap-2 group-hover:underline">
+            <CardFooter className="flex justify-center gap-2 group-hover:underline text-[#6D1C24]">
               {plan.monthlyPrice !== null ? (
                 <>
                   Get started <ArrowRight className="size-4" />
