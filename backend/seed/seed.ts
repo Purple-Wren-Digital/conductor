@@ -10,6 +10,7 @@ import {
 } from "../ticket/db";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 import { defaultNotificationPreferences } from "../utils";
+import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 import { ticket } from "~encore/clients";
 // TODO: Notification templates for each market center
 
@@ -103,7 +104,7 @@ export const seedData = api<void, SeedResponse>(
       await db.exec`
         UPDATE market_centers
         SET settings = ${JSON.stringify({
-          notificationPreferences: defaultNotificationPreferences,
+          notificationPreferences: defaultMarketCenterNotificationPreferences,
         })}::jsonb
         WHERE id = ${marketCenter.id}
       `;
@@ -230,16 +231,17 @@ export const seedData = api<void, SeedResponse>(
       )?.id;
 
       if (userSettingsId) {
-        // Create notification preferences
-        await db.exec`
-          INSERT INTO notification_preferences (
-            id, user_settings_id, type, email, push, in_app, category, frequency, sms
-          )
-          VALUES (
-            gen_random_uuid()::text, ${userSettingsId}, 'default', true, true,
-            true, 'ACCOUNT', 'INSTANT', false
-          )
-        `;
+        for (const preference of defaultNotificationPreferences) {
+          await db.exec`
+            INSERT INTO notification_preferences (
+              id, user_settings_id, type, email, push, in_app, category, frequency, sms
+            )
+            VALUES (
+              gen_random_uuid()::text, ${userSettingsId}, ${preference.type}, ${preference.email},
+              ${preference.push}, ${preference.inApp}, ${preference.category}, ${preference.frequency}, ${preference.sms}
+            )
+          `;
+        }
       }
 
       // Create welcome notification

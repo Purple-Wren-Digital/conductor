@@ -1,6 +1,18 @@
 // Local enum definitions (replacing Prisma imports)
-export type NotificationCategory = "ACCOUNT" | "ACTIVITY" | "MARKETING" | "PRODUCT" | "PERMISSIONS";
-export type NotificationFrequency = "NONE" | "INSTANT" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUALLY";
+export type NotificationCategory =
+  | "ACCOUNT"
+  | "ACTIVITY"
+  | "MARKETING"
+  | "PRODUCT"
+  | "PERMISSIONS";
+export type NotificationFrequency =
+  | "NONE"
+  | "INSTANT"
+  | "DAILY"
+  | "WEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "ANNUALLY";
 
 export function mapHistorySnapshot(history: any[]): any[] {
   return history.map((h) => ({
@@ -67,25 +79,6 @@ export const defaultNotificationPreferences = [
     push: false,
     sms: false,
   },
-  // ACTIVITY: SUMMARY
-  {
-    frequency: "DAILY" as NotificationFrequency,
-    category: "ACTIVITY" as NotificationCategory,
-    type: "Daily Summary",
-    email: true,
-    inApp: true,
-    push: false,
-    sms: false,
-  },
-  {
-    frequency: "WEEKLY" as NotificationFrequency,
-    category: "ACTIVITY" as NotificationCategory,
-    type: "Weekly Report",
-    email: true,
-    inApp: true,
-    push: false,
-    sms: false,
-  },
   // ACTIVITY: TICKETS
   {
     frequency: "INSTANT" as NotificationFrequency,
@@ -114,15 +107,6 @@ export const defaultNotificationPreferences = [
     push: false,
     sms: false,
   },
-  // { // TODO: re-add mentions later
-  //   frequency: "INSTANT",
-  //   category: "ACTIVITY",
-  //   type: "Mentions",
-  //   email: true,
-  //   inApp: true,
-  //   push: false,
-  //   sms: false,
-  // },
   {
     frequency: "INSTANT" as NotificationFrequency,
     category: "ACTIVITY" as NotificationCategory,
@@ -169,6 +153,35 @@ export const defaultNotificationPreferences = [
     sms: false,
   },
 ];
+
+// ACTIVITY: SUMMARY
+// {
+//   frequency: "DAILY" as NotificationFrequency,
+//   category: "ACTIVITY" as NotificationCategory,
+//   type: "Daily Summary",
+//   email: true,
+//   inApp: true,
+//   push: false,
+//   sms: false,
+// },
+// {
+//   frequency: "WEEKLY" as NotificationFrequency,
+//   category: "ACTIVITY" as NotificationCategory,
+//   type: "Weekly Report",
+//   email: true,
+//   inApp: true,
+//   push: false,
+//   sms: false,
+// },
+// { // TODO: re-add mentions later
+//   frequency: "INSTANT",
+//   category: "ACTIVITY",
+//   type: "Mentions",
+//   email: true,
+//   inApp: true,
+//   push: false,
+//   sms: false,
+// },
 // {
 //   frequency: NotificationFrequency.INSTANT,
 //   category: NotificationCategory.ACTIVITY,
