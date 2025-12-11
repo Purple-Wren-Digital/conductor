@@ -27,6 +27,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 // TODO export table to computer - excel/google sheets ??
 
+type FormattedMarketCenterHistory = MarketCenterHistory & {
+  newValueLink?: string;
+  previousValueLink?: string;
+};
+
 export default function MarketCenterHistory({
   marketCenterId,
 }: {
@@ -61,14 +66,59 @@ export default function MarketCenterHistory({
       queryParams: queryParams,
     });
 
-  const marketCenterHistoryLogs =
-    marketCenterHistoryData?.marketCenterHistory as MarketCenterHistory[];
-  const totalMarketCenterHistoryLogs: number =
-    marketCenterHistoryData?.total ?? 0;
+  const marketCenterHistoryLogs = useMemo(() => {
+    return marketCenterHistoryData?.marketCenterHistory as MarketCenterHistory[];
+  }, [marketCenterHistoryData]);
+  const totalMarketCenterHistoryLogs: number = useMemo(() => {
+    return marketCenterHistoryData?.total ?? 0;
+  }, [marketCenterHistoryData]);
   const totalPages = calculateTotalPages({
     totalItems: totalMarketCenterHistoryLogs,
     itemsPerPage,
   });
+
+  const processedLogs: FormattedMarketCenterHistory[] = useMemo(() => {
+    if (!marketCenterHistoryLogs) return [];
+
+    return marketCenterHistoryLogs.map((log: MarketCenterHistory) => {
+      let newValue = "";
+      let previousValue = "";
+      let newValueLink = "";
+      let previousValueLink = "";
+
+      if (log?.field?.includes("category") && log?.newValue) {
+        try {
+          const parsed = JSON.parse(log.newValue);
+          newValue = parsed?.name ?? "N/a";
+          newValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
+        } catch {
+          newValue = log.newValue;
+        }
+      } else {
+        newValue = log.newValue ?? "";
+      }
+
+      if (log?.field?.includes("category") && log.previousValue) {
+        try {
+          const parsed = JSON.parse(log.previousValue);
+          previousValue = parsed?.name ?? "N/a";
+          previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
+        } catch {
+          previousValue = log.previousValue;
+        }
+      } else {
+        previousValue = log.previousValue ?? "";
+      }
+
+      return {
+        ...log,
+        newValue,
+        previousValue,
+        newValueLink,
+        previousValueLink,
+      };
+    });
+  }, [marketCenterHistoryLogs]);
 
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
@@ -126,59 +176,10 @@ export default function MarketCenterHistory({
               )}
 
             {!isLoading &&
-              marketCenterHistoryLogs &&
-              marketCenterHistoryLogs.length > 0 &&
-              marketCenterHistoryLogs.map(
-                (log: MarketCenterHistory, index: number) => {
-                  let newValue = "";
-                  let newValueLink = "";
-                  let previousValue = "";
-                  let previousValueLink = "";
-                  if (
-                    log.field === "category default assignee" &&
-                    log.newValue
-                  ) {
-                    const parsedNewValue = JSON.parse(log.newValue);
-                    newValue = parsedNewValue?.name;
-                    newValueLink = `/dashboard/users/${parsedNewValue?.id}`;
-                  } else if (log?.field === "team" && log?.newValue) {
-                    const parsedNewValue = JSON.parse(log.newValue);
-                    newValue = parsedNewValue?.name;
-                    newValueLink = `/dashboard/users/${parsedNewValue?.id}`;
-                  } else if (
-                    log.field === "category default assignee" &&
-                    log.previousValue
-                  ) {
-                    const parsedPreviousValue = JSON.parse(log.previousValue);
-                    previousValue = parsedPreviousValue?.name;
-                    previousValueLink = `/dashboard/users/${parsedPreviousValue?.id}`;
-                  } else if (log?.field === "team" && log?.previousValue) {
-                    const parsedPreviousValue = JSON.parse(log.previousValue);
-                    previousValue = parsedPreviousValue?.name;
-                    previousValueLink = `/dashboard/users/${parsedPreviousValue?.id}`;
-                  } else {
-                    newValue = log?.newValue ?? "N/a";
-                    previousValue = log?.previousValue ?? "N/a";
-                  }
-
-                  // const categoryNewAssignee =
-                  //   log?.field === "category default assignee" && log?.newValue;
-                  // const categoryChangeNewAssignee =
-                  //   log?.newValue &&
-                  //   categoryNewAssignee &&
-                  //   JSON.parse(log.newValue);
-
-                  // const categoryPrevAssignee =
-                  // const teamNewValue = log?.field === "team" && log?.newValue;
-                  // const teamChangeNewValue =
-                  //   log?.newValue && teamNewValue && JSON.parse(log.newValue);
-
-                  // const teamPrevValue =
-                  //   log?.field === "team" && log?.previousValue;
-                  // const teamChangePrevValue =
-                  //   log?.previousValue &&
-                  //   teamPrevValue &&
-                  //   JSON.parse(log.previousValue);
+              processedLogs &&
+              processedLogs.length > 0 &&
+              processedLogs.map(
+                (log: FormattedMarketCenterHistory, index: number) => {
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
@@ -191,23 +192,34 @@ export default function MarketCenterHistory({
                         {log?.field ? capitalizeEveryWord(log?.field) : "N/a"}
                       </TableCell>
                       {/* NEW VALUE */}
-                      <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
+                      <TableCell
+                        className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer"
+                        onClick={() => {
+                          if (log?.newValueLink) router.push(log.newValueLink);
+                        }}
+                      >
                         <ToolTip
-                          content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${newValue}`}
+                          content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {newValue}
+                              {log.newValue}
                             </p>
                           }
                         />
                       </TableCell>
                       {/* PREVIOUS VALUE */}
-                      <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
+                      <TableCell
+                        className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer"
+                        onClick={() => {
+                          if (log?.previousValueLink)
+                            router.push(log.previousValueLink);
+                        }}
+                      >
                         <ToolTip
-                          content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${previousValue}`}
+                          content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {previousValue}
+                              {log.previousValue}
                             </p>
                           }
                         />
@@ -268,26 +280,3 @@ export default function MarketCenterHistory({
     </div>
   );
 }
-
-// <TableHead className="text-center">Snapshot</TableHead>
-//  <TableCell className="font-medium">
-//   {log?.snapshot ? (
-//     <ToolTip
-//       content={`View snapshot of ticket at time of change`}
-//       trigger={
-//         <p
-//           className="underline decoration-dotted cursor-pointer text-center"
-//           onClick={() => {
-//             router.push(
-//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
-//             );
-//           }}
-//         >
-//           View
-//         </p>
-//       }
-//     />
-//   ) : (
-//     <p  className="text-muted-foreground">N/a</p>
-//   )}
-// </TableCell>

@@ -243,8 +243,16 @@ export interface UserHistory {
   snapshot?: {}; // User as they were in this moment
   changedAt: Date;
   changedById: string;
-  changedBy?: PrismaUser;
-  user?: PrismaUser;
+  changedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface UserEditFormData {

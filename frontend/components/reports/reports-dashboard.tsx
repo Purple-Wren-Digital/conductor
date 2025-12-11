@@ -8,7 +8,11 @@ import SlaComplianceByUsersReport from "@/components/reports/users-tickets-overd
 import TicketBacklogReport from "@/components/reports/backlog-report";
 import CreatedVolumeByMonthReport from "@/components/reports/created-volume-report";
 import ResolvedTicketsByMonthReport from "@/components/reports/resolved-volume-report";
-import { ReportFilters, ReportFiltersState, DEFAULT_FILTERS } from "@/components/reports/report-filters";
+import {
+  ReportFilters,
+  ReportFiltersState,
+  DEFAULT_FILTERS,
+} from "@/components/reports/report-filters";
 import { Separator } from "@/components/ui/separator";
 
 export type ReportProps = {
@@ -60,8 +64,12 @@ export default function ReportsDashboard() {
         setFilters({
           ...fetchedFilters.filters,
           // Parse dates from ISO strings
-          dateFrom: fetchedFilters.filters.dateFrom ? new Date(fetchedFilters.filters.dateFrom) : undefined,
-          dateTo: fetchedFilters.filters.dateTo ? new Date(fetchedFilters.filters.dateTo) : undefined,
+          dateFrom: fetchedFilters.filters.dateFrom
+            ? new Date(fetchedFilters.filters.dateFrom)
+            : undefined,
+          dateTo: fetchedFilters.filters.dateTo
+            ? new Date(fetchedFilters.filters.dateTo)
+            : undefined,
         });
       }
     }
@@ -75,16 +83,16 @@ export default function ReportsDashboard() {
         Metrics and Reporting
       </h1>
 
-      <div className="grid gap-4 md:grid-cols-12 mt-10">
-        <section className="md:col-span-3 space-y-4">
+      <div className="grid gap-4 lg:grid-cols-12 mt-10">
+        <section className="lg:col-span-3 space-y-4">
           <p className="font-semibold">Reports</p>
           <Separator />
 
-          <div className="flex flex-col gap-2 items-start">
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
             <Button
               variant={"link"}
               size="sm"
-              className="font-medium p-0 text-muted-foreground opacity-50 hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
+              className="font-medium p-0 text-muted-foreground opacity-50 justify-start hover:text-[#6D1C24] hover:decoration-[#6D1C24]"
               onClick={() => setSelectedReportType("none")}
               disabled={!selectedReportType || selectedReportType === "none"}
             >
@@ -97,7 +105,7 @@ export default function ReportsDashboard() {
                 key={report.value}
                 variant={"link"}
                 size="sm"
-                className={`font-medium p-0
+                className={`font-medium p-0 justify-start
                 ${
                   selectedReportType === report.value
                     ? "text-primary"
@@ -110,13 +118,17 @@ export default function ReportsDashboard() {
             ))}
           </div>
         </section>
-        <div className="md:col-span-9 space-y-4">
+        <div className="lg:col-span-9 space-y-4">
           {selectedReportType ? (
             <>
               <ReportFilters
                 filters={filters}
                 onFiltersChange={setFilters}
-                showDateFilter={["ticket-created-volume", "ticket-resolved-volume", "ticket-backlog"].includes(selectedReportType)}
+                showDateFilter={[
+                  "ticket-created-volume",
+                  "ticket-resolved-volume",
+                  "ticket-backlog",
+                ].includes(selectedReportType)}
                 showMarketCenterFilter={true}
                 showCategoryFilter={true}
               />

@@ -16,10 +16,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, X, Filter, ChevronDown } from "lucide-react";
-import { format, subDays, startOfMonth, startOfQuarter, startOfYear, subMonths } from "date-fns";
+import { CalendarIcon, X, Filter } from "lucide-react";
+import {
+  format,
+  subDays,
+  startOfMonth,
+  startOfQuarter,
+  startOfYear,
+  subMonths,
+} from "date-fns";
 import { cn } from "@/lib/cn";
-import { useFetchAllMarketCenters, useFetchMarketCenterCategories } from "@/hooks/use-market-center";
+import {
+  useFetchAllMarketCenters,
+  useFetchMarketCenterCategories,
+} from "@/hooks/use-market-center";
 import { useStore } from "@/context/store-provider";
 import type { MarketCenter, TicketCategory } from "@/lib/types";
 
@@ -55,7 +65,10 @@ export const DATE_PRESETS: DatePreset[] = [
     value: "last_month",
     getRange: () => {
       const lastMonth = subMonths(new Date(), 1);
-      return { from: startOfMonth(lastMonth), to: new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0) };
+      return {
+        from: startOfMonth(lastMonth),
+        to: new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0),
+      };
     },
   },
   {
@@ -114,12 +127,19 @@ export function ReportFilters({
   const { currentUser } = useStore();
 
   // Fetch market centers
-  const { data: marketCentersData } = useFetchAllMarketCenters(currentUser?.role);
+  const { data: marketCentersData } = useFetchAllMarketCenters(
+    currentUser?.role
+  );
   const marketCenters: MarketCenter[] = marketCentersData?.marketCenters || [];
 
   // Fetch categories (if a market center is selected, fetch its categories, otherwise fetch all)
-  const selectedMarketCenterId = filters.marketCenterIds.length === 1 ? filters.marketCenterIds[0] : undefined;
-  const { data: categoriesData } = useFetchMarketCenterCategories(selectedMarketCenterId);
+  const selectedMarketCenterId =
+    filters.marketCenterIds.length === 1
+      ? filters.marketCenterIds[0]
+      : undefined;
+  const { data: categoriesData } = useFetchMarketCenterCategories(
+    selectedMarketCenterId
+  );
   const categories: TicketCategory[] = categoriesData?.ticketCategories || [];
 
   const hasActiveFilters = useMemo(() => {
@@ -257,7 +277,9 @@ export function ReportFilters({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.dateFrom ? format(filters.dateFrom, "MMM d, yyyy") : "From"}
+                    {filters.dateFrom
+                      ? format(filters.dateFrom, "MMM d, yyyy")
+                      : "From"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -266,7 +288,8 @@ export function ReportFilters({
                     selected={filters.dateFrom}
                     onSelect={handleDateFromChange}
                     disabled={(date) =>
-                      date > new Date() || (filters.dateTo ? date > filters.dateTo : false)
+                      date > new Date() ||
+                      (filters.dateTo ? date > filters.dateTo : false)
                     }
                     initialFocus
                   />
@@ -286,7 +309,9 @@ export function ReportFilters({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.dateTo ? format(filters.dateTo, "MMM d, yyyy") : "To"}
+                    {filters.dateTo
+                      ? format(filters.dateTo, "MMM d, yyyy")
+                      : "To"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -295,7 +320,8 @@ export function ReportFilters({
                     selected={filters.dateTo}
                     onSelect={handleDateToChange}
                     disabled={(date) =>
-                      date > new Date() || (filters.dateFrom ? date < filters.dateFrom : false)
+                      date > new Date() ||
+                      (filters.dateFrom ? date < filters.dateFrom : false)
                     }
                     initialFocus
                   />
@@ -308,10 +334,13 @@ export function ReportFilters({
         {/* Market Center Filter */}
         {showMarketCenterFilter && marketCenters.length > 0 && (
           <div className="flex flex-col gap-2">
-            <Label className="text-xs text-muted-foreground">Market Center</Label>
+            <Label className="text-xs text-muted-foreground">
+              Market Center
+            </Label>
             <Select
               value={filters.marketCenterIds[0] || "all"}
               onValueChange={handleMarketCenterChange}
+              disabled={currentUser?.role !== "ADMIN"}
             >
               <SelectTrigger className="w-[200px] h-9">
                 <SelectValue placeholder="All Market Centers" />

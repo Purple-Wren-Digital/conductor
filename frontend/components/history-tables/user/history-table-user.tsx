@@ -57,8 +57,14 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
     queryParams,
   });
 
-  const userHistoryLogs: UserHistory[] = userHistoryData?.userHistory ?? [];
-  const totalUserHistoryLogs: number = userHistoryData?.total ?? 0;
+  const userHistoryLogs: UserHistory[] = useMemo(
+    () => userHistoryData?.userHistory ?? [],
+    [userHistoryData]
+  );
+  const totalUserHistoryLogs: number = useMemo(
+    () => userHistoryData?.total ?? 0,
+    [userHistoryData]
+  );
   const totalPages = calculateTotalPages({
     totalItems: totalUserHistoryLogs,
     itemsPerPage,
@@ -118,7 +124,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
             userHistoryLogs &&
             userHistoryLogs.length > 0 &&
             userHistoryLogs.map((log: UserHistory, index: number) => {
-              const isViewing = userId === log.userId;
+              const isViewing =
+                userId === log?.userId || userId === log?.changedById;
               return (
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* USER CHANGED */}
@@ -138,25 +145,25 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                   >
                     <ToolTip
                       content={`View ${
-                        log.user?.name ? log.user?.name : "user"
+                        log?.user?.name ? log.user?.name : "user"
                       }'s Profile`}
                       trigger={
                         <p className="underline decoration-dotted cursor-pointer">
-                          {log.user?.name
-                            ? log.user?.name
-                            : log.user?.id.slice(0, 8)}
+                          {log?.user && log?.user?.name
+                            ? log.user.name
+                            : log.userId.slice(0, 8)}
                         </p>
                       }
                     />
                   </TableCell>
                   {/* ACTION */}
-                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer">
+                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                     {getActionIcon(log.action)}
-                    {capitalizeEveryWord(log.action)}
+                    {log.action.toLowerCase()}
                   </TableCell>
                   {/* FIELD */}
-                  <TableCell className="font-medium">
-                    {log?.field ? capitalizeEveryWord(log?.field) : "N/a"}
+                  <TableCell className="font-medium capitalize">
+                    {log?.field ? log.field : "N/a"}
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-medium">
@@ -164,7 +171,11 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                       content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue ? log?.newValue : "N/a"}`}
                       trigger={
                         <p className="font-medium truncate cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.newValue ? log?.newValue : "N/a"}
+                          {log?.newValue && log?.field === "role"
+                            ? log.newValue.split("_").join(" ")
+                            : log?.newValue
+                              ? log.newValue
+                              : "N/a"}
                         </p>
                       }
                     />{" "}
@@ -175,7 +186,11 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                       content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "N/a"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.previousValue ? log?.previousValue : "N/a"}
+                          {log?.previousValue && log?.field === "role"
+                            ? log.previousValue.split("_").join(" ")
+                            : log?.previousValue
+                              ? log.previousValue
+                              : "N/a"}
                         </p>
                       }
                     />{" "}
