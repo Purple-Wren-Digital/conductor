@@ -7,25 +7,30 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 
 export default function HelpPage() {
   return (
     <main className="container">
       <div className="flex flex-col py-12 space-y-6">
-        <h1 className="text-3xl font-bold mb-4 text-[#4B1D22]">Need Help?</h1>
-        <p className="font-medium text-muted-foreground">
-          Find answers to common questions and get support for any issues you
-          may encounter.
-        </p>
-        <Link
-          passHref
-          href="mailto:tony@conductorticket.com?subject=Client%20Support%20Inquiry"
-        >
-          <Button asChild className="bg-[#4B1D22] hover:bg-[#6D1C24] border-0">
-            Contact Us
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between flex-wrap">
+          <div className="space-y-4">
+            <h1 className="text-3xl font-bold mb-4 text-[#4B1D22]">
+              Need Help?
+            </h1>
+            <p className="font-medium text-muted-foreground">
+              Find answers to common questions and get support for any issues
+              you may encounter.
+            </p>
+          </div>
+          <Link
+            passHref
+            href="mailto:tony@conductorticket.com?subject=Client%20Support%20Inquiry"
+            className="bg-[#6D1C24] hover:bg-[#6D1C24]/90 border-0 h-9 px-4 py-2 has-[>svg]:px-3 w-fit inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+          >
+            <p className="text-white font-semibold">Contact Us</p>
+          </Link>
+        </div>
+
         <section className="space-y-6">
           <h2 className="text-2xl font-bold mb-4 text-[#6D1C24] text-left">
             Frequently Asked Questions
