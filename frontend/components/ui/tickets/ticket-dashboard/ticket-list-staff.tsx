@@ -531,32 +531,8 @@ export default function TicketListStaff() {
       (t: Ticket) => t.status === "RESOLVED"
     ).length;
 
-    const now = new Date();
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(now.getDate() - 7);
-
-    let totalBusinessDays = 0;
-
-    tickets.forEach((t: Ticket) => {
-      const status = t.status;
-      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
-      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
-
-      if (status === "RESOLVED" && createdDate && resolvedDate) {
-        totalBusinessDays += getResolvedInBusinessDays(
-          createdDate,
-          resolvedDate
-        );
-      }
-    });
-
-    const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
-      : 0;
-
     return {
       resolvedTicketsCount,
-      avgResolutionBusinessDays,
     };
   }, [tickets]);
 
@@ -902,10 +878,8 @@ export default function TicketListStaff() {
         >
           <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
             <p className="text-sm text-muted-foreground">
-              Avg Resolution:{" "}
-              {selectedStatuses.includes("RESOLVED")
-                ? `${stats?.avgResolutionBusinessDays ?? 0} business days`
-                : "N/A"}
+              {selectedStatuses.includes("RESOLVED") &&
+                `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
             </p>
             <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
               {/* SORT BY */}
