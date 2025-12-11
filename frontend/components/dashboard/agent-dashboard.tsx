@@ -8,7 +8,8 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
-import { getResolvedInBusinessDays } from "@/lib/utils";
+import { getResolvedInBusinessDays, statusOptions } from "@/lib/utils";
+import { stat } from "fs";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
@@ -21,12 +22,19 @@ export function AgentDashboard() {
       if (!currentUser) throw new Error("Not logged in");
       const token = await getToken();
       if (!token) throw new Error("No authentication token");
-      const response = await fetch(`${API_BASE}/tickets`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      const queryParams = new URLSearchParams();
+      statusOptions.forEach((option) => {
+        queryParams.append("status", option);
       });
+      const response = await fetch(
+        `${API_BASE}/tickets?${queryParams.toString()}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch tickets");
       return await response.json();
     },
@@ -46,45 +54,31 @@ export function AgentDashboard() {
       ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
     ).length;
 
-    const resolvedTicketsCount = tickets.filter(
-      (t: Ticket) => t.status === "RESOLVED"
-    ).length;
-
     const now = new Date();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
 
-    let totalBusinessDays = 0;
-    let newTickets = 0;
+    let createdThisWeek = 0;
+    let resolvedThisWeek = 0;
 
     tickets.forEach((t: Ticket) => {
-      const status = t.status;
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
-      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
+      const resolvedDate =
+        t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
 
-      if (status === "RESOLVED" && createdDate && resolvedDate) {
-        totalBusinessDays += getResolvedInBusinessDays(
-          createdDate,
-          resolvedDate
-        );
-      }
-    });
-    const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
-      : 0;
-    tickets.forEach((t: Ticket) => {
-      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
       if (createdDate && createdDate >= oneWeekAgo) {
-        newTickets += 1;
+        createdThisWeek += 1;
+      }
+      if (resolvedDate && resolvedDate >= oneWeekAgo) {
+        resolvedThisWeek += 1;
       }
     });
 
     return {
       highPriority,
-      newTickets,
+      createdThisWeek,
       activeTickets,
-      resolvedTicketsCount,
-      avgResolutionBusinessDays,
+      resolvedThisWeek,
     };
   }, [tickets]);
 
@@ -134,7 +128,7 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-center">
-              {stats.newTickets}
+              {stats.createdThisWeek}
             </div>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days
@@ -161,15 +155,15 @@ export function AgentDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Ticket Closed within
+              Resolved Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.avgResolutionBusinessDays}
+              {stats.resolvedThisWeek}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              business days (average)
+              in the last 7 days
             </p>
           </CardContent>
         </Card>
