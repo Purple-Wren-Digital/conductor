@@ -13,7 +13,7 @@ import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count"
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import { OrderBy, TicketHistory } from "@/lib/types";
-import { calculateTotalPages, capitalizeEveryWord } from "@/lib/utils";
+import { calculateTotalPages } from "@/lib/utils";
 import {
   ArrowRightLeft,
   CircleMinus,
@@ -154,7 +154,7 @@ export default function TicketHistoryTable({
                     ) : (
                       getActionIcon(log?.action)
                     )}
-                    {log?.action}
+                    {log.action.toLowerCase()}
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
@@ -191,7 +191,7 @@ export default function TicketHistoryTable({
                       if (log?.changedById) {
                         router.push(`/dashboard/users/${log.changedById}`);
                       } else {
-                        toast.error("User ID not found");
+                        toast.error("Error: User not found");
                       }
                     }}
                   >

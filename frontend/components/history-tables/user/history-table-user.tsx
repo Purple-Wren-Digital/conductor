@@ -124,18 +124,19 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
             userHistoryLogs &&
             userHistoryLogs.length > 0 &&
             userHistoryLogs.map((log: UserHistory, index: number) => {
-              const isViewing =
-                userId === log?.userId || userId === log?.changedById;
+              const isViewingUser = userId === log?.userId; //|| userId === log?.changedById;
+              const isViewingChangedBy = userId === log?.changedById;
+              const isViewing = isViewingUser || isViewingChangedBy;
               return (
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* USER CHANGED */}
                   <TableCell
                     className="font-semibold cursor-pointer"
                     onClick={() => {
-                      if (!isViewing && log?.userId) {
+                      if (!isViewingUser && log?.userId) {
                         router.push(`/dashboard/users/${log.userId}`);
-                      } else if (!isViewing && !log?.userId) {
-                        toast.error("User ID not found");
+                      } else if (!isViewingUser && !log?.userId) {
+                        toast.error("Error: User not found");
                       } else {
                         toast.info(
                           "You are already viewing this user's profile"
@@ -178,7 +179,7 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                               : "N/a"}
                         </p>
                       }
-                    />{" "}
+                    />
                   </TableCell>
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground truncate overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
@@ -193,16 +194,16 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                               : "N/a"}
                         </p>
                       }
-                    />{" "}
+                    />
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell
                     className="font-medium"
                     onClick={() => {
-                      if (!isViewing && log?.changedById) {
+                      if (!isViewingChangedBy && log?.changedById) {
                         router.push(`/dashboard/users/${log.changedById}`);
-                      } else if (!isViewing && !log?.changedById) {
-                        toast.error("User ID not found");
+                      } else if (!isViewingChangedBy && !log?.changedById) {
+                        toast.error("Error: User not found");
                       } else {
                         toast.info(
                           "You are already viewing this user's profile"
