@@ -85,7 +85,6 @@ export const fetchTemplate = async (
     if (!data || !data?.notificationTemplate) {
       throw new Error("No parsed template data");
     }
-    // console.log("fetchTemplate() - DATA - Notification template:", data);
 
     return data?.notificationTemplate as NotificationTemplate;
   } catch {

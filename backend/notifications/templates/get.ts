@@ -8,7 +8,7 @@ import {
 } from "../types";
 
 export interface GetNotificationTemplateRequest {
-  id: string;
+  id: string; // templateName
 }
 
 export interface GetNotificationTemplateResponse {
@@ -45,7 +45,7 @@ export const get = api<
 
     const notificationTemplate = await db.queryRow<NotificationTemplateRow>`
       SELECT * FROM notification_templates
-      WHERE template_id = ${req.id}
+      WHERE template_name = ${req.id}
     `;
 
     if (!notificationTemplate) {

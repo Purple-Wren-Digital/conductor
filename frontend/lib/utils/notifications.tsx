@@ -498,7 +498,8 @@ export async function createAndSendNotification(
     }
 
     return response.ok;
-  } catch {
+  } catch (error) {
+    console.error("Error creating and sending notification:", error);
     return false;
   }
 }
