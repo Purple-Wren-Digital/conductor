@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEncoreClient } from "@/lib/api/client-side";
 import { Footer } from "@/components/ui/footer";
+import { SubscriptionGuard } from "@/components/subscription-guard";
 import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
 import Image from "next/image";
 
@@ -226,7 +227,7 @@ export default function DashboardLayout({
           </header>
 
           <main className="flex-grow container mx-auto p-6 pb-30 overflow-y-auto">
-            {children}
+            <SubscriptionGuard>{children}</SubscriptionGuard>
           </main>
         </div>
       </SidebarProvider>

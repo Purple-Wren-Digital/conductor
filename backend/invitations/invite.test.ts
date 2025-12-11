@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock hoisted values
 const {
   mockGetUserContext,
+  mockGetAuthData,
   mockCanManageTeam,
   mockCheckCanAddUser,
   mockUserRepository,
@@ -10,11 +11,13 @@ const {
   mockSendInvitationEmail,
 } = vi.hoisted(() => ({
   mockGetUserContext: vi.fn(),
+  mockGetAuthData: vi.fn(),
   mockCanManageTeam: vi.fn(),
   mockCheckCanAddUser: vi.fn(),
   mockUserRepository: {
     findById: vi.fn(),
     findByEmail: vi.fn(),
+    findByClerkId: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
   },
@@ -33,6 +36,10 @@ const {
 // Mock modules
 vi.mock("../auth/user-context", () => ({
   getUserContext: mockGetUserContext,
+}));
+
+vi.mock("~encore/auth", () => ({
+  getAuthData: mockGetAuthData,
 }));
 
 vi.mock("../auth/permissions", () => ({
@@ -57,6 +64,11 @@ vi.mock("./email", () => ({
 vi.mock("encore.dev/api", () => ({
   api: vi.fn((config, handler) => handler),
   APIError: {
+    unauthenticated: vi.fn((msg) => {
+      const err = new Error(msg);
+      (err as any).code = "unauthenticated";
+      return err;
+    }),
     permissionDenied: vi.fn((msg) => {
       const err = new Error(msg);
       (err as any).code = "permission_denied";
@@ -327,7 +339,12 @@ describe("Invitation System", () => {
   });
 
   describe("acceptInvitation", () => {
-    it("should accept invitation and create new user", async () => {
+    const validAuthData = {
+      userID: "new-clerk-id",
+      emailAddress: "invitee@test.com",
+    };
+
+    it("should accept invitation and create new user when authenticated", async () => {
       const invitation = createInvitation();
       const newUser = createUser({
         id: "new-user-123",
@@ -335,16 +352,15 @@ describe("Invitation System", () => {
         role: "AGENT",
       });
 
+      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(newUser);
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
-      const result = await acceptInvitation({
-        token: "test-token",
-        clerkId: "new-clerk-id",
-      });
+      const result = await acceptInvitation({ token: "test-token" });
 
       expect(result.success).toBe(true);
       expect(result.userId).toBe("new-user-123");
@@ -360,24 +376,23 @@ describe("Invitation System", () => {
       );
     });
 
-    it("should accept invitation and update existing user", async () => {
+    it("should accept invitation and update existing user found by clerkId", async () => {
       const invitation = createInvitation();
       const existingUser = createUser({
         id: "existing-user",
         email: "invitee@test.com",
         marketCenterId: null,
+        clerkId: "new-clerk-id",
       });
 
+      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
-      mockUserRepository.findByEmail.mockResolvedValue(existingUser);
+      mockUserRepository.findByClerkId.mockResolvedValue(existingUser);
       mockUserRepository.update.mockResolvedValue(existingUser);
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
-      const result = await acceptInvitation({
-        token: "test-token",
-        clerkId: "new-clerk-id",
-      });
+      const result = await acceptInvitation({ token: "test-token" });
 
       expect(result.success).toBe(true);
       expect(mockUserRepository.update).toHaveBeenCalledWith(
@@ -390,25 +405,105 @@ describe("Invitation System", () => {
       );
     });
 
+    it("should accept invitation and update existing user found by email (race condition handling)", async () => {
+      const invitation = createInvitation();
+      const existingUser = createUser({
+        id: "existing-user",
+        email: "invitee@test.com",
+        marketCenterId: null,
+      });
+
+      mockGetAuthData.mockResolvedValue(validAuthData);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockUserRepository.findByClerkId.mockResolvedValue(null);
+      mockUserRepository.findByEmail.mockResolvedValue(existingUser);
+      mockUserRepository.update.mockResolvedValue(existingUser);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
+
+      const result = await acceptInvitation({ token: "test-token" });
+
+      expect(result.success).toBe(true);
+      expect(mockUserRepository.update).toHaveBeenCalledWith(
+        "existing-user",
+        expect.objectContaining({
+          marketCenterId: "mc-123",
+          role: "AGENT",
+          clerkId: "new-clerk-id",
+        })
+      );
+    });
+
+    it("should throw error when not authenticated", async () => {
+      mockGetAuthData.mockResolvedValue(null);
+
+      await expect(
+        acceptInvitation({ token: "test-token" })
+      ).rejects.toThrow("User not authenticated");
+    });
+
+    it("should throw error when email does not match invitation (security check)", async () => {
+      const invitation = createInvitation({ email: "different@test.com" });
+
+      mockGetAuthData.mockResolvedValue(validAuthData);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+
+      await expect(
+        acceptInvitation({ token: "test-token" })
+      ).rejects.toThrow("This invitation was sent to a different email address");
+    });
+
+    it("should allow email match case-insensitively", async () => {
+      const invitation = createInvitation({ email: "INVITEE@TEST.COM" });
+      const newUser = createUser({
+        id: "new-user-123",
+        email: "invitee@test.com",
+        role: "AGENT",
+      });
+
+      mockGetAuthData.mockResolvedValue(validAuthData);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockUserRepository.findByClerkId.mockResolvedValue(null);
+      mockUserRepository.findByEmail.mockResolvedValue(null);
+      mockUserRepository.create.mockResolvedValue(newUser);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
+
+      const result = await acceptInvitation({ token: "test-token" });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should throw error when auth has no email address", async () => {
+      mockGetAuthData.mockResolvedValue({ userID: "clerk-id", emailAddress: null });
+
+      await expect(
+        acceptInvitation({ token: "test-token" })
+      ).rejects.toThrow("No email address found for authenticated user");
+    });
+
     it("should throw error for non-existent invitation", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(null);
 
       await expect(
-        acceptInvitation({ token: "invalid-token", clerkId: "clerk-id" })
+        acceptInvitation({ token: "invalid-token" })
       ).rejects.toThrow("Invitation not found");
     });
 
     it("should throw error for already accepted invitation", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         createInvitation({ status: "ACCEPTED" })
       );
 
       await expect(
-        acceptInvitation({ token: "test-token", clerkId: "clerk-id" })
+        acceptInvitation({ token: "test-token" })
       ).rejects.toThrow("Invitation has already been accepted");
     });
 
     it("should throw error for expired invitation", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         createInvitation({
           expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
@@ -417,7 +512,7 @@ describe("Invitation System", () => {
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
 
       await expect(
-        acceptInvitation({ token: "test-token", clerkId: "clerk-id" })
+        acceptInvitation({ token: "test-token" })
       ).rejects.toThrow("Invitation has expired");
     });
   });

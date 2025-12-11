@@ -1,8 +1,9 @@
 "use client";
 
-import { SignUp, useAuth, useUser } from "@clerk/nextjs";
+import { SignUp, useAuth } from "@clerk/nextjs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
+import { API_BASE } from "@/lib/api/utils";
 
 interface InvitationDetails {
   id: string;
@@ -26,8 +27,7 @@ interface InvitationResponse {
 function SignUpContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isSignedIn, userId } = useAuth();
-  const { user } = useUser();
+  const { isSignedIn, getToken } = useAuth();
   const token = searchParams.get("token");
 
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
@@ -35,25 +35,31 @@ function SignUpContent() {
   const [isLoading, setIsLoading] = useState(!!token);
   const [isAccepting, setIsAccepting] = useState(false);
 
-  // Fetch invitation details if token is present
+  // Use refs to prevent multiple calls
+  const hasFetchedInvitation = useRef(false);
+  const hasAcceptedInvitation = useRef(false);
+
+  // Fetch invitation details if token is present (only once)
   useEffect(() => {
-    if (token) {
+    if (token && !hasFetchedInvitation.current) {
+      hasFetchedInvitation.current = true;
       fetchInvitation(token);
     }
   }, [token]);
 
-  // After user signs up with an invitation, accept the invitation
+  // After user signs up with an invitation, accept the invitation (only once)
   useEffect(() => {
-    if (isSignedIn && userId && token && invitation && !isAccepting) {
-      acceptInvitation(token, userId);
+    if (isSignedIn && token && invitation && !hasAcceptedInvitation.current && !isAccepting) {
+      hasAcceptedInvitation.current = true;
+      acceptInvitationWithAuth(token);
     }
-  }, [isSignedIn, userId, token, invitation, isAccepting]);
+  }, [isSignedIn, token, invitation, isAccepting]);
 
-  async function fetchInvitation(token: string) {
+  async function fetchInvitation(inviteToken: string) {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/invitations/${token}`
+        `${API_BASE}/invitations/${inviteToken}`
       );
       const data: InvitationResponse = await response.json();
 
@@ -62,24 +68,33 @@ function SignUpContent() {
       } else {
         setInvitationError(data.message || "Invalid invitation");
       }
-    } catch (error) {
+    } catch {
       setInvitationError("Failed to load invitation details");
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function acceptInvitation(token: string, clerkId: string) {
+  async function acceptInvitationWithAuth(inviteToken: string) {
     setIsAccepting(true);
     try {
+      // Get the auth token from Clerk for authenticated request
+      const authToken = await getToken();
+      if (!authToken) {
+        setInvitationError("Failed to get authentication token. Please try again.");
+        setIsAccepting(false);
+        hasAcceptedInvitation.current = false; // Allow retry
+        return;
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/invitations/${token}/accept`,
+        `${API_BASE}/invitations/${inviteToken}/accept`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ clerkId }),
         }
       );
 
@@ -89,9 +104,11 @@ function SignUpContent() {
       } else {
         const error = await response.json();
         setInvitationError(error.message || "Failed to accept invitation");
+        hasAcceptedInvitation.current = false; // Allow retry on certain errors
       }
-    } catch (error) {
+    } catch {
       setInvitationError("Failed to accept invitation");
+      hasAcceptedInvitation.current = false; // Allow retry
     } finally {
       setIsAccepting(false);
     }

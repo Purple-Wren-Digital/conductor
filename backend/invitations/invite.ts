@@ -1,4 +1,5 @@
 import { api, APIError } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import crypto from "crypto";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
@@ -47,8 +48,9 @@ export interface GetInvitationResponse {
   message?: string;
 }
 
+// AcceptInvitationRequest - now empty as we get clerkId from auth
 export interface AcceptInvitationRequest {
-  clerkId: string;
+  // No body required - clerkId and email come from authenticated session
 }
 
 export interface AcceptInvitationResponse {
@@ -250,18 +252,38 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
 // Accept Invitation (Called after user signs up via Clerk)
 // ============================================================================
 
-export const acceptInvitation = api<{ token: string } & AcceptInvitationRequest, AcceptInvitationResponse>(
+export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>(
   {
     expose: true,
     method: "POST",
     path: "/invitations/:token/accept",
-    auth: false, // Called during signup flow before full auth is established
+    auth: true, // Now requires authentication
   },
-  async ({ token, clerkId }) => {
+  async ({ token }) => {
+    // Get authenticated user's info from Clerk
+    const authData = await getAuthData();
+    if (!authData) {
+      throw APIError.unauthenticated("User not authenticated");
+    }
+
+    const clerkId = authData.userID;
+    const clerkEmail = authData.emailAddress;
+
+    if (!clerkEmail) {
+      throw APIError.failedPrecondition("No email address found for authenticated user");
+    }
+
     const invitation = await marketCenterRepository.findInvitationByToken(token);
 
     if (!invitation) {
       throw APIError.notFound("Invitation not found");
+    }
+
+    // Verify email matches invitation (case-insensitive)
+    if (invitation.email.toLowerCase() !== clerkEmail.toLowerCase()) {
+      throw APIError.permissionDenied(
+        "This invitation was sent to a different email address. Please sign up with the email that received the invitation."
+      );
     }
 
     if (invitation.status !== "PENDING") {
@@ -278,11 +300,16 @@ export const acceptInvitation = api<{ token: string } & AcceptInvitationRequest,
       throw APIError.internal("Invitation is missing market center");
     }
 
-    // Check if user already exists
-    let user = await userRepository.findByEmail(invitation.email);
+    // Check if user already exists (may have been created by getUserContext race condition)
+    // Try by clerkId first, then by email
+    let user = await userRepository.findByClerkId(clerkId);
+
+    if (!user) {
+      user = await userRepository.findByEmail(invitation.email);
+    }
 
     if (user) {
-      // User exists - update their market center and role
+      // User exists - update their market center, role, and ensure clerkId is set
       await userRepository.update(user.id, {
         marketCenterId: invitation.marketCenterId,
         role: invitation.role,
