@@ -1,13 +1,11 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useStore } from "@/context/store-provider";
+import { useState, useEffect, useCallback } from "react";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { InvitationUserListItem } from "@/components/ui/list-item/user-list-item-invitation";
 import {
   Select,
   SelectContent,
@@ -17,243 +15,185 @@ import {
 } from "@/components/ui/select";
 import CreateUser from "./create-user-form";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { ClerkUser, ClerkUserUpdates } from "@/lib/utils/clerk/types";
-import type { OrderBy, UserSortBy } from "@/lib/types";
 import {
-  ArrowDown,
-  ArrowDownUp,
-  ArrowUp,
   ChevronRight,
   ChevronLeft,
   Filter,
   Users,
   UserPlus,
   X,
+  Mail,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Copy,
+  Trash2,
 } from "lucide-react";
-import {
-  formatOrderBy,
-  formatPaginationText,
-  formatUserOptions,
-  orderByOptions,
-  sortByUserOptions,
-} from "@/lib/utils";
-import { NewUserInvitationProps } from "@/packages/transactional/emails/types";
+import { formatPaginationText } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAuth, useUser } from "@clerk/nextjs";
-import { createAndSendNotification } from "@/lib/utils/notifications";
+import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
 
-type InvitationStatus = "All" | "Accepted" | "Unaccepted" | "Unsent";
-const invitationStatusOptions: InvitationStatus[] = [
+type InvitationStatus = "All" | "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+
+interface TeamInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: InvitationStatus;
+  token: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  createdAt: string;
+}
+
+const statusOptions: InvitationStatus[] = [
   "All",
-  "Accepted",
-  "Unaccepted",
-  "Unsent",
+  "PENDING",
+  "ACCEPTED",
+  "EXPIRED",
+  "CANCELLED",
 ];
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return <Clock className="h-4 w-4 text-yellow-500" />;
+    case "ACCEPTED":
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case "EXPIRED":
+      return <XCircle className="h-4 w-4 text-gray-500" />;
+    case "CANCELLED":
+      return <XCircle className="h-4 w-4 text-red-500" />;
+    default:
+      return <Mail className="h-4 w-4" />;
+  }
+};
+
+const getStatusBadge = (status: string) => {
+  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    PENDING: "secondary",
+    ACCEPTED: "default",
+    EXPIRED: "outline",
+    CANCELLED: "destructive",
+  };
+  return (
+    <Badge variant={variants[status] || "outline"} className="gap-1">
+      {getStatusIcon(status)}
+      {status}
+    </Badge>
+  );
+};
 
 export default function UserInvitationManagement() {
   const [showFilters, setShowFilters] = useState(false);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-
-  const [clerkUsers, setClerkUsers] = useState<any[]>([]);
-  const [totalClerkUsers, setTotalClerkUsers] = useState<number>(0);
-
-  const [selectedNewUsers, setSelectedNewUsers] = useState<any[]>([]);
-  const [invitationStatus, setInvitationStatus] =
-    useState<InvitationStatus>("All");
-
-  const [sortBy, setSortBy] = useState<UserSortBy>("updatedAt");
-  const [sortDir, setSortDir] = useState<OrderBy>("desc");
-
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [statusFilter, setStatusFilter] = useState<InvitationStatus>("All");
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
-  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const { currentUser } = useStore();
   const { permissions } = useUserRole();
-  const { getToken } = useAuth();
-
-  // TODO: QUERY THE CLERK USERS FETCH
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    params.append("invitationStatus", invitationStatus);
-    params.append("sortBy", sortBy);
-    params.append("sortDir", sortDir);
-    params.append("itemsPerPage", itemsPerPage.toString());
-    params.append("currentPage", (currentPage - 1).toString()); // Auth0 = 0 index for pagination
-
-    return params;
-  }, [invitationStatus, sortBy, sortDir, itemsPerPage, currentPage]);
+  const fetchWithAuth = useFetchWithAuth();
 
   const clearFilters = () => {
-    setInvitationStatus("All");
-    setSortBy("updatedAt");
-    setSortDir("desc");
+    setStatusFilter("All");
   };
 
-  const hasActiveFilters =
-    invitationStatus !== "All" || sortBy !== "updatedAt" || sortDir !== "desc";
+  const hasActiveFilters = statusFilter !== "All";
 
-  const handleSelectUser = async (selectedUser: any, checked: boolean) => {
-    setSelectedNewUsers((prev) =>
-      checked
-        ? [...prev, selectedUser]
-        : prev.filter((user) => user.email !== selectedUser.email)
-    );
-  };
-
-  const fetchClerkUsers = useCallback(async () => {
+  const fetchInvitations = useCallback(async () => {
     if (!permissions?.canManageAllUsers) return;
-    setLoadingUsers(true);
+    setLoadingInvitations(true);
 
     try {
-      const response = await fetch(
-        `/api/clerk/list-users`, // ${queryParams && `?${queryParams.toString()}`}
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetchWithAuth("/invitations");
 
       if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to fetch clerk users"
-        );
+        throw new Error("Failed to fetch invitations");
       }
-      const data = await response.json();
 
-      setClerkUsers(data?.data ?? []);
-      setTotalClerkUsers(data?.data?.length ?? 0);
-    } catch {
-      // Failed to fetch clerk users
+      const data = await response.json();
+      setInvitations(data?.invitations ?? []);
+    } catch (error) {
+      console.error("Failed to fetch invitations:", error);
+      toast.error("Failed to load invitations");
     } finally {
-      setLoadingUsers(false);
+      setLoadingInvitations(false);
     }
-  }, [permissions?.canManageAllUsers]); //, queryParams
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions?.canManageAllUsers]);
 
   useEffect(() => {
-    fetchClerkUsers();
-  }, [fetchClerkUsers]);
+    fetchInvitations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions?.canManageAllUsers]);
 
-  const handleUpdateInClerk = async (payload: ClerkUserUpdates) => {
-    if (!payload?.clerkId) {
-      throw new Error("Missing Clerk Id");
-    }
+  const handleResendInvitation = async (token: string) => {
+    setActionLoading(token);
     try {
-      const response = await fetch(`/api/clerk/update-user`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const response = await fetchWithAuth(`/invitations/${token}/resend`, {
+        method: "POST",
       });
+
       if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to update user metadata"
-        );
+        const error = await response.json();
+        throw new Error(error.message || "Failed to resend invitation");
       }
-      return true;
-    } catch {
-      return false;
+
+      toast.success("Invitation resent successfully!");
+      await fetchInvitations();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to resend invitation");
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleSendInvitation = useCallback(
-    async (newUser: ClerkUser) => {
-      if (!newUser || !newUser?.id || !currentUser) {
-        throw new Error("Missing payload");
-      }
-      setIsSendingInvitation(true);
-      try {
-        const response = await createAndSendNotification({
-          getToken: getToken,
-          templateName: "New User Invitation",
-          trigger: "Invitation",
-          receivingUser: {
-            id: newUser.id, // new clerk user id
-            name: `${newUser?.first_name} ${newUser?.last_name}`,
-            email: newUser.email_addresses[0].email_address,
-          },
-          data: {
-            invitation: {
-              newUserName:
-                newUser?.first_name && newUser?.last_name
-                  ? `${newUser?.first_name} ${newUser?.last_name}`
-                  : newUser?.username,
-              newUserEmail: newUser.email_addresses[0].email_address,
-              newUserRole: newUser?.public_metadata?.role ?? "AGENT",
-              newUserMarketCenter: null,
-              inviterName: currentUser?.name,
-              inviterEmail: currentUser?.email,
-            } as NewUserInvitationProps,
-          },
-        });
+  const handleCancelInvitation = async (token: string) => {
+    setActionLoading(token);
+    try {
+      const response = await fetchWithAuth(`/invitations/${token}`, {
+        method: "DELETE",
+      });
 
-        if (!response) {
-          throw new Error("Failed to generate/send invitation");
-        }
-        const updated = await handleUpdateInClerk({
-          clerkId: newUser.id,
-          invited: true,
-          invitedOn: new Date(),
-        });
-
-        if (!updated) {
-          throw new Error("Clerk failed to update");
-        }
-        toast.success(`Invitation sent!`);
-      } catch {
-        toast.error("Failed to invite user");
-      } finally {
-        setIsSendingInvitation(false);
-        await fetchClerkUsers();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to cancel invitation");
       }
-    },
-    [fetchClerkUsers, getToken, currentUser]
+
+      toast.success("Invitation cancelled");
+      await fetchInvitations();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel invitation");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCopySignupUrl = async (token: string) => {
+    const signupUrl = `${window.location.origin}/sign-up?token=${token}`;
+    await navigator.clipboard.writeText(signupUrl);
+    toast.success("Signup URL copied to clipboard!");
+  };
+
+  // Filter invitations by status
+  const filteredInvitations = invitations.filter((inv) => {
+    if (statusFilter === "All") return true;
+    return inv.status === statusFilter;
+  });
+
+  // Paginate
+  const totalPages = Math.ceil(filteredInvitations.length / itemsPerPage);
+  const paginatedInvitations = filteredInvitations.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
-  const handleMarkUsersAsAccepted = useCallback(async () => {
-    if (!selectedNewUsers || !selectedNewUsers.length) {
-      throw new Error("no users selected");
-    }
-    setLoadingUsers(true);
-
-    try {
-      const results = await Promise.allSettled(
-        selectedNewUsers.map((user: ClerkUser) =>
-          handleUpdateInClerk({
-            clerkId: user.id,
-            accepted: true,
-            acceptedOn: new Date(),
-          })
-        )
-      );
-      const failed = results.filter((r) => r.status === "rejected");
-
-      if (failed.length) {
-        toast.error(`Failed to update ${failed.length} user(s)`);
-      } else {
-        toast.success("All selected users marked as accepted");
-      }
-      setSelectedNewUsers([]);
-    } catch {
-      toast.error("Failed to mark user(s) as accepted");
-    } finally {
-      await fetchClerkUsers();
-      setLoadingUsers(false);
-    }
-  }, [fetchClerkUsers, selectedNewUsers]);
+  const pendingCount = invitations.filter((i) => i.status === "PENDING").length;
+  const acceptedCount = invitations.filter((i) => i.status === "ACCEPTED").length;
 
   return (
     <div className="space-y-6">
@@ -263,83 +203,65 @@ export default function UserInvitationManagement() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Created Users ({totalClerkUsers})
+                Team Invitations ({invitations.length})
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Create and invite new users to join Conductor Ticketing
+                {pendingCount} pending, {acceptedCount} accepted
               </p>
             </div>
             <Button
               onClick={() => setShowCreateUserForm(true)}
               className="gap-2"
-              disabled={
-                !permissions?.canCreateUsers ||
-                isSendingInvitation ||
-                loadingUsers
-              }
+              disabled={!permissions?.canCreateUsers || loadingInvitations}
             >
               <UserPlus className="h-4 w-4" />
-              Create New User
+              Invite User
             </Button>
           </div>
 
-          {/* SEARCH USERS + FILTER BUTTON */}
+          {/* FILTER BUTTON */}
           <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-end gap-4">
               <Button
                 variant="outline"
-                onClick={() => handleMarkUsersAsAccepted()}
-                disabled={
-                  loadingUsers ||
-                  !permissions?.canManageAllUsers ||
-                  !selectedNewUsers.length
-                }
+                size="sm"
+                className="gap-2 bg-transparent"
+                onClick={() => setShowFilters(!showFilters)}
+                type="button"
+                disabled={loadingInvitations}
               >
-                <p>Mark User(s) as Accepted</p>
-              </Button>
-              <div className="flex items-center gap-4">
-                {/* FILTER BUTTON */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 bg-transparent"
-                  onClick={() => setShowFilters(!showFilters)}
-                  type="button"
-                  disabled={loadingUsers}
-                >
-                  <Filter className="h-4 w-4" />
-                  Filters
-                  {hasActiveFilters && (
-                    <Badge
-                      variant="secondary"
-                      className="ml-1 h-2 w-2 rounded-full p-0"
-                    />
-                  )}
-                </Button>
+                <Filter className="h-4 w-4" />
+                Filters
                 {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="gap-2"
-                    type="button"
-                  >
-                    <X className="h-4 w-4" />
-                    Clear
-                  </Button>
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-2 w-2 rounded-full p-0"
+                  />
                 )}
-              </div>
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="gap-2"
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
             </div>
+
             {showFilters && (
               <Card className="p-4 bg-muted/50">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {/* INVITE STATUS */}
                   <div className="space-y-2">
                     <Label>Status</Label>
                     <Select
-                      value={invitationStatus}
+                      value={statusFilter}
                       onValueChange={(value: InvitationStatus) => {
-                        setInvitationStatus(value);
+                        setStatusFilter(value);
                         setCurrentPage(1);
                       }}
                     >
@@ -347,80 +269,11 @@ export default function UserInvitationManagement() {
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
-                        {invitationStatusOptions.map((status) => (
+                        {statusOptions.map((status) => (
                           <SelectItem key={status} value={status}>
-                            <div className="flex items-center gap-2 mr-1">
-                              <p>{status} Invitations</p>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* SORT BY */}
-                  <div className="space-y-2">
-                    <div className="flex gap-1">
-                      <ArrowDownUp className="w-4 h-4" />
-                      <Label>Sort</Label>
-                    </div>
-                    <Select
-                      value={sortBy}
-                      onValueChange={(value: UserSortBy) => {
-                        setSortBy(value);
-                        setCurrentPage(1);
-                      }}
-                      disabled={!clerkUsers || !clerkUsers.length}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={"Sort By"}
-                          className="text-sm font-medium"
-                        />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        {sortByUserOptions.map((userOption: UserSortBy) => {
-                          if (userOption === "name") return null;
-                          return (
-                            <SelectItem
-                              key={userOption}
-                              value={userOption}
-                              className="text-sm font-medium"
-                            >
-                              {formatUserOptions(userOption)}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* ORDER BY */}
-                  <div className="space-y-2">
-                    <Label>Order</Label>
-                    <Select
-                      value={sortDir}
-                      onValueChange={(value: OrderBy) => {
-                        setSortDir(value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={"Order by"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {orderByOptions.map((direction) => (
-                          <SelectItem key={direction} value={direction}>
-                            <div className="flex gap-1 items-center mr-1">
-                              {direction === "desc" ? (
-                                <ArrowDown />
-                              ) : (
-                                <ArrowUp />
-                              )}
-                              <p className="text-sm font-medium">
-                                {formatOrderBy(direction)}
-                              </p>
+                            <div className="flex items-center gap-2">
+                              {status !== "All" && getStatusIcon(status)}
+                              {status === "All" ? "All Invitations" : status}
                             </div>
                           </SelectItem>
                         ))}
@@ -432,8 +285,9 @@ export default function UserInvitationManagement() {
             )}
           </div>
         </CardHeader>
+
         <CardContent>
-          {loadingUsers && clerkUsers && clerkUsers.length === 0 ? (
+          {loadingInvitations && invitations.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -443,111 +297,153 @@ export default function UserInvitationManagement() {
             </div>
           ) : (
             <div
-              className={`space-y-4 transition-opacity duration-300 ${
-                loadingUsers ? "opacity-50 pointer-events-none" : "opacity-100"
+              className={`space-y-3 transition-opacity duration-300 ${
+                loadingInvitations ? "opacity-50 pointer-events-none" : "opacity-100"
               }`}
             >
-              {!loadingUsers &&
-                clerkUsers &&
-                clerkUsers.length > 0 &&
-                clerkUsers.map((user: ClerkUser, index) => {
-                  // console.log(
-                  //   user?.email_addresses[0]?.email_address,
-                  //   "Clerk User Id",
-                  //   user.id
-                  // );
-                  return (
-                    <InvitationUserListItem
-                      key={index}
-                      disabled={
-                        isSendingInvitation ||
-                        !permissions?.canManageAllUsers ||
-                        user?.public_metadata?.accepted === true
-                      }
-                      onInvite={() => handleSendInvitation(user)}
-                      selected={selectedNewUsers.includes(user)}
-                      onSelect={(checked: boolean) =>
-                        handleSelectUser(user, checked)
-                      }
-                      selectable={!user?.public_metadata?.accepted}
-                      user={{
-                        name:
-                          user?.first_name && user?.last_name
-                            ? `${user?.first_name} ${user?.last_name}`
-                            : user?.email_addresses[0]?.email_address,
-                        email: user?.email_addresses[0]?.email_address,
-                        emailVerified:
-                          user?.email_addresses?.[0]?.verification?.status ??
-                          "unknown",
-                        user_metadata: {
-                          created: user?.created_at
-                            ? new Date(user.created_at)
-                            : null,
-                          //   createdBy: user.user_metadata?.createdBy || "unknown",
-                          invited: user.public_metadata?.invited || false,
-                          invitedOn: user?.public_metadata?.invitedOn
-                            ? new Date(user.public_metadata.invitedOn)
-                            : null,
-                          accepted: user?.public_metadata?.accepted || false,
-                          acceptedOn: user?.public_metadata?.acceptedOn
-                            ? new Date(user.public_metadata.acceptedOn)
-                            : null,
-                          role:
-                            user?.public_metadata?.role || "No role assigned",
-                        },
-                      }}
-                    />
-                  );
-                })}
-              {(!clerkUsers || clerkUsers.length === 0) && !loadingUsers && (
+              {paginatedInvitations.length > 0 ? (
+                paginatedInvitations.map((invitation) => (
+                  <div
+                    key={invitation.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{invitation.email}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="capitalize">{invitation.role.toLowerCase()}</span>
+                          <span>•</span>
+                          <span>
+                            Sent {new Date(invitation.createdAt).toLocaleDateString()}
+                          </span>
+                          {invitation.status === "PENDING" && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(invitation.status)}
+
+                      {invitation.status === "PENDING" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCopySignupUrl(invitation.token)}
+                            title="Copy signup URL"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleResendInvitation(invitation.token)}
+                            disabled={actionLoading === invitation.token}
+                            title="Resend invitation"
+                          >
+                            <RefreshCw
+                              className={`h-4 w-4 ${
+                                actionLoading === invitation.token ? "animate-spin" : ""
+                              }`}
+                            />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelInvitation(invitation.token)}
+                            disabled={actionLoading === invitation.token}
+                            title="Cancel invitation"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {invitation.status === "EXPIRED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleResendInvitation(invitation.token)}
+                          disabled={actionLoading === invitation.token}
+                          className="gap-1"
+                        >
+                          <RefreshCw
+                            className={`h-3 w-3 ${
+                              actionLoading === invitation.token ? "animate-spin" : ""
+                            }`}
+                          />
+                          Resend
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No users found matching your criteria.
+                  {statusFilter === "All"
+                    ? "No invitations yet. Click 'Invite User' to get started."
+                    : `No ${statusFilter.toLowerCase()} invitations found.`}
                 </div>
               )}
             </div>
           )}
-          <div className="flex items-center justify-between pt-4">
-            <div className="text-sm text-muted-foreground">
-              Showing{" "}
-              {formatPaginationText({
-                totalItems: clerkUsers?.length ?? 0,
-                itemsPerPage,
-                currentPage,
-              })}{" "}
-              of {totalClerkUsers} Total Users
+
+          {/* Pagination */}
+          {filteredInvitations.length > itemsPerPage && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing{" "}
+                {formatPaginationText({
+                  totalItems: filteredInvitations.length,
+                  itemsPerPage,
+                  currentPage,
+                })}{" "}
+                of {filteredInvitations.length} invitations
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 1}
+                  type="button"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </Button>
+                <span className="text-sm">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage === totalPages}
+                  type="button"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => p - 1)}
-                disabled={currentPage === 1}
-                type="button"
-              >
-                <ChevronLeft className="h-4 w-4" /> Previous
-              </Button>
-              {/* <span className="text-sm">
-                {currentPage} / {totalPages}
-              </span> */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                // disabled={currentPage === totalPages}
-                type="button"
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* CREATE USER */}
+      {/* CREATE/INVITE USER DIALOG */}
       <CreateUser
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
-        queryInvalidation={fetchClerkUsers}
+        queryInvalidation={fetchInvitations}
       />
     </div>
   );

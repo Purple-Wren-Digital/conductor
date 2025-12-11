@@ -47,25 +47,24 @@ export async function requireActiveSubscription(marketCenterId: string): Promise
 }
 
 /**
- * Check if adding a new user would exceed subscription limits
+ * Check if adding a new user/invitation would exceed subscription limits
+ * Counts both active users AND pending invitations against the seat limit
  */
 export async function checkCanAddUser(marketCenterId: string): Promise<void> {
-  const canAdd = await checkSubscriptionLimit(marketCenterId, "users");
+  const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
 
-  if (!canAdd) {
-    const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
+  if (!result) {
+    throw APIError.failedPrecondition(
+      "No subscription found. Please subscribe to continue."
+    );
+  }
 
-    if (!result) {
-      throw APIError.failedPrecondition(
-        "No subscription found. Please subscribe to continue."
-      );
-    }
+  const { subscription, totalUsedSeats } = result;
+  const totalSeats = subscription.includedSeats + subscription.additionalSeats;
 
-    const { subscription, activeUserCount } = result;
-    const totalSeats = subscription.includedSeats + subscription.additionalSeats;
-
+  if (totalUsedSeats >= totalSeats) {
     throw APIError.resourceExhausted(
-      `User limit reached (${activeUserCount}/${totalSeats} seats). Please upgrade your subscription or purchase additional seats.`
+      `Seat limit reached (${totalUsedSeats}/${totalSeats} seats used, including pending invitations). Please upgrade your subscription or purchase additional seats.`
     );
   }
 }

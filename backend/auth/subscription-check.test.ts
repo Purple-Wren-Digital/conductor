@@ -216,14 +216,22 @@ describe("Subscription Check", () => {
 
   describe("checkCanAddUser", () => {
     it("should not throw when under user limit", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(true);
+      mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
+        {
+          subscription: createSubscription({
+            includedSeats: 5,
+            additionalSeats: 0,
+          }),
+          activeUserCount: 3,
+          pendingInvitationCount: 1,
+          totalUsedSeats: 4,
+        }
+      );
 
       await expect(checkCanAddUser("mc-123")).resolves.not.toThrow();
-      expect(mockCheckSubscriptionLimit).toHaveBeenCalledWith("mc-123", "users");
     });
 
     it("should throw when user limit is reached", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(false);
       mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
         {
           subscription: createSubscription({
@@ -231,33 +239,53 @@ describe("Subscription Check", () => {
             additionalSeats: 0,
           }),
           activeUserCount: 5,
+          pendingInvitationCount: 0,
+          totalUsedSeats: 5,
         }
       );
 
       await expect(checkCanAddUser("mc-123")).rejects.toThrow(
-        "User limit reached (5/5 seats)"
+        "Seat limit reached (5/5 seats used, including pending invitations)"
+      );
+    });
+
+    it("should count pending invitations against seat limit", async () => {
+      mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
+        {
+          subscription: createSubscription({
+            includedSeats: 5,
+            additionalSeats: 0,
+          }),
+          activeUserCount: 3,
+          pendingInvitationCount: 2,
+          totalUsedSeats: 5,
+        }
+      );
+
+      await expect(checkCanAddUser("mc-123")).rejects.toThrow(
+        "Seat limit reached (5/5 seats used, including pending invitations)"
       );
     });
 
     it("should include additional seats in limit message", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(false);
       mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
         {
           subscription: createSubscription({
             includedSeats: 5,
             additionalSeats: 3,
           }),
-          activeUserCount: 8,
+          activeUserCount: 6,
+          pendingInvitationCount: 2,
+          totalUsedSeats: 8,
         }
       );
 
       await expect(checkCanAddUser("mc-123")).rejects.toThrow(
-        "User limit reached (8/8 seats)"
+        "Seat limit reached (8/8 seats used, including pending invitations)"
       );
     });
 
     it("should throw when no subscription found", async () => {
-      mockCheckSubscriptionLimit.mockResolvedValue(false);
       mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
         null
       );

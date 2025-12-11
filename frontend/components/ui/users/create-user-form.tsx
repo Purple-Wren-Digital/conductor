@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import type { MarketCenter, UserRole } from "@/lib/types";
+import type { UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,55 +17,51 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog/base-dialog";
 import { useUserRole } from "@/hooks/use-user-role";
-import { Building, User } from "lucide-react";
+import { User, Copy, Check } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/nextjs";
-import { API_BASE } from "@/lib/api/utils";
-import { useMutation } from "@tanstack/react-query";
-import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
-// import { ClerkCreateUser } from "@/lib/clerk/types";
-// import { TeamSwitcher } from "../team-switcher";
+import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
 
-interface CreateClerkUserForm {
-  firstName: string;
-  lastName: string;
+interface InviteUserForm {
+  name: string;
   email: string;
   role: UserRole | string;
+}
+
+interface InvitationResponse {
+  success: boolean;
+  invitationId: string;
+  token: string;
+  signupUrl: string;
 }
 
 type CreateUserProps = {
   showCreateUserForm: boolean;
   setShowCreateUserForm: React.Dispatch<React.SetStateAction<boolean>>;
-  handleInviteUser?: () => Promise<void>;
   queryInvalidation: () => Promise<void>;
 };
 
 export default function CreateUser({
   showCreateUserForm,
   setShowCreateUserForm,
-  handleInviteUser,
   queryInvalidation,
 }: CreateUserProps) {
-  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
-  const [newUserFormData, setNewUserFormData] = useState<CreateClerkUserForm>({
-    firstName: "",
-    lastName: "",
+  const [formData, setFormData] = useState<InviteUserForm>({
+    name: "",
     email: "",
     role: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [invitationResult, setInvitationResult] = useState<InvitationResponse | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const { getToken } = useAuth();
+  const { permissions } = useUserRole();
+  const fetchWithAuth = useFetchWithAuth();
 
-  const { role, permissions } = useUserRole();
-
-  const { data, isLoading } = useFetchAllMarketCenters(role);
-
-  const marketCenters: MarketCenter[] = data?.marketCenters ?? [];
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
     return <Icon className="h-4 w-4" />;
@@ -73,290 +69,231 @@ export default function CreateUser({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!newUserFormData.firstName.trim())
-      errors.firstName = "First name is required";
-    if (!newUserFormData.lastName.trim())
-      errors.lastName = "Last name is required";
+    if (!formData.name.trim()) errors.name = "Name is required";
 
-    if (!newUserFormData.email.trim()) {
+    if (!formData.email.trim()) {
       errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUserFormData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = "Invalid email format";
+    }
+
+    if (!formData.role) {
+      errors.role = "Role is required";
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const createClerkUser = async () => {
-    try {
-      const response = await fetch("/api/clerk/create-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "Access-Control-Allow-Origin",
-        },
-
-        body: JSON.stringify({
-          email: [newUserFormData?.email],
-          firstName: newUserFormData.firstName,
-          lastName: newUserFormData.lastName,
-          role: newUserFormData.role,
-          marketCenterId: selectedMarketCenterId ?? null,
-        }),
-      });
-      if (response?.status === 422) {
-        toast.error("A user with that email already exists");
-        throw new Error("Unprocessable Entity");
-      }
-      const data = await response.json();
-      return data;
-    } catch {
-      return null;
-    }
-  };
-
-  const createNewPrismaUser = async (clerkId?: string) => {
-    if (!clerkId) {
-      throw new Error("Missing Clerk Id");
-    }
-
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const response = await fetch(`${API_BASE}/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          email: newUserFormData.email,
-          name: `${newUserFormData.firstName} ${newUserFormData.lastName}`,
-          role: newUserFormData.role || "AGENT",
-          clerkId: clerkId,
-          marketCenterId:
-            selectedMarketCenterId !== "null" ? selectedMarketCenterId : "",
-        }),
-      });
-      const data = await response.json();
-      return data;
-    } catch {
-      return null;
-    }
-  };
-
-  const createUserMutation = useMutation({
-    mutationFn: async () => {
-      const newClerkUser = await createClerkUser();
-      if (!newClerkUser || !newClerkUser?.id) {
-        throw new Error("Failed to create Clerk User");
-      }
-      const newPrismaUser = await createNewPrismaUser(newClerkUser.id);
-      if (!newPrismaUser) {
-        throw new Error(
-          "Clerk user created, but failed to create new Prisma User"
-        );
-      }
-    },
-    onSuccess: async (newPrismaUser: any) => {
-      if (handleInviteUser) {
-        toast.success(
-          `${newPrismaUser?.name || "User"} added! Sending invitation now...`
-        );
-        // await handleInviteUser(newPrismaUser);
-      } else {
-        toast.success(`${newPrismaUser?.name || "User"} added!`);
-      }
-      setShowCreateUserForm(false);
-      setFormErrors({});
-    },
-    onError: () => {
-      toast.error("Failed to create new user");
-    },
-    onSettled: async () => {
-      await queryInvalidation();
-      setIsSubmitting(false);
-    },
-  });
-
-  const handleSubmitCreateUserForm = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!permissions?.canCreateUsers) {
-      toast.error("You do not have permission to create users.");
+      toast.error("You do not have permission to invite users.");
       return;
     }
     setFormErrors({});
     if (!validateForm()) {
-      toast.error("Invalid input(s)");
+      toast.error("Please fill in all required fields");
       return;
     }
+
     setIsSubmitting(true);
-    createUserMutation.mutate();
+    try {
+      const response = await fetchWithAuth("/invitations", {
+        method: "POST",
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          role: formData.role,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to send invitation");
+      }
+
+      const result: InvitationResponse = await response.json();
+      setInvitationResult(result);
+      toast.success("Invitation sent successfully!");
+      await queryInvalidation();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send invitation");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* CREATE/EDIT USER */}
-      <Dialog open={showCreateUserForm} onOpenChange={setShowCreateUserForm}>
+  const handleCopyUrl = async () => {
+    if (invitationResult?.signupUrl) {
+      await navigator.clipboard.writeText(invitationResult.signupUrl);
+      setCopied(true);
+      toast.success("Signup URL copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleClose = () => {
+    setShowCreateUserForm(false);
+    setFormData({ name: "", email: "", role: "" });
+    setFormErrors({});
+    setInvitationResult(null);
+    setCopied(false);
+  };
+
+  // Show success state with signup URL
+  if (invitationResult) {
+    return (
+      <Dialog open={showCreateUserForm} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
+            <DialogTitle>Invitation Sent!</DialogTitle>
+            <DialogDescription>
+              An invitation has been sent to {formData.email}
+            </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitCreateUserForm} className="space-y-4">
-            {/* FIRST NAME */}
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                First Name *
-              </label>
-              <Input
-                id="name"
-                value={newUserFormData.firstName}
-                onChange={(e) =>
-                  setNewUserFormData({
-                    ...newUserFormData,
-                    firstName: e.target.value,
-                  })
-                }
-                placeholder="Enter first name"
-                className={formErrors.firstName ? "border-destructive" : ""}
-              />
-              {formErrors.firstName && (
-                <p className="text-sm text-destructive">
-                  {formErrors.firstName}
-                </p>
-              )}
-            </div>
-            {/* LAST NAME */}
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Last Name *
-              </label>
-              <Input
-                id="name"
-                value={newUserFormData.lastName}
-                onChange={(e) =>
-                  setNewUserFormData({
-                    ...newUserFormData,
-                    lastName: e.target.value,
-                  })
-                }
-                placeholder="Enter last name"
-                className={formErrors.lastName ? "border-destructive" : ""}
-              />
-              {formErrors.lastName && (
-                <p className="text-sm text-destructive">
-                  {formErrors.lastName}
-                </p>
-              )}
-            </div>
-            {/* EMAIL */}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email Address *
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={newUserFormData.email}
-                onChange={(e) =>
-                  setNewUserFormData({
-                    ...newUserFormData,
-                    email: e.target.value,
-                  })
-                }
-                placeholder="Enter email address"
-                className={formErrors.email ? "border-destructive" : ""}
-              />
-              {formErrors.email && (
-                <p className="text-sm text-destructive">{formErrors.email}</p>
-              )}
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-sm text-green-800">
+                The user will receive an email with instructions to sign up.
+                You can also share the signup link directly:
+              </p>
             </div>
 
-            {/* ROLE */}
             <div className="space-y-2">
-              <label
-                className={`text-sm font-medium ${!permissions?.canChangeUserRoles && "text-muted-foreground"}`}
-              >
-                Role *
-              </label>
-              <Select
-                value={newUserFormData.role}
-                onValueChange={(value: UserRole) =>
-                  setNewUserFormData({ ...newUserFormData, role: value })
-                }
-                disabled={!permissions?.canChangeUserRoles}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Assign a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {getRoleIcon(role)}
-                      {role.split("_").join(" ")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.role && (
-                <p className="text-sm text-destructive">{formErrors.role}</p>
-              )}
+              <label className="text-sm font-medium">Signup URL</label>
+              <div className="flex gap-2">
+                <Input
+                  value={invitationResult.signupUrl}
+                  readOnly
+                  className="text-xs bg-muted"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyUrl}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This link expires in 7 days
+              </p>
             </div>
 
-            {/* MARKET CENTER */}
-            <div className="space-y-2">
-              <label
-                className={`text-sm font-medium ${!permissions?.canManageAllUsers && "text-muted-foreground"}`}
-              >
-                Market Center
-              </label>
-              <Select
-                value={selectedMarketCenterId}
-                onValueChange={(value) => {
-                  setSelectedMarketCenterId(value);
-                }}
-                disabled={
-                  isLoading || role === "STAFF" || role === "STAFF_LEADER"
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a team" />
-                </SelectTrigger>
-                <SelectContent>
-                  {marketCenters &&
-                    marketCenters.length > 0 &&
-                    marketCenters.map((mc) => (
-                      <SelectItem key={mc.id} value={mc.id}>
-                        <Building className="h-4 w-4" />
-
-                        {mc.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleClose}>Done</Button>
             </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowCreateUserForm(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Create User"}
-              </Button>
-            </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
-    </div>
+    );
+  }
+
+  return (
+    <Dialog open={showCreateUserForm} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite New User</DialogTitle>
+          <DialogDescription>
+            Send an invitation email to add a new team member
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* NAME */}
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium">
+              Name *
+            </label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="Enter full name"
+              className={formErrors.name ? "border-destructive" : ""}
+            />
+            {formErrors.name && (
+              <p className="text-sm text-destructive">{formErrors.name}</p>
+            )}
+          </div>
+
+          {/* EMAIL */}
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email Address *
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder="Enter email address"
+              className={formErrors.email ? "border-destructive" : ""}
+            />
+            {formErrors.email && (
+              <p className="text-sm text-destructive">{formErrors.email}</p>
+            )}
+          </div>
+
+          {/* ROLE */}
+          <div className="space-y-2">
+            <label
+              className={`text-sm font-medium ${!permissions?.canChangeUserRoles && "text-muted-foreground"}`}
+            >
+              Role *
+            </label>
+            <Select
+              value={formData.role}
+              onValueChange={(value: UserRole) =>
+                setFormData({ ...formData, role: value })
+              }
+              disabled={!permissions?.canChangeUserRoles}
+            >
+              <SelectTrigger className={formErrors.role ? "border-destructive" : ""}>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    <div className="flex items-center gap-2">
+                      {getRoleIcon(role)}
+                      {role.split("_").join(" ")}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formErrors.role && (
+              <p className="text-sm text-destructive">{formErrors.role}</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Sending..." : "Send Invitation"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

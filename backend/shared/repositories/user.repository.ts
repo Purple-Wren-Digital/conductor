@@ -252,6 +252,7 @@ export const userRepository = {
     email: string;
     name: string | null;
     role: UserRole;
+    clerkId: string;
     marketCenterId: string | null;
     isActive: boolean;
   }>): Promise<User | null> {
@@ -271,6 +272,10 @@ export const userRepository = {
     if (data.role !== undefined) {
       updates.push(`role = $${paramIndex++}`);
       values.push(data.role);
+    }
+    if (data.clerkId !== undefined) {
+      updates.push(`clerk_id = $${paramIndex++}`);
+      values.push(data.clerkId);
     }
     if (data.marketCenterId !== undefined) {
       updates.push(`market_center_id = $${paramIndex++}`);

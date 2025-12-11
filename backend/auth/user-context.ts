@@ -27,7 +27,7 @@ export async function getUserContext(): Promise<UserContext> {
 
     // If found, update with Clerk user ID
     if (user) {
-      await userRepository.update(user.id, { clerkId: authData.userID } as any);
+      await userRepository.update(user.id, { clerkId: authData.userID });
     }
   }
 
