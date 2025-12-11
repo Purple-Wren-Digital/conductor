@@ -20,7 +20,7 @@ import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export default function MarketCenterNotificationPreferences({
+function MarketCenterNotificationPreferences({
   marketCenterId,
 }: {
   marketCenterId?: string;
@@ -63,7 +63,10 @@ export default function MarketCenterNotificationPreferences({
 
   // Sync local state when fetched data changes
   useEffect(() => {
-    if (marketCenterNotificationPreferences && marketCenterNotificationPreferences.length > 0) {
+    if (
+      marketCenterNotificationPreferences &&
+      marketCenterNotificationPreferences.length > 0
+    ) {
       setUpdatedNotificationPreferences(marketCenterNotificationPreferences);
     }
   }, [marketCenterNotificationPreferences]);
@@ -272,7 +275,8 @@ export default function MarketCenterNotificationPreferences({
               </Card>
             ))}
           </>
-        ) : updatedNotificationPreferences &&
+        ) : (
+          updatedNotificationPreferences &&
           updatedNotificationPreferences.map((preference) => {
             return (
               <Card key={preference?.type ? preference.type : Math.random()}>
@@ -351,8 +355,9 @@ export default function MarketCenterNotificationPreferences({
               </Card>
             );
           })
-        }
+        )}
       </CardContent>
     </form>
   );
 }
+export default MarketCenterNotificationPreferences;

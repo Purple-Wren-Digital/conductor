@@ -36,7 +36,11 @@ export default function NotificationPreferences({
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
 
-  const notificationsQueryKey = ["user-account-settings", userId];
+  const notificationsQueryKey = useMemo(
+    () => ["notifications", userId],
+    [userId]
+  );
+
   const { data: userSettingsData, isLoading: isLoadingSettings } =
     useFetchUserSettings({
       id: userId,
@@ -48,6 +52,7 @@ export default function NotificationPreferences({
       queryKey: notificationsQueryKey,
     });
   }, [queryClient, notificationsQueryKey]);
+
   const oldNotificationPreferences: NotificationPreferences[] = useMemo(
     () => userSettingsData?.settings?.notificationPreferences ?? [],
     [userSettingsData]
@@ -325,7 +330,10 @@ export default function NotificationPreferences({
           {isLoadingSettings ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="flex items-center justify-between px-1 sm:px-4">
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-1 sm:px-4"
+                >
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-5 w-10 rounded-full" />
                 </div>
@@ -396,249 +404,249 @@ export default function NotificationPreferences({
           </div>
         </div>
       ) : (
-      <div className="space-y-6 md:grid md:grid-cols-3 md:gap-6">
-        {/* ACCOUNT, MARKETING, PRODUCT */}
-        <div className="md:col-span-1 space-y-6">
-          {/* ACCOUNT */}
-          <Card className="flex flex-col gap-2 h-fit">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-lg">Account Alerts</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {notificationAccount &&
-                notificationAccount.map((pref) => {
-                  return (
-                    <Accordion key={pref.type} type="single" collapsible>
-                      <AccordionItem value={pref.type}>
-                        <AccordionTrigger>
-                          <Label className="font-semibold capitalize">
-                            {pref.type}
-                          </Label>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-2">
-                          {["inApp", "email"].map((channel) => {
-                            const { isChecked, showOption } =
-                              formatNotificationPermissionsChannels(
-                                channel,
-                                pref
+        <div className="space-y-6 md:grid md:grid-cols-3 md:gap-6">
+          {/* ACCOUNT, MARKETING, PRODUCT */}
+          <div className="md:col-span-1 space-y-6">
+            {/* ACCOUNT */}
+            <Card className="flex flex-col gap-2 h-fit">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div className="flex flex-col gap-2">
+                  <CardTitle className="text-lg">Account Alerts</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {notificationAccount &&
+                  notificationAccount.map((pref) => {
+                    return (
+                      <Accordion key={pref.type} type="single" collapsible>
+                        <AccordionItem value={pref.type}>
+                          <AccordionTrigger>
+                            <Label className="font-semibold capitalize">
+                              {pref.type}
+                            </Label>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2">
+                            {["inApp", "email"].map((channel) => {
+                              const { isChecked, showOption } =
+                                formatNotificationPermissionsChannels(
+                                  channel,
+                                  pref
+                                );
+                              if (!showOption) return null;
+                              return (
+                                <div
+                                  key={`account-${channel}-${pref.id}`}
+                                  //
+                                  className="flex items-center justify-between  px-1 sm:px-2"
+                                >
+                                  <p className={`text-sm capitalize`}>
+                                    {channel}
+                                  </p>
+                                  <Switch
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      handleNotificationToggle(
+                                        pref.category,
+                                        pref.type,
+                                        channel as keyof NotificationPreferences,
+                                        checked
+                                      )
+                                    }
+                                    disabled
+                                  />
+                                </div>
                               );
-                            if (!showOption) return null;
-                            return (
-                              <div
-                                key={`account-${channel}-${pref.id}`}
-                                //
-                                className="flex items-center justify-between  px-1 sm:px-2"
-                              >
-                                <p className={`text-sm capitalize`}>
-                                  {channel}
-                                </p>
-                                <Switch
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) =>
-                                    handleNotificationToggle(
-                                      pref.category,
-                                      pref.type,
-                                      channel as keyof NotificationPreferences,
-                                      checked
-                                    )
-                                  }
-                                  disabled
-                                />
-                              </div>
-                            );
-                          })}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  );
-                })}
-            </CardContent>
-          </Card>
-          {/* MARKETING */}
-          <Card className="flex flex-col gap-2 h-fit">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-lg">Marketing</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {notificationMarketing &&
-                notificationMarketing.map((pref) => {
-                  return (
-                    <Accordion
-                      key={`${pref.type}-${pref.id}`}
-                      type="single"
-                      collapsible
-                    >
-                      <AccordionItem value={pref.type}>
-                        <AccordionTrigger>
-                          <Label className="font-semibold capitalize">
-                            {pref.type}
-                          </Label>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-2">
-                          {["inApp", "email"].map((channel) => {
-                            const { isChecked, showOption } =
-                              formatNotificationPermissionsChannels(
-                                channel,
-                                pref
+                            })}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+            {/* MARKETING */}
+            <Card className="flex flex-col gap-2 h-fit">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div className="flex flex-col gap-2">
+                  <CardTitle className="text-lg">Marketing</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {notificationMarketing &&
+                  notificationMarketing.map((pref) => {
+                    return (
+                      <Accordion
+                        key={`${pref.type}-${pref.id}`}
+                        type="single"
+                        collapsible
+                      >
+                        <AccordionItem value={pref.type}>
+                          <AccordionTrigger>
+                            <Label className="font-semibold capitalize">
+                              {pref.type}
+                            </Label>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2">
+                            {["inApp", "email"].map((channel) => {
+                              const { isChecked, showOption } =
+                                formatNotificationPermissionsChannels(
+                                  channel,
+                                  pref
+                                );
+                              if (!showOption) return null;
+                              return (
+                                <div
+                                  key={`account-${channel}-${pref.id}`}
+                                  //
+                                  className="flex items-center justify-between  px-1 sm:px-2"
+                                >
+                                  <p className={`text-sm capitalize`}>
+                                    {channel}
+                                  </p>
+                                  <Switch
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      handleNotificationToggle(
+                                        pref.category,
+                                        pref.type,
+                                        channel as keyof NotificationPreferences,
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
                               );
-                            if (!showOption) return null;
-                            return (
-                              <div
-                                key={`account-${channel}-${pref.id}`}
-                                //
-                                className="flex items-center justify-between  px-1 sm:px-2"
-                              >
-                                <p className={`text-sm capitalize`}>
-                                  {channel}
-                                </p>
-                                <Switch
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) =>
-                                    handleNotificationToggle(
-                                      pref.category,
-                                      pref.type,
-                                      channel as keyof NotificationPreferences,
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  );
-                })}
-            </CardContent>
-          </Card>
-          {/* PRODUCT */}
-          <Card className="flex flex-col gap-2 h-fit">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-lg">Product Updates</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {notificationProduct &&
-                notificationProduct.map((pref) => {
-                  return (
-                    <Accordion
-                      key={`${pref.type}-${pref.id}`}
-                      type="single"
-                      collapsible
-                    >
-                      <AccordionItem value={pref.type}>
-                        <AccordionTrigger>
-                          <Label className="font-semibold capitalize">
-                            {pref.type}
-                          </Label>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-2">
-                          {["inApp", "email"].map((channel) => {
-                            const { isChecked, showOption } =
-                              formatNotificationPermissionsChannels(
-                                channel,
-                                pref
+                            })}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+            {/* PRODUCT */}
+            <Card className="flex flex-col gap-2 h-fit">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div className="flex flex-col gap-2">
+                  <CardTitle className="text-lg">Product Updates</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {notificationProduct &&
+                  notificationProduct.map((pref) => {
+                    return (
+                      <Accordion
+                        key={`${pref.type}-${pref.id}`}
+                        type="single"
+                        collapsible
+                      >
+                        <AccordionItem value={pref.type}>
+                          <AccordionTrigger>
+                            <Label className="font-semibold capitalize">
+                              {pref.type}
+                            </Label>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2">
+                            {["inApp", "email"].map((channel) => {
+                              const { isChecked, showOption } =
+                                formatNotificationPermissionsChannels(
+                                  channel,
+                                  pref
+                                );
+                              if (!showOption) return null;
+                              return (
+                                <div
+                                  key={`account-${channel}-${pref.id}`}
+                                  //
+                                  className="flex items-center justify-between  px-1 sm:px-2"
+                                >
+                                  <p className={`text-sm capitalize`}>
+                                    {channel}
+                                  </p>
+                                  <Switch
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      handleNotificationToggle(
+                                        pref.category,
+                                        pref.type,
+                                        channel as keyof NotificationPreferences,
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
                               );
-                            if (!showOption) return null;
-                            return (
-                              <div
-                                key={`account-${channel}-${pref.id}`}
-                                //
-                                className="flex items-center justify-between  px-1 sm:px-2"
-                              >
-                                <p className={`text-sm capitalize`}>
-                                  {channel}
-                                </p>
-                                <Switch
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) =>
-                                    handleNotificationToggle(
-                                      pref.category,
-                                      pref.type,
-                                      channel as keyof NotificationPreferences,
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  );
-                })}
-            </CardContent>
-          </Card>
-        </div>
-        {/* ACTIVITY - TICKETS AND COMMENTS */}
-        <div className="md:col-span-2 space-y-6">
-          {/* TICKET */}
-          <Card className="flex flex-col gap-2 h-fit">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-lg">App Activity</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {notificationActivity &&
-                notificationActivity.map((pref) => {
-                  // const label = pref.type.split(" ").slice(1).join(" ");
-                  return (
-                    <Accordion key={pref.type} type="single" collapsible>
-                      <AccordionItem value={pref.type}>
-                        <AccordionTrigger>
-                          <Label className="font-semibold capitalize">
-                            {pref.type}
-                          </Label>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-2">
-                          {["inApp", "email"].map((channel) => {
-                            const { isChecked, showOption } =
-                              formatNotificationPermissionsChannels(
-                                channel,
-                                pref
+                            })}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          </div>
+          {/* ACTIVITY - TICKETS AND COMMENTS */}
+          <div className="md:col-span-2 space-y-6">
+            {/* TICKET */}
+            <Card className="flex flex-col gap-2 h-fit">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div className="flex flex-col gap-2">
+                  <CardTitle className="text-lg">App Activity</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {notificationActivity &&
+                  notificationActivity.map((pref) => {
+                    // const label = pref.type.split(" ").slice(1).join(" ");
+                    return (
+                      <Accordion key={pref.type} type="single" collapsible>
+                        <AccordionItem value={pref.type}>
+                          <AccordionTrigger>
+                            <Label className="font-semibold capitalize">
+                              {pref.type}
+                            </Label>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2">
+                            {["inApp", "email"].map((channel) => {
+                              const { isChecked, showOption } =
+                                formatNotificationPermissionsChannels(
+                                  channel,
+                                  pref
+                                );
+                              if (!showOption) return null;
+                              return (
+                                <div
+                                  key={`account-${channel}-${pref.id}`}
+                                  //
+                                  className="flex items-center justify-between  px-1 sm:px-2"
+                                >
+                                  <p className={`text-sm capitalize`}>
+                                    {channel}
+                                  </p>
+                                  <Switch
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      handleNotificationToggle(
+                                        pref.category,
+                                        pref.type,
+                                        channel as keyof NotificationPreferences,
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
                               );
-                            if (!showOption) return null;
-                            return (
-                              <div
-                                key={`account-${channel}-${pref.id}`}
-                                //
-                                className="flex items-center justify-between  px-1 sm:px-2"
-                              >
-                                <p className={`text-sm capitalize`}>
-                                  {channel}
-                                </p>
-                                <Switch
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) =>
-                                    handleNotificationToggle(
-                                      pref.category,
-                                      pref.type,
-                                      channel as keyof NotificationPreferences,
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  );
-                })}
-            </CardContent>
-          </Card>
+                            })}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  })}
+              </CardContent>
+            </Card>
 
-          {/* MARKET CENTER */}
-          {/* <Card className="flex flex-col gap-2 h-fit">
+            {/* MARKET CENTER */}
+            {/* <Card className="flex flex-col gap-2 h-fit">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="flex flex-col gap-2">
                 <CardTitle className="text-lg">
@@ -696,8 +704,8 @@ export default function NotificationPreferences({
                 })}
             </CardContent>
           </Card> */}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );
