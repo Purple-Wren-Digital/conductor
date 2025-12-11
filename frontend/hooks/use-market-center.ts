@@ -10,7 +10,7 @@ export function useFetchAllMarketCenters(role?: UserRole) {
   return useQuery({
     queryKey: ["all-market-centers"],
     queryFn: async () => {
-      if (!role || role === "AGENT") {
+      if (!role) {
         throw new Error(
           "Only Admin and Staff users can view all market centers"
         );

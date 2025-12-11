@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createCommentApi } from "@/lib/api/comment-client";
+import { CommentResponse, createCommentApi } from "@/lib/api/comment-client";
 import type { Comment, UsersToNotify } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
@@ -14,6 +14,7 @@ interface CreateCommentParams {
   ticketId: string;
   content: string;
   internal?: boolean;
+  onSubmitSuccess: () => void;
 }
 
 interface UpdateCommentParams {
@@ -122,19 +123,20 @@ export function useCreateComment() {
       ticketId,
       content,
       internal,
+      onSubmitSuccess,
     }: CreateCommentParams) => {
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
       const commentApi = createCommentApi(token);
-      const response = await commentApi.createComment({
+      const response: CommentResponse = await commentApi.createComment({
         userId,
         ticketId,
         content,
         internal: internal || false,
       });
-      return response;
+      return { ...response, onSubmitSuccess };
     },
     onMutate: async ({ userId, ticketId, content, internal }) => {
       // Cancel outgoing refetch to avoid overwriting optimistic update
@@ -187,7 +189,7 @@ export function useCreateComment() {
       }
       toast.error(error.message || "Failed to add comment");
     },
-    onSuccess: async (response, { ticketId }, context) => {
+    onSuccess: async (response, { ticketId, onSubmitSuccess }, context) => {
       const newComment = response.comment;
       const usersToNotify: UsersToNotify[] = response.usersToNotify ?? [];
       const ticketTitle: string | undefined = response?.ticketTitle;
@@ -204,7 +206,11 @@ export function useCreateComment() {
         comment: newComment,
       });
 
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      }
       toast.success("Comment added successfully");
+
       if (usersToNotify && usersToNotify.length > 0) {
         await Promise.all(
           usersToNotify.map(async (user: UsersToNotify) => {

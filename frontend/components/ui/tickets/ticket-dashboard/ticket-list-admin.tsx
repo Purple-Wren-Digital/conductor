@@ -3,7 +3,6 @@
 import type React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useStore } from "@/context/store-provider";
 import { useAuth } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -79,28 +78,26 @@ import type {
   TicketSortBy,
   TicketsResponse,
   TicketWithUpdatedAt,
-  UsersResponse,
   TicketCategory,
   UsersToNotify,
 } from "@/lib/types";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
+import { useFetchAllUsers } from "@/hooks/use-users";
 
 type CategoryOption = { label: string; ids: string[] };
-const defaultSelectedCategory: CategoryOption = { label: "all", ids: [] };
 
 export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = useUserRole();
-  const { currentUser } = useStore();
+
+  const defaultSelectedCategory: CategoryOption = useMemo(
+    () => ({ label: "all", ids: [] }),
+    []
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -127,6 +124,10 @@ export default function AdminTicketList() {
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
   const [selectedMarketCenterId, setSelectedMarketCenterId] =
     useState<string>("all");
+  const [marketCenters, setMarketCenters] = useState<
+    { name: string; id: string }[]
+  >([]);
+
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
@@ -300,29 +301,17 @@ export default function AdminTicketList() {
     itemsPerPage,
   });
 
-  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
-    UsersResponse,
-    Error,
-    UsersResponse
-  >({
-    queryKey: ["users"],
-    queryFn: async (): Promise<UsersResponse> => {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const res = await fetch(`${API_BASE}/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: role === "ADMIN" && !!hydrated,
+  const { data: usersData, isLoading: usersLoading } = useFetchAllUsers({
+    usersQueryKey: [
+      "admin-users-ticket-list",
+      { marketCenterId: selectedMarketCenterId },
+    ],
+    role: role,
   });
-
-  const users: PrismaUser[] = usersData?.users ?? [];
+  const users: PrismaUser[] = useMemo(
+    () => usersData?.users ?? [],
+    [usersData]
+  );
 
   const { data: ticketCategoryData } = useFetchMarketCenterCategories(
     selectedMarketCenterId
@@ -637,6 +626,13 @@ export default function AdminTicketList() {
     };
   }, [tickets]);
 
+  const findMarketCenterName = (id: string | null, role?: string) => {
+    if (role === "ADMIN") return "Global";
+    if (!id) return "No Market Center";
+    const mc = marketCenters && marketCenters.find((mc) => mc.id === id);
+    return mc && mc?.name ? mc.name : `#${id.slice(0, 8)}`;
+  };
+
   return (
     <>
       <section className="space-y-4">
@@ -653,6 +649,7 @@ export default function AdminTicketList() {
                 setSelectedCategory(defaultSelectedCategory);
                 setCurrentPage(1);
               }}
+              setMarketCenters={setMarketCenters}
             />
             <Button
               className="gap-2 w-full sm:w-fit"
@@ -716,18 +713,34 @@ export default function AdminTicketList() {
                       setSelectedAssignee(v);
                       setCurrentPage(1);
                     }}
+                    disabled={usersLoading}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All assignees</SelectItem>
+                      <SelectItem value="all">
+                        {usersLoading ? "Loading..." : "All assignees"}
+                      </SelectItem>
                       <SelectItem value="Unassigned">Unassigned</SelectItem>
-                      {users.map((user: PrismaUser) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
+                      {!usersLoading &&
+                        users.map((user: PrismaUser) => {
+                          return (
+                            <SelectItem key={user.id} value={user.id}>
+                              <span className="font-medium">{user.name}:</span>
+                              <span className="hidden md:block text-muted-foreground capitalize">
+                                {user?.role
+                                  ? user.role.split("_").join(" ").toLowerCase()
+                                  : "No role"}{" "}
+                                •{" "}
+                                {findMarketCenterName(
+                                  user?.marketCenterId,
+                                  user?.role
+                                )}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -740,17 +753,33 @@ export default function AdminTicketList() {
                       setSelectedCreator(v);
                       setCurrentPage(1);
                     }}
+                    disabled={usersLoading}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select creator" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All creators</SelectItem>
-                      {users.map((user: PrismaUser) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">
+                        {usersLoading ? "Loading..." : "All creators"}
+                      </SelectItem>
+                      {!usersLoading &&
+                        users.map((user: PrismaUser) => {
+                          return (
+                            <SelectItem key={user.id} value={user.id}>
+                              <span className="font-medium">{user.name}:</span>
+                              <span className="hidden md:block text-muted-foreground capitalize">
+                                {user?.role
+                                  ? user.role.split("_").join(" ").toLowerCase()
+                                  : "No role"}{" "}
+                                •{" "}
+                                {findMarketCenterName(
+                                  user?.marketCenterId,
+                                  user?.role
+                                )}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>

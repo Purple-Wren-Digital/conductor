@@ -21,7 +21,6 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
-
   if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }

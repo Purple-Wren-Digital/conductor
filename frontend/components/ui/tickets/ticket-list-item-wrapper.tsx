@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-// import { TicketListItem } from "@/components/ui/list-item/ticket-list-item";
 import { TicketListTable } from "@/components/ui/tables/ticket-list-table";
 import type { Ticket } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -90,11 +89,3 @@ export function TicketListItemWrapper({
     />
   );
 }
-// <TicketListItem
-//   ticket={ticket}
-//   selected={showCheckbox ? selected : false}
-//   onSelect={showCheckbox ? onSelect : undefined}
-//   onEdit={canEdit && onEdit ? onEdit : () => {}}
-//   onClose={canClose && onClose ? onClose : () => {}}
-//   onClick={onClick}
-// />

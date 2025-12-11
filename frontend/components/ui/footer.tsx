@@ -114,11 +114,12 @@ export function Footer() {
       <NavigationMenu className="hidden sm:visible sm:flex">
         <NavigationMenuList>
           {footerLinks.map((link) => (
-            <NavigationMenuItem key={link.href}>
-              <Link href={link.href} legacyBehavior passHref>
-                <NavigationMenuLink className="text-sm font-medium hover:underline hover:bg-transparent">
-                  {link.label}
-                </NavigationMenuLink>
+            <NavigationMenuItem key={link.href} asChild>
+              <Link
+                href={link.href}
+                className="text-sm font-medium hover:underline hover:bg-transparent px-1.5"
+              >
+                {link.label}
               </Link>
             </NavigationMenuItem>
           ))}
