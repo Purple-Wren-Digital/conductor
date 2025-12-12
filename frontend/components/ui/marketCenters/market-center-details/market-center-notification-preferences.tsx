@@ -20,7 +20,10 @@ import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-function MarketCenterNotificationPreferences({
+// Filter out user-level preferences that don't belong in market center settings
+const EXCLUDED_TYPES = ["App Permissions", "General", "Account Information"];
+
+export function MarketCenterNotificationPreferences({
   marketCenterId,
 }: {
   marketCenterId?: string;
@@ -52,7 +55,9 @@ function MarketCenterNotificationPreferences({
         marketCenterSettingsData?.notificationPreferences &&
         marketCenterSettingsData?.notificationPreferences.length > 0
       ) {
-        return marketCenterSettingsData.notificationPreferences;
+        return marketCenterSettingsData.notificationPreferences.filter(
+          (pref: NotificationPreferences) => !EXCLUDED_TYPES.includes(pref.type)
+        );
       }
       return [] as NotificationPreferences[];
     }, [marketCenterSettingsData]);
@@ -244,8 +249,8 @@ function MarketCenterNotificationPreferences({
             {isSubmitting
               ? "Saving Preferences..."
               : isLoadingSettings
-                ? "Loading..."
-                : "Save Preferences"}
+              ? "Loading..."
+              : "Save Preferences"}
           </Button>
         </div>
       </CardHeader>

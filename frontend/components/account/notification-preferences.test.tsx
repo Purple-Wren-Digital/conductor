@@ -26,7 +26,7 @@ import { toast as mockToast } from "sonner";
 // Mock fetch
 const mockFetch = vi.fn();
 
-const createWrapper = () => {
+function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -42,7 +42,7 @@ const createWrapper = () => {
   Wrapper.displayName = "TestQueryClientWrapper-UserNotificationPreferences";
 
   return Wrapper;
-};
+}
 
 const mockNotificationPreferences: NotificationPreferencesType[] = [
   {

@@ -20,7 +20,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const createWrapper = () => {
+function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -37,7 +37,7 @@ const createWrapper = () => {
     "TestQueryClientWrapper-MarketCenterNotificationPreferences";
 
   return Wrapper;
-};
+}
 
 const mockNotificationPreferences: NotificationPreferences[] = [
   {
