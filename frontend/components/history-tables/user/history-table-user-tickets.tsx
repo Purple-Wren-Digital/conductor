@@ -172,7 +172,7 @@ export default function UserTicketHistoryTable({
                   {/* ACTION */}
                   <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                     {getActionIcon(log.action)}
-                    {log.action}
+                    {log.action.toLowerCase()}
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">

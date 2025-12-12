@@ -86,28 +86,56 @@ export default function MarketCenterHistory({
       let newValueLink = "";
       let previousValueLink = "";
 
-      if (log?.field?.includes("category") && log?.newValue) {
+      if (log?.field && log?.field?.includes("category") && log?.newValue) {
         try {
           const parsed = JSON.parse(log.newValue);
           newValue = parsed?.name ?? "N/a";
           newValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
-          newValue = log.newValue;
+          newValue = log.newValue ?? "";
+          newValueLink = "";
+        }
+      } else if (log?.field && log?.field?.includes("team") && log?.newValue) {
+        try {
+          const parsed = JSON.parse(log.newValue);
+          newValue = parsed?.name ?? "N/a";
+          newValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
+        } catch {
+          newValue = log.newValue ?? "";
+          newValueLink = "";
         }
       } else {
         newValue = log.newValue ?? "";
       }
 
-      if (log?.field?.includes("category") && log.previousValue) {
+      if (
+        log?.field &&
+        log?.field?.includes("category") &&
+        log?.previousValue
+      ) {
         try {
           const parsed = JSON.parse(log.previousValue);
           previousValue = parsed?.name ?? "N/a";
           previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           previousValue = log.previousValue;
+          previousValueLink = "";
+        }
+      } else if (
+        log?.field &&
+        log?.field?.includes("team") &&
+        log?.previousValue
+      ) {
+        try {
+          const parsed = JSON.parse(log.previousValue);
+          previousValue = parsed?.name ?? "N/a";
+          previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
+        } catch {
+          previousValue = log.previousValue;
+          previousValueLink = "";
         }
       } else {
-        previousValue = log.previousValue ?? "";
+        previousValue = log?.previousValue ?? "";
       }
 
       return {
@@ -183,9 +211,9 @@ export default function MarketCenterHistory({
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
-                      <TableCell className="flex gap-2 items-center font-semibold cursor-pointer">
+                      <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                         {getActionIcon(log.action)}
-                        {capitalizeEveryWord(log.action)}
+                        {log.action.toLowerCase()}
                       </TableCell>
                       {/* FIELD */}
                       <TableCell className="font-semibold">
@@ -231,7 +259,7 @@ export default function MarketCenterHistory({
                           if (log?.changedById) {
                             router.push(`/dashboard/users/${log.changedById}`);
                           } else {
-                            toast.error("User not found");
+                            toast.error("Error: User not found");
                           }
                         }}
                       >

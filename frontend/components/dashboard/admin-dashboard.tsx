@@ -20,7 +20,13 @@ import { TeamSwitcher } from "@/components//ui/team-switcher";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
-import { BarChartIcon, Building2, Clock, InfoIcon, TrendingUp } from "lucide-react";
+import {
+  BarChartIcon,
+  Building2,
+  Clock,
+  InfoIcon,
+  TrendingUp,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +42,7 @@ import {
   STATUS_LABELS,
   STATUS_ORDER,
   StatusKey,
+  statusOptions,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
 import type { MarketCenter, Ticket } from "@/lib/types";
@@ -65,6 +72,10 @@ export function AdminDashboard() {
     if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
     }
+
+    statusOptions.forEach((option) => {
+      params.append("status", option);
+    });
 
     return params;
   }, [selectedMarketCenterId]);
@@ -213,46 +224,24 @@ export function AdminDashboard() {
     );
 
     const totalUsers = filteredUsers.length;
-    const resolutionRate = totalTickets
-      ? Math.round(
-          (filteredTickets.filter((t: any) => t.status === "RESOLVED").length /
-            totalTickets) *
-            100
-        )
-      : 0;
 
     const now = new Date();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
 
-    const resolvedTicketsCount = filteredTickets.filter(
-      (t: Ticket) => t.status === "RESOLVED"
-    ).length;
-    oneWeekAgo.setDate(now.getDate() - 7);
-
-    let totalBusinessDays = 0;
-    let newTickets = 0;
-
-    filteredTickets.forEach((t: Ticket) => {
-      const status = t.status;
-      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
-      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
-
-      if (status === "RESOLVED" && createdDate && resolvedDate) {
-        totalBusinessDays += getResolvedInBusinessDays(
-          createdDate,
-          resolvedDate
-        );
-      }
-    });
-    const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
-      : 0;
+    let createdThisWeek = 0;
+    let resolvedThisWeek = 0;
 
     filteredTickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate =
+        t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
+
       if (createdDate && createdDate >= oneWeekAgo) {
-        newTickets += 1;
+        createdThisWeek += 1;
+      }
+      if (resolvedDate && resolvedDate >= oneWeekAgo) {
+        resolvedThisWeek += 1;
       }
     });
 
@@ -264,10 +253,8 @@ export function AdminDashboard() {
       ticketsByStatus,
       ticketsByMarketCenter: Object.values(ticketsByMarketCenter),
       totalUsers,
-      resolutionRate,
-      newTickets,
-      resolvedTicketsCount,
-      avgResolutionBusinessDays,
+      createdThisWeek,
+      resolvedThisWeek,
     };
   }, [filteredTickets, filteredUsers, marketCenters]);
 
@@ -327,7 +314,7 @@ export function AdminDashboard() {
           />
           <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
             <span className="flex items-center gap-1">
-              All Market Centers:
+              All Market Centers ({totalMarketCenters}):
               <StarRating
                 rating={globalAverages?.marketCenterAverageRating || 0}
                 size={16}
@@ -376,7 +363,9 @@ export function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-2xl font-bold">{stats.newTickets}</p>
+            <p className="text-center text-2xl font-bold">
+              {stats.createdThisWeek}
+            </p>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days
             </p>
@@ -403,15 +392,15 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Ticket Closed within
+              Resolved Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.avgResolutionBusinessDays}
+              {stats.resolvedThisWeek}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              business days (average)
+              in the last 7 days
             </p>
           </CardContent>
         </Card>
@@ -681,60 +670,6 @@ export function AdminDashboard() {
         </Card>
       </section>
 
-      {/* SYSTEM HEALTH */}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>System Health</CardTitle>
-          <CardDescription>
-            Key metrics and performance indicators
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="text-sm font-medium">Resolution Rate</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">
-                  {stats.resolutionRate}%
-                </span>
-                <Badge
-                  variant={
-                    stats.resolutionRate <= 59.9
-                      ? "orange"
-                      : stats.resolutionRate === 60 ||
-                          stats.resolutionRate <= 79.9
-                        ? "warning"
-                        : "success"
-                  }
-                >
-                  {stats.resolutionRate <= 59.9
-                    ? "Poor"
-                    : stats.resolutionRate === 60 ||
-                        stats.resolutionRate <= 79.9
-                      ? "Fair"
-                      : "Excellent"}
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Active Teams</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">{totalMarketCenters}</span>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium">System Load</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">Normal</span>
-                <Badge variant="secondary">Healthy</Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* SLA COMPLIANCE */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -756,8 +691,12 @@ export function AdminDashboard() {
             <div>
               <p className="text-sm font-medium">Compliance Rate</p>
               <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-bold ${slaMetricsData?.metrics ? getComplianceColor(slaMetricsData.metrics.complianceRate) : ""}`}>
-                  {slaMetricsData?.metrics ? `${slaMetricsData.metrics.complianceRate.toFixed(1)}%` : "N/A"}
+                <span
+                  className={`text-2xl font-bold ${slaMetricsData?.metrics ? getComplianceColor(slaMetricsData.metrics.complianceRate) : ""}`}
+                >
+                  {slaMetricsData?.metrics
+                    ? `${slaMetricsData.metrics.complianceRate.toFixed(1)}%`
+                    : "N/A"}
                 </span>
                 {slaMetricsData?.metrics && (
                   <Badge

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
@@ -42,11 +42,11 @@ import {
 import Link from "next/link";
 import type { SurveyResults, Ticket } from "@/lib/types";
 import {
-  getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
   StatusKey,
+  statusOptions,
   ticketByStatusChartConfig,
   urgencyChartConfig,
   urgencyOptions,
@@ -91,10 +91,18 @@ export function StaffDashboard() {
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
 
+  const queryParams = useMemo(() => {
+    const queryParams = new URLSearchParams();
+    statusOptions.forEach((option) => {
+      queryParams.append("status", option);
+    });
+    return queryParams;
+  }, []);
+
   const { data: ticketsData, isLoading: ticketsLoading } =
     useFetchMarketCenterTickets({
       marketCenterId,
-      queryParams: null,
+      queryParams,
       queryKeyParams: null,
     });
 
@@ -118,9 +126,6 @@ export function StaffDashboard() {
     const activeTickets: Ticket[] = filteredTickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
     );
-    const resolvedTicketsCount = filteredTickets.filter(
-      (t: Ticket) => t.status === "RESOLVED"
-    ).length;
     const highPriority = filteredTickets.filter(
       (t: Ticket) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
@@ -147,30 +152,19 @@ export function StaffDashboard() {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7);
 
-    let totalBusinessDays = 0;
-    let newTickets = 0;
-
-    filteredTickets.forEach((t: Ticket) => {
-      const status = t.status;
-      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
-      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
-
-      if (status === "RESOLVED" && createdDate && resolvedDate) {
-        totalBusinessDays += getResolvedInBusinessDays(
-          createdDate,
-          resolvedDate
-        );
-      }
-    });
-
-    const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
-      : 0;
+    let createdThisWeek = 0;
+    let resolvedThisWeek = 0;
 
     filteredTickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate =
+        t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
+
       if (createdDate && createdDate >= oneWeekAgo) {
-        newTickets += 1;
+        createdThisWeek += 1;
+      }
+      if (resolvedDate && resolvedDate >= oneWeekAgo) {
+        resolvedThisWeek += 1;
       }
     });
 
@@ -178,11 +172,10 @@ export function StaffDashboard() {
       totalTickets,
       activeTicketsCount,
       activeTickets,
-      resolvedTicketsCount,
       highPriority,
       unassignedTickets,
-      avgResolutionBusinessDays,
-      newTickets,
+      createdThisWeek,
+      resolvedThisWeek,
       ticketsByStatus,
       ticketsByUrgency,
     };
@@ -314,7 +307,9 @@ export function StaffDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-2xl font-bold">{stats.newTickets}</p>
+            <p className="text-center text-2xl font-bold">
+              {stats.createdThisWeek}
+            </p>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days
             </p>
@@ -341,15 +336,15 @@ export function StaffDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Ticket Closed within
+              Resolved Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.avgResolutionBusinessDays}
+              {stats.resolvedThisWeek}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              business days (average)
+              in the last 7 days
             </p>
           </CardContent>
         </Card>

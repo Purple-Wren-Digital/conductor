@@ -50,6 +50,7 @@ import {
   STATUS_LABELS,
   STATUS_ORDER,
   StatusKey,
+  statusOptions,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
 import {
@@ -97,11 +98,17 @@ export function StaffLeaderDashboard() {
       ? marketCenter?.users
       : [];
   }, [marketCenter]);
-
+  const queryParams = useMemo(() => {
+    const queryParams = new URLSearchParams();
+    statusOptions.forEach((option) => {
+      queryParams.append("status", option);
+    });
+    return queryParams;
+  }, []);
   const { data: ticketsData, isLoading: ticketsLoading } =
     useFetchMarketCenterTickets({
       marketCenterId,
-      queryParams: null,
+      queryParams,
       queryKeyParams: null,
     });
 
@@ -123,9 +130,6 @@ export function StaffLeaderDashboard() {
     const activeTickets = filteredTickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
     );
-    const resolvedTicketsCount = filteredTickets.filter(
-      (t: Ticket) => t.status === "RESOLVED"
-    ).length;
     const highPriority = filteredTickets.filter(
       (t: Ticket) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
@@ -144,30 +148,19 @@ export function StaffLeaderDashboard() {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7);
 
-    let totalBusinessDays = 0;
-    let newTickets = 0;
-
-    filteredTickets.forEach((t: Ticket) => {
-      const status = t.status;
-      const createdDate = t.createdAt ? new Date(t.createdAt) : null;
-      const resolvedDate = t.resolvedAt ? new Date(t.resolvedAt) : null;
-
-      if (status === "RESOLVED" && createdDate && resolvedDate) {
-        totalBusinessDays += getResolvedInBusinessDays(
-          createdDate,
-          resolvedDate
-        );
-      }
-    });
-
-    const avgResolutionBusinessDays = resolvedTicketsCount
-      ? Number((totalBusinessDays / resolvedTicketsCount).toFixed(2))
-      : 0;
+    let createdThisWeek = 0;
+    let resolvedThisWeek = 0;
 
     filteredTickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
+      const resolvedDate =
+        t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
+
       if (createdDate && createdDate >= oneWeekAgo) {
-        newTickets += 1;
+        createdThisWeek += 1;
+      }
+      if (resolvedDate && resolvedDate >= oneWeekAgo) {
+        resolvedThisWeek += 1;
       }
     });
 
@@ -219,11 +212,10 @@ export function StaffLeaderDashboard() {
       totalTickets,
       activeTicketsCount,
       activeTickets,
-      resolvedTicketsCount,
       highPriority,
       unassignedTickets,
-      avgResolutionBusinessDays,
-      newTickets,
+      createdThisWeek,
+      resolvedThisWeek,
       ticketsByStatus,
       ticketsByUser: Object.values(ticketsByUser),
     };
@@ -381,7 +373,9 @@ export function StaffLeaderDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-2xl font-bold">{stats.newTickets}</p>
+            <p className="text-center text-2xl font-bold">
+              {stats.createdThisWeek}
+            </p>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days
             </p>
@@ -408,15 +402,15 @@ export function StaffLeaderDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Ticket Closed within
+              Resolved Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.avgResolutionBusinessDays}
+              {stats.resolvedThisWeek}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              business days (average)
+              in the last 7 days
             </p>
           </CardContent>
         </Card>
