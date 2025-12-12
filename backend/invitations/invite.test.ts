@@ -24,7 +24,7 @@ const {
   mockMarketCenterRepository: {
     findById: vi.fn(),
     findInvitationByToken: vi.fn(),
-    findInvitationByEmail: vi.fn(),
+    findInvitationByEmailAndMarketCenterID: vi.fn(),
     findInvitationsByMarketCenterId: vi.fn(),
     createInvitation: vi.fn(),
     updateInvitationStatus: vi.fn(),
@@ -175,7 +175,9 @@ describe("Invitation System", () => {
       mockUserRepository.findById.mockResolvedValue(inviter);
       mockMarketCenterRepository.findById.mockResolvedValue(marketCenter);
       mockUserRepository.findByEmail.mockResolvedValue(null);
-      mockMarketCenterRepository.findInvitationByEmail.mockResolvedValue(null);
+      mockMarketCenterRepository.findInvitationByEmailAndMarketCenterID.mockResolvedValue(
+        null
+      );
       mockMarketCenterRepository.createInvitation.mockResolvedValue(invitation);
       mockSendInvitationEmail.mockResolvedValue(undefined);
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
@@ -221,7 +223,9 @@ describe("Invitation System", () => {
           role: "AGENT",
           name: "New User",
         })
-      ).rejects.toThrow("You must belong to a market center to invite team members");
+      ).rejects.toThrow(
+        "You must belong to a market center to invite team members"
+      );
     });
 
     it("should throw error if seat limit is reached", async () => {
@@ -245,7 +249,9 @@ describe("Invitation System", () => {
       mockCanManageTeam.mockResolvedValue(true);
       mockCheckCanAddUser.mockResolvedValue(undefined);
       mockUserRepository.findById.mockResolvedValue(createUser());
-      mockMarketCenterRepository.findById.mockResolvedValue(createMarketCenter());
+      mockMarketCenterRepository.findById.mockResolvedValue(
+        createMarketCenter()
+      );
       mockUserRepository.findByEmail.mockResolvedValue(
         createUser({ id: "existing-user", email: "invitee@test.com" })
       );
@@ -264,9 +270,11 @@ describe("Invitation System", () => {
       mockCanManageTeam.mockResolvedValue(true);
       mockCheckCanAddUser.mockResolvedValue(undefined);
       mockUserRepository.findById.mockResolvedValue(createUser());
-      mockMarketCenterRepository.findById.mockResolvedValue(createMarketCenter());
+      mockMarketCenterRepository.findById.mockResolvedValue(
+        createMarketCenter()
+      );
       mockUserRepository.findByEmail.mockResolvedValue(null);
-      mockMarketCenterRepository.findInvitationByEmail.mockResolvedValue(
+      mockMarketCenterRepository.findInvitationByEmailAndMarketCenterID.mockResolvedValue(
         createInvitation({ status: "PENDING" })
       );
 
@@ -286,7 +294,9 @@ describe("Invitation System", () => {
       const marketCenter = createMarketCenter();
       const inviter = createUser();
 
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
       mockMarketCenterRepository.findById.mockResolvedValue(marketCenter);
       mockUserRepository.findById.mockResolvedValue(inviter);
 
@@ -325,16 +335,17 @@ describe("Invitation System", () => {
           expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
         })
       );
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
 
       const result = await getInvitation({ token: "test-token" });
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe("Invitation has expired");
-      expect(mockMarketCenterRepository.updateInvitationStatus).toHaveBeenCalledWith(
-        expect.any(String),
-        "EXPIRED"
-      );
+      expect(
+        mockMarketCenterRepository.updateInvitationStatus
+      ).toHaveBeenCalledWith(expect.any(String), "EXPIRED");
     });
   });
 
@@ -353,11 +364,15 @@ describe("Invitation System", () => {
       });
 
       mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(newUser);
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
       const result = await acceptInvitation({ token: "test-token" });
@@ -386,10 +401,14 @@ describe("Invitation System", () => {
       });
 
       mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
       mockUserRepository.findByClerkId.mockResolvedValue(existingUser);
       mockUserRepository.update.mockResolvedValue(existingUser);
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
       const result = await acceptInvitation({ token: "test-token" });
@@ -414,11 +433,15 @@ describe("Invitation System", () => {
       });
 
       mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(existingUser);
       mockUserRepository.update.mockResolvedValue(existingUser);
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
       const result = await acceptInvitation({ token: "test-token" });
@@ -437,20 +460,22 @@ describe("Invitation System", () => {
     it("should throw error when not authenticated", async () => {
       mockGetAuthData.mockResolvedValue(null);
 
-      await expect(
-        acceptInvitation({ token: "test-token" })
-      ).rejects.toThrow("User not authenticated");
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "User not authenticated"
+      );
     });
 
     it("should throw error when email does not match invitation (security check)", async () => {
       const invitation = createInvitation({ email: "different@test.com" });
 
       mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
 
-      await expect(
-        acceptInvitation({ token: "test-token" })
-      ).rejects.toThrow("This invitation was sent to a different email address");
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "This invitation was sent to a different email address"
+      );
     });
 
     it("should allow email match case-insensitively", async () => {
@@ -462,11 +487,15 @@ describe("Invitation System", () => {
       });
 
       mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(newUser);
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
       const result = await acceptInvitation({ token: "test-token" });
@@ -475,11 +504,14 @@ describe("Invitation System", () => {
     });
 
     it("should throw error when auth has no email address", async () => {
-      mockGetAuthData.mockResolvedValue({ userID: "clerk-id", emailAddress: null });
+      mockGetAuthData.mockResolvedValue({
+        userID: "clerk-id",
+        emailAddress: null,
+      });
 
-      await expect(
-        acceptInvitation({ token: "test-token" })
-      ).rejects.toThrow("No email address found for authenticated user");
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "No email address found for authenticated user"
+      );
     });
 
     it("should throw error for non-existent invitation", async () => {
@@ -497,9 +529,9 @@ describe("Invitation System", () => {
         createInvitation({ status: "ACCEPTED" })
       );
 
-      await expect(
-        acceptInvitation({ token: "test-token" })
-      ).rejects.toThrow("Invitation has already been accepted");
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "Invitation has already been accepted"
+      );
     });
 
     it("should throw error for expired invitation", async () => {
@@ -509,11 +541,13 @@ describe("Invitation System", () => {
           expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
         })
       );
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
 
-      await expect(
-        acceptInvitation({ token: "test-token" })
-      ).rejects.toThrow("Invitation has expired");
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "Invitation has expired"
+      );
     });
   });
 
@@ -523,17 +557,20 @@ describe("Invitation System", () => {
       const invitation = createInvitation();
 
       mockGetUserContext.mockResolvedValue(userContext);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(invitation);
-      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(undefined);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        invitation
+      );
+      mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
+        undefined
+      );
       mockMarketCenterRepository.createHistory.mockResolvedValue(undefined);
 
       const result = await cancelInvitation({ token: "test-token" });
 
       expect(result.success).toBe(true);
-      expect(mockMarketCenterRepository.updateInvitationStatus).toHaveBeenCalledWith(
-        "inv-123",
-        "CANCELLED"
-      );
+      expect(
+        mockMarketCenterRepository.updateInvitationStatus
+      ).toHaveBeenCalledWith("inv-123", "CANCELLED");
     });
 
     it("should throw error if user doesn't have permission", async () => {
@@ -577,9 +614,9 @@ describe("Invitation System", () => {
       const result = await listInvitations();
 
       expect(result.invitations).toHaveLength(2);
-      expect(mockMarketCenterRepository.findInvitationsByMarketCenterId).toHaveBeenCalledWith(
-        "mc-123"
-      );
+      expect(
+        mockMarketCenterRepository.findInvitationsByMarketCenterId
+      ).toHaveBeenCalledWith("mc-123");
     });
 
     it("should return empty array if user has no market center", async () => {
