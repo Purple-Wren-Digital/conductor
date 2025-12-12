@@ -142,7 +142,9 @@ export const webhookHandler = api.raw(
         );
       } catch (err: any) {
         res.writeHead(400);
-        res.write(JSON.stringify({ error: "Webhook signature verification failed" }));
+        res.write(
+          JSON.stringify({ error: "Webhook signature verification failed" })
+        );
         res.end();
         return;
       }
@@ -164,7 +166,9 @@ export const webhookHandler = api.raw(
 
             // Try to respond with success anyway to prevent retries
             res.writeHead(200);
-            res.write(JSON.stringify({ received: true, warning: "No marketCenterId" }));
+            res.write(
+              JSON.stringify({ received: true, warning: "No marketCenterId" })
+            );
             res.end();
             return;
           }
@@ -182,11 +186,14 @@ export const webhookHandler = api.raw(
           const periodEnd = subscription.current_period_end
             ? new Date(subscription.current_period_end * 1000)
             : subscription.trial_end
-            ? new Date(subscription.trial_end * 1000)
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
+              ? new Date(subscription.trial_end * 1000)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
 
           // Check if subscription exists
-          const existingSub = await subscriptionRepository.findByStripeSubscriptionId(subscription.id);
+          const existingSub =
+            await subscriptionRepository.findByStripeSubscriptionId(
+              subscription.id
+            );
 
           if (existingSub) {
             // Update existing subscription
@@ -237,7 +244,10 @@ export const webhookHandler = api.raw(
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
 
-          const existingSub = await subscriptionRepository.findByStripeSubscriptionId(subscription.id);
+          const existingSub =
+            await subscriptionRepository.findByStripeSubscriptionId(
+              subscription.id
+            );
           if (existingSub) {
             await subscriptionRepository.update(existingSub.id, {
               status: SubscriptionStatus.CANCELED,
@@ -252,7 +262,10 @@ export const webhookHandler = api.raw(
           const invoice = event.data.object as Stripe.Invoice;
 
           if (invoice.subscription) {
-            const subscription = await subscriptionRepository.findByStripeSubscriptionId(invoice.subscription as string);
+            const subscription =
+              await subscriptionRepository.findByStripeSubscriptionId(
+                invoice.subscription as string
+              );
 
             if (subscription) {
               await db.exec`
@@ -282,7 +295,10 @@ export const webhookHandler = api.raw(
           const invoice = event.data.object as Stripe.Invoice;
 
           if (invoice.subscription) {
-            const existingSub = await subscriptionRepository.findByStripeSubscriptionId(invoice.subscription as string);
+            const existingSub =
+              await subscriptionRepository.findByStripeSubscriptionId(
+                invoice.subscription as string
+              );
             if (existingSub) {
               await subscriptionRepository.update(existingSub.id, {
                 status: SubscriptionStatus.PAST_DUE,
@@ -299,7 +315,9 @@ export const webhookHandler = api.raw(
     } catch (error: any) {
       log.error("stripe webhook error", error);
       res.writeHead(400);
-      res.write(JSON.stringify({ error: error.message || "Webhook processing failed" }));
+      res.write(
+        JSON.stringify({ error: error.message || "Webhook processing failed" })
+      );
       res.end();
     }
   }
@@ -378,7 +396,8 @@ export const createCheckoutSession = api(
       }
     } else {
       // Check if market center already has a subscription
-      const existingSubscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
+      const existingSubscription =
+        await subscriptionRepository.findByMarketCenterId(user?.marketCenterId);
 
       if (
         existingSubscription &&
@@ -391,7 +410,9 @@ export const createCheckoutSession = api(
 
       // Only admins can create subscriptions for existing market centers
       if (user.role !== "ADMIN") {
-        throw APIError.permissionDenied("Only organization admins can manage subscriptions");
+        throw APIError.permissionDenied(
+          "Only organization admins can manage subscriptions"
+        );
       }
     }
 
@@ -405,7 +426,8 @@ export const createCheckoutSession = api(
     }
 
     // Check if this market center already has a Stripe customer
-    const existingSubscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
+    const existingSubscription =
+      await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
     if (existingSubscription?.stripeCustomerId) {
       stripeCustomerId = existingSubscription.stripeCustomerId;
@@ -492,7 +514,9 @@ export const createPortalSession = api(
       throw APIError.notFound("User or market center not found");
     }
 
-    const subscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      user.marketCenterId
+    );
 
     if (!subscription) {
       throw APIError.notFound("No subscription found");
@@ -545,7 +569,10 @@ export const getSubscription = api(
 
     const marketCenterId = userContext.marketCenterId;
 
-    const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
+    const result =
+      await subscriptionRepository.findByMarketCenterIdWithUserCount(
+        marketCenterId
+      );
 
     if (!result) {
       throw APIError.notFound("No subscription found");
@@ -595,7 +622,9 @@ export const updateSeats = api(
       throw APIError.notFound("User or market center not found");
     }
 
-    const subscription = await subscriptionRepository.findByMarketCenterId(user.marketCenterId);
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      user.marketCenterId
+    );
 
     if (!subscription) {
       throw APIError.notFound("No subscription found");
@@ -645,7 +674,7 @@ export const updateSeats = api(
           recurring: {
             interval: "month",
           },
-          unit_amount: subscription.seatPrice.toNumber() * 100,
+          unit_amount: subscription.seatPrice * 100,
         },
         quantity: params.additionalSeats,
       });
@@ -665,7 +694,8 @@ export async function checkSubscriptionLimit(
   marketCenterId: string,
   feature: "users" | "tickets" | "categories"
 ): Promise<boolean> {
-  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
+  const subscription =
+    await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription || subscription.status !== SubscriptionStatus.ACTIVE) {
     return false;
@@ -688,7 +718,11 @@ export async function checkSubscriptionLimit(
       const maxTickets = features.maxTicketsPerMonth;
       if (maxTickets === -1) return true; // Unlimited
 
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const monthStart = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      );
       const currentMonthUsage = await db.queryRow<{ tickets_created: number }>`
         SELECT tickets_created
         FROM subscription_usage
@@ -724,7 +758,8 @@ export async function trackUsage(
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const subscription = await subscriptionRepository.findByMarketCenterId(marketCenterId);
+  const subscription =
+    await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
   if (!subscription) return;
 

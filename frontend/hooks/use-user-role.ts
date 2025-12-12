@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useUser, useAuth } from "@clerk/nextjs";
 import type { PrismaUser, UserRole } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
+// FE Permissions Here
 
 export interface UserPermissions {
   canCreateTicket: boolean;
@@ -23,6 +24,7 @@ export interface UserPermissions {
   canDeactivateUsers: boolean;
   canAccessSettings: boolean;
   canAccessReports: boolean;
+  canManageSubscription: boolean;
 }
 
 export function getUserPermissions(role: UserRole): UserPermissions {
@@ -48,6 +50,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canDeactivateUsers: true,
         canAccessSettings: true,
         canAccessReports: true,
+        canManageSubscription: true,
       };
     case "STAFF_LEADER":
       return {
@@ -70,6 +73,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canDeactivateUsers: true,
         canAccessSettings: true,
         canAccessReports: true,
+        canManageSubscription: false,
       };
     case "STAFF":
       return {
@@ -92,6 +96,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canDeactivateUsers: false,
         canAccessSettings: true,
         canAccessReports: false,
+        canManageSubscription: false,
       };
     case "AGENT":
       return {
@@ -114,6 +119,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canDeactivateUsers: false,
         canAccessSettings: false,
         canAccessReports: false,
+        canManageSubscription: false,
       };
     default:
       return {
@@ -136,6 +142,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canDeactivateUsers: false,
         canAccessSettings: false,
         canAccessReports: false,
+        canManageSubscription: false,
       };
   }
 }

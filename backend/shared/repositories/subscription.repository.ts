@@ -73,7 +73,10 @@ function rowToSubscription(row: SubscriptionRow): Subscription {
 
 export const subscriptionRepository = {
   // Find subscription by market center ID
-  async findByMarketCenterId(marketCenterId: string): Promise<Subscription | null> {
+  async findByMarketCenterId(
+    marketCenterId: string | null
+  ): Promise<Subscription | null> {
+    if (!marketCenterId) return null;
     const row = await db.queryRow<SubscriptionRow>`
       SELECT * FROM subscriptions WHERE market_center_id = ${marketCenterId}
     `;
@@ -89,7 +92,9 @@ export const subscriptionRepository = {
   },
 
   // Find subscription by Stripe subscription ID
-  async findByStripeSubscriptionId(stripeSubscriptionId: string): Promise<Subscription | null> {
+  async findByStripeSubscriptionId(
+    stripeSubscriptionId: string
+  ): Promise<Subscription | null> {
     const row = await db.queryRow<SubscriptionRow>`
       SELECT * FROM subscriptions WHERE stripe_subscription_id = ${stripeSubscriptionId}
     `;
@@ -161,12 +166,14 @@ export const subscriptionRepository = {
     currentPeriodEnd: Date;
     trialEnd?: Date | null;
     features?: any;
+    cancelAt: Date | null;
+    canceledAt: Date | null;
   }): Promise<Subscription> {
     const row = await db.queryRow<SubscriptionRow>`
       INSERT INTO subscriptions (
         stripe_subscription_id, stripe_customer_id, market_center_id, status, plan_type,
         price_id, included_seats, additional_seats, seat_price,
-        current_period_start, current_period_end, trial_end, features, created_at, updated_at
+        current_period_start, current_period_end, trial_end, features, created_at, updated_at, cancel_at, canceled_at
       ) VALUES (
         ${data.stripeSubscriptionId},
         ${data.stripeCustomerId},
@@ -176,11 +183,13 @@ export const subscriptionRepository = {
         ${data.priceId},
         ${data.includedSeats ?? 5},
         ${data.additionalSeats ?? 0},
-        ${data.seatPrice ?? 10.00},
+        ${data.seatPrice ?? 10.0},
         ${data.currentPeriodStart},
         ${data.currentPeriodEnd},
         ${data.trialEnd ?? null},
         ${toJson(data.features ?? {})}::jsonb,
+        ${data.cancelAt ?? null},
+        ${data.canceledAt ?? null},
         NOW(),
         NOW()
       )
@@ -190,21 +199,24 @@ export const subscriptionRepository = {
   },
 
   // Update subscription
-  async update(id: string, data: Partial<{
-    status: SubscriptionStatus;
-    planType: SubscriptionPlan;
-    priceId: string;
-    includedSeats: number;
-    additionalSeats: number;
-    seatPrice: number;
-    currentPeriodStart: Date;
-    currentPeriodEnd: Date;
-    cancelAt: Date | null;
-    canceledAt: Date | null;
-    trialEnd: Date | null;
-    features: any;
-  }>): Promise<Subscription | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async update(
+    id: string,
+    data: Partial<{
+      status: SubscriptionStatus;
+      planType: SubscriptionPlan;
+      priceId: string;
+      includedSeats: number;
+      additionalSeats: number;
+      seatPrice: number;
+      currentPeriodStart: Date;
+      currentPeriodEnd: Date;
+      cancelAt: Date | null;
+      canceledAt: Date | null;
+      trialEnd: Date | null;
+      features: any;
+    }>
+  ): Promise<Subscription | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -261,7 +273,7 @@ export const subscriptionRepository = {
 
     const sql = `
       UPDATE subscriptions
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
