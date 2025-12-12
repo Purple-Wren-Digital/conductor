@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, use } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,16 @@ import {
 import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 import MarketCentersTable from "../tables/market-centers-table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../alert-dialog";
 
 type CategoryOption = { label: string; ids: string[] };
 const defaultSelectedCategory: CategoryOption = { label: "all", ids: [] };
@@ -84,6 +94,8 @@ export default function MarketCenterManagement() {
 
   // FORM ACTIONS
   const [showCreateMCForm, setShowCreateMCForm] = useState(false);
+  const [showEnterpriseInquiryModal, setShowEnterpriseInquiryModal] =
+    useState(false);
 
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [editingMarketCenter, setEditingMarketCenter] =
@@ -96,6 +108,7 @@ export default function MarketCenterManagement() {
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const [marketCenterToDelete, setMarketCenterToDelete] =
     useState<MarketCenter | null>(null);
 
@@ -121,6 +134,7 @@ export default function MarketCenterManagement() {
   const [orderDir, setOrderDir] = useState<OrderBy>("desc");
 
   const { getToken } = useAuth();
+  const { permissions } = useUserRole();
 
   // FILTERS STATE PERSISTENCE
   useEffect(() => {
@@ -149,6 +163,7 @@ export default function MarketCenterManagement() {
     currentPage,
     showFilters,
   ]);
+
   useEffect(() => {
     const filtersString = localStorage.getItem("market-center-filters");
     if (filtersString) {
@@ -406,6 +421,15 @@ export default function MarketCenterManagement() {
           {isEnterprise && (
             <Button
               onClick={() => openCreateModal()}
+              className="gap-2 w-full sm:w-fit"
+            >
+              <Plus className="h-4 w-4" />
+              Add Market Center
+            </Button>
+          )}
+          {!isEnterprise && permissions?.canManageSubscription && (
+            <Button
+              // onClick={() => openCreateModal()}
               className="gap-2 w-full sm:w-fit"
             >
               <Plus className="h-4 w-4" />
@@ -746,6 +770,25 @@ export default function MarketCenterManagement() {
           handleSendMarketCenterNotifications
         }
       />
+
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Want more market centers?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Contact us today to upgrade your subscription and unlock access to
+              unlimited market centers and other advanced features.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction>
+              {/* Link href="mailto:sales@example.com" */}
+              Inquire
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

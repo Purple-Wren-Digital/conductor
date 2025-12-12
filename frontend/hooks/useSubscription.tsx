@@ -3,7 +3,15 @@ import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
 
 export interface SubscriptionData {
   id: string;
-  status: "ACTIVE" | "CANCELED" | "INCOMPLETE" | "INCOMPLETE_EXPIRED" | "PAST_DUE" | "PAUSED" | "TRIALING" | "UNPAID";
+  status:
+    | "ACTIVE"
+    | "CANCELED"
+    | "INCOMPLETE"
+    | "INCOMPLETE_EXPIRED"
+    | "PAST_DUE"
+    | "PAUSED"
+    | "TRIALING"
+    | "UNPAID";
   planType: "STARTER" | "TEAM" | "BUSINESS" | "ENTERPRISE";
   includedSeats: number;
   additionalSeats: number;
@@ -35,17 +43,23 @@ export function useSubscription() {
         }
         throw new Error("Failed to fetch subscription");
       }
-      return response.json();
+      console.log("Subscription Response:", response);
+      const data = await response.json();
+      console.log("Subscription Data:", data);
+      return data;
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     refetchOnWindowFocus: true,
   });
 }
 
-export function useCanPerformAction(action: "createTicket" | "addUser" | "addCategory") {
+export function useCanPerformAction(
+  action: "createTicket" | "addUser" | "addCategory"
+) {
   const { data: subscription, isLoading } = useSubscription();
 
-  if (isLoading) return { canPerform: false, reason: "Loading...", isLoading: true };
+  if (isLoading)
+    return { canPerform: false, reason: "Loading...", isLoading: true };
 
   if (!subscription) {
     return {
@@ -99,9 +113,14 @@ export function useCanPerformAction(action: "createTicket" | "addUser" | "addCat
  */
 export function useIsEnterprise() {
   const { data: subscription, isLoading } = useSubscription();
+  console.log("Subscription Data:", subscription);
 
   return {
     isEnterprise: subscription?.planType === "ENTERPRISE",
+    isStandard:
+      subscription?.planType === "STARTER" ||
+      subscription?.planType === "TEAM" ||
+      subscription?.planType === "BUSINESS",
     isLoading,
   };
 }

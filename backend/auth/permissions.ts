@@ -3,6 +3,7 @@ import type { UserContext } from "./user-context";
 import { ticketRepository } from "../ticket/db";
 import { Ticket } from "../ticket/types";
 import { UserRole } from "../user/types";
+import { subscriptionRepository } from "../shared/repositories";
 
 export async function requireRole(
   userContext: UserContext,
@@ -314,8 +315,15 @@ export async function marketCenterScopeFilter(
   userContext: UserContext,
   marketCenterId: string
 ) {
+  // Admin: Check subscription-based access
+  // - Admin without Enterprise: Only their own market center
+  // - Admin with Enterprise: All market centers under the same subscription
   if (userContext.role === "ADMIN") {
-    return { id: marketCenterId };
+    const canAccess = await subscriptionRepository.canAccessMarketCenter(
+      userContext.marketCenterId,
+      marketCenterId
+    );
+    return canAccess ? { id: marketCenterId } : null;
   }
 
   if (
@@ -330,4 +338,26 @@ export async function marketCenterScopeFilter(
   }
 
   return null;
+}
+
+/**
+ * Get all market center IDs accessible to a user based on their role and subscription
+ * - Non-Admin roles: Only their own market center
+ * - Admin without Enterprise: Only their own market center
+ * - Admin with Enterprise: All market centers under the same subscription
+ */
+export async function getAccessibleMarketCenterIds(
+  userContext: UserContext
+): Promise<string[]> {
+  if (!userContext.marketCenterId) {
+    return [];
+  }
+
+  if (userContext.role === "ADMIN") {
+    return subscriptionRepository.getAccessibleMarketCenterIds(
+      userContext.marketCenterId
+    );
+  }
+
+  return [userContext.marketCenterId];
 }

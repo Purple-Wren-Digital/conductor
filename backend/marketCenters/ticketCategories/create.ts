@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
 import { marketCenterRepository, userRepository, db, toJson } from "../../ticket/db";
+import { subscriptionRepository } from "../../shared/repositories";
 
 export interface CreateCategoryRequest {
   name: string;
@@ -36,6 +37,19 @@ export const createCategory = api<
 
     if (!req || !marketCenterId || !req.name) {
       throw APIError.invalidArgument("Missing ticket category information");
+    }
+
+    // For Admin, verify subscription-based access to the target market center
+    if (userContext?.role === "ADMIN") {
+      const canAccess = await subscriptionRepository.canAccessMarketCenter(
+        userContext.marketCenterId,
+        marketCenterId
+      );
+      if (!canAccess) {
+        throw APIError.permissionDenied(
+          "You do not have permission to create categories in this market center"
+        );
+      }
     }
 
     const marketCenter = await marketCenterRepository.findById(marketCenterId);

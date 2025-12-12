@@ -41,7 +41,8 @@ function SubscriptionPageContent() {
   const canceled = searchParams.get("canceled");
   const expired = searchParams.get("expired");
 
-  const fetchWithAuth = useFetchWithAuth();
+  const rawFetchWithAuth = useFetchWithAuth();
+  const fetchWithAuth = useCallback(rawFetchWithAuth, [rawFetchWithAuth]);
   const { isLoaded, isSignedIn } = useAuth();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(

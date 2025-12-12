@@ -2,7 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { db, fromTimestamp } from "../ticket/db";
 import { MarketCenter } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { marketCenterScopeFilter } from "../auth/permissions";
+import { subscriptionRepository } from "../shared/repositories";
 
 export interface GetMarketCenterRequest {
   id: string;
@@ -21,9 +21,24 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-    const scopeFilter = await marketCenterScopeFilter(userContext, req.id);
 
-    if (!scopeFilter || !scopeFilter?.id) {
+    // Check if user can access this market center based on subscription
+    // - Non-Admin roles: Can only access their own market center
+    // - Admin without Enterprise: Can only access their own market center
+    // - Admin with Enterprise: Can access all market centers under the same subscription
+    let canAccess = false;
+
+    if (userContext.role === "ADMIN") {
+      canAccess = await subscriptionRepository.canAccessMarketCenter(
+        userContext.marketCenterId,
+        req.id
+      );
+    } else {
+      // Non-admin roles can only access their own market center
+      canAccess = userContext.marketCenterId === req.id;
+    }
+
+    if (!canAccess) {
       throw APIError.permissionDenied(
         "You do not have permission to view this market center"
       );
