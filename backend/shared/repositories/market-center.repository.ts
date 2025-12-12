@@ -312,13 +312,23 @@ export const marketCenterRepository = {
     return row ? rowToInvitation(row) : null;
   },
 
-  async findInvitationByEmail(
+  async findInvitationByEmailAndMarketCenterID(
     marketCenterId: string,
     email: string
   ): Promise<TeamInvitation | null> {
     const row = await db.queryRow<TeamInvitationRow>`
       SELECT * FROM team_invitations
       WHERE market_center_id = ${marketCenterId} AND email = ${email}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    return row ? rowToInvitation(row) : null;
+  },
+
+  async findInvitationByEmail(email: string): Promise<TeamInvitation | null> {
+    const row = await db.queryRow<TeamInvitationRow>`
+      SELECT * FROM team_invitations
+      WHERE  email = ${email}
       ORDER BY created_at DESC
       LIMIT 1
     `;

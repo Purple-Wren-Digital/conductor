@@ -1,6 +1,6 @@
 import { APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
-import { userRepository } from "../ticket/db";
+import { marketCenterRepository, userRepository } from "../ticket/db";
 import type { UserRole } from "../user/types";
 
 export interface UserContext {
@@ -23,11 +23,33 @@ export async function getUserContext(): Promise<UserContext> {
 
   // If not found and we have an email, try to find by email
   if (!user && authData.emailAddress) {
-    user = await userRepository.findByEmail(authData.emailAddress);
+    const existingUser = await userRepository.findByEmail(
+      authData.emailAddress
+    );
 
     // If found, update with Clerk user ID
-    if (user) {
-      await userRepository.update(user.id, { clerkId: authData.userID });
+    if (existingUser) {
+      await userRepository.update(existingUser.id, {
+        clerkId: authData.userID,
+      });
+      user = existingUser;
+    } else {
+      const userInvitation = await marketCenterRepository.findInvitationByEmail(
+        authData.emailAddress
+      );
+      const nameParts = authData.emailAddress.split("@")[0].split(/[._-]/);
+      const name = nameParts
+        .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+      if (userInvitation) {
+        user = await userRepository.create({
+          email: authData.emailAddress,
+          clerkId: authData.userID,
+          role: userInvitation.role ?? "AGENT",
+          marketCenterId: userInvitation.marketCenterId,
+          name: name,
+        });
+      }
     }
   }
 

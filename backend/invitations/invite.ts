@@ -123,7 +123,7 @@ export const inviteTeamMember = api<InviteTeamMemberRequest, InviteTeamMemberRes
     }
 
     // Check for existing pending invitation
-    const existingInvitation = await marketCenterRepository.findInvitationByEmail(
+    const existingInvitation = await marketCenterRepository.findInvitationByEmailAndMarketCenterID(
       userContext.marketCenterId,
       req.email
     );
