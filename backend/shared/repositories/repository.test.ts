@@ -811,6 +811,183 @@ describe("Subscription Repository", () => {
 
     expect(result).toBe(true);
   });
+
+  // ==================== NEW: MULTI-MARKET-CENTER ACCESS TESTS ====================
+  describe("Multi-Market-Center Access (Enterprise)", () => {
+    const mockSubscriptionRowEnterprise = {
+      id: "sub-123",
+      stripe_subscription_id: "stripe-sub-123",
+      stripe_customer_id: "stripe-cus-enterprise",
+      market_center_id: "mc-123",
+      status: "ACTIVE",
+      plan_type: "ENTERPRISE",
+      price_id: "price-123",
+      included_seats: 50,
+      additional_seats: 0,
+      seat_price: "10.00",
+      current_period_start: new Date("2024-01-01"),
+      current_period_end: new Date("2024-02-01"),
+      cancel_at: null,
+      canceled_at: null,
+      trial_end: null,
+      features: '{}',
+      created_at: new Date("2024-01-01"),
+      updated_at: new Date("2024-01-02"),
+    };
+
+    const mockSubscriptionRowTeam = {
+      ...mockSubscriptionRowEnterprise,
+      plan_type: "TEAM",
+      stripe_customer_id: "stripe-cus-team",
+    };
+
+    describe("findMarketCenterIdsByStripeCustomerId", () => {
+      it("should return all market center IDs for a stripe customer", async () => {
+        mockedDb.queryAll.mockResolvedValueOnce([
+          { market_center_id: "mc-1" },
+          { market_center_id: "mc-2" },
+          { market_center_id: "mc-3" },
+        ]);
+
+        const result = await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
+          "stripe-cus-enterprise"
+        );
+
+        expect(result).toEqual(["mc-1", "mc-2", "mc-3"]);
+      });
+
+      it("should return empty array when no market centers found", async () => {
+        mockedDb.queryAll.mockResolvedValueOnce([]);
+
+        const result = await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
+          "nonexistent-customer"
+        );
+
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe("getAccessibleMarketCenterIds", () => {
+      it("should return empty array when user has no market center", async () => {
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds(null);
+
+        expect(result).toEqual([]);
+      });
+
+      it("should return only user's market center when no subscription found", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce(null); // No subscription
+
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+
+        expect(result).toEqual(["mc-123"]);
+      });
+
+      it("should return only user's market center for non-Enterprise plan", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowTeam);
+
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+
+        expect(result).toEqual(["mc-123"]);
+      });
+
+      it("should return all market centers under same customer for Enterprise plan", async () => {
+        // First call: find subscription by market center ID (returns Enterprise)
+        mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowEnterprise);
+        // Second call: find all market centers by stripe customer ID
+        mockedDb.queryAll.mockResolvedValueOnce([
+          { market_center_id: "mc-1" },
+          { market_center_id: "mc-2" },
+          { market_center_id: "mc-3" },
+        ]);
+
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-1");
+
+        expect(result).toEqual(["mc-1", "mc-2", "mc-3"]);
+      });
+
+      it("should return only user's market center for STARTER plan", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce({
+          ...mockSubscriptionRowEnterprise,
+          plan_type: "STARTER",
+        });
+
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+
+        expect(result).toEqual(["mc-123"]);
+      });
+
+      it("should return only user's market center for BUSINESS plan", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce({
+          ...mockSubscriptionRowEnterprise,
+          plan_type: "BUSINESS",
+        });
+
+        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+
+        expect(result).toEqual(["mc-123"]);
+      });
+    });
+
+    describe("canAccessMarketCenter", () => {
+      it("should return false when user has no market center", async () => {
+        const result = await subscriptionRepository.canAccessMarketCenter(null, "mc-target");
+
+        expect(result).toBe(false);
+      });
+
+      it("should return true when accessing own market center", async () => {
+        // No DB call needed since same market center
+        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-123");
+
+        expect(result).toBe(true);
+      });
+
+      it("should return false for non-Enterprise user accessing different market center", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowTeam);
+
+        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-other");
+
+        expect(result).toBe(false);
+      });
+
+      it("should return true for Enterprise user accessing market center under same subscription", async () => {
+        // First call: find subscription (Enterprise)
+        mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowEnterprise);
+        // Second call: get all accessible market center IDs
+        mockedDb.queryAll.mockResolvedValueOnce([
+          { market_center_id: "mc-1" },
+          { market_center_id: "mc-2" },
+          { market_center_id: "mc-target" },
+        ]);
+
+        const result = await subscriptionRepository.canAccessMarketCenter("mc-1", "mc-target");
+
+        expect(result).toBe(true);
+      });
+
+      it("should return false for Enterprise user accessing market center under different subscription", async () => {
+        // First call: find subscription (Enterprise)
+        mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowEnterprise);
+        // Second call: get all accessible market center IDs (target not in list)
+        mockedDb.queryAll.mockResolvedValueOnce([
+          { market_center_id: "mc-1" },
+          { market_center_id: "mc-2" },
+        ]);
+
+        const result = await subscriptionRepository.canAccessMarketCenter("mc-1", "mc-other-subscription");
+
+        expect(result).toBe(false);
+      });
+
+      it("should return false when no subscription exists", async () => {
+        mockedDb.queryRow.mockResolvedValueOnce(null);
+
+        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-other");
+
+        expect(result).toBe(false);
+      });
+    });
+  });
 });
 
 // ==================== SETTINGS AUDIT REPOSITORY TESTS ====================

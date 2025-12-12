@@ -1,16 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockTicketRepository } = vi.hoisted(() => ({
+const { mockTicketRepository, mockSubscriptionRepository } = vi.hoisted(() => ({
   mockTicketRepository: {
     findById: vi.fn(),
     findByIdWithRelations: vi.fn(),
+  },
+  mockSubscriptionRepository: {
+    canAccessMarketCenter: vi.fn(),
+    getAccessibleMarketCenterIds: vi.fn(),
   },
 }));
 
 // Mock ticket/db
 vi.mock("../ticket/db", () => ({
   ticketRepository: mockTicketRepository,
+}));
+
+// Mock shared/repositories
+vi.mock("../shared/repositories", () => ({
+  subscriptionRepository: mockSubscriptionRepository,
 }));
 
 // Mock encore.dev/api
@@ -46,6 +55,7 @@ import {
   getTicketScopeFilter,
   getUserScopeFilter,
   marketCenterScopeFilter,
+  getAccessibleMarketCenterIds,
 } from "./permissions";
 import type { UserContext } from "./user-context";
 
@@ -787,10 +797,40 @@ describe("Permissions", () => {
   });
 
   describe("marketCenterScopeFilter", () => {
-    it("should return marketCenterId for ADMIN", async () => {
-      const userContext = createUserContext({ role: "ADMIN" });
-      const result = await marketCenterScopeFilter(userContext, "mc-456");
-      expect(result).toEqual({ id: "mc-456" });
+    describe("ADMIN role - subscription-based access", () => {
+      it("should return marketCenterId when Admin can access market center (Enterprise)", async () => {
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(true);
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-123",
+        });
+        const result = await marketCenterScopeFilter(userContext, "mc-456");
+        expect(result).toEqual({ id: "mc-456" });
+        expect(mockSubscriptionRepository.canAccessMarketCenter).toHaveBeenCalledWith(
+          "mc-123",
+          "mc-456"
+        );
+      });
+
+      it("should return null when Admin cannot access market center (non-Enterprise)", async () => {
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(false);
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-123",
+        });
+        const result = await marketCenterScopeFilter(userContext, "mc-456");
+        expect(result).toBeNull();
+      });
+
+      it("should allow Admin to access their own market center", async () => {
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(true);
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-123",
+        });
+        const result = await marketCenterScopeFilter(userContext, "mc-123");
+        expect(result).toEqual({ id: "mc-123" });
+      });
     });
 
     it("should return user's marketCenterId for STAFF", async () => {
@@ -827,6 +867,90 @@ describe("Permissions", () => {
       });
       const result = await marketCenterScopeFilter(userContext, "mc-456");
       expect(result).toBeNull();
+    });
+  });
+
+  describe("getAccessibleMarketCenterIds", () => {
+    it("should return empty array when user has no marketCenterId", async () => {
+      const userContext = createUserContext({
+        role: "ADMIN",
+        marketCenterId: null,
+      });
+      const result = await getAccessibleMarketCenterIds(userContext);
+      expect(result).toEqual([]);
+    });
+
+    describe("ADMIN role - uses subscription repository", () => {
+      it("should delegate to subscriptionRepository for ADMIN", async () => {
+        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-1",
+          "mc-2",
+          "mc-3",
+        ]);
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-1",
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-1", "mc-2", "mc-3"]);
+        expect(
+          mockSubscriptionRepository.getAccessibleMarketCenterIds
+        ).toHaveBeenCalledWith("mc-1");
+      });
+
+      it("should return single market center for non-Enterprise admin", async () => {
+        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-123",
+        ]);
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-123",
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-123"]);
+      });
+    });
+
+    describe("Non-ADMIN roles - returns only own market center", () => {
+      it("should return only own market center for STAFF", async () => {
+        const userContext = createUserContext({
+          role: "STAFF",
+          marketCenterId: "mc-123",
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-123"]);
+        expect(
+          mockSubscriptionRepository.getAccessibleMarketCenterIds
+        ).not.toHaveBeenCalled();
+      });
+
+      it("should return only own market center for STAFF_LEADER", async () => {
+        const userContext = createUserContext({
+          role: "STAFF_LEADER",
+          marketCenterId: "mc-123",
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-123"]);
+      });
+
+      it("should return only own market center for AGENT", async () => {
+        const userContext = createUserContext({
+          role: "AGENT",
+          marketCenterId: "mc-123",
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-123"]);
+      });
     });
   });
 });

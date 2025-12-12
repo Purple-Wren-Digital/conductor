@@ -287,4 +287,67 @@ export const subscriptionRepository = {
     await db.exec`DELETE FROM subscriptions WHERE id = ${id}`;
     return true;
   },
+
+  // Find all market center IDs that share the same stripe_customer_id
+  // Used for Enterprise subscriptions with multiple market centers
+  async findMarketCenterIdsByStripeCustomerId(
+    stripeCustomerId: string
+  ): Promise<string[]> {
+    const rows = await db.queryAll<{ market_center_id: string }>`
+      SELECT market_center_id FROM subscriptions
+      WHERE stripe_customer_id = ${stripeCustomerId}
+    `;
+    return rows.map((row) => row.market_center_id);
+  },
+
+  // Get all market center IDs accessible to a user based on their subscription
+  // - Non-Enterprise: Only their own market center
+  // - Enterprise: All market centers under the same stripe_customer_id
+  async getAccessibleMarketCenterIds(
+    userMarketCenterId: string | null
+  ): Promise<string[]> {
+    if (!userMarketCenterId) {
+      return [];
+    }
+
+    // Get the user's subscription
+    const subscription = await this.findByMarketCenterId(userMarketCenterId);
+
+    if (!subscription) {
+      // No subscription - only their own market center
+      return [userMarketCenterId];
+    }
+
+    // Check if Enterprise plan
+    if (subscription.planType !== "ENTERPRISE") {
+      // Non-Enterprise: Only their own market center
+      return [userMarketCenterId];
+    }
+
+    // Enterprise: Get all market centers under the same stripe_customer_id
+    return this.findMarketCenterIdsByStripeCustomerId(
+      subscription.stripeCustomerId
+    );
+  },
+
+  // Check if a user can access a specific market center based on subscription
+  async canAccessMarketCenter(
+    userMarketCenterId: string | null,
+    targetMarketCenterId: string
+  ): Promise<boolean> {
+    if (!userMarketCenterId) {
+      return false;
+    }
+
+    // Same market center - always allowed
+    if (userMarketCenterId === targetMarketCenterId) {
+      return true;
+    }
+
+    // Get accessible market centers
+    const accessibleIds = await this.getAccessibleMarketCenterIds(
+      userMarketCenterId
+    );
+    return accessibleIds.includes(targetMarketCenterId);
+  },
 };

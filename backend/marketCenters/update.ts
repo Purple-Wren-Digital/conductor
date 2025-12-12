@@ -4,6 +4,7 @@ import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageMarketCenters } from "../auth/permissions";
+import { subscriptionRepository } from "../shared/repositories";
 import { UsersToNotify } from "../notifications/types";
 import { AssignmentUpdateType } from "@/emails/types";
 
@@ -36,6 +37,18 @@ export const update = api<
 
     if (!canManage) {
       throw APIError.permissionDenied("Only Admin can update market centers");
+    }
+
+    // Check subscription-based access to this market center
+    const canAccess = await subscriptionRepository.canAccessMarketCenter(
+      userContext.marketCenterId,
+      req.id
+    );
+
+    if (!canAccess) {
+      throw APIError.permissionDenied(
+        "You do not have permission to update this market center"
+      );
     }
 
     // Fetch existing market center with users

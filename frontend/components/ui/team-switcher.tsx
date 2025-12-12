@@ -12,6 +12,7 @@ import { Building, Building2 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { MarketCenter } from "@/lib/types";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 
 interface TeamSwitcherProps {
   selectedMarketCenterId: string;
@@ -30,11 +31,17 @@ export function TeamSwitcher({
 }: TeamSwitcherProps) {
   const { role } = useUserRole();
   const { data, isLoading } = useFetchAllMarketCenters(role);
+  const { isEnterprise } = useIsEnterprise();
 
   const marketCenters: MarketCenter[] = useMemo(
     () => data?.marketCenters ?? [],
     [data]
   );
+
+  // Only show "All Teams" option if user is Admin with Enterprise subscription
+  // and has access to multiple market centers
+  const canViewAllTeams =
+    role === "ADMIN" && isEnterprise && marketCenters.length > 1;
 
   useEffect(() => {
     if (!setMarketCenters || !marketCenters) return;
@@ -69,7 +76,7 @@ export function TeamSwitcher({
         <SelectValue placeholder="Select a team" />
       </SelectTrigger>
       <SelectContent>
-        {role === "ADMIN" && (
+        {canViewAllTeams && (
           <SelectItem value="all">
             <Building2 className="h-4 w-4" />
             All Teams

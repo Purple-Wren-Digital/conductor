@@ -3,6 +3,7 @@ import { Query } from "encore.dev/api";
 import {
   marketCenterRepository,
   ticketRepository,
+  subscriptionRepository,
 } from "../shared/repositories";
 import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
@@ -36,6 +37,19 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+
+    // Get accessible market center IDs based on user's subscription
+    // - Non-Admin roles: Only their own market center
+    // - Admin without Enterprise: Only their own market center
+    // - Admin with Enterprise: All market centers under the same subscription
+    const accessibleMarketCenterIds =
+      userContext.role === "ADMIN"
+        ? await subscriptionRepository.getAccessibleMarketCenterIds(
+            userContext.marketCenterId
+          )
+        : userContext.marketCenterId
+          ? [userContext.marketCenterId]
+          : [];
 
     // AGENT + STAFF + STAFF_LEADER: only return their market center
     if (
@@ -77,7 +91,11 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
       };
     }
 
-    // ADMIN
+    // ADMIN: Return only market centers they have access to based on subscription
+    if (!userContext.marketCenterId || accessibleMarketCenterIds.length === 0) {
+      return { marketCenters: [], total: 0 };
+    }
+
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
 
@@ -86,12 +104,20 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
 
     const sortDir = req.sortDir === "asc" ? "ASC" : "DESC";
 
-    // Build the query
+    // Build the query - always scope to accessible market centers
     const conditions: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (userContext.role === "ADMIN" && req?.id) {
+    // Add subscription-based scope for Admin
+    const placeholders = accessibleMarketCenterIds
+      .map((_, i) => `$${paramIndex + i}`)
+      .join(", ");
+    conditions.push(`mc.id IN (${placeholders})`);
+    values.push(...accessibleMarketCenterIds);
+    paramIndex += accessibleMarketCenterIds.length;
+
+    if (req?.id) {
       conditions.push(`mc.id = $${paramIndex++}`);
       values.push(req.id);
     }

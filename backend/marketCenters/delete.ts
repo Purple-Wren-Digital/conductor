@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { db, withTransaction } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canDeleteMarketCenters } from "../auth/permissions";
+import { subscriptionRepository } from "../shared/repositories";
 
 export interface DeleteMarketCenterRequest {
   id: string;
@@ -34,6 +35,18 @@ export const deleteMarketCenter = api<
 
     if (!req.id) {
       throw APIError.invalidArgument("Missing request data");
+    }
+
+    // Check subscription-based access to this market center
+    const canAccess = await subscriptionRepository.canAccessMarketCenter(
+      userContext.marketCenterId,
+      req.id
+    );
+
+    if (!canAccess) {
+      throw APIError.permissionDenied(
+        "You do not have permission to delete this market center"
+      );
     }
 
     const marketCenter = await db.queryRow<{ id: string }>`

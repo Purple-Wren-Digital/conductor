@@ -2,6 +2,7 @@ import { api, Query } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
 import { marketCenterRepository, db } from "../../ticket/db";
+import { subscriptionRepository } from "../../shared/repositories";
 
 export interface ListCategoriesRequest {
   id?: Query<string>; // Category ID
@@ -35,26 +36,18 @@ export const listCategories = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    // ADMIN viewing all categories (no filters)
-    if (
-      userContext?.role === "ADMIN" &&
-      (!req.marketCenterId || req.marketCenterId === "all" || !req.id)
-    ) {
-      const categoriesRaw = await db.queryAll<TicketCategoryRow>`
-        SELECT * FROM ticket_categories ORDER BY name ASC
-      `;
+    // Get accessible market center IDs based on subscription
+    const accessibleMarketCenterIds =
+      userContext.role === "ADMIN"
+        ? await subscriptionRepository.getAccessibleMarketCenterIds(
+            userContext.marketCenterId
+          )
+        : userContext.marketCenterId
+          ? [userContext.marketCenterId]
+          : [];
 
-      const categories = categoriesRaw.map((category) => ({
-        id: category.id,
-        name: category.name ?? "",
-        description: category.description ?? "",
-        marketCenterId: category.market_center_id,
-        defaultAssigneeId: category.default_assignee_id ?? undefined,
-        createdAt: category.created_at,
-        updatedAt: category.updated_at,
-      }));
-
-      return { categories };
+    if (accessibleMarketCenterIds.length === 0) {
+      return { categories: [] };
     }
 
     // Build WHERE conditions
@@ -62,19 +55,26 @@ export const listCategories = api<
     const values: any[] = [];
     let paramIndex = 1;
 
+    // Always scope to accessible market centers
+    const placeholders = accessibleMarketCenterIds
+      .map((_, i) => `$${paramIndex + i}`)
+      .join(", ");
+    conditions.push(`market_center_id IN (${placeholders})`);
+    values.push(...accessibleMarketCenterIds);
+    paramIndex += accessibleMarketCenterIds.length;
+
     if (req?.id) {
       conditions.push(`id = $${paramIndex++}`);
       values.push(req.id);
     }
 
-    if (userContext?.role === "ADMIN" && req?.marketCenterId !== "all") {
+    // If a specific market center is requested, further filter (must be in accessible list)
+    if (req?.marketCenterId && req.marketCenterId !== "all") {
+      if (!accessibleMarketCenterIds.includes(req.marketCenterId)) {
+        return { categories: [] };
+      }
       conditions.push(`market_center_id = $${paramIndex++}`);
       values.push(req.marketCenterId);
-    }
-
-    if (userContext?.role !== "ADMIN" && userContext?.marketCenterId) {
-      conditions.push(`market_center_id = $${paramIndex++}`);
-      values.push(userContext.marketCenterId);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
