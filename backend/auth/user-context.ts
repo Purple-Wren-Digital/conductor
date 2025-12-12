@@ -1,6 +1,6 @@
 import { APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
-import { userRepository } from "../ticket/db";
+import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { UserRole } from "../user/types";
 
 export interface UserContext {
@@ -31,6 +31,22 @@ export async function getUserContext(): Promise<UserContext> {
     }
   }
 
+  // If user exists but has no market center, check for pending invitation
+  // This fixes race conditions where user was created before invitation was processed
+  if (user && !user.marketCenterId && authData.emailAddress) {
+    const invitation =
+      await marketCenterRepository.findActiveInvitationByEmail(
+        authData.emailAddress
+      );
+
+    if (invitation?.marketCenterId) {
+      user = await userRepository.update(user.id, {
+        marketCenterId: invitation.marketCenterId,
+        role: invitation.role,
+      });
+    }
+  }
+
   // If still not found, create new user
   if (!user) {
     const email = authData.emailAddress;
@@ -44,11 +60,18 @@ export async function getUserContext(): Promise<UserContext> {
       .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
 
+    // Check if user has a pending or recently accepted invitation
+    // This ensures invited users get their market center even if getUserContext
+    // is called before acceptInvitation completes
+    const invitation =
+      await marketCenterRepository.findActiveInvitationByEmail(email);
+
     user = await userRepository.create({
       email: email,
       clerkId: authData.userID,
-      role: "AGENT", // New users default to AGENT role
+      role: invitation?.role ?? "AGENT",
       name: name,
+      marketCenterId: invitation?.marketCenterId ?? null,
     });
   }
 

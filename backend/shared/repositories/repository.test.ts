@@ -495,6 +495,103 @@ describe("Market Center Repository", () => {
     expect(invitation).toBeDefined();
     expect(invitation.status).toBe("PENDING");
   });
+
+  describe("findActiveInvitationByEmail", () => {
+    it("should find pending invitation by email (case-insensitive)", async () => {
+      const pendingInvitation = {
+        ...mockInvitationRow,
+        status: "PENDING",
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Future date
+      };
+      mockedDb.queryRow.mockResolvedValueOnce(pendingInvitation);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "INVITE@EXAMPLE.COM"
+      );
+
+      expect(invitation).toBeDefined();
+      expect(invitation?.email).toBe("invite@example.com");
+      expect(invitation?.status).toBe("PENDING");
+    });
+
+    it("should find accepted invitation by email", async () => {
+      const acceptedInvitation = {
+        ...mockInvitationRow,
+        status: "ACCEPTED",
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      };
+      mockedDb.queryRow.mockResolvedValueOnce(acceptedInvitation);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "invite@example.com"
+      );
+
+      expect(invitation).toBeDefined();
+      expect(invitation?.status).toBe("ACCEPTED");
+    });
+
+    it("should return null when no active invitation exists", async () => {
+      mockedDb.queryRow.mockResolvedValueOnce(null);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "unknown@example.com"
+      );
+
+      expect(invitation).toBeNull();
+    });
+
+    it("should not find expired invitations", async () => {
+      // The SQL query filters out expired invitations, so db returns null
+      mockedDb.queryRow.mockResolvedValueOnce(null);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "invite@example.com"
+      );
+
+      expect(invitation).toBeNull();
+    });
+
+    it("should not find cancelled invitations", async () => {
+      // The SQL query only looks for PENDING or ACCEPTED status
+      mockedDb.queryRow.mockResolvedValueOnce(null);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "invite@example.com"
+      );
+
+      expect(invitation).toBeNull();
+    });
+
+    it("should return invitation with all required fields", async () => {
+      const fullInvitation = {
+        id: "inv-full",
+        email: "full@example.com",
+        role: "STAFF_LEADER",
+        status: "PENDING",
+        market_center_id: "mc-999",
+        invited_by: "admin-user",
+        token: "token-full",
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        accepted_at: null,
+        created_at: new Date("2024-01-01"),
+        updated_at: new Date("2024-01-02"),
+      };
+      mockedDb.queryRow.mockResolvedValueOnce(fullInvitation);
+
+      const invitation = await marketCenterRepository.findActiveInvitationByEmail(
+        "full@example.com"
+      );
+
+      expect(invitation).toBeDefined();
+      expect(invitation?.id).toBe("inv-full");
+      expect(invitation?.email).toBe("full@example.com");
+      expect(invitation?.role).toBe("STAFF_LEADER");
+      expect(invitation?.status).toBe("PENDING");
+      expect(invitation?.marketCenterId).toBe("mc-999");
+      expect(invitation?.invitedBy).toBe("admin-user");
+      expect(invitation?.token).toBe("token-full");
+    });
+  });
 });
 
 // ==================== SURVEY REPOSITORY TESTS ====================
