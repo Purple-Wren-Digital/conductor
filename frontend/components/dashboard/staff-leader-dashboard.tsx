@@ -116,7 +116,7 @@ export function StaffLeaderDashboard() {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);
 
-  const filteredTickets = useMemo(() => {
+  const filteredTickets: Ticket[] = useMemo(() => {
     return selectedTeamMemberId == "All"
       ? tickets
       : tickets.filter((t: any) => t.assigneeId === selectedTeamMemberId);
@@ -136,6 +136,16 @@ export function StaffLeaderDashboard() {
     const unassignedTickets = filteredTickets.filter(
       (t: Ticket) => !t.assigneeId
     ).length;
+
+    const overdueTickets = filteredTickets.filter((t: Ticket) => {
+      if (t.status !== "RESOLVED" && t?.dueDate) {
+        const dueDate = new Date(t.dueDate);
+        const now = new Date();
+        return dueDate < now;
+      }
+      return false;
+    }).length;
+
     const ticketsByStatus = filteredTickets.reduce(
       (acc: Record<string, number>, ticket: any) => {
         acc[ticket.status] = (acc[ticket.status] || 0) + 1;
@@ -214,6 +224,7 @@ export function StaffLeaderDashboard() {
       activeTickets,
       highPriority,
       unassignedTickets,
+      overdueTickets,
       createdThisWeek,
       resolvedThisWeek,
       ticketsByStatus,
@@ -354,15 +365,16 @@ export function StaffLeaderDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Total Tickets
+              Active Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.totalTickets}
+              {stats.activeTicketsCount}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              across all time
+              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+              unassigned
             </p>
           </CardContent>
         </Card>
@@ -385,16 +397,15 @@ export function StaffLeaderDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Active Tickets
+              Overdue Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.activeTicketsCount}
+              {stats.overdueTickets}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
-              unassigned
+              across all tickets
             </p>
           </CardContent>
         </Card>

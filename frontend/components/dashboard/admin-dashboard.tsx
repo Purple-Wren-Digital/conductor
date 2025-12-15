@@ -136,23 +136,29 @@ export function AdminDashboard() {
   }, []);
   const { data: slaMetricsData } = useSlaMetrics(slaDateFilters);
 
-  const tickets = ticketsData?.tickets || [];
-  const allUsers = usersData?.users || [];
+  const tickets = useMemo(() => ticketsData?.tickets || [], [ticketsData]);
+  const allUsers = useMemo(() => usersData?.users || [], [usersData]);
 
-  const filteredTickets =
-    selectedMarketCenterId === "all"
-      ? tickets
-      : tickets.filter((t: any) => {
-          const creator = allUsers.find((u: any) => u.id === t.creatorId);
-          return creator?.marketCenterId === selectedMarketCenterId;
-        });
+  const filteredTickets = useMemo(
+    () =>
+      selectedMarketCenterId === "all"
+        ? tickets
+        : tickets.filter((t: any) => {
+            const creator = allUsers.find((u: any) => u.id === t.creatorId);
+            return creator?.marketCenterId === selectedMarketCenterId;
+          }),
+    [tickets, allUsers, selectedMarketCenterId]
+  );
 
-  const filteredUsers =
-    selectedMarketCenterId === "all"
-      ? allUsers
-      : allUsers.filter(
-          (u: any) => u.marketCenterId === selectedMarketCenterId
-        );
+  const filteredUsers = useMemo(
+    () =>
+      selectedMarketCenterId === "all"
+        ? allUsers
+        : allUsers.filter(
+            (u: any) => u.marketCenterId === selectedMarketCenterId
+          ),
+    [allUsers, selectedMarketCenterId]
+  );
 
   const stats = useMemo(() => {
     const totalTickets = filteredTickets.length;
@@ -165,6 +171,14 @@ export function AdminDashboard() {
     const unassignedTickets = filteredTickets.filter(
       (t: any) => !t.assigneeId && t.status === "UNASSIGNED"
     ).length;
+    const overdueTickets = filteredTickets.filter((t: Ticket) => {
+      if (t.status !== "RESOLVED" && t?.dueDate) {
+        const dueDate = new Date(t.dueDate);
+        const now = new Date();
+        return dueDate < now;
+      }
+      return false;
+    }).length;
 
     const ticketsByStatus = filteredTickets.reduce(
       (acc: Record<string, number>, ticket: any) => {
@@ -250,6 +264,7 @@ export function AdminDashboard() {
       openTickets,
       highPriority,
       unassignedTickets,
+      overdueTickets,
       ticketsByStatus,
       ticketsByMarketCenter: Object.values(ticketsByMarketCenter),
       totalUsers,
@@ -343,15 +358,16 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Total Tickets
+              Active Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.totalTickets}
+              {stats.openTickets}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              across all time
+              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+              unassigned
             </p>
           </CardContent>
         </Card>
@@ -375,16 +391,15 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Active Tickets
+              Overdue Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.openTickets}
+              {stats.overdueTickets}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
-              unassigned
+              across all tickets
             </p>
           </CardContent>
         </Card>
@@ -552,7 +567,7 @@ export function AdminDashboard() {
             <div className="flex flex-col gap-1">
               <CardTitle>Tickets by Status</CardTitle>
               <CardDescription>
-                {filteredTickets.length ?? "0"} total tickets
+                {stats.totalTickets} total tickets
                 {selectedMarketCenterId === "all"
                   ? " across all teams"
                   : ""}{" "}
@@ -623,7 +638,7 @@ export function AdminDashboard() {
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>
-              {filteredTickets.length ?? "0"} total tickets
+              {stats.totalTickets} total tickets
               {selectedMarketCenterId === "all" ? " across all teams" : ""}{" "}
             </CardDescription>
           </CardHeader>

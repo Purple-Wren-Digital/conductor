@@ -148,6 +148,15 @@ export function StaffDashboard() {
       {}
     );
 
+    const overdueTickets = filteredTickets.filter((t: Ticket) => {
+      if (t.status !== "RESOLVED" && t?.dueDate) {
+        const dueDate = new Date(t.dueDate);
+        const now = new Date();
+        return dueDate < now;
+      }
+      return false;
+    }).length;
+
     const now = new Date();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7);
@@ -174,6 +183,7 @@ export function StaffDashboard() {
       activeTickets,
       highPriority,
       unassignedTickets,
+      overdueTickets,
       createdThisWeek,
       resolvedThisWeek,
       ticketsByStatus,
@@ -223,8 +233,8 @@ export function StaffDashboard() {
               Welcome, {clerkUser?.firstName}
             </h1>
             <p className="text-muted-foreground">
-              Managing your tickets within {marketCenter?.name ?? "your"} market
-              center
+              Managing your assigned tickets within{" "}
+              {marketCenter?.name ?? "your"} market center
             </p>
           </div>
           <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
@@ -288,15 +298,16 @@ export function StaffDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Total Tickets
+              Active Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.totalTickets}
+              {stats.activeTicketsCount}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              across all time
+              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+              unassigned{" "}
             </p>
           </CardContent>
         </Card>
@@ -319,16 +330,15 @@ export function StaffDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center font-medium">
-              Active Tickets
+              Overdue Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.activeTicketsCount}
+              {stats.overdueTickets}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
-              unassigned
+              across all tickets
             </p>
           </CardContent>
         </Card>
@@ -357,7 +367,7 @@ export function StaffDashboard() {
             <div className="flex flex-col gap-1">
               <CardTitle>Tickets by Status</CardTitle>
               <CardDescription>
-                {filteredTickets.length ?? "0"} total tickets
+                {stats.totalTickets} total tickets
               </CardDescription>
             </div>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
