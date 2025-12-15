@@ -4,13 +4,17 @@ import { getUserContext } from "../../auth/user-context";
 import { notificationTemplatesDefault } from "./utils";
 
 export interface ResetNotificationTemplateRequest {
-  templateIds?: string[];
-  type: string;
-  templateName: string;
+  templateId: string;
 }
 
 export interface ResetNotificationTemplateResponse {
   success: boolean;
+}
+
+interface NotificationTemplateRow {
+  id: string;
+  type: string;
+  template_name: string;
 }
 
 export const resetNotificationTemplate = api<
@@ -20,7 +24,7 @@ export const resetNotificationTemplate = api<
   {
     expose: true,
     method: "POST",
-    path: "/notifications/templates/reset",
+    path: "/notifications/templates/reset/:templateId",
     auth: true,
   },
   async (req) => {
@@ -32,39 +36,52 @@ export const resetNotificationTemplate = api<
       );
     }
 
-    if (!req?.templateIds || !req?.templateIds.length) {
-      throw APIError.invalidArgument("At least template IDs are required");
+    if (!req?.templateId) {
+      throw APIError.invalidArgument("Template ID is required");
     }
 
-    const templateToReset = notificationTemplatesDefault.find(
-      (t) =>
-        t.templateName === req.templateName &&
-        t.channel.toLowerCase() === req.type.toLowerCase()
-    );
+    const templateToReset = await db.queryRow<NotificationTemplateRow>`
+      SELECT id, type, template_name FROM notification_templates
+      WHERE id = ${req.templateId}
+    `;
 
     if (!templateToReset) {
-      throw APIError.notFound(
-        "Default template not found for the specified type and name"
-      );
+      throw APIError.notFound("Notification template not found");
+    }
+    // TODO: Update with defaults
+
+    const defaultTemplate = notificationTemplatesDefault.find(
+      (template) =>
+        template.templateName === templateToReset?.template_name &&
+        template.type === templateToReset?.type
+    );
+    if (!defaultTemplate) {
+      throw APIError.invalidArgument("No default template found for this type");
     }
 
-    await Promise.all(
-      req.templateIds.map(async (templateId) => {
-        await db.exec`
-        UPDATE notification_templates
-        SET
-          template_description = ${templateToReset.templateDescription ?? ""},
-          subject = ${templateToReset.subject ?? null},
-          body = ${templateToReset.body},
-          category = ${templateToReset.category},
-          channel = ${templateToReset.channel},
-          is_default = ${templateToReset.isDefault ?? true},
-          variables = ${toJson(templateToReset.variables)}::jsonb,
-          created_at = NOW()
-        WHERE id = ${templateId}
-      `;
-      })
-    );
+    const updates = [
+      `subject = $1`,
+      `body = $2`,
+      `is_default = $3`,
+      `is_active = $4`,
+    ];
+    const values: any[] = [
+      defaultTemplate.subject,
+      defaultTemplate.body,
+      defaultTemplate.isDefault,
+      defaultTemplate.isActive,
+      req.templateId,
+    ];
+
+    const paramIndex = 5;
+
+    const sql = `
+      UPDATE notification_templates
+      SET ${updates.join(", ")}
+      WHERE id = $${paramIndex}
+    `;
+
+    await db.rawExec(sql, ...values);
 
     return { success: true };
   }

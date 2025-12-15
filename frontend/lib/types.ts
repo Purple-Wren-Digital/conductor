@@ -646,6 +646,7 @@ export interface NotificationTemplateFormData {
   marketCenters: {
     name: string;
     id: string;
+    templateId: string;
     isActive: boolean;
   }[];
 }
