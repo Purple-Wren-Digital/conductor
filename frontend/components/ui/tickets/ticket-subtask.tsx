@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ export function TicketTodos({
     type: "",
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const editingDivRef = useRef<HTMLDivElement>(null);
 
   const { getToken } = useAuth();
 
@@ -110,6 +111,11 @@ export function TicketTodos({
     fetchSubtasks();
   }, [fetchSubtasks]);
 
+  const resetCreateSubtask = () => {
+    setErrorMessage({ message: "", type: "" });
+    setNewSubtaskTitle("");
+  };
+
   const closeEditSubtask = () => {
     setErrorMessage({ message: "", type: "" });
     setEditingSubtask({
@@ -117,12 +123,26 @@ export function TicketTodos({
       todoId: "",
       title: "",
     });
+    editingDivRef.current = null;
   };
 
-  const resetCreateSubtask = () => {
-    setErrorMessage({ message: "", type: "" });
-    setNewSubtaskTitle("");
-  };
+  useEffect(() => {
+    const handleOutSideClick = (event: MouseEvent) => {
+      event.preventDefault();
+      if (
+        editingDivRef.current &&
+        !editingDivRef.current.contains(event.target as Node)
+      ) {
+        closeEditSubtask();
+      }
+    };
+
+    window.addEventListener("mousedown", handleOutSideClick);
+
+    return () => {
+      window.removeEventListener("mousedown", handleOutSideClick);
+    };
+  }, [editingDivRef, editingSubtask?.todoId]);
 
   const onSubmitCreateSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,7 +396,13 @@ export function TicketTodos({
                     title: todo.title,
                   });
                 }}
-                className={`flex-1 space-y-2 ${disabled ? "" : "cursor-pointer hover:underline"} py-2`}
+                className={`flex-1 space-y-2 ${
+                  disabled
+                    ? ""
+                    : editingSubtask
+                      ? "cursor-default"
+                      : "cursor-pointer hover:underline"
+                } py-2`}
                 aria-disabled={disabled}
               >
                 {editingSubtask?.todoId !== todo.id && (
@@ -389,7 +415,10 @@ export function TicketTodos({
                   </Label>
                 )}
                 {editingSubtask?.todoId === todo.id && (
-                  <div className="flex flex-wrap items-center gap-2 w-full">
+                  <div
+                    ref={editingDivRef}
+                    className="flex items-center gap-2 flex-wrap w-full md:w-fit md:flex-nowrap bg-amber-50"
+                  >
                     <Input
                       type="text"
                       className={`md:w-2/3 h-8 ${errorMessage?.type === "edit" ? "border-rose-500" : ""}`}
@@ -400,16 +429,16 @@ export function TicketTodos({
                           title: e.target.value,
                         }))
                       }
-                      onBlur={closeEditSubtask}
                       onKeyDown={async (e) => {
                         e.preventDefault();
                         if (e.key === "Enter") await handleUpdatedSubtask();
                         if (e.key === "Escape" || e.key === "Tab")
                           closeEditSubtask();
                       }}
+                      aria-label="Input to edit subtask title"
                       disabled={isLoading || disabled}
                     />
-                    <div className="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto">
+                    <div className="flex items-center justify-end gap-2 w-full md:w-fit md:flex-nowrap">
                       <Button
                         variant="outline"
                         size={"sm"}

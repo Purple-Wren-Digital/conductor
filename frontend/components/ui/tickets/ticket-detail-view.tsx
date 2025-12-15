@@ -34,6 +34,7 @@ import {
   CalendarIcon,
   CircleMinus,
   CirclePlus,
+  CircleX,
   Clipboard,
   ClipboardListIcon,
   Clock,
@@ -520,11 +521,11 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center flex-col justify-center gap-4  sm:flex-row sm:justify-between ">
+      <div className="flex items-center flex-col justify-center gap-4 lg:flex-row sm:justify-between ">
         <Button variant="ghost" onClick={() => router.back()} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-center">
           <Button
             variant="outline"
             onClick={() => setShowHistoryModal(!showHistoryModal)}
@@ -534,13 +535,29 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
             <History className="h-4 w-4" /> View History
           </Button>
           {canEditTicket && (
-            <Button
-              onClick={() => setShowEditForm(true)}
-              className="gap-2 w-full sm:w-fit"
-              disabled={ticket.status === "RESOLVED"}
-            >
-              <Edit className="h-4 w-4" /> Edit Ticket
-            </Button>
+            <>
+              <Button
+                // size={"sm"}
+                variant={"outline"}
+                onClick={async () => {
+                  await handleCloseTicket();
+                }}
+                disabled={
+                  !canEditTicket || isLoading || ticket.status === "RESOLVED"
+                }
+                className="gap-2 w-full sm:w-fit font-semibold bg-muted hover:bg-muted/50 text-black"
+              >
+                <CircleX className="h-4 w-4" />
+                Resolve Ticket
+              </Button>
+              <Button
+                onClick={() => setShowEditForm(true)}
+                className="gap-2 w-full sm:w-fit"
+                disabled={isLoading || ticket.status === "RESOLVED"}
+              >
+                <Edit className="h-4 w-4" /> Edit Ticket
+              </Button>
+            </>
           )}
           {canTakeSurvey && (
             <Button
