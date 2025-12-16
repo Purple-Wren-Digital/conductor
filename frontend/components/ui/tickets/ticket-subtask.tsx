@@ -128,10 +128,9 @@ export function TicketTodos({
 
   useEffect(() => {
     const handleOutSideClick = (event: MouseEvent) => {
-      event.preventDefault();
       if (
-        editingDivRef.current &&
-        !editingDivRef.current.contains(event.target as Node)
+        editingDivRef?.current &&
+        !editingDivRef?.current.contains(event.target as Node)
       ) {
         closeEditSubtask();
       }
@@ -325,6 +324,7 @@ export function TicketTodos({
       )}
 
       <div className="col-start-1 col-end-13">
+        {/* NEW SUBTASK */}
         <form
           className="flex items-center gap-2"
           onSubmit={onSubmitCreateSubtask}
@@ -340,7 +340,9 @@ export function TicketTodos({
           <Input
             placeholder="Create a new task"
             value={newSubtaskTitle}
-            onChange={(e) => setNewSubtaskTitle(e.target.value)}
+            onChange={(e) => {
+              setNewSubtaskTitle(e.target.value);
+            }}
             className={`md:w-2/3 h-8 ${errorMessage?.type === "create" ? "border-rose-500" : ""} ${disabled ? "cursor-not-allowed" : ""}`}
             disabled={isLoading || disabled}
           />
@@ -367,11 +369,12 @@ export function TicketTodos({
                 if (e.key === "Escape" || e.key === "Tab") resetCreateSubtask();
               }}
             >
-              {/* <RotateCcw className="size-3.5" /> */}
               Reset
             </Button>
           )}
         </form>
+
+        {/* EXISTING SUBTASKS */}
         <ul className="list-none">
           {todos.map((todo: Todo) => (
             <li key={todo.id} className="flex items-center gap-2 pl-1">
@@ -417,11 +420,11 @@ export function TicketTodos({
                 {editingSubtask?.todoId === todo.id && (
                   <div
                     ref={editingDivRef}
-                    className="flex items-center gap-2 flex-wrap w-full md:w-fit md:flex-nowrap bg-amber-50"
+                    className="flex items-center gap-2 flex-wrap w-full md:w-fit md:flex-nowrap"
                   >
                     <Input
                       type="text"
-                      className={`md:w-2/3 h-8 ${errorMessage?.type === "edit" ? "border-rose-500" : ""}`}
+                      className={`md:w-2/3 h-8 ${errorMessage?.type === "edit" && "border-rose-500"}`}
                       value={editingSubtask.title}
                       onChange={(e) =>
                         setEditingSubtask((prev) => ({
@@ -430,10 +433,15 @@ export function TicketTodos({
                         }))
                       }
                       onKeyDown={async (e) => {
-                        e.preventDefault();
-                        if (e.key === "Enter") await handleUpdatedSubtask();
-                        if (e.key === "Escape" || e.key === "Tab")
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          await handleUpdatedSubtask();
+                        }
+
+                        if (e.key === "Escape" || e.key === "Tab") {
+                          e.preventDefault();
                           closeEditSubtask();
+                        }
                       }}
                       aria-label="Input to edit subtask title"
                       disabled={isLoading || disabled}

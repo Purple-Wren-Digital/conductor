@@ -61,7 +61,6 @@ export interface Ticket {
   creatorId?: string;
   assigneeId?: string | null;
   dueDate: Date | null;
-  resolvedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   creator?: User;
@@ -96,7 +95,15 @@ export interface Ticket {
   slaResolutionWarning75Sent?: boolean;
 }
 
-export type SlaEventType = 'WARNING_50' | 'WARNING_75' | 'BREACHED' | 'MET' | 'RESOLUTION_WARNING_50' | 'RESOLUTION_WARNING_75' | 'RESOLUTION_BREACHED' | 'RESOLUTION_MET';
+export type SlaEventType =
+  | "WARNING_50"
+  | "WARNING_75"
+  | "BREACHED"
+  | "MET"
+  | "RESOLUTION_WARNING_50"
+  | "RESOLUTION_WARNING_75"
+  | "RESOLUTION_BREACHED"
+  | "RESOLUTION_MET";
 
 export interface SlaPolicy {
   id: string;

@@ -74,6 +74,14 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         await slaService.recordFirstResponse(ticket.id);
       }
 
+      // Create history record
+      await ticketRepository.createHistory({
+        ticketId: ticket.id,
+        action: "CREATE",
+        field: "ticket",
+        changedById: userContext.userId,
+      });
+
       // Create todos if provided
       if (req.todos && req.todos.length > 0) {
         await todoRepository.createMany(
@@ -83,15 +91,15 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
             createdById: userContext.userId,
           }))
         );
+        await ticketRepository.createHistory({
+          ticketId: ticket.id,
+          action: "CREATE",
+          field: "todos",
+          newValue: `${req.todos.length} todos created`,
+          previousValue: `N/a`,
+          changedById: userContext.userId,
+        });
       }
-
-      // Create history record
-      await ticketRepository.createHistory({
-        ticketId: ticket.id,
-        action: "CREATE",
-        field: "ticket",
-        changedById: userContext.userId,
-      });
 
       // Get creator and assignee details
       const creator = await userRepository.findById(userContext.userId);
@@ -99,11 +107,6 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
       if (ticket.assigneeId) {
         assignee = await userRepository.findById(ticket.assigneeId);
       }
-
-      // Subscription usage tracking disabled - unlimited tickets allowed
-      // if (userContext.marketCenterId) {
-      //   await trackUsage(userContext.marketCenterId, "tickets");
-      // }
 
       const usersToNotify: UsersToNotify[] = [
         {

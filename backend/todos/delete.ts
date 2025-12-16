@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { todoRepository } from "../ticket/db";
+import { ticketRepository, todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
 
@@ -37,6 +37,15 @@ export const deleteTask = api<DeleteTodoRequest, DeleteTodoResponse>(
     }
 
     await todoRepository.delete(todo.id);
+
+    await ticketRepository.createHistory({
+      ticketId: req.ticketId,
+      action: "DELETE",
+      field: "todos",
+      newValue: `N/a`,
+      previousValue: `"${todo.title}"`,
+      changedById: userContext.userId,
+    });
 
     return { success: true };
   }

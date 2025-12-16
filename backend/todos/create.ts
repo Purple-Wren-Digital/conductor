@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { todoRepository } from "../ticket/db";
+import { ticketRepository, todoRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import { canAccessTicket } from "../auth/permissions";
 import type { Todo } from "./types";
@@ -36,6 +36,15 @@ export const create = api<CreateTodoRequest, CreateTodoResponse>(
       complete: req.completed ?? false,
       ticketId: req.ticketId,
       createdById: userContext.userId,
+    });
+
+    await ticketRepository.createHistory({
+      ticketId: req.ticketId,
+      action: "ADD",
+      field: "todos",
+      newValue: `"${req.title}"`,
+      previousValue: `N/a`,
+      changedById: userContext.userId,
     });
 
     return { todo };
