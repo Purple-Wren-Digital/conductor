@@ -17,7 +17,7 @@ import {
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
-import { TeamSwitcher } from "@/components//ui/team-switcher";
+// import { TeamSwitcher } from "@/components//ui/team-switcher";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
@@ -28,6 +28,7 @@ import {
   InfoIcon,
   Plus,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -60,30 +61,24 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-//  TODO: replace market center lists/charts with users lists/charts
 
 export function AdminDashboard() {
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const { role } = useUserRole();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedMarketCenterId, setSelectedMarketCenterId] =
-    useState<string>("all");
+  // const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string>("all");
 
   const queryClient = useQueryClient();
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (selectedMarketCenterId !== "all") {
-      params.append("marketCenterId", selectedMarketCenterId);
-    }
-
     statusOptions.forEach((option) => {
       params.append("status", option);
     });
 
     return params;
-  }, [selectedMarketCenterId]);
+  }, []);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -99,11 +94,12 @@ export function AdminDashboard() {
     adminTicketsQueryKey,
     queryParams,
   });
+  const tickets = useMemo(() => ticketsData?.tickets || [], [ticketsData]);
 
   const adminTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
 
-  const { data: usersData } = useQuery({
+  const { data: usersData, isLoading: isUsersLoading } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
       if (!clerkUser?.id) throw new Error("Not authenticated");
@@ -119,9 +115,9 @@ export function AdminDashboard() {
     },
     enabled: !!clerkUser,
   });
+  const teamMembers = useMemo(() => usersData?.users || [], [usersData]);
 
-  const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
-    useFetchAllMarketCenters(role);
+  const { data: marketCentersData } = useFetchAllMarketCenters(role);
 
   const marketCenters: MarketCenter[] = useMemo(() => {
     return marketCentersData?.marketCenters ?? [];
@@ -144,42 +140,14 @@ export function AdminDashboard() {
   }, []);
   const { data: slaMetricsData } = useSlaMetrics(slaDateFilters);
 
-  const tickets = useMemo(() => ticketsData?.tickets || [], [ticketsData]);
-  const allUsers = useMemo(() => usersData?.users || [], [usersData]);
-
-  const filteredTickets = useMemo(
-    () =>
-      selectedMarketCenterId === "all"
-        ? tickets
-        : tickets.filter((t: any) => {
-            const creator = allUsers.find((u: any) => u.id === t.creatorId);
-            return creator?.marketCenterId === selectedMarketCenterId;
-          }),
-    [tickets, allUsers, selectedMarketCenterId]
-  );
-
-  const filteredUsers = useMemo(
-    () =>
-      selectedMarketCenterId === "all"
-        ? allUsers
-        : allUsers.filter(
-            (u: any) => u.marketCenterId === selectedMarketCenterId
-          ),
-    [allUsers, selectedMarketCenterId]
-  );
-
   const stats = useMemo(() => {
-    const totalTickets = filteredTickets.length;
-    const openTickets = filteredTickets.filter(
-      (t: any) => t.status !== "RESOLVED"
-    ).length;
-    const highPriority = filteredTickets.filter(
+    const totalTickets = tickets.length;
+    const openTickets = tickets.filter((t: any) => t.status !== "RESOLVED");
+    const openTicketsCount = openTickets.length;
+    const highPriority = tickets.filter(
       (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
-    const unassignedTickets = filteredTickets.filter(
-      (t: any) => !t.assigneeId && t.status === "UNASSIGNED"
-    ).length;
-    const overdueTickets = filteredTickets.filter((t: Ticket) => {
+    const overdueTickets = tickets.filter((t: Ticket) => {
       if (t.status !== "RESOLVED" && t?.dueDate) {
         const dueDate = new Date(t.dueDate);
         const now = new Date();
@@ -188,7 +156,7 @@ export function AdminDashboard() {
       return false;
     }).length;
 
-    const ticketsByStatus = filteredTickets.reduce(
+    const ticketsByStatus = tickets.reduce(
       (acc: Record<string, number>, ticket: any) => {
         acc[ticket.status] = (acc[ticket.status] || 0) + 1;
         return acc;
@@ -202,50 +170,45 @@ export function AdminDashboard() {
 
     let colorIndex = 0;
     const colorMap: Record<string, string> = {}; // track assigned colors
-    const ticketsByMarketCenter = filteredTickets.reduce(
+
+    const ticketsByUser: Record<
+      string,
+      { name: string; color: string; count: number }
+    > = openTickets.reduce(
       (
         acc: Record<string, { name: string; color: string; count: number }>,
         ticket: any
       ) => {
-        const assignee = filteredUsers.find(
+        const assignee = teamMembers.find(
           (u: any) => u.id === ticket.assigneeId
         );
 
-        // Force all unassigned tickets under the same key
-        const isUnassigned = !assignee?.marketCenterId;
-        const key = isUnassigned ? "unassigned" : assignee.marketCenterId;
+        const userId = assignee?.id || "unassigned";
+        const user = teamMembers.find((u: any) => u.id === userId);
 
-        const mcId = assignee?.marketCenterId || "unassigned";
-        const marketCenter = marketCenters.find(
-          (mc: MarketCenter) => mc.id === key
-        );
-        const mcName = isUnassigned
-          ? "Unassigned"
-          : marketCenter?.name || "Name Not Found";
+        const userName = user?.name || "Unassigned";
 
-        // Determine color
         let color: string;
-        if (isUnassigned) {
+        if (userName === "Unassigned") {
           color = chartColors.grey;
         } else {
-          if (!colorMap[mcId]) {
-            colorMap[mcId] = colorValues[colorIndex % colorValues.length];
+          if (!colorMap[userId]) {
+            colorMap[userId] = colorValues[colorIndex % colorValues.length];
             colorIndex += 1;
           }
-          color = colorMap[mcId];
+          color = colorMap[userId];
         }
 
-        if (!acc[mcId]) {
-          acc[mcId] = { name: mcName, color, count: 0 };
+        if (!acc[userId]) {
+          acc[userId] = { name: userName, color, count: 0 };
         }
 
-        acc[mcId].count += 1;
+        acc[userId].count += 1;
         return acc;
       },
       {}
     );
-
-    const totalUsers = filteredUsers.length;
+    const totalUsers = teamMembers.length;
 
     const now = new Date();
     const oneWeekAgo = new Date();
@@ -254,7 +217,7 @@ export function AdminDashboard() {
     let createdThisWeek = 0;
     let resolvedThisWeek = 0;
 
-    filteredTickets.forEach((t: Ticket) => {
+    tickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
       const resolvedDate =
         t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
@@ -270,16 +233,41 @@ export function AdminDashboard() {
     return {
       totalTickets,
       openTickets,
+      openTicketsCount,
       highPriority,
-      unassignedTickets,
       overdueTickets,
       ticketsByStatus,
-      ticketsByMarketCenter: Object.values(ticketsByMarketCenter),
       totalUsers,
+      ticketsByUser: Object.values(ticketsByUser),
       createdThisWeek,
       resolvedThisWeek,
     };
-  }, [filteredTickets, filteredUsers, marketCenters]);
+  }, [tickets, teamMembers]);
+
+  const teamStats = teamMembers.reduce((acc: any, member: any) => {
+    const memberTickets = tickets.filter(
+      (t: any) => t.assigneeId === member.id
+    );
+
+    acc[member.id] = {
+      name: member.name,
+      role: member.role,
+      assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
+        .length,
+      active: memberTickets.length,
+      resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
+        .length,
+      overdue: memberTickets.filter((t: Ticket) => {
+        if (t.status !== "RESOLVED" && t?.dueDate) {
+          const dueDate = new Date(t.dueDate);
+          const now = new Date();
+          return dueDate < now;
+        }
+        return false;
+      }).length,
+    };
+    return acc;
+  }, {});
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -290,11 +278,10 @@ export function AdminDashboard() {
     }));
   }, [stats]);
 
-  const ticketsByMarketCenterChartConfig: ChartConfig = useMemo(() => {
+  const ticketsByUserChartConfig: ChartConfig = useMemo(() => {
     if (!stats) return {};
     return Object.fromEntries(
-      stats.ticketsByMarketCenter.map((entry) => [
-        // key must match the value used by the chart payload (name or id)
+      stats.ticketsByUser.map((entry) => [
         entry.name,
         {
           label: entry.name,
@@ -314,18 +301,38 @@ export function AdminDashboard() {
                 Welcome, {clerkUser?.firstName}
               </h1>
               <p className="text-muted-foreground">
-                System-wide overview and management
+                System-wide overview and management for{" "}
+                <span>
+                  {marketCenters &&
+                    marketCenters.length > 1 &&
+                    marketCenters.map((mc) => {
+                      if (!mc?.id) return null;
+                      return (
+                        <Link key={mc.id} href={`/dashboard/`}>
+                          {mc?.name ? mc.name : `#${mc.id.slice(0, 8)}`}
+                        </Link>
+                      );
+                    })}
+                  {marketCenters.length === 1 &&
+                    `${
+                      marketCenters?.[0]?.name
+                        ? marketCenters[0].name
+                        : marketCenters?.[0]?.id
+                          ? `#${marketCenters[0]?.id?.slice(0, 8)}`
+                          : "your market center"
+                    }`}
+                </span>
               </p>
             </div>
             <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-              <div className="space-y-2 w-fit">
+              {/* <div className="space-y-2 w-fit">
                 {marketCenters.length > 1 && (
                   <TeamSwitcher
                     selectedMarketCenterId={selectedMarketCenterId}
                     setSelectedMarketCenterId={setSelectedMarketCenterId}
                   />
                 )}
-              </div>
+              </div> */}
               <Button asChild className="w-full sm:w-fit">
                 <Link href="/dashboard/reports">
                   <BarChartIcon className="mr-2 h-4 w-4" /> View Reports
@@ -346,7 +353,18 @@ export function AdminDashboard() {
             />
             <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
               <span className="flex items-center gap-1">
-                All Market Centers ({totalMarketCenters}):
+                {marketCenters && marketCenters.length > 1
+                  ? `All Market Centers (${totalMarketCenters})`
+                  : marketCenters.length === 1
+                    ? `${
+                        marketCenters?.[0]?.name
+                          ? marketCenters[0].name
+                          : marketCenters?.[0]?.id
+                            ? `#${marketCenters[0]?.id?.slice(0, 8)}`
+                            : "your market center"
+                      }`
+                    : "No Market Centers found"}
+                :
                 <StarRating
                   rating={globalAverages?.marketCenterAverageRating || 0}
                   size={16}
@@ -380,11 +398,10 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.openTickets}
+                {stats.openTicketsCount}
               </p>
               <p className="text-center text-xs text-muted-foreground">
-                {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
-                unassigned
+                {stats.highPriority} high priority
               </p>
             </CardContent>
           </Card>
@@ -439,90 +456,107 @@ export function AdminDashboard() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
-          {/* MARKET CENTERS */}
+          {/* STAFF BREAKDOWN */}
           <Card className="max-w-2xs sm:max-w-full">
-            <CardHeader>
-              <CardTitle>Market Centers</CardTitle>
-              <CardDescription>
-                {totalMarketCenters} market centers • {stats.totalUsers} users
-              </CardDescription>
+            <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col gap-1">
+                <CardTitle>Staff Breakdown</CardTitle>
+                <CardDescription>
+                  {stats.totalUsers} total team{" "}
+                  {stats.totalUsers === 1 ? "member" : "members"}
+                </CardDescription>
+              </div>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
+              <div className="grid grid-cols-6 gap-2 px-1 pb-2 text-[10px] font-medium sm:text-sm text-muted-foreground border-b">
+                <p className="col-span-2 pl-1 overflow-hidden text-ellipsis whitespace-nowrap ">
+                  Name
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Assigned
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Active
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Overdue
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Resolved
+                </p>
+              </div>
               <ScrollArea className="space-y-4 md:h-50 overflow-y-auto">
-                {!isLoadingMarketCenters &&
-                  (!marketCenters || !totalMarketCenters) && (
+                {isUsersLoading && (
+                  <p className="space-y-4 text-sm text-muted-foreground font-medium">
+                    Loading...
+                  </p>
+                )}
+                {!isUsersLoading &&
+                  (!teamStats || Object.keys(teamStats).length === 0) && (
                     <p className="space-y-4 text-sm text-muted-foreground font-medium">
-                      No market centers found
+                      No team members found
                     </p>
                   )}
 
-                {!isLoadingMarketCenters &&
-                  marketCenters &&
-                  totalMarketCenters > 0 &&
-                  marketCenters?.map((mc: any) => {
-                    const isViewingStats = selectedMarketCenterId === mc?.id;
-                    const categoriesTotal = mc?.ticketCategories
-                      ? mc?.ticketCategories.length
-                      : 0;
+                {Object.entries(teamStats).map(
+                  ([memberId, stats]: [string, any], index: number) => {
+                    if (!memberId) return null;
+
                     return (
                       <div
-                        key={mc?.id}
-                        onClick={() => setSelectedMarketCenterId(mc?.id)}
-                        className={`flex flex-col p-2 rounded hover:bg-muted flex-wrap ${
-                          isViewingStats && "bg-muted"
-                        }`}
+                        key={memberId}
+                        className={`grid grid-cols-6 gap-2 rounded hover:bg-muted text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
                       >
-                        <div className="flex justify-between">
-                          <Link
-                            href={`/dashboard/marketCenters/${mc.id}?tab=team`}
-                            className="text-[12px] sm:text-md font-medium hover:underline cursor-pointer"
-                          >
-                            {mc?.name && mc.name}
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            #{mc?.id && mc.id.substring(0, 8)}
+                        <Link
+                          href={`/dashboard/users/${memberId}`}
+                          className="col-span-2 font-medium hover:underline cursor-pointer"
+                        >
+                          <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                            {stats?.name ? stats.name : memberId.slice(0, 8)}
                           </p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            Users: {mc?.users ? mc?.users.length : 0}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Categories: {categoriesTotal}
-                          </p>
-                        </div>
+                        </Link>
+                        <p className="text-muted-foreground text-center">
+                          {stats?.assigned}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats?.active}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats?.overdue}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats?.resolved}
+                        </p>
                       </div>
                     );
-                  })}
+                  }
+                )}
               </ScrollArea>
 
               <div className="mt-4">
                 <Button asChild variant="outline" className="w-fit md:w-full">
-                  <Link href="/dashboard/marketCenters">
-                    Manage Market Centers
-                  </Link>
+                  <Link href="/dashboard/users">Manage Users</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* TICKETS BY MARKET CENTER */}
+          {/* TICKETS BY USER */}
           <Card className="max-w-2xs sm:max-w-full">
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-lg">
-                Open Tickets by Market Center
-              </CardTitle>
+              <CardTitle className="text-lg">Active Tickets by User</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground hidden sm:visible" />
             </CardHeader>
             <CardContent>
               <ChartContainer
-                config={ticketsByMarketCenterChartConfig}
+                config={ticketsByUserChartConfig}
                 className="h-[220px] w-[99%] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats?.ticketsByMarketCenter}
+                      data={stats?.ticketsByUser}
                       dataKey="count"
                       nameKey="name"
                       cx="50%"
@@ -536,7 +570,7 @@ export function AdminDashboard() {
                     >
                       <LabelList dataKey="count" position="inside" />
 
-                      {stats?.ticketsByMarketCenter.map((entry, i) => (
+                      {stats?.ticketsByUser.map((entry, i) => (
                         <Cell key={`urg-cell-${i}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -565,7 +599,7 @@ export function AdminDashboard() {
               </ChartContainer>
 
               <div className="flex flex-wrap gap-2 justify-center">
-                {stats?.ticketsByMarketCenter.map((entry) => (
+                {stats?.ticketsByUser.map((entry) => (
                   <div key={entry.name} className="flex items-center gap-0.75">
                     <span
                       className="w-1.5 h-1.5 rounded-md"
@@ -585,9 +619,9 @@ export function AdminDashboard() {
                 <CardTitle>Tickets by Status</CardTitle>
                 <CardDescription>
                   {stats.totalTickets} total tickets
-                  {selectedMarketCenterId === "all"
+                  {/* {selectedMarketCenterId === "all"
                     ? " across all teams"
-                    : ""}{" "}
+                    : ""}{" "} */}
                 </CardDescription>
               </div>
               <TrendingUp className="h-4 w-4 text-muted-foreground hidden sm:visible" />
@@ -643,9 +677,9 @@ export function AdminDashboard() {
               </ChartContainer>
               <CardDescription className="text-[12px] text-center md:text-md">
                 Viewing{" "}
-                {selectedMarketCenterId === "all"
+                {/* {selectedMarketCenterId === "all"
                   ? "all market centers"
-                  : `Market Center #${selectedMarketCenterId.slice(0, 8)}`}
+                  : `Market Center #${selectedMarketCenterId.slice(0, 8)}`} */}
               </CardDescription>
             </CardContent>
           </Card>
@@ -656,14 +690,14 @@ export function AdminDashboard() {
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
                 {stats.totalTickets} total tickets
-                {selectedMarketCenterId === "all"
+                {/* {selectedMarketCenterId === "all"
                   ? " across all teams"
-                  : ""}{" "}
+                  : ""}{" "}  */}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
-                {filteredTickets.slice(0, 5).map((ticket: any) => (
+                {tickets.slice(0, 5).map((ticket: any) => (
                   <div
                     key={ticket.id}
                     className="flex items-center justify-between flex-wrap p-2 rounded hover:bg-muted"

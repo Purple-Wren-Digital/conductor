@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
-import { ticketRepository } from "./db";
+import { subscriptionRepository, ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 
@@ -33,19 +33,42 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
+    let marketCenterIds: string[] = [];
+
+    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterId) {
+        if (accessibleMarketCenterIds.includes(req.marketCenterId)) {
+          marketCenterIds.push(req.marketCenterId);
+        }
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
+
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
+      marketCenterIds = [userContext.marketCenterId];
+    }
+
     // Use the search method which handles role-based filtering
     const { tickets, total } = await ticketRepository.search({
-      userId: userContext.userId,
-      userRole: userContext.role,
-      userMarketCenterId: userContext.marketCenterId,
+      userId: userContext?.userId,
+      userRole: userContext?.role,
+      marketCenterIds: marketCenterIds,
       status: req.status,
       urgency: req.urgency,
       assigneeId: req.assigneeId,
       creatorId: req.creatorId,
       categoryId: req.categoryId ? [req.categoryId] : undefined,
       query: req.search,
-      sortBy: 'updatedAt',
-      sortDir: 'desc',
+      sortBy: "updatedAt",
+      sortDir: "desc",
       limit,
       offset,
     });

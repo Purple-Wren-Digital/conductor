@@ -132,6 +132,7 @@ export function StaffLeaderDashboard() {
   }, [selectedTeamMemberId, tickets]);
 
   const stats = useMemo(() => {
+    const totalTeamMembers = teamMembers.length;
     const totalTickets = filteredTickets.length;
     const activeTicketsCount = filteredTickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
@@ -228,6 +229,7 @@ export function StaffLeaderDashboard() {
     );
 
     return {
+      totalTeamMembers,
       totalTickets,
       activeTicketsCount,
       activeTickets,
@@ -249,10 +251,19 @@ export function StaffLeaderDashboard() {
     acc[member.id] = {
       name: member.name,
       role: member.role,
-      assigned: memberTickets.filter((t: any) => t.status !== "RESOLVED")
+      assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
         .length,
-      resolved: memberTickets.filter((t: any) => t.status === "RESOLVED")
+      active: memberTickets.length,
+      resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
         .length,
+      overdue: memberTickets.filter((t: Ticket) => {
+        if (t.status !== "RESOLVED" && t?.dueDate) {
+          const dueDate = new Date(t.dueDate);
+          const now = new Date();
+          return dueDate < now;
+        }
+        return false;
+      }).length,
     };
     return acc;
   }, {});
@@ -443,47 +454,66 @@ export function StaffLeaderDashboard() {
           <Card className="max-w-2xs sm:max-w-full">
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
-                <CardTitle>Team Members</CardTitle>
+                <CardTitle>Staff Breakdown</CardTitle>
                 <CardDescription>
-                  Ticket distribution across {teamMembers.length} team members
+                  {stats.totalTeamMembers} total team{" "}
+                  {stats.totalTeamMembers === 1 ? "member" : "members"}
                 </CardDescription>
               </div>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
+              <div className="grid grid-cols-6 font-medium pb-1 text-[10px] sm:text-sm text-muted-foreground border-b">
+                <p className="col-span-2 pl-1 overflow-hidden text-ellipsis whitespace-nowrap ">
+                  Name
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Assigned
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Active
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Overdue
+                </p>
+                <p className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  Resolved
+                </p>
+              </div>
               <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
                 {Object.entries(teamStats).map(
-                  ([memberId, stats]: [string, any]) => {
+                  ([memberId, stats]: [string, any], index: number) => {
                     const isViewingStats = selectedTeamMemberId === memberId;
                     return (
                       <div
                         key={memberId}
-                        className={`flex flex-col p-2 rounded hover:bg-muted ${isViewingStats && "bg-muted"}`}
+                        className={`grid grid-cols-6 gap-2 rounded hover:bg-muted text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium ">{stats.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {stats.assigned} active • {stats.resolved}{" "}
-                              resolved
-                              {stats?.role === "STAFF_LEADER"
-                                ? " • Staff Leader"
-                                : ""}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Badge
-                              variant={isViewingStats ? "outline" : "secondary"}
-                            >
-                              {stats.assigned}
-                            </Badge>
-                          </div>
-                        </div>
+                        <Link
+                          href={`/dashboard/users/${memberId}`}
+                          className="font-medium hover:underline cursor-pointer col-span-2"
+                        >
+                          <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                            {stats.name}
+                          </p>
+                        </Link>
+                        <p className="text-muted-foreground text-center">
+                          {stats.assigned}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats.active}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats.overdue}
+                        </p>
+                        <p className="text-muted-foreground text-center">
+                          {stats.resolved}
+                        </p>
                       </div>
                     );
                   }
                 )}
-                {Object.keys(teamStats).length === 0 && (
+                {(!teamStats || Object.keys(teamStats).length === 0) && (
                   <p className="text-muted-foreground text-center py-4">
                     No team data available
                   </p>

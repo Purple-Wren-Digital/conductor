@@ -2,8 +2,20 @@
  * User Repository - Raw SQL queries for user operations
  */
 
-import { db, fromTimestamp, toTimestamp, fromJson, toJson } from "../../ticket/db";
-import type { User, UserRole, UserSettings, NotificationPreferences, UserHistory } from "../../user/types";
+import {
+  db,
+  fromTimestamp,
+  toTimestamp,
+  fromJson,
+  toJson,
+} from "../../ticket/db";
+import type {
+  User,
+  UserRole,
+  UserSettings,
+  NotificationPreferences,
+  UserHistory,
+} from "../../user/types";
 
 // Database row types (snake_case from PostgreSQL)
 interface UserRow {
@@ -87,7 +99,9 @@ export const userRepository = {
   },
 
   // Find user with settings
-  async findByIdWithSettings(id: string): Promise<(User & { userSettings?: UserSettings }) | null> {
+  async findByIdWithSettings(
+    id: string
+  ): Promise<(User & { userSettings?: UserSettings }) | null> {
     const userRow = await db.queryRow<UserRow>`
       SELECT * FROM users WHERE id = ${id}
     `;
@@ -110,7 +124,7 @@ export const userRepository = {
         userId: settingsRow.user_id,
         createdAt: fromTimestamp(settingsRow.created_at)!,
         updatedAt: fromTimestamp(settingsRow.updated_at)!,
-        notificationPreferences: prefsRows.map(p => ({
+        notificationPreferences: prefsRows.map((p) => ({
           id: p.id,
           userSettingsId: p.user_settings_id,
           type: p.type,
@@ -128,7 +142,10 @@ export const userRepository = {
   },
 
   // Find users by role
-  async findByRole(role: UserRole, options?: { activeOnly?: boolean }): Promise<User[]> {
+  async findByRole(
+    role: UserRole,
+    options?: { activeOnly?: boolean }
+  ): Promise<User[]> {
     const activeOnly = options?.activeOnly ?? true;
 
     if (activeOnly) {
@@ -187,7 +204,9 @@ export const userRepository = {
   },
 
   // Find user by ID with their market center
-  async findByIdWithMarketCenter(id: string): Promise<(User & { marketCenter?: any }) | null> {
+  async findByIdWithMarketCenter(
+    id: string
+  ): Promise<(User & { marketCenter?: any }) | null> {
     const userRow = await db.queryRow<UserRow>`
       SELECT * FROM users WHERE id = ${id}
     `;
@@ -235,7 +254,7 @@ export const userRepository = {
       VALUES (
         ${data.email},
         ${data.name ?? null},
-        ${data.role ?? 'AGENT'},
+        ${data.role ?? "AGENT"},
         ${data.clerkId},
         ${data.marketCenterId ?? null},
         ${data.isActive ?? true},
@@ -248,16 +267,19 @@ export const userRepository = {
   },
 
   // Update user
-  async update(id: string, data: Partial<{
-    email: string;
-    name: string | null;
-    role: UserRole;
-    clerkId: string;
-    marketCenterId: string | null;
-    isActive: boolean;
-  }>): Promise<User | null> {
+  async update(
+    id: string,
+    data: Partial<{
+      email: string;
+      name: string | null;
+      role: UserRole;
+      clerkId: string;
+      marketCenterId: string | null;
+      isActive: boolean;
+    }>
+  ): Promise<User | null> {
     // Build dynamic update query
-    const updates: string[] = ['updated_at = NOW()'];
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -290,7 +312,7 @@ export const userRepository = {
 
     const sql = `
       UPDATE users
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -300,8 +322,11 @@ export const userRepository = {
   },
 
   // Count users
-  async count(where?: { marketCenterId?: string; isActive?: boolean }): Promise<number> {
-    let sql = 'SELECT COUNT(*)::int as count FROM users WHERE 1=1';
+  async count(where?: {
+    marketCenterId?: string;
+    isActive?: boolean;
+  }): Promise<number> {
+    let sql = "SELECT COUNT(*)::int as count FROM users WHERE 1=1";
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -322,33 +347,41 @@ export const userRepository = {
   async search(params: {
     query?: string;
     role?: UserRole[];
-    marketCenterId?: string;
+    marketCenterIds?: string[];
     isActive?: boolean;
-    sortBy?: 'updatedAt' | 'createdAt' | 'name' | 'role';
-    sortDir?: 'asc' | 'desc';
+    sortBy?: "updatedAt" | "createdAt" | "name" | "role";
+    sortDir?: "asc" | "desc";
     limit?: number;
     offset?: number;
   }): Promise<{ users: User[]; total: number }> {
-    const conditions: string[] = ['1=1'];
+    const conditions: string[] = ["1=1"];
     const values: any[] = [];
     let paramIndex = 1;
 
     if (params.query) {
-      conditions.push(`(name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
+      conditions.push(
+        `(name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`
+      );
       values.push(`%${params.query}%`);
       paramIndex++;
     }
 
     if (params.role && params.role.length > 0) {
-      const placeholders = params.role.map((_, i) => `$${paramIndex + i}`).join(', ');
+      const placeholders = params.role
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
       conditions.push(`role IN (${placeholders})`);
       values.push(...params.role);
       paramIndex += params.role.length;
     }
 
-    if (params.marketCenterId) {
-      conditions.push(`market_center_id = $${paramIndex++}`);
-      values.push(params.marketCenterId);
+    if (params.marketCenterIds && params.marketCenterIds.length > 0) {
+      const placeholders = params.marketCenterIds
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+      conditions.push(`market_center_id IN (${placeholders})`);
+      values.push(...params.marketCenterIds);
+      paramIndex += params.marketCenterIds.length;
     }
 
     if (params.isActive !== undefined) {
@@ -356,23 +389,26 @@ export const userRepository = {
       values.push(params.isActive);
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     // Column mapping for sort
     const columnMap: Record<string, string> = {
-      updatedAt: 'updated_at',
-      createdAt: 'created_at',
-      name: 'name',
-      role: 'role',
+      updatedAt: "updated_at",
+      createdAt: "created_at",
+      name: "name",
+      role: "role",
     };
-    const sortColumn = columnMap[params.sortBy ?? 'updatedAt'] ?? 'updated_at';
-    const sortDir = params.sortDir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const sortColumn = columnMap[params.sortBy ?? "updatedAt"] ?? "updated_at";
+    const sortDir = params.sortDir?.toUpperCase() === "ASC" ? "ASC" : "DESC";
     const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
     const offset = Math.max(params.offset ?? 0, 0);
 
     // Get total count
     const countSql = `SELECT COUNT(*)::int as count FROM users WHERE ${whereClause}`;
-    const countResult = await db.rawQueryRow<{ count: number }>(countSql, ...values);
+    const countResult = await db.rawQueryRow<{ count: number }>(
+      countSql,
+      ...values
+    );
     const total = countResult?.count ?? 0;
 
     // Get users
