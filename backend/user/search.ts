@@ -1,5 +1,5 @@
 import { api, Query } from "encore.dev/api";
-import { userRepository } from "../ticket/db";
+import { subscriptionRepository, userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 
@@ -68,25 +68,39 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         total: 1,
       };
     }
+    // Determine market center filter based on subscription and role
+    let marketCenterIds: string[] | undefined;
 
-    // Determine market center filter based on role
-    let marketCenterId: string | undefined;
+    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
 
-    if (userContext.role === "ADMIN" && req.marketCenterId) {
-      marketCenterId = req.marketCenterId;
+      if (req?.marketCenterId) {
+        const found = accessibleMarketCenterIds.find(
+          (id) => id === req.marketCenterId
+        );
+        marketCenterIds = found ? [req.marketCenterId] : undefined;
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
     }
 
     if (
       (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
       userContext?.marketCenterId
     ) {
-      marketCenterId = userContext.marketCenterId;
+      marketCenterIds = [userContext.marketCenterId];
     }
 
     const { users, total } = await userRepository.search({
       query: req.query,
       role: req.role,
-      marketCenterId,
+      marketCenterIds:
+        marketCenterIds && marketCenterIds.length > 0
+          ? marketCenterIds
+          : undefined,
       isActive: req.isActive,
       sortBy: req.sortBy as any,
       sortDir: req.sortDir as any,

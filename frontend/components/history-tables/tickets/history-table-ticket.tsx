@@ -163,7 +163,7 @@ export default function TicketHistoryTable({
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
                     <ToolTip
-                      content={`Updated${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
+                      content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
                           {newValueFormatted ? newValueFormatted : "N/a"}
@@ -174,7 +174,7 @@ export default function TicketHistoryTable({
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
                     <ToolTip
-                      content={`Previous${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
+                      content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
                           {previousValueFormatted

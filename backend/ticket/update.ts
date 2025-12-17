@@ -359,6 +359,24 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
             createdById: userContext.userId,
           }))
         );
+
+        const newValue = req.todos
+          .map((todo) => {
+            return `• ${todo}`;
+          })
+          .join("  ");
+
+        ticketHistoryData.push({
+          ticketId: req.ticketId,
+          action: "ADD",
+          field: "todos",
+          previousValue: oldTicket.todos
+            ? oldTicket.todos.length.toString()
+            : "0",
+          newValue: `${req.todos.length}:${newValue}`,
+          snapshot: oldTicket,
+          changedById: userContext.userId,
+        });
       }
 
       const formattedTicket: Ticket = {

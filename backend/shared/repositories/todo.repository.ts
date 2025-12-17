@@ -26,11 +26,11 @@ function rowToTodo(row: TodoRow): Todo {
     complete: row.complete,
     ticketId: row.ticket_id,
     createdAt: fromTimestamp(row.created_at)!,
-    updatedAt: fromTimestamp(row.updated_at),
+    // updatedAt: fromTimestamp(row.updated_at),
     createdById: row.created_by_user_id,
     updatedById: row.updated_by_user_id,
-    createdBy: fromJson(row.created_by),
-    updatedBy: fromJson(row.updated_by),
+    // createdBy: fromJson(row.created_by),
+    // updatedBy: fromJson(row.updated_by),
   };
 }
 
@@ -83,12 +83,14 @@ export const todoRepository = {
   },
 
   // Create many todos
-  async createMany(todos: Array<{
-    title: string;
-    ticketId: string;
-    createdById: string;
-    complete?: boolean;
-  }>): Promise<number> {
+  async createMany(
+    todos: Array<{
+      title: string;
+      ticketId: string;
+      createdById: string;
+      complete?: boolean;
+    }>
+  ): Promise<number> {
     let count = 0;
     for (const todo of todos) {
       await this.create(todo);
@@ -98,14 +100,17 @@ export const todoRepository = {
   },
 
   // Update todo
-  async update(id: string, data: {
-    title?: string;
-    complete?: boolean;
-    updatedById: string;
-    updatedBy?: { id: string; name?: string };
-  }): Promise<Todo | null> {
+  async update(
+    id: string,
+    data: {
+      title?: string;
+      complete?: boolean;
+      updatedById: string;
+      updatedBy?: { id: string; name?: string };
+    }
+  ): Promise<Todo | null> {
     const updates: string[] = [
-      'updated_at = NOW()',
+      "updated_at = NOW()",
       `updated_by_user_id = $1`,
       `updated_by = $2::jsonb`,
     ];
@@ -128,7 +133,7 @@ export const todoRepository = {
 
     const sql = `
       UPDATE todos
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -166,12 +171,15 @@ export const todoRepository = {
   },
 
   // Count todos by ticket
-  async countByTicketId(ticketId: string, options?: { complete?: boolean }): Promise<number> {
-    let sql = 'SELECT COUNT(*)::int as count FROM todos WHERE ticket_id = $1';
+  async countByTicketId(
+    ticketId: string,
+    options?: { complete?: boolean }
+  ): Promise<number> {
+    let sql = "SELECT COUNT(*)::int as count FROM todos WHERE ticket_id = $1";
     const values: any[] = [ticketId];
 
     if (options?.complete !== undefined) {
-      sql += ' AND complete = $2';
+      sql += " AND complete = $2";
       values.push(options.complete);
     }
 

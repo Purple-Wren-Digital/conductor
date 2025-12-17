@@ -86,6 +86,8 @@ import { createAndSendNotification } from "@/lib/utils/notifications";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
 import { useFetchAllUsers } from "@/hooks/use-users";
+import { useIsEnterprise } from "@/hooks/useSubscription";
+import { useStore } from "@/context/store-provider";
 
 type CategoryOption = { label: string; ids: string[] };
 
@@ -93,6 +95,8 @@ export default function AdminTicketList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { role } = useUserRole();
+  const { isEnterprise } = useIsEnterprise();
+  const { currentUser } = useStore();
 
   const defaultSelectedCategory: CategoryOption = useMemo(
     () => ({ label: "all", ids: [] }),
@@ -122,8 +126,11 @@ export default function AdminTicketList() {
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
-  const [selectedMarketCenterId, setSelectedMarketCenterId] =
-    useState<string>("all");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string>(
+    isEnterprise
+      ? "all"
+      : currentUser?.marketCenterId || "No Market Center Found"
+  );
   const [marketCenters, setMarketCenters] = useState<
     { name: string; id: string }[]
   >([]);
@@ -617,15 +624,17 @@ export default function AdminTicketList() {
           </h1>
 
           <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
-            <TeamSwitcher
-              selectedMarketCenterId={selectedMarketCenterId}
-              setSelectedMarketCenterId={setSelectedMarketCenterId}
-              handleMarketCenterSelected={() => {
-                setSelectedCategory(defaultSelectedCategory);
-                setCurrentPage(1);
-              }}
-              setMarketCenters={setMarketCenters}
-            />
+            {
+              <TeamSwitcher
+                selectedMarketCenterId={selectedMarketCenterId}
+                setSelectedMarketCenterId={setSelectedMarketCenterId}
+                handleMarketCenterSelected={() => {
+                  setSelectedCategory(defaultSelectedCategory);
+                  setCurrentPage(1);
+                }}
+                setMarketCenters={setMarketCenters}
+              />
+            }
             <Button
               className="gap-2 w-full sm:w-fit"
               onClick={() => setIsCreateOpen(true)}

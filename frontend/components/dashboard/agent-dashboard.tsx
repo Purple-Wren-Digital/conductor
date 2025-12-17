@@ -9,7 +9,6 @@ import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
 import { getResolvedInBusinessDays, statusOptions } from "@/lib/utils";
-import { stat } from "fs";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
@@ -54,6 +53,15 @@ export function AgentDashboard() {
       ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
     ).length;
 
+    const overdueTickets = tickets.filter((t: Ticket) => {
+      if (t.status !== "RESOLVED" && t?.dueDate) {
+        const dueDate = new Date(t.dueDate);
+        const now = new Date();
+        return dueDate < now;
+      }
+      return false;
+    }).length;
+
     const now = new Date();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7); // 7 days ago
@@ -78,6 +86,7 @@ export function AgentDashboard() {
       highPriority,
       createdThisWeek,
       activeTickets,
+      overdueTickets,
       resolvedThisWeek,
     };
   }, [tickets]);
@@ -109,13 +118,15 @@ export function AgentDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="font-medium text-center">
-              All Tickets
+              Active Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-center">{ticketTotal}</p>
+            <p className="text-2xl font-bold text-center">
+              {stats.activeTickets}
+            </p>
             <p className="text-center text-xs text-muted-foreground">
-              across all time
+              {stats.highPriority} high priority
             </p>
           </CardContent>
         </Card>
@@ -139,15 +150,15 @@ export function AgentDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="font-medium text-center">
-              Active Tickets
+              Overdue Tickets
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-center">
-              {stats.activeTickets}
+              {stats.overdueTickets}
             </div>
             <p className="text-center text-xs text-muted-foreground">
-              {stats.highPriority} high priority
+              across all tickets
             </p>
           </CardContent>
         </Card>

@@ -36,6 +36,7 @@ interface TicketRow {
   updated_at: Date;
   published_at: Date | null;
   category_id: string | null;
+  category: string | null;
   survey_id: string | null;
   email_message_id: string | null;
 }
@@ -353,7 +354,6 @@ export const ticketRepository = {
     // Access control
     userId?: string;
     userRole?: UserRole;
-    userMarketCenterId?: string | null;
     // Filters
     query?: string;
     status?: TicketStatus[];
@@ -375,37 +375,35 @@ export const ticketRepository = {
     const values: any[] = [];
     let paramIndex = 1;
 
-    // Role-based access control
+    // Subscription-based and Role-based access control
     if (params.userRole === "AGENT" && params.userId) {
       conditions.push(`t.creator_id = $${paramIndex++}`);
       values.push(params.userId);
     } else if (
       (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
-      params.userMarketCenterId
+      params?.marketCenterIds &&
+      params?.marketCenterIds.length > 0
     ) {
-      conditions.push(`(
-        tc.market_center_id = $${paramIndex} OR
-        creator.market_center_id = $${paramIndex} OR
-        assignee.market_center_id = $${paramIndex}
-      )`);
-      values.push(params.userMarketCenterId);
-      paramIndex++;
+      const placeholders = params.marketCenterIds
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+      conditions.push(`tc.market_center_id IN (${placeholders})`);
+      values.push(...params.marketCenterIds);
+      paramIndex += params.marketCenterIds.length;
     } else if (
       (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
-      !params.userMarketCenterId &&
-      params.userId
+      (!params?.marketCenterIds || !params.marketCenterIds.length) &&
+      params?.userId
     ) {
       conditions.push(
         `(t.assignee_id = $${paramIndex} OR t.creator_id = $${paramIndex})`
       );
       values.push(params.userId);
       paramIndex++;
-    }
-    // ADMIN has no restrictions
-    if (
+    } else if (
       params.userRole === "ADMIN" &&
-      params.marketCenterIds &&
-      params.marketCenterIds.length > 0
+      params?.marketCenterIds &&
+      params?.marketCenterIds.length > 0
     ) {
       const placeholders = params.marketCenterIds
         .map((_, i) => `$${paramIndex + i}`)
@@ -530,7 +528,7 @@ export const ticketRepository = {
     >(sql, ...values);
 
     // Fetch related data for each ticket
-    const tickets: Ticket[] = [];
+    let tickets: Ticket[] = [];
 
     for (const row of rows) {
       const ticket = rowToTicket(row);

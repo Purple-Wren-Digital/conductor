@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { ticketRepository } from "./db";
+import { subscriptionRepository, ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 
@@ -71,18 +71,40 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       categoryId = [req.categoryId];
     }
 
+    let marketCenterIds: string[] = [];
+
+    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterId) {
+        if (accessibleMarketCenterIds.includes(req.marketCenterId)) {
+          marketCenterIds.push(req.marketCenterId);
+        }
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
+
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
+      marketCenterIds = [userContext.marketCenterId];
+    }
+
     // Use repository search with role-based access control built in
     const { tickets, total } = await ticketRepository.search({
       userId: userContext.userId,
       userRole: userContext.role,
-      userMarketCenterId: userContext.marketCenterId,
       query: req.query,
       status: req.status as TicketStatus[] | undefined,
       urgency: req.urgency as Urgency[] | undefined,
       assigneeId,
       creatorId: req.creatorId,
       categoryId,
-      marketCenterIds: req.marketCenterId ? [req.marketCenterId] : undefined,
+      marketCenterIds,
       dateFrom,
       dateTo,
       sortBy: req.sortBy as any,

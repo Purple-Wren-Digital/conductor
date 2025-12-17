@@ -63,14 +63,13 @@ export function TeamSwitcher({
     <Select
       value={selectedMarketCenterId}
       onValueChange={(value) => {
+        if (!isEnterprise) return;
         setSelectedMarketCenterId(value);
         const selectedMarketCenter = marketCenters.find((mc) => mc.id == value);
         handleMarketCenterSelected &&
           handleMarketCenterSelected(selectedMarketCenter);
       }}
-      disabled={
-        isLoading || !role || role === "STAFF" || role === "STAFF_LEADER"
-      }
+      disabled={isLoading || !canViewAllTeams}
     >
       <SelectTrigger>
         <SelectValue placeholder="Select a team" />
