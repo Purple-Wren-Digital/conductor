@@ -98,18 +98,10 @@ export default function NotificationTemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Admin: Notification Templates (
-            {templatesWithMarketCenters?.length || 0})
-          </h1>
-          <Button
-            // onClick={handleResetAllToDefault}
-            disabled={true} //{isLoading || isSubmitting}
-          >
-            Reset All to Default
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Admin: Notification Templates (
+          {templatesWithMarketCenters?.length || 0})
+        </h1>
         <p className="text-muted-foreground">
           Customize in-app notifications for market centers, tickets,
           categories, and comments

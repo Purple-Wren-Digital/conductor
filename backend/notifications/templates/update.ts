@@ -4,7 +4,7 @@ import { getUserContext } from "../../auth/user-context";
 import type { MarketCenterNotificationPreferences } from "../../settings/types";
 
 export interface UpdateNotificationTemplateRequest {
-  id: string;
+  templateId: string;
   subject?: string;
   body?: string;
   isActive?: boolean;
@@ -30,7 +30,7 @@ export const updateNotificationTemplate = api<
   {
     expose: true,
     method: "PATCH",
-    path: "/notifications/templates/:id",
+    path: "/notifications/templates/update",
     auth: true,
   },
   async (req) => {
@@ -44,7 +44,7 @@ export const updateNotificationTemplate = api<
 
     const existingTemplate = await db.queryRow<NotificationTemplateRow>`
       SELECT id, market_center_id, type, is_active, subject, body FROM notification_templates
-      WHERE id = ${req.id}
+      WHERE id = ${req.templateId}
     `;
 
     if (!existingTemplate) {
@@ -144,7 +144,7 @@ export const updateNotificationTemplate = api<
       }
     }
 
-    values.push(req.id);
+    values.push(req.templateId);
 
     const sql = `
       UPDATE notification_templates

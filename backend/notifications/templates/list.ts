@@ -1,5 +1,10 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, fromTimestamp, fromJson } from "../../ticket/db";
+import {
+  db,
+  fromTimestamp,
+  fromJson,
+  subscriptionRepository,
+} from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
 import type {
   NotificationTemplate,
@@ -46,10 +51,27 @@ export const listTemplates = api<
     auth: true,
   },
   async (req) => {
-    await getUserContext();
+    const userContext = await getUserContext();
+
+    const accessibleMarketCenterIds =
+      userContext.role === "ADMIN"
+        ? await subscriptionRepository.getAccessibleMarketCenterIds(
+            userContext.marketCenterId
+          )
+        : userContext.marketCenterId
+          ? [userContext.marketCenterId]
+          : [];
+
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      throw APIError.permissionDenied(
+        "User does not have access to any market centers."
+      );
+    }
 
     const templates = await db.queryAll<NotificationTemplateRow>`
-      SELECT * FROM notification_templates
+      SELECT *
+      FROM notification_templates
+      WHERE market_center_id = ANY(${accessibleMarketCenterIds})
       ORDER BY template_name ASC
     `;
 
