@@ -278,7 +278,10 @@ export default function MarketCenterTicketCategories({
             marketCenterId: marketCenter.id,
             name: categoryFormData?.name ?? "",
             description: categoryFormData?.description ?? null,
-            defaultAssigneeId: categoryFormData?.defaultAssigneeId === "none" ? null : categoryFormData?.defaultAssigneeId ?? null,
+            defaultAssigneeId:
+              categoryFormData?.defaultAssigneeId === "none"
+                ? null
+                : (categoryFormData?.defaultAssigneeId ?? null),
           }),
         }
       );
@@ -444,7 +447,9 @@ export default function MarketCenterTicketCategories({
             Ticket Categories ({ticketCategories?.length ?? 0})
           </CardTitle>
           <Button
-            variant={"secondary"}
+            disabled={
+              isLoading || !permissions?.canManageMarketCenterCategories
+            }
             onClick={() => setOpenCategoryForm(true)}
           >
             <Plus />
@@ -460,8 +465,14 @@ export default function MarketCenterTicketCategories({
               <TableRow className="border rounded">
                 <TableHead className="text-black">Category Name</TableHead>
                 <TableHead className="text-black">Description</TableHead>
-                <TableHead className="text-black">Default User</TableHead>
-                <TableHead className="text-black">Tickets</TableHead>
+                <TableHead className="text-black">Default Assignee</TableHead>
+                <TableHead className="text-black text-center">
+                  Updated
+                </TableHead>
+
+                <TableHead className="text-black text-center">
+                  Tickets
+                </TableHead>
                 <TableHead className="text-center text-black">
                   Actions
                 </TableHead>
@@ -504,7 +515,7 @@ export default function MarketCenterTicketCategories({
                           {category?.name ?? "No Name"}
                         </TableCell>
                         {/* DESCRIPTION */}
-                        <TableCell className="flex flex-col gap-1 cursor-pointer max-w-[100px]">
+                        <TableCell className="flex flex-col gap-1 cursor-pointer max-w-[150px]">
                           <ToolTip
                             content={
                               category?.description
@@ -512,22 +523,13 @@ export default function MarketCenterTicketCategories({
                                 : "No Description"
                             }
                             trigger={
-                              <p className="line-clamp-2">
+                              <p className="line-clamp-2 truncate overflow-hidden text-ellipsis whitespace-nowrap ">
                                 {category?.description
                                   ? category.description
                                   : "No Description"}
                               </p>
                             }
                           />
-                          <span className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
-                            <Calendar className="size-2.5" />
-                            Created{" "}
-                            {category?.createdAt
-                              ? new Date(
-                                  category.createdAt
-                                ).toLocaleDateString()
-                              : "Unknown"}
-                          </span>
                         </TableCell>
                         {/* DEFAULT ASSIGNEE */}
                         <TableCell
@@ -540,18 +542,35 @@ export default function MarketCenterTicketCategories({
                           }}
                         >
                           <p className="flex items-center justify-between gap-1">
-                            <span>
-                              {category?.defaultAssignee?.name
-                                ? `${category?.defaultAssignee?.name}`
-                                : "None"}
-                              :{" "}
-                              {category?.defaultAssignee?.role
-                                ? category.defaultAssignee.role
-                                    .split("_")
-                                    .join(" ")
-                                    .toLowerCase()
-                                : "No Role Assigned"}
-                            </span>
+                            <ToolTip
+                              content={`${
+                                category?.defaultAssignee &&
+                                category?.defaultAssignee?.name
+                                  ? `${category?.defaultAssignee?.name}`
+                                  : category?.defaultAssigneeId &&
+                                      !category?.defaultAssignee?.name
+                                    ? `User #${category?.defaultAssigneeId.slice(0, 8)}`
+                                    : "Unassigned"
+                              }: ${
+                                category?.defaultAssignee?.role
+                                  ? category.defaultAssignee.role
+                                      .split("_")
+                                      .join(" ")
+                                  : "No Role Assigned"
+                              }`}
+                              trigger={
+                                <span>
+                                  {category?.defaultAssignee &&
+                                  category?.defaultAssignee?.name
+                                    ? `${category?.defaultAssignee?.name}`
+                                    : category?.defaultAssigneeId &&
+                                        !category?.defaultAssignee?.name
+                                      ? `User #${category?.defaultAssigneeId.slice(0, 8)}`
+                                      : "Unassigned"}
+                                </span>
+                              }
+                            />
+
                             {assignmentError && (
                               <ToolTip
                                 trigger={
@@ -566,15 +585,24 @@ export default function MarketCenterTicketCategories({
                             )}
                           </p>
                         </TableCell>
+                        {/* LAST UPDATED */}
+                        <TableCell className="text-center font-medium">
+                          {category.updatedAt
+                            ? new Date(category.updatedAt).toLocaleDateString()
+                            : "Unknown"}
+                        </TableCell>
                         {/* TICKET COUNT */}
                         <TableCell className="text-center font-medium">
                           {category.ticketCount}
                         </TableCell>
                         {/* ACTIONS */}
-                        <TableCell className="flex gap-2 items-center justify-end">
+                        <TableCell className="flex gap-2 items-center justify-center">
                           <Button
                             variant={"outline"}
-                            disabled={isLoading || !permissions?.canManageTeam}
+                            disabled={
+                              isLoading ||
+                              !permissions?.canManageMarketCenterCategories
+                            }
                             onClick={() => {
                               setEditingTicketCategory(category);
                               setCategoryToRemove(null);
@@ -591,7 +619,10 @@ export default function MarketCenterTicketCategories({
                           </Button>
                           <Button
                             variant={"outline"}
-                            disabled={isLoading || !permissions?.canManageTeam}
+                            disabled={
+                              isLoading ||
+                              !permissions?.canManageMarketCenterCategories
+                            }
                             onClick={() => {
                               setEditingTicketCategory(null);
                               setCategoryToRemove(category);
@@ -622,30 +653,15 @@ export default function MarketCenterTicketCategories({
       <Dialog open={openCategoryForm} onOpenChange={setOpenCategoryForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <div>
-              <DialogTitle>
-                {editingTicketCategory ? "Add" : "Edit"} Ticket Category
-              </DialogTitle>
-              <DialogDescription>
-                Specific to this Market Center
-                {editingTicketCategory && editingTicketCategory?.id
-                  ? ` (${editingTicketCategory?.id.slice(0, 8)})`
-                  : ""}
-              </DialogDescription>
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setFormErrors({});
-                setCategoryFormData({
-                  name: "",
-                  description: "",
-                  defaultAssigneeId: "none",
-                });
-              }}
-            >
-              Clear Form
-            </Button>
+            <DialogTitle>
+              {editingTicketCategory ? "Add" : "Edit"} Ticket Category
+            </DialogTitle>
+            <DialogDescription>
+              Specific to this Market Center
+              {editingTicketCategory && editingTicketCategory?.id
+                ? ` (${editingTicketCategory?.id.slice(0, 8)})`
+                : ""}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleTicketCategoryForm} className="space-y-4">
             <div className="space-y-2">
@@ -659,6 +675,11 @@ export default function MarketCenterTicketCategories({
                   })
                 }
                 className={`mt-1 ${formErrors.name && "border-destructive"}`}
+                disabled={
+                  !marketCenter ||
+                  !teamMembers.length ||
+                  !permissions?.canManageMarketCenterCategories
+                }
               />
               <p className="text-sm text-destructive">
                 {formErrors?.name && formErrors.name}
@@ -675,6 +696,11 @@ export default function MarketCenterTicketCategories({
                   })
                 }
                 className={`mt-1 ${formErrors.description && "border-destructive"}`}
+                disabled={
+                  !marketCenter ||
+                  !teamMembers.length ||
+                  !permissions?.canManageMarketCenterCategories
+                }
               />
               <p className="text-sm text-destructive">
                 {formErrors?.description && formErrors.description}
@@ -690,7 +716,11 @@ export default function MarketCenterTicketCategories({
                     defaultAssigneeId: value,
                   })
                 }
-                disabled={!marketCenter || !teamMembers.length}
+                disabled={
+                  !marketCenter ||
+                  !teamMembers.length ||
+                  !permissions?.canManageMarketCenterCategories
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -715,10 +745,10 @@ export default function MarketCenterTicketCategories({
                 {formErrors?.defaultAssignee && formErrors.description}
               </p>
             </div>
-            <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <p className="text-sm text-destructive">
-                {formErrors?.general && formErrors.general}
-              </p>
+            <div className="flex items-center justify-end gap-3 flex-wrap pt-4 border-t">
+              {formErrors?.general && (
+                <p className="text-sm text-destructive">{formErrors.general}</p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -727,7 +757,27 @@ export default function MarketCenterTicketCategories({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFormErrors({});
+                  setCategoryFormData({
+                    name: "",
+                    description: "",
+                    defaultAssigneeId: "none",
+                  });
+                }}
+                aria-label="Clear form"
+                className="border"
+              >
+                Clear
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isLoading || !permissions?.canManageMarketCenterCategories
+                }
+              >
                 Submit
               </Button>
             </div>

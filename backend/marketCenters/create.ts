@@ -14,10 +14,26 @@ import { User } from "../user/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
 
+export const defaultTicketCategories = [
+  { name: "General", description: "General inquiries and support" },
+  { name: "Clients", description: "Client-related issues and questions" },
+  { name: "Contracts", description: "Contract management and inquiries" },
+  { name: "Financial", description: "Billing and payment issues" },
+  { name: "Inspections", description: "Inspection scheduling and reports" },
+  { name: "Listings", description: "Property listings and updates" },
+  { name: "Maintenance", description: "Maintenance requests and tracking" },
+  { name: "Onboarding", description: "New client onboarding and setup" },
+  { name: "Showings", description: "Property showing appointments" },
+  {
+    name: "Technical Support",
+    description: "Technical issues and troubleshooting",
+  },
+];
+
 export interface CreateMarketCenterRequest {
   name: string;
   users?: User[];
-  ticketCategories?: TicketCategory[];
+  ticketCategories?: { name: string; description: string }[];
   // TODO:
   // settings:
   // settingsAuditLogs?: SettingsAuditLog[];
@@ -167,6 +183,40 @@ export const create = api<
             ${marketCenter.id}
           )
       `;
+      }
+      let staffId: string | null = null;
+      if (req.users && req.users.length > 0) {
+        const staffLeader = req.users.find((u) => u.role === "STAFF_LEADER");
+        if (staffLeader && staffLeader?.id) {
+          staffId = staffLeader.id;
+        }
+        if (!staffLeader || !staffLeader?.id || !staffId) {
+          const staff = req.users.find((u) => u.role === "STAFF");
+          if (staff && staff?.id) {
+            staffId = staff.id;
+          }
+        }
+      }
+
+      const ticketCategoriesToCreate =
+        req.ticketCategories && req.ticketCategories.length > 0
+          ? [...req.ticketCategories, ...defaultTicketCategories].flat()
+          : defaultTicketCategories;
+
+      for (const category of ticketCategoriesToCreate) {
+        await tx.exec`
+          INSERT INTO ticket_categories (
+            id, name, description, market_center_id, created_at, updated_at, default_assignee_id
+          ) VALUES (
+            gen_random_uuid()::text,
+            ${category.name},
+            ${category.description || ""},
+            ${marketCenterRow.id},
+            NOW(),
+            NOW(),
+            ${staffId}
+          )
+        `;
       }
 
       return { marketCenter };
