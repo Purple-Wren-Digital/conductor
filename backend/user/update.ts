@@ -3,10 +3,15 @@ import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
+import {
+  updateClerkUserEmail,
+  updateClerkUserName,
+} from "./utils-update-clerk";
 
 export interface UpdateUserRequest {
   id: string;
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   role?: UserRole;
   isActive?: boolean;
   email?: string;
@@ -27,11 +32,10 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-
     // Permission checks
     const existingUser = await userRepository.findById(req.id);
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isActive === false) {
       throw APIError.notFound("User not found");
     }
 
@@ -42,7 +46,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       req.marketCenterId
     );
 
-    if (!canModifyUsers) {
+    if (!canModifyUsers && !isEditingSelf) {
       throw APIError.permissionDenied(
         "Insufficient permissions to update other users"
       );
@@ -108,15 +112,30 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       });
     }
 
-    if (req?.name && req.name !== existingUser?.name) {
-      updateUserData.name = req.name;
+    const name = [req.firstName, req.lastName].filter(Boolean).join(" ");
+    if (name && name !== existingUser?.name) {
+      updateUserData.name = name;
       userHistoryData.push({
         userId: req.id,
         marketCenterId: marketCenterId,
         action: "UPDATE",
         field: "name",
         previousValue: existingUser.name,
-        newValue: req.name,
+        newValue: name,
+        snapshot: existingUser,
+        changedById: userContext.userId,
+      });
+    }
+
+    if (req?.email && req.email !== existingUser?.email) {
+      updateUserData.email = req.email;
+      userHistoryData.push({
+        userId: req.id,
+        marketCenterId: marketCenterId,
+        action: "UPDATE",
+        field: "email",
+        previousValue: existingUser.email,
+        newValue: req.email,
         snapshot: existingUser,
         changedById: userContext.userId,
       });
@@ -125,12 +144,26 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     if (Object.keys(updateUserData).length === 0) {
       throw APIError.invalidArgument("No fields to update");
     }
+    if (existingUser.clerkId) {
+    }
+
+    // Update Clerk user if email/name has changed
+    if (updateUserData?.email) {
+      await updateClerkUserEmail(existingUser.clerkId, updateUserData.email);
+    }
+
+    if (updateUserData.name) {
+      await updateClerkUserName(existingUser.clerkId, {
+        firstName: req.firstName,
+        lastName: req.lastName,
+      });
+    }
 
     // Update user
     const updatedUser = await userRepository.update(req.id, updateUserData);
 
     if (!updatedUser) {
-      throw APIError.internal("Failed to update user");
+      throw APIError.internal("Failed to update user in Encore database");
     }
 
     // Create history records

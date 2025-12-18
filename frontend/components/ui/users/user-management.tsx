@@ -1,11 +1,13 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useStore } from "@/context/store-provider";
 import type {
   OrderBy,
+  PrismaUser,
   UserEditFormData,
+  UserNotificationCallback,
   UserRole,
   UserSortBy,
   UserWithStats,
@@ -50,6 +52,7 @@ import {
   formatOrderBy,
   calculateTotalPages,
 } from "@/lib/utils";
+import { createAndSendNotification } from "@/lib/utils/notifications";
 import {
   ArrowDown,
   ArrowDownUp,
@@ -188,12 +191,24 @@ export default function UserManagement() {
   const userQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: ["users"] });
 
-  const allUsers: UserWithStats[] = usersData?.users ?? [];
-  const totalUsers: number = usersData?.total ?? 0;
-  const totalPages = calculateTotalPages({
-    totalItems: totalUsers,
-    itemsPerPage,
-  });
+  const allUsers: UserWithStats[] = useMemo(
+    () => usersData?.users ?? [],
+    [usersData]
+  );
+  const totalUsers: number = useMemo(() => usersData?.total ?? 0, [usersData]);
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: totalUsers,
+        itemsPerPage,
+      }),
+    [totalUsers, itemsPerPage]
+  );
+
+  const existingEmails = useMemo(
+    () => allUsers.map((inv) => inv.email),
+    [allUsers]
+  );
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -224,27 +239,39 @@ export default function UserManagement() {
     setShowEditUserForm(true);
   };
 
-  const userNameForm = `${editUserFormData?.firstName.trim()} ${editUserFormData?.lastName.trim()}`;
-  const hasNameChanged: boolean = userNameForm !== editingUser?.name;
-  const hasEmailChanged: boolean =
-    editUserFormData?.email !== editUserFormData?.email;
-  const hasRoleChanged: boolean =
-    editUserFormData?.role !== editUserFormData?.role;
+  const userNameForm = useMemo(
+    () =>
+      `${editUserFormData?.firstName.trim()} ${editUserFormData?.lastName.trim()}`,
+    [editUserFormData]
+  );
+
+  const updates = useMemo(() => {
+    const hasNameChanged: boolean = userNameForm !== editingUser?.name;
+    const hasEmailChanged: boolean =
+      editUserFormData?.email !== editingUser?.email;
+    const hasRoleChanged: boolean =
+      editUserFormData?.role !== editingUser?.role;
+    const userUpdatesMade = hasNameChanged || hasEmailChanged || hasRoleChanged;
+    return { hasNameChanged, hasEmailChanged, hasRoleChanged, userUpdatesMade };
+  }, [userNameForm, editingUser, editUserFormData]);
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!editUserFormData.firstName.trim())
+    if (!editUserFormData?.firstName || !editUserFormData?.firstName.trim()) {
       errors.name = "First name is required";
-    if (!editUserFormData.lastName.trim())
+    }
+    if (!editUserFormData?.lastName || !editUserFormData?.lastName.trim()) {
       errors.lastName = "Last name is required";
+    }
 
-    if (!editUserFormData.email.trim()) {
+    if (!editUserFormData?.email || !editUserFormData?.email.trim()) {
       errors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editUserFormData.email)) {
       errors.email = "Invalid email format";
     }
 
-    if (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
-      errors.general = "No changes made";
+    if (!updates.userUpdatesMade)
+      errors.general = "Please update at least one field to continue";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -264,8 +291,32 @@ export default function UserManagement() {
     setEditingUser(null);
   };
 
-  const updateUserMutation = useMutation({
-    mutationFn: async (userId?: string) => {
+  const handleSendUserNotifications = useCallback(
+    async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
+      try {
+        const response = await createAndSendNotification({
+          getToken: getToken,
+          templateName: "Account Information",
+          trigger: trigger,
+          receivingUser: receivingUser,
+          data: data,
+        });
+      } catch (error) {
+        // Notification failed silently
+        console.error("Failed handleSendUserNotifications()", error);
+      }
+    },
+    [getToken]
+  );
+
+  const updateUserMutation = useMutation<
+    PrismaUser,
+    Error,
+    { userId?: string }
+  >({
+    mutationFn: async ({ userId }) => {
+      setIsSubmitting(true);
+
       if (!userId) throw new Error("Missing editing user ID");
 
       const token = await getToken();
@@ -278,36 +329,91 @@ export default function UserManagement() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editUserFormData),
+        body: JSON.stringify({
+          name: userNameForm,
+          role: editUserFormData.role,
+          isActive: editingUser?.isActive,
+          email: editUserFormData.email,
+          marketCenterId: editUserFormData.marketCenterId,
+        }),
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.message || `Failed to update user`);
       }
+      const data = await response.json();
+      if (!data || !data?.user) {
+        throw new Error("Prisma - Updated data was not found");
+      }
+
+      return data.user as PrismaUser;
     },
-    onSuccess: () => {
+    onSuccess: async (data: PrismaUser) => {
       toast.success(`${userToDelete?.name || "User"} was updated`);
-      setShowEditUserForm(false);
+      await handleSendUserNotifications({
+        trigger: "Account Information",
+        receivingUser: {
+          id: data?.id,
+          name: data?.name ?? data?.email,
+          email: data.email,
+        },
+        data: {
+          accountInformation: {
+            changedByName:
+              currentUser?.id === data?.id
+                ? "You"
+                : currentUser && currentUser?.name
+                  ? currentUser.name
+                  : "Another user",
+            changedByEmail: currentUser?.email,
+            updates: [
+              updates?.hasNameChanged && {
+                value: "name",
+                originalValue: editingUser?.name ?? null,
+                newValue: data?.name ?? null,
+              },
+              updates?.hasEmailChanged && {
+                value: "email",
+                originalValue: editingUser?.email ?? null,
+                newValue: data?.email ?? null,
+              },
+              updates?.hasRoleChanged && {
+                value: "role",
+                originalValue: editingUser?.role ?? null,
+                newValue: data?.role ?? "AGENT",
+              },
+            ].filter(Boolean) as {
+              value: "name" | "email" | "role" | "password";
+              originalValue: string | null;
+              newValue: string | null;
+            }[],
+          },
+        },
+      });
       resetEditUserFormAndClose();
-      userQueryInvalidator;
+      setShowEditUserForm(false);
     },
-    onError: () => {
+    onError: (error) => {
       toast.error("Failed to update user");
+      console.error("User Management - Failed to update user", error);
+    },
+    onSettled: async () => {
+      setIsSubmitting(false);
+      await userQueryInvalidator();
     },
   });
 
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!permissions?.canManageAllUsers) {
+    if (!permissions?.canManageAllUsers || !permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
     }
     if (!validateForm()) return;
-    setIsSubmitting(true);
 
-    updateUserMutation.mutate(editingUser?.id);
-    setIsSubmitting(false);
+    updateUserMutation.mutate({
+      userId: editingUser?.id,
+    });
   };
 
   // DELETE MODAL ACTIONS
@@ -677,6 +783,7 @@ export default function UserManagement() {
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
         queryInvalidation={userQueryInvalidator}
+        existingEmails={existingEmails}
       />
 
       {/* EDIT USER */}
@@ -702,6 +809,7 @@ export default function UserManagement() {
                 }
                 placeholder="Enter first name"
                 className={formErrors.firstName ? "border-destructive" : ""}
+                disabled={isSubmitting}
               />
 
               <p className="text-sm text-destructive">
@@ -724,6 +832,7 @@ export default function UserManagement() {
                 }
                 placeholder="Enter last name"
                 className={formErrors.lastName ? "border-destructive" : ""}
+                disabled={isSubmitting}
               />
               <p className="text-sm text-destructive">
                 {formErrors?.lastName && formErrors.lastName}
@@ -746,7 +855,7 @@ export default function UserManagement() {
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
-                disabled
+                disabled={isSubmitting}
               />
               {formErrors.email && (
                 <p className="text-sm text-destructive">{formErrors.email}</p>
@@ -760,7 +869,7 @@ export default function UserManagement() {
                 onValueChange={(value: UserRole) =>
                   setEditUserFormData({ ...editUserFormData, role: value })
                 }
-                disabled={!permissions?.canChangeUserRoles}
+                disabled={isSubmitting || !permissions?.canChangeUserRoles}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -790,17 +899,9 @@ export default function UserManagement() {
               >
                 Cancel
               </Button>
-              {editingUser && (
-                <Button
-                  type="submit"
-                  disabled={
-                    isSubmitting ||
-                    (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
-                  }
-                >
-                  {isSubmitting ? "Saving..." : "Update User"}
-                </Button>
-              )}
+              <Button type="submit" disabled={isSubmitting || !editingUser}>
+                {isSubmitting ? "Saving..." : "Update User"}
+              </Button>
             </div>
           </form>
         </DialogContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
@@ -62,8 +62,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: id,
   });
-  const user: PrismaUser = userData?.user ?? {};
-  const marketCenter: MarketCenter = user?.marketCenter ?? ({} as MarketCenter);
+  const user: PrismaUser = useMemo(() => userData?.user ?? {}, [userData]);
+  const marketCenter: MarketCenter = useMemo(
+    () => user?.marketCenter ?? ({} as MarketCenter),
+    [user]
+  );
 
   // EDIT USER STATES
   const [showEditUserForm, setShowEditUserForm] = useState(false);
@@ -92,10 +95,18 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     setFormErrors({});
     setShowEditUserForm(false);
   };
-  const userNameForm = `${formData?.firstName.trim()} ${formData?.lastName.trim()}`;
-  const hasNameChanged: boolean = user && userNameForm !== user?.name;
-  const hasEmailChanged: boolean = formData?.email !== user?.email;
-  const hasRoleChanged: boolean = formData?.role !== user?.role;
+  const userNameForm = useMemo(
+    () => `${formData?.firstName.trim()} ${formData?.lastName.trim()}`,
+    [formData]
+  );
+
+  const updates = useMemo(() => {
+    const hasNameChanged: boolean = user && userNameForm !== user?.name;
+    const hasEmailChanged: boolean = formData?.email !== user?.email;
+    const hasRoleChanged: boolean = formData?.role !== user?.role;
+    const userUpdatesMade = hasNameChanged || hasEmailChanged || hasRoleChanged;
+    return { hasNameChanged, hasEmailChanged, hasRoleChanged, userUpdatesMade };
+  }, [userNameForm, formData, user]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -104,77 +115,19 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     if (!formData?.lastName || !formData?.lastName.trim())
       errors.lastName = "Last name is required";
 
-    // if (!formData?.email.trim()) {
-    //   errors.email = "Email is required";
-    // } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
-    //   errors.email = "Invalid email format";
-    // }
+    if (!formData?.email || !formData?.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
+      errors.email = "Invalid email format";
+    }
 
     if (!formData?.role) errors.role = "Role is required";
 
-    if (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
-      errors.general = "No changes made";
+    if (!updates.userUpdatesMade)
+      errors.general = "Please update at least one field to continue";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
-
-  const updateUserInPrisma = async (userId: string, quickEdit: boolean) => {
-    let body: any = {};
-    if (quickEdit) {
-      body.role = formData.role;
-      body.marketCenterId = user?.marketCenterId ?? null;
-    } else {
-      body.name = `${formData.firstName} ${formData.lastName}`;
-      // body.email = formData.email; // TODO: CLERK EMAIL API ROUTES
-      body.role = formData.role;
-      body.marketCenterId = formData?.marketCenterId;
-    }
-
-    if (!body) throw new Error("Nothing to update");
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const response = await fetch(`${API_BASE}/users/${userId}/update`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-      return response;
-    } catch {
-      return null;
-    }
-  };
-  const updateUserInClerk = async (clerkId: string) => {
-    if (!clerkId) {
-      throw new Error("Not authorized to update this profile");
-    }
-
-    try {
-      const response = await fetch(`/api/clerk/update-user`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clerkId: clerkId,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-        }),
-      });
-
-      if (!response || !response.ok) throw new Error("Response not okay");
-      const data = await response.json();
-      if (!data) throw new Error("No data from Clerk");
-      return true;
-    } catch {
-      return false;
-    }
   };
 
   const handleSendUserNotifications = useCallback(
@@ -187,8 +140,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           receivingUser: receivingUser,
           data: data,
         });
-      } catch {
+      } catch (error) {
         // Notification failed silently
+        console.error("Failed handleSendUserNotifications():", error);
       }
     },
     [getToken]
@@ -196,28 +150,35 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const updateUserMutation = useMutation<
     PrismaUser,
     Error,
-    { userId: string; clerkId: string; quickEdit: boolean }
+    { userId: string; quickEdit: boolean }
   >({
-    mutationFn: async ({ userId, clerkId, quickEdit }) => {
+    mutationFn: async ({ userId, quickEdit }) => {
       if (!userId) throw new Error("Missing User ID");
 
-      // Only update Clerk for non-quick edits (name changes) and real Clerk users
-      // Seeded users have clerkIds like "seed-XX" which aren't real Clerk users
-      const isRealClerkUser = clerkId && !clerkId.startsWith("seed-");
-      if (!quickEdit && isRealClerkUser) {
-        const clerkResponse = await updateUserInClerk(clerkId);
-        if (!clerkResponse) {
-          throw new Error("Clerk Error");
-        }
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      let body: any = {};
+      if (quickEdit) {
+        body.role = formData.role;
+        body.marketCenterId = user?.marketCenterId ?? null;
+      } else {
+        body = formData;
       }
 
-      const prismaResponse = await updateUserInPrisma(userId, quickEdit);
-      if (!prismaResponse) {
-        throw new Error("Prisma Error");
-      }
-      const data = await prismaResponse.json();
+      if (!body) throw new Error("Nothing to update");
+      const response = await fetch(`${API_BASE}/users/${userId}/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
       if (!data || !data?.user) {
-        throw new Error("Prisma - Updated data was not found");
+        throw new Error("Updated data was not found");
       }
 
       return data.user as PrismaUser;
@@ -245,17 +206,17 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   : "Another user",
             changedByEmail: currentUser?.email,
             updates: [
-              hasNameChanged && {
+              updates?.hasNameChanged && {
                 value: "name",
                 originalValue: user?.name ?? null,
                 newValue: data?.name ?? null,
               },
-              hasEmailChanged && {
+              updates?.hasEmailChanged && {
                 value: "email",
                 originalValue: user?.email ?? null,
                 newValue: data?.email ?? null,
               },
-              hasRoleChanged && {
+              updates?.hasRoleChanged && {
                 value: "role",
                 originalValue: user?.role ?? null,
                 newValue: data?.role ?? "AGENT",
@@ -292,7 +253,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     setIsSubmitting(true);
     updateUserMutation.mutate({
       userId: user?.id,
-      clerkId: user?.clerkId,
       quickEdit: false,
     });
   };
@@ -306,7 +266,6 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
     updateUserMutation.mutate({
       userId: user?.id,
-      clerkId: user?.clerkId,
       quickEdit: true,
     });
   };
@@ -512,6 +471,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }
                 placeholder="Enter first name"
                 className={formErrors.firstName ? "border-destructive" : ""}
+                disabled={isSubmitting || userLoading}
               />
 
               <p className="text-sm text-destructive">
@@ -534,6 +494,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }
                 placeholder="Enter last name"
                 className={formErrors.lastName ? "border-destructive" : ""}
+                disabled={isSubmitting || userLoading}
               />
               <p className="text-sm text-destructive">
                 {formErrors?.lastName && formErrors.lastName}
@@ -556,7 +517,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }
                 placeholder="Enter email address"
                 className={formErrors.email ? "border-destructive" : ""}
-                disabled // TODO: CLERK EMAIL API ROUTES
+                disabled={isSubmitting || userLoading}
               />
               <p className="text-sm text-destructive">
                 {formErrors?.email && formErrors.email}
@@ -609,11 +570,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={
-                  isSubmitting ||
-                  !user ||
-                  (!hasNameChanged && !hasEmailChanged && !hasRoleChanged)
-                }
+                disabled={isSubmitting || !user || userLoading}
               >
                 {isSubmitting ? "Saving..." : "Update User"}
               </Button>
