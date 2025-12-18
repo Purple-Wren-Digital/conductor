@@ -324,7 +324,13 @@ export function BaseTicketForm({
 
             {/* CATEGORY */}
             <div className="space-y-2">
-              <Label>Category *</Label>
+              <div className="flex flex-row align-center justify-between">
+                <Label>Category *</Label>
+                <ToolTip
+                  trigger={<Info className="w-3 h-3" />}
+                  content="Add categories in the Market Center settings. Categories help organize and prioritize tickets."
+                />
+              </div>
               <Select
                 value={values.categoryId}
                 onValueChange={(value) => {
@@ -355,6 +361,17 @@ export function BaseTicketForm({
                       <SelectItem key={category?.id} value={category?.id}>
                         {category?.name}
                       </SelectItem>
+                    ))}
+                  {!marketCenterTicketCategories ||
+                    (marketCenterTicketCategories.length === 0 && (
+                      <>
+                        <SelectItem value="none" disabled>
+                          No categories available
+                        </SelectItem>
+                        <SelectItem value="none2" disabled>
+                          Add categories in the Market Center settings
+                        </SelectItem>
+                      </>
                     ))}
                 </SelectContent>
               </Select>
