@@ -184,6 +184,8 @@ export interface Comment {
   ticketId: string;
   userId: string;
   internal: boolean;
+  source: string;
+  metadata: any;
   createdAt: Date;
   updatedAt?: Date;
   user?: PrismaUser;

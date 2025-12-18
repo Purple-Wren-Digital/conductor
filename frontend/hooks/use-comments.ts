@@ -154,6 +154,9 @@ export function useCreateComment() {
         userId,
         internal: internal || false,
         createdAt: new Date(),
+        updatedAt: new Date(),
+        metadata: null,
+        source: "WEB",
         user: {
           id: userId,
           name: "You",
@@ -305,7 +308,8 @@ export function useUpdateComment() {
           context.previousComments
         );
       }
-      toast.error(error.message || "Failed to update comment");
+      console.error("Failed to update comment", error);
+      toast.error("Failed to update comment");
     },
     onSuccess: (updatedComment, { ticketId }) => {
       realTimeService.simulateEvent({
@@ -372,7 +376,8 @@ export function useDeleteComment() {
           context.previousComments
         );
       }
-      toast.error(error.message || "Failed to delete comment");
+      console.log("Failed to delete comment", error);
+      toast.error("Error: Failed to delete comment");
     },
     onSuccess: (result, { ticketId, commentId }) => {
       realTimeService.simulateEvent({

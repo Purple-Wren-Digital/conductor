@@ -56,7 +56,7 @@ export const deleteComment = api<DeleteCommentRequest, DeleteCommentResponse>(
         field,
         previous_value,
         changed_by_id,
-        created_at
+        changed_at
       ) VALUES (
         ${comment.ticketId},
         'DELETE',

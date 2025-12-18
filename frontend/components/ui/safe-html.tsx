@@ -13,9 +13,9 @@ interface SafeHtmlProps {
  */
 export function SafeHtml({ content, className }: SafeHtmlProps) {
   const sanitizedContent = processCommentContent(content);
-  
+
   return (
-    <div 
+    <div
       className={className}
       dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
