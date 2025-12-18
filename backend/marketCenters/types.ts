@@ -37,6 +37,7 @@ export interface MarketCenterHistory {
 
 export interface TeamInvitation {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
   status: InvitationStatus;

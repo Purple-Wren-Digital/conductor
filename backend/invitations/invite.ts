@@ -4,11 +4,7 @@ import crypto from "crypto";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 import { checkCanAddUser } from "../auth/subscription-check";
-import {
-  db,
-  userRepository,
-  marketCenterRepository,
-} from "../ticket/db";
+import { db, userRepository, marketCenterRepository } from "../ticket/db";
 import { sendInvitationEmail } from "./email";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
 import type { UserRole } from "../user/types";
@@ -34,6 +30,7 @@ export interface InviteTeamMemberResponse {
 export interface GetInvitationResponse {
   invitation: {
     id: string;
+    name: string;
     email: string;
     role: UserRole;
     status: InvitationStatus;
@@ -77,7 +74,10 @@ export interface ListInvitationsResponse {
 // Create Invitation
 // ============================================================================
 
-export const inviteTeamMember = api<InviteTeamMemberRequest, InviteTeamMemberResponse>(
+export const inviteTeamMember = api<
+  InviteTeamMemberRequest,
+  InviteTeamMemberResponse
+>(
   {
     expose: true,
     method: "POST",
@@ -97,7 +97,9 @@ export const inviteTeamMember = api<InviteTeamMemberRequest, InviteTeamMemberRes
 
     // User must have a market center
     if (!userContext.marketCenterId) {
-      throw APIError.failedPrecondition("You must belong to a market center to invite team members");
+      throw APIError.failedPrecondition(
+        "You must belong to a market center to invite team members"
+      );
     }
 
     // Check subscription seat limits before inviting
@@ -111,25 +113,35 @@ export const inviteTeamMember = api<InviteTeamMemberRequest, InviteTeamMemberRes
     }
 
     // Get market center
-    const marketCenter = await marketCenterRepository.findById(userContext.marketCenterId);
+    const marketCenter = await marketCenterRepository.findById(
+      userContext.marketCenterId
+    );
     if (!marketCenter) {
       throw APIError.notFound("Market center not found");
     }
 
     // Check if user already exists in this market center
     const existingUser = await userRepository.findByEmail(req.email);
-    if (existingUser && existingUser.marketCenterId === userContext.marketCenterId) {
-      throw APIError.alreadyExists("User is already a team member in this market center");
+    if (
+      existingUser &&
+      existingUser.marketCenterId === userContext.marketCenterId
+    ) {
+      throw APIError.alreadyExists(
+        "User is already a team member in this market center"
+      );
     }
 
     // Check for existing pending invitation
-    const existingInvitation = await marketCenterRepository.findInvitationByEmailAndMarketCenterID(
-      userContext.marketCenterId,
-      req.email
-    );
+    const existingInvitation =
+      await marketCenterRepository.findInvitationByEmailAndMarketCenterID(
+        userContext.marketCenterId,
+        req.email
+      );
 
     if (existingInvitation && existingInvitation.status === "PENDING") {
-      throw APIError.alreadyExists("A pending invitation already exists for this email");
+      throw APIError.alreadyExists(
+        "A pending invitation already exists for this email"
+      );
     }
 
     // Generate secure token
@@ -138,6 +150,7 @@ export const inviteTeamMember = api<InviteTeamMemberRequest, InviteTeamMemberRes
 
     // Create invitation record
     const invitation = await marketCenterRepository.createInvitation({
+      name: req.name,
       email: req.email,
       role: req.role,
       marketCenterId: userContext.marketCenterId,
@@ -192,7 +205,8 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
     auth: false, // Public endpoint for signup flow
   },
   async ({ token }) => {
-    const invitation = await marketCenterRepository.findInvitationByToken(token);
+    const invitation =
+      await marketCenterRepository.findInvitationByToken(token);
 
     if (!invitation) {
       return {
@@ -213,7 +227,10 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired) {
       // Mark as expired in database
-      await marketCenterRepository.updateInvitationStatus(invitation.id, "EXPIRED");
+      await marketCenterRepository.updateInvitationStatus(
+        invitation.id,
+        "EXPIRED"
+      );
       return {
         invitation: null,
         valid: false,
@@ -233,6 +250,7 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
     return {
       invitation: {
         id: invitation.id,
+        name: invitation.name,
         email: invitation.email,
         role: invitation.role,
         status: invitation.status,
@@ -252,7 +270,10 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
 // Accept Invitation (Called after user signs up via Clerk)
 // ============================================================================
 
-export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>(
+export const acceptInvitation = api<
+  { token: string },
+  AcceptInvitationResponse
+>(
   {
     expose: true,
     method: "POST",
@@ -270,10 +291,13 @@ export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>
     const clerkEmail = authData.emailAddress;
 
     if (!clerkEmail) {
-      throw APIError.failedPrecondition("No email address found for authenticated user");
+      throw APIError.failedPrecondition(
+        "No email address found for authenticated user"
+      );
     }
 
-    const invitation = await marketCenterRepository.findInvitationByToken(token);
+    const invitation =
+      await marketCenterRepository.findInvitationByToken(token);
 
     if (!invitation) {
       throw APIError.notFound("Invitation not found");
@@ -287,12 +311,17 @@ export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>
     }
 
     if (invitation.status !== "PENDING") {
-      throw APIError.failedPrecondition(`Invitation has already been ${invitation.status.toLowerCase()}`);
+      throw APIError.failedPrecondition(
+        `Invitation has already been ${invitation.status.toLowerCase()}`
+      );
     }
 
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired) {
-      await marketCenterRepository.updateInvitationStatus(invitation.id, "EXPIRED");
+      await marketCenterRepository.updateInvitationStatus(
+        invitation.id,
+        "EXPIRED"
+      );
       throw APIError.failedPrecondition("Invitation has expired");
     }
 
@@ -327,7 +356,10 @@ export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>
     }
 
     // Mark invitation as accepted
-    await marketCenterRepository.updateInvitationStatus(invitation.id, "ACCEPTED");
+    await marketCenterRepository.updateInvitationStatus(
+      invitation.id,
+      "ACCEPTED"
+    );
 
     // Log the acceptance in history
     await marketCenterRepository.createHistory({
@@ -351,7 +383,10 @@ export const acceptInvitation = api<{ token: string }, AcceptInvitationResponse>
 // Resend Invitation
 // ============================================================================
 
-export const resendInvitation = api<{ token: string }, ResendInvitationResponse>(
+export const resendInvitation = api<
+  { token: string },
+  ResendInvitationResponse
+>(
   {
     expose: true,
     method: "POST",
@@ -361,7 +396,8 @@ export const resendInvitation = api<{ token: string }, ResendInvitationResponse>
   async ({ token }) => {
     const userContext = await getUserContext();
 
-    const invitation = await marketCenterRepository.findInvitationByToken(token);
+    const invitation =
+      await marketCenterRepository.findInvitationByToken(token);
 
     if (!invitation) {
       throw APIError.notFound("Invitation not found");
@@ -369,11 +405,15 @@ export const resendInvitation = api<{ token: string }, ResendInvitationResponse>
 
     // Verify user has permission
     if (invitation.marketCenterId !== userContext.marketCenterId) {
-      throw APIError.permissionDenied("You do not have permission to resend this invitation");
+      throw APIError.permissionDenied(
+        "You do not have permission to resend this invitation"
+      );
     }
 
     if (invitation.status !== "PENDING" && invitation.status !== "EXPIRED") {
-      throw APIError.failedPrecondition(`Cannot resend invitation with status: ${invitation.status}`);
+      throw APIError.failedPrecondition(
+        `Cannot resend invitation with status: ${invitation.status}`
+      );
     }
 
     // Generate new token and expiration
@@ -418,7 +458,10 @@ export const resendInvitation = api<{ token: string }, ResendInvitationResponse>
 // Cancel Invitation
 // ============================================================================
 
-export const cancelInvitation = api<{ token: string }, CancelInvitationResponse>(
+export const cancelInvitation = api<
+  { token: string },
+  CancelInvitationResponse
+>(
   {
     expose: true,
     method: "DELETE",
@@ -428,7 +471,8 @@ export const cancelInvitation = api<{ token: string }, CancelInvitationResponse>
   async ({ token }) => {
     const userContext = await getUserContext();
 
-    const invitation = await marketCenterRepository.findInvitationByToken(token);
+    const invitation =
+      await marketCenterRepository.findInvitationByToken(token);
 
     if (!invitation) {
       throw APIError.notFound("Invitation not found");
@@ -436,14 +480,21 @@ export const cancelInvitation = api<{ token: string }, CancelInvitationResponse>
 
     // Verify user has permission
     if (invitation.marketCenterId !== userContext.marketCenterId) {
-      throw APIError.permissionDenied("You do not have permission to cancel this invitation");
+      throw APIError.permissionDenied(
+        "You do not have permission to cancel this invitation"
+      );
     }
 
     if (invitation.status !== "PENDING") {
-      throw APIError.failedPrecondition(`Cannot cancel invitation with status: ${invitation.status}`);
+      throw APIError.failedPrecondition(
+        `Cannot cancel invitation with status: ${invitation.status}`
+      );
     }
 
-    await marketCenterRepository.updateInvitationStatus(invitation.id, "CANCELLED");
+    await marketCenterRepository.updateInvitationStatus(
+      invitation.id,
+      "CANCELLED"
+    );
 
     // Log the cancellation
     await marketCenterRepository.createHistory({
@@ -476,9 +527,10 @@ export const listInvitations = api<void, ListInvitationsResponse>(
       return { invitations: [] };
     }
 
-    const invitations = await marketCenterRepository.findInvitationsByMarketCenterId(
-      userContext.marketCenterId
-    );
+    const invitations =
+      await marketCenterRepository.findInvitationsByMarketCenterId(
+        userContext.marketCenterId
+      );
 
     return { invitations };
   }
