@@ -22,12 +22,12 @@ import {
   Ticket,
   Building2,
   Building,
-  Info,
   BookMarked,
   Folder,
   Clock,
   ChartNoAxesCombined,
   CreditCard,
+  TagIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -135,6 +135,7 @@ export function AppSidebar({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
             {/* ADMIN - USER MANAGEMENT */}
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
@@ -187,6 +188,19 @@ export function AppSidebar({
                   >
                     <BookMarked className="text-muted-foreground" />
                     Market Center
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {/* CATEGORY MANAGEMENT */}
+            {permissions?.canManageMarketCenterCategories && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link
+                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=categories`}
+                  >
+                    <TagIcon className="text-muted-foreground" /> Ticket
+                    Categories
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

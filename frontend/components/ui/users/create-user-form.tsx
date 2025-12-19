@@ -42,12 +42,14 @@ type CreateUserProps = {
   showCreateUserForm: boolean;
   setShowCreateUserForm: React.Dispatch<React.SetStateAction<boolean>>;
   queryInvalidation: () => Promise<void>;
+  existingEmails: string[];
 };
 
 export default function CreateUser({
   showCreateUserForm,
   setShowCreateUserForm,
   queryInvalidation,
+  existingEmails,
 }: CreateUserProps) {
   const [formData, setFormData] = useState<InviteUserForm>({
     name: "",
@@ -56,7 +58,8 @@ export default function CreateUser({
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [invitationResult, setInvitationResult] = useState<InvitationResponse | null>(null);
+  const [invitationResult, setInvitationResult] =
+    useState<InvitationResponse | null>(null);
   const [copied, setCopied] = useState(false);
 
   const { permissions } = useUserRole();
@@ -71,7 +74,9 @@ export default function CreateUser({
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = "Name is required";
 
-    if (!formData.email.trim()) {
+    if (existingEmails.includes(formData.email)) {
+      errors.email = "Invitation already sent to this email";
+    } else if (!formData.email.trim()) {
       errors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = "Invalid email format";
@@ -102,8 +107,8 @@ export default function CreateUser({
       const response = await fetchWithAuth("/invitations", {
         method: "POST",
         body: JSON.stringify({
-          email: formData.email,
           name: formData.name,
+          email: formData.email,
           role: formData.role,
         }),
       });
@@ -156,8 +161,8 @@ export default function CreateUser({
           <div className="space-y-4">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <p className="text-sm text-green-800">
-                The user will receive an email with instructions to sign up.
-                You can also share the signup link directly:
+                The user will receive an email with instructions to sign up. You
+                can also share the signup link directly:
               </p>
             </div>
 
@@ -260,7 +265,9 @@ export default function CreateUser({
               }
               disabled={!permissions?.canChangeUserRoles}
             >
-              <SelectTrigger className={formErrors.role ? "border-destructive" : ""}>
+              <SelectTrigger
+                className={formErrors.role ? "border-destructive" : ""}
+              >
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>

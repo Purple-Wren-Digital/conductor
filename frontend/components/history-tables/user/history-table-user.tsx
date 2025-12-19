@@ -171,7 +171,7 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                     <ToolTip
                       content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue ? log?.newValue : "N/a"}`}
                       trigger={
-                        <p className="font-medium truncate cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                        <p className="font-medium ">
                           {log?.newValue && log?.field === "role"
                             ? log.newValue.split("_").join(" ")
                             : log?.newValue

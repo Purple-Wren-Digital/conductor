@@ -33,6 +33,7 @@ interface TicketCategoryRow {
 
 interface TeamInvitationRow {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
   status: InvitationStatus;
@@ -108,6 +109,7 @@ function rowToCategory(row: TicketCategoryRow): TicketCategory {
 function rowToInvitation(row: TeamInvitationRow): TeamInvitation {
   return {
     id: row.id,
+    name: row.name,
     email: row.email,
     role: row.role,
     status: row.status,
@@ -358,6 +360,7 @@ export const marketCenterRepository = {
   },
 
   async createInvitation(data: {
+    name: string;
     email: string;
     role: UserRole;
     marketCenterId?: string;
@@ -367,8 +370,9 @@ export const marketCenterRepository = {
   }): Promise<TeamInvitation> {
     const row = await db.queryRow<TeamInvitationRow>`
       INSERT INTO team_invitations (
-        email, role, status, market_center_id, invited_by, token, expires_at, created_at, updated_at
+        name, email, role, status, market_center_id, invited_by, token, expires_at, created_at, updated_at
       ) VALUES (
+        ${data.name},
         ${data.email},
         ${data.role},
         'PENDING',

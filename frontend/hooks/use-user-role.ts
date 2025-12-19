@@ -25,6 +25,7 @@ export interface UserPermissions {
   canAccessSettings: boolean;
   canAccessReports: boolean;
   canManageSubscription: boolean;
+  canManageMarketCenterCategories: boolean;
 }
 
 export function getUserPermissions(role: UserRole): UserPermissions {
@@ -51,6 +52,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: true,
         canAccessReports: true,
         canManageSubscription: true,
+        canManageMarketCenterCategories: true,
       };
     case "STAFF_LEADER":
       return {
@@ -74,6 +76,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: true,
         canAccessReports: true,
         canManageSubscription: false,
+        canManageMarketCenterCategories: true,
       };
     case "STAFF":
       return {
@@ -97,6 +100,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: true,
         canAccessReports: false,
         canManageSubscription: false,
+        canManageMarketCenterCategories: true,
       };
     case "AGENT":
       return {
@@ -120,6 +124,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: false,
         canAccessReports: false,
         canManageSubscription: false,
+        canManageMarketCenterCategories: false,
       };
     default:
       return {
@@ -143,6 +148,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessSettings: false,
         canAccessReports: false,
         canManageSubscription: false,
+        canManageMarketCenterCategories: false,
       };
   }
 }

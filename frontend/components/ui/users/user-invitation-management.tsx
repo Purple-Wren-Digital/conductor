@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,18 +33,29 @@ import {
 import { formatPaginationText } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
+import { MarketCenter, UserRole } from "@/lib/types";
 
-type InvitationStatus = "All" | "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+type InvitationStatus =
+  | "All"
+  | "PENDING"
+  | "ACCEPTED"
+  | "EXPIRED"
+  | "CANCELLED";
 
 interface TeamInvitation {
   id: string;
+  name: string;
   email: string;
-  role: string;
+  role: UserRole;
   status: InvitationStatus;
+  marketCenterId?: string;
+  invitedBy?: string;
   token: string;
-  expiresAt: string;
-  acceptedAt?: string;
-  createdAt: string;
+  expiresAt: Date;
+  acceptedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  marketCenter?: MarketCenter;
 }
 
 const statusOptions: InvitationStatus[] = [
@@ -71,7 +82,10 @@ const getStatusIcon = (status: string) => {
 };
 
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const variants: Record<
+    string,
+    "default" | "secondary" | "destructive" | "outline"
+  > = {
     PENDING: "secondary",
     ACCEPTED: "default",
     EXPIRED: "outline",
@@ -130,6 +144,11 @@ export default function UserInvitationManagement() {
     fetchInvitations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissions?.canManageAllUsers]);
+
+  const existingEmails = useMemo(
+    () => invitations.map((inv) => inv.email),
+    [invitations]
+  );
 
   const handleResendInvitation = async (token: string) => {
     setActionLoading(token);
@@ -193,7 +212,9 @@ export default function UserInvitationManagement() {
   );
 
   const pendingCount = invitations.filter((i) => i.status === "PENDING").length;
-  const acceptedCount = invitations.filter((i) => i.status === "ACCEPTED").length;
+  const acceptedCount = invitations.filter(
+    (i) => i.status === "ACCEPTED"
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -298,11 +319,13 @@ export default function UserInvitationManagement() {
           ) : (
             <div
               className={`space-y-3 transition-opacity duration-300 ${
-                loadingInvitations ? "opacity-50 pointer-events-none" : "opacity-100"
+                loadingInvitations
+                  ? "opacity-50 pointer-events-none"
+                  : "opacity-100"
               }`}
             >
               {paginatedInvitations.length > 0 ? (
-                paginatedInvitations.map((invitation) => (
+                paginatedInvitations.map((invitation: TeamInvitation) => (
                   <div
                     key={invitation.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -312,18 +335,31 @@ export default function UserInvitationManagement() {
                         <Mail className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
+                        {invitation?.name && (
+                          <span className="text-sm text-muted-foreground">
+                            {invitation.name}
+                          </span>
+                        )}
                         <p className="font-medium">{invitation.email}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="capitalize">{invitation.role.toLowerCase()}</span>
+                          <span className="capitalize">
+                            {invitation.role.split("_").join(" ").toLowerCase()}
+                          </span>
                           <span>•</span>
                           <span>
-                            Sent {new Date(invitation.createdAt).toLocaleDateString()}
+                            Sent{" "}
+                            {new Date(
+                              invitation.createdAt
+                            ).toLocaleDateString()}
                           </span>
                           {invitation.status === "PENDING" && (
                             <>
                               <span>•</span>
                               <span>
-                                Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                                Expires{" "}
+                                {new Date(
+                                  invitation.expiresAt
+                                ).toLocaleDateString()}
                               </span>
                             </>
                           )}
@@ -339,7 +375,9 @@ export default function UserInvitationManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleCopySignupUrl(invitation.token)}
+                            onClick={() =>
+                              handleCopySignupUrl(invitation.token)
+                            }
                             title="Copy signup URL"
                           >
                             <Copy className="h-4 w-4" />
@@ -347,20 +385,26 @@ export default function UserInvitationManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleResendInvitation(invitation.token)}
+                            onClick={() =>
+                              handleResendInvitation(invitation.token)
+                            }
                             disabled={actionLoading === invitation.token}
                             title="Resend invitation"
                           >
                             <RefreshCw
                               className={`h-4 w-4 ${
-                                actionLoading === invitation.token ? "animate-spin" : ""
+                                actionLoading === invitation.token
+                                  ? "animate-spin"
+                                  : ""
                               }`}
                             />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleCancelInvitation(invitation.token)}
+                            onClick={() =>
+                              handleCancelInvitation(invitation.token)
+                            }
                             disabled={actionLoading === invitation.token}
                             title="Cancel invitation"
                             className="text-destructive hover:text-destructive"
@@ -374,13 +418,17 @@ export default function UserInvitationManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleResendInvitation(invitation.token)}
+                          onClick={() =>
+                            handleResendInvitation(invitation.token)
+                          }
                           disabled={actionLoading === invitation.token}
                           className="gap-1"
                         >
                           <RefreshCw
                             className={`h-3 w-3 ${
-                              actionLoading === invitation.token ? "animate-spin" : ""
+                              actionLoading === invitation.token
+                                ? "animate-spin"
+                                : ""
                             }`}
                           />
                           Resend
@@ -444,6 +492,7 @@ export default function UserInvitationManagement() {
         showCreateUserForm={showCreateUserForm}
         setShowCreateUserForm={setShowCreateUserForm}
         queryInvalidation={fetchInvitations}
+        existingEmails={existingEmails}
       />
     </div>
   );

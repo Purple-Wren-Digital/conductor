@@ -28,7 +28,7 @@ export async function getUserContext(): Promise<UserContext> {
     );
 
     // If found, update with Clerk user ID
-    if (existingUser) {
+    if (existingUser && existingUser.isActive === true) {
       await userRepository.update(existingUser.id, {
         clerkId: authData.userID,
       });
@@ -37,17 +37,20 @@ export async function getUserContext(): Promise<UserContext> {
       const userInvitation = await marketCenterRepository.findInvitationByEmail(
         authData.emailAddress
       );
-      const nameParts = authData.emailAddress.split("@")[0].split(/[._-]/);
-      const name = nameParts
-        .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
-      if (userInvitation) {
+
+      const isInvalid =
+        (userInvitation?.expiresAt &&
+          new Date() > new Date(userInvitation?.expiresAt)) ||
+        userInvitation?.status === "EXPIRED" ||
+        userInvitation?.status === "CANCELLED";
+
+      if (userInvitation && !isInvalid) {
         user = await userRepository.create({
+          name: userInvitation?.name ? userInvitation.name : "User",
           email: authData.emailAddress,
           clerkId: authData.userID,
           role: userInvitation.role ?? "AGENT",
           marketCenterId: userInvitation.marketCenterId,
-          name: name,
         });
       }
     }
