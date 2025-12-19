@@ -54,7 +54,11 @@ export default function EmailTemplateEditor() {
   const [buttonText, setButtonText] = useState("");
   const [visibleFields, setVisibleFields] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
-  const [errors, setErrors] = useState<{ subject?: string; greeting?: string; mainMessage?: string }>({});
+  const [errors, setErrors] = useState<{
+    subject?: string;
+    greeting?: string;
+    mainMessage?: string;
+  }>({});
 
   // Dialog state
   const [showPreview, setShowPreview] = useState(false);
@@ -62,7 +66,9 @@ export default function EmailTemplateEditor() {
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
   // Track focused field for variable insertion
-  const [focusedField, setFocusedField] = useState<"subject" | "greeting" | "mainMessage" | null>(null);
+  const [focusedField, setFocusedField] = useState<
+    "subject" | "greeting" | "mainMessage" | null
+  >(null);
   const subjectRef = useRef<HTMLInputElement>(null);
   const greetingRef = useRef<HTMLInputElement>(null);
 
@@ -70,6 +76,7 @@ export default function EmailTemplateEditor() {
   const editor = useEditor({
     extensions: [StarterKit],
     content: "",
+    immediatelyRender: false,
     onUpdate: () => {
       setIsDirty(true);
     },
@@ -99,7 +106,9 @@ export default function EmailTemplateEditor() {
       setVisibleFields(customization?.visibleFields ?? defaults.visibleFields);
 
       if (editor) {
-        editor.commands.setContent(customization?.mainMessage ?? defaults.mainMessage);
+        editor.commands.setContent(
+          customization?.mainMessage ?? defaults.mainMessage
+        );
       }
 
       setIsDirty(false);
@@ -145,21 +154,29 @@ export default function EmailTemplateEditor() {
       const input = subjectRef.current;
       const start = input.selectionStart ?? subject.length;
       const end = input.selectionEnd ?? subject.length;
-      const newValue = subject.slice(0, start) + variableText + subject.slice(end);
+      const newValue =
+        subject.slice(0, start) + variableText + subject.slice(end);
       handleSubjectChange(newValue);
       setTimeout(() => {
         input.focus();
-        input.setSelectionRange(start + variableText.length, start + variableText.length);
+        input.setSelectionRange(
+          start + variableText.length,
+          start + variableText.length
+        );
       }, 0);
     } else if (focusedField === "greeting" && greetingRef.current) {
       const input = greetingRef.current;
       const start = input.selectionStart ?? greeting.length;
       const end = input.selectionEnd ?? greeting.length;
-      const newValue = greeting.slice(0, start) + variableText + greeting.slice(end);
+      const newValue =
+        greeting.slice(0, start) + variableText + greeting.slice(end);
       handleGreetingChange(newValue);
       setTimeout(() => {
         input.focus();
-        input.setSelectionRange(start + variableText.length, start + variableText.length);
+        input.setSelectionRange(
+          start + variableText.length,
+          start + variableText.length
+        );
       }, 0);
     } else if (focusedField === "mainMessage" && editor) {
       editor.chain().focus().insertContent(variableText).run();
@@ -173,7 +190,11 @@ export default function EmailTemplateEditor() {
 
   // Validate form
   const validate = (): boolean => {
-    const newErrors: { subject?: string; greeting?: string; mainMessage?: string } = {};
+    const newErrors: {
+      subject?: string;
+      greeting?: string;
+      mainMessage?: string;
+    } = {};
 
     if (!subject.trim()) {
       newErrors.subject = "Subject is required";
@@ -306,9 +327,7 @@ export default function EmailTemplateEditor() {
           <h1 className="text-2xl font-bold">
             {templateData?.label ?? "Template"}
           </h1>
-          <p className="text-muted-foreground">
-            Email Template
-          </p>
+          <p className="text-muted-foreground">Email Template</p>
         </div>
       </div>
 
@@ -338,7 +357,9 @@ export default function EmailTemplateEditor() {
           <div className="flex items-center justify-between">
             <Label htmlFor="subject">Subject</Label>
           </div>
-          <p className="text-sm text-muted-foreground">The email subject line</p>
+          <p className="text-sm text-muted-foreground">
+            The email subject line
+          </p>
           <Input
             id="subject"
             ref={subjectRef}
@@ -358,7 +379,9 @@ export default function EmailTemplateEditor() {
           <div className="flex items-center justify-between">
             <Label htmlFor="greeting">Greeting</Label>
           </div>
-          <p className="text-sm text-muted-foreground">How to greet the recipient</p>
+          <p className="text-sm text-muted-foreground">
+            How to greet the recipient
+          </p>
           <Input
             id="greeting"
             ref={greetingRef}
@@ -376,7 +399,9 @@ export default function EmailTemplateEditor() {
         {/* Main Message Field - TipTap Editor */}
         <section className="space-y-2">
           <Label>Main Message</Label>
-          <p className="text-sm text-muted-foreground">The main content of the email</p>
+          <p className="text-sm text-muted-foreground">
+            The main content of the email
+          </p>
 
           {/* Formatting Toolbar */}
           <div className="flex gap-1 border rounded-t-md p-1 bg-muted/30">
@@ -419,7 +444,9 @@ export default function EmailTemplateEditor() {
           <div className="flex items-center justify-between">
             <Label htmlFor="buttonText">Button Text</Label>
           </div>
-          <p className="text-sm text-muted-foreground">Leave empty to hide button</p>
+          <p className="text-sm text-muted-foreground">
+            Leave empty to hide button
+          </p>
           <Input
             id="buttonText"
             value={buttonText}
@@ -431,21 +458,28 @@ export default function EmailTemplateEditor() {
         {/* Visible Fields Section */}
         <fieldset className="space-y-3" role="group">
           <Label>Visible Fields</Label>
-          <p className="text-sm text-muted-foreground">Fields to show in email</p>
+          <p className="text-sm text-muted-foreground">
+            Fields to show in email
+          </p>
           <div className="space-y-2">
-            {templateData?.emailVisibleFields.map((field) => (
-              <div key={field.key} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`field-${field.key}`}
-                  checked={visibleFields.includes(field.key)}
-                  onCheckedChange={() => handleVisibleFieldToggle(field.key)}
-                  aria-label={field.label}
-                />
-                <Label htmlFor={`field-${field.key}`} className="font-normal cursor-pointer">
-                  {field.label}
-                </Label>
-              </div>
-            ))}
+            {templateData?.emailVisibleFields &&
+              templateData?.emailVisibleFields.length > 0 &&
+              templateData?.emailVisibleFields.map((field) => (
+                <div key={field.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`field-${field.key}`}
+                    checked={visibleFields.includes(field.key)}
+                    onCheckedChange={() => handleVisibleFieldToggle(field.key)}
+                    aria-label={field.label}
+                  />
+                  <Label
+                    htmlFor={`field-${field.key}`}
+                    className="font-normal cursor-pointer"
+                  >
+                    {field.label}
+                  </Label>
+                </div>
+              ))}
           </div>
         </fieldset>
       </div>
@@ -492,7 +526,9 @@ export default function EmailTemplateEditor() {
             {/* Email Subject */}
             <div className="border-b pb-2">
               <p className="text-sm text-muted-foreground">Subject:</p>
-              <p className="font-semibold">{previewMutation.data?.preview.subject}</p>
+              <p className="font-semibold">
+                {previewMutation.data?.preview.subject}
+              </p>
             </div>
 
             {/* Email Body */}
@@ -500,20 +536,30 @@ export default function EmailTemplateEditor() {
               <p>{previewMutation.data?.preview.greeting}</p>
               <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: previewMutation.data?.preview.mainMessage || "" }}
+                dangerouslySetInnerHTML={{
+                  __html: previewMutation.data?.preview.mainMessage || "",
+                }}
               />
 
               {/* Visible Fields */}
-              {previewMutation.data?.preview.visibleFieldsData && previewMutation.data.preview.visibleFieldsData.length > 0 && (
-                <div className="bg-muted/30 rounded p-4 space-y-2">
-                  {previewMutation.data.preview.visibleFieldsData.map((field) => (
-                    <div key={field.key} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{field.label}:</span>
-                      <span className="font-medium">{field.value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {previewMutation.data?.preview.visibleFieldsData &&
+                previewMutation.data.preview.visibleFieldsData.length > 0 && (
+                  <div className="bg-muted/30 rounded p-4 space-y-2">
+                    {previewMutation.data.preview.visibleFieldsData.map(
+                      (field) => (
+                        <div
+                          key={field.key}
+                          className="flex justify-between text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {field.label}:
+                          </span>
+                          <span className="font-medium">{field.value}</span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
 
               {/* Button */}
               {previewMutation.data?.preview.buttonText && (
@@ -549,7 +595,10 @@ export default function EmailTemplateEditor() {
       </AlertDialog>
 
       {/* Unsaved Changes Warning */}
-      <AlertDialog open={showUnsavedWarning} onOpenChange={setShowUnsavedWarning}>
+      <AlertDialog
+        open={showUnsavedWarning}
+        onOpenChange={setShowUnsavedWarning}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>

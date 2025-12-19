@@ -43,18 +43,16 @@ export default function TemplateCustomizationList({
   initialMarketCenterId,
 }: TemplateCustomizationListProps) {
   const router = useRouter();
-  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string | undefined>(
-    initialMarketCenterId
-  );
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
+    string | undefined
+  >(initialMarketCenterId);
 
   // Check permissions
   const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
 
   // Fetch market centers
-  const {
-    data: marketCentersData,
-    isLoading: isLoadingMarketCenters,
-  } = useFetchAllMarketCenters(role);
+  const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
+    useFetchAllMarketCenters(role);
 
   // Fetch template statuses
   const {
@@ -135,7 +133,8 @@ export default function TemplateCustomizationList({
         <div>
           <h1 className="text-2xl font-bold">Notification Templates</h1>
           <p className="text-muted-foreground">
-            Customize email and in-app notification templates for your market center
+            Customize email and in-app notification templates for your market
+            center
           </p>
         </div>
 
@@ -183,7 +182,9 @@ export default function TemplateCustomizationList({
       {selectedMarketCenterId && isError && (
         <div className="flex flex-col items-center justify-center py-12 border rounded-lg bg-destructive/10">
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Failed to Load Templates</h2>
+          <h2 className="text-lg font-semibold mb-2">
+            Failed to Load Templates
+          </h2>
           <p className="text-muted-foreground mb-4">
             {error?.message || "An error occurred while loading templates."}
           </p>
