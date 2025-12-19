@@ -121,7 +121,7 @@ describe("Subscription Check", () => {
       mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue(null);
 
       await expect(requireActiveSubscription("mc-123")).rejects.toThrow(
-        "No subscription found. Please subscribe to continue."
+        "No subscription found for market center. Please subscribe to continue. (MC: mc-123)"
       );
     });
 
@@ -346,7 +346,7 @@ describe("Subscription Check", () => {
       );
 
       await expect(checkCanAddUser("mc-123")).rejects.toThrow(
-        "No subscription found. Please subscribe to continue."
+        "No subscription found for your organization. Please subscribe to continue. (MC: mc-123)"
       );
     });
   });

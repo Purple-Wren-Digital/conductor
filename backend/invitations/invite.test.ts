@@ -18,6 +18,9 @@ const {
     findById: vi.fn(),
     findByEmail: vi.fn(),
     findByClerkId: vi.fn(),
+    findByIdWithSettings: vi.fn(),
+    createUserSettings: vi.fn(),
+    createNotificationPreferences: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
   },
@@ -370,6 +373,10 @@ describe("Invitation System", () => {
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(newUser);
+      mockUserRepository.findByIdWithSettings.mockResolvedValue({
+        ...newUser,
+        userSettings: { id: "settings-123", notificationPreferences: [{}] },
+      });
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
         undefined
       );
@@ -406,6 +413,10 @@ describe("Invitation System", () => {
       );
       mockUserRepository.findByClerkId.mockResolvedValue(existingUser);
       mockUserRepository.update.mockResolvedValue(existingUser);
+      mockUserRepository.findByIdWithSettings.mockResolvedValue({
+        ...existingUser,
+        userSettings: { id: "settings-123", notificationPreferences: [{}] },
+      });
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
         undefined
       );
@@ -439,6 +450,10 @@ describe("Invitation System", () => {
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(existingUser);
       mockUserRepository.update.mockResolvedValue(existingUser);
+      mockUserRepository.findByIdWithSettings.mockResolvedValue({
+        ...existingUser,
+        userSettings: { id: "settings-123", notificationPreferences: [{}] },
+      });
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
         undefined
       );
@@ -493,6 +508,10 @@ describe("Invitation System", () => {
       mockUserRepository.findByClerkId.mockResolvedValue(null);
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(newUser);
+      mockUserRepository.findByIdWithSettings.mockResolvedValue({
+        ...newUser,
+        userSettings: { id: "settings-123", notificationPreferences: [{}] },
+      });
       mockMarketCenterRepository.updateInvitationStatus.mockResolvedValue(
         undefined
       );
