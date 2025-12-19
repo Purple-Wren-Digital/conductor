@@ -27,6 +27,7 @@ interface TicketCategoryRow {
   description: string | null;
   market_center_id: string;
   default_assignee_id: string | null;
+  is_active: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -101,6 +102,7 @@ function rowToCategory(row: TicketCategoryRow): TicketCategory {
     description: row.description,
     marketCenterId: row.market_center_id,
     defaultAssigneeId: row.default_assignee_id,
+    isActive: row.is_active ?? true,
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
   };
@@ -269,6 +271,7 @@ export const marketCenterRepository = {
       name: string;
       description: string | null;
       defaultAssigneeId: string | null;
+      isActive: boolean;
     }>
   ): Promise<TicketCategory | null> {
     const updates: string[] = ["updated_at = NOW()"];
@@ -286,6 +289,10 @@ export const marketCenterRepository = {
     if (data.defaultAssigneeId !== undefined) {
       updates.push(`default_assignee_id = $${paramIndex++}`);
       values.push(data.defaultAssigneeId);
+    }
+    if (data.isActive !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      values.push(data.isActive);
     }
 
     values.push(id);
