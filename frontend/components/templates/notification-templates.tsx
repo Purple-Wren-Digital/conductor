@@ -3,17 +3,11 @@
 import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import NotificationEditor from "@/components/ui/TextArea/NotificationEditor";
+import { NotificationEditor } from "@/components/ui/tiptap/notification-editor";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { API_BASE } from "@/lib/api/utils";
 import type { NotificationTemplateFormData } from "@/lib/types";
@@ -88,6 +82,8 @@ export default function NotificationTemplates({
     setFormData({
       subject: template.subject ?? "",
       body: template.body ?? "",
+      // subject: template.subject ?? { type: "doc", content: [] },
+      // body: template.body ?? { type: "doc", content: [] },
       marketCenters: template.marketCenters.map((mc) => ({
         id: mc.id,
         name: mc.name,
@@ -156,7 +152,14 @@ export default function NotificationTemplates({
   const handleUpdateTemplates = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData || !formData?.subject.trim() || !formData?.body.trim()) {
+    if (
+      !formData ||
+      !formData?.subject ||
+      !formData?.body
+      // ||
+      // !formData?.subject.trim() ||
+      // !formData?.body.trim()
+    ) {
       toast.error("Subject and Body cannot be empty");
       return;
     }
@@ -247,41 +250,35 @@ export default function NotificationTemplates({
           </div>
         </div>
       )}
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="in-app-notification-templates">
-          <AccordionTrigger className="text-xl font-semibold">
-            In-App Notifications
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {notificationTemplates &&
-                notificationTemplates.map((template, index) => {
-                  const isSelected =
-                    editingTemplates?.templateName === template.templateName;
-                  return (
-                    <Button
-                      key={index}
-                      variant={"link"}
-                      className="space-y-2 justify-start"
-                      onClick={() => handleStartEditingTemplate(template)}
-                    >
-                      <ToolTip
-                        content={template.templateDescription}
-                        trigger={
-                          <p
-                            className={`font-medium text-md ${isSelected && "underline"} `}
-                          >
-                            {template.templateName}
-                          </p>
-                        }
-                      />
-                    </Button>
-                  );
-                })}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <section className="w-full">
+        <h3 className="text-xl font-semibold mb-4">In-App Notifications</h3>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+          {notificationTemplates &&
+            notificationTemplates.map((template, index) => {
+              const isSelected =
+                editingTemplates?.templateName === template.templateName;
+              return (
+                <Button
+                  key={index}
+                  variant={"link"}
+                  className="space-y-2 justify-start"
+                  onClick={() => handleStartEditingTemplate(template)}
+                >
+                  <ToolTip
+                    content={template.templateDescription}
+                    trigger={
+                      <p
+                        className={`font-medium text-md ${isSelected && "underline"} `}
+                      >
+                        {template.templateName}
+                      </p>
+                    }
+                  />
+                </Button>
+              );
+            })}
+        </div>
+      </section>
 
       <Separator />
 
@@ -360,7 +357,7 @@ export default function NotificationTemplates({
                     </p>
                   )}
                 </div>
-                <Label className="text-sm font-medium text-muted-foreground">
+                <Label className="text-xs font-medium text-muted-foreground">
                   Enable or disable this notification for{" "}
                   {editingTemplates?.marketCenters &&
                   editingTemplates?.marketCenters.length > 1
@@ -376,18 +373,15 @@ export default function NotificationTemplates({
                   Subject
                 </Label>
                 <NotificationEditor
-                  label="subject"
                   id={`subject-${editingTemplates.templateName}`}
-                  initialValue={editingTemplates.subject}
                   templateVariables={templateVariables}
-                  isEditing={editingTemplates ? true : false}
+                  disabled={isSubmitting || !editingTemplates}
                   value={formData.subject}
                   onChange={(value) => {
                     if (editingTemplates) {
                       setFormData({ ...formData, subject: value });
                     }
                   }}
-                  disabled={isSubmitting || !editingTemplates}
                 />
               </div>
               <div className="space-y-2">
@@ -398,18 +392,15 @@ export default function NotificationTemplates({
                   Body
                 </Label>
                 <NotificationEditor
-                  label="body"
                   id={`body-${editingTemplates.templateName}`}
-                  initialValue={editingTemplates.body}
                   templateVariables={templateVariables}
-                  isEditing={editingTemplates ? true : false}
+                  disabled={isSubmitting || !editingTemplates}
                   value={formData.body}
                   onChange={(value) => {
                     if (editingTemplates) {
                       setFormData({ ...formData, body: value });
                     }
                   }}
-                  disabled={isSubmitting || !editingTemplates}
                 />
               </div>
               <div className="pt-5 flex flex-wrap items-center gap-2 md:justify-end ">

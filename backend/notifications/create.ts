@@ -53,7 +53,7 @@ export const create = api<CreateNotificationRequest>(
     }
 
     if (!foundUser.isActive) {
-      throw APIError.notFound("User not found");
+      throw APIError.canceled("User is inactive");
     }
 
     let marketCenterNotificationPreferences: MarketCenterNotificationPreferences[] =

@@ -117,7 +117,7 @@ export interface NotificationTemplate {
   templateDescription: string;
   category: NotificationCategory;
   channel: NotificationChannel;
-  type: string;
+  type?: string;
   subject: string;
   body: string;
   isDefault: boolean;
@@ -140,4 +140,75 @@ export interface PushNotificationPayload {
   userId: string;
   title: string;
   body: string;
+}
+
+export type NotificationContext = {
+  assigneeId?: string;
+  assigneeName?: string;
+  categoryName?: string;
+  categoryDescription?: string;
+  changedDetails?: string;
+  comment?: string;
+  commenterId?: string;
+  commenterName?: string;
+  currentAssignment?: string;
+  creatorId?: string;
+  creatorName?: string;
+  createdOn?: string;
+  dueDate?: string;
+  editorEmail?: string;
+  editorName?: string;
+  editorId?: string;
+  isInternal?: string;
+  marketCenterId?: string;
+  marketCenterName?: string;
+  previousAssignment?: string;
+
+  staffName?: string;
+  surveyorName?: string;
+
+  ticketNumber?: string;
+  ticketTitle?: string;
+
+  updatedOn?: string;
+  updateType?: string;
+  userEmail?: string;
+  userName?: string;
+  userUpdate?: string;
+  [key: string]: string | undefined; // fallback for any new ones
+};
+
+export type NotificationContent = {
+  //   getToken: GetToken;
+  templateName: string;
+  trigger:
+    | "App Permissions"
+    | "Invitation"
+    | "Account Information"
+    | "Ticket Created"
+    | "Ticket Updated"
+    | "Ticket Assignment"
+    | "Mentions"
+    | "New Comments"
+    | "Market Center Assignment"
+    | "Category Assignment"
+    | "Ticket Survey"
+    | "Ticket Survey Results";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: NotificationData;
+};
+
+export interface CreateNotificationPayload {
+  userId: string;
+  templateName?: string;
+  category: NotificationCategory;
+  type: string;
+  title?: string;
+  body?: string;
+  data?: NotificationData;
+  priority?: Urgency;
 }
