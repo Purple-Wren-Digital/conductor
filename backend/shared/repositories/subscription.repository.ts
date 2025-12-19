@@ -102,33 +102,45 @@ export const subscriptionRepository = {
   },
 
   // Find subscription with market center user count (includes pending invitations)
+  // Note: AGENT role users are free and don't count against paid seat limits
   async findByMarketCenterIdWithUserCount(marketCenterId: string): Promise<{
     subscription: Subscription;
     activeUserCount: number;
+    agentCount: number;
     pendingInvitationCount: number;
     totalUsedSeats: number;
   } | null> {
     const subscription = await this.findByMarketCenterId(marketCenterId);
     if (!subscription) return null;
 
-    const userCount = await db.queryRow<{ count: number }>`
+    // Count only non-AGENT users against seat limits (paid seats)
+    const paidUserCount = await db.queryRow<{ count: number }>`
       SELECT COUNT(*)::int as count FROM users
-      WHERE market_center_id = ${marketCenterId} AND is_active = true
+      WHERE market_center_id = ${marketCenterId} AND is_active = true AND role != 'AGENT'
     `;
 
+    // Count AGENT users separately (they're free)
+    const agentUserCount = await db.queryRow<{ count: number }>`
+      SELECT COUNT(*)::int as count FROM users
+      WHERE market_center_id = ${marketCenterId} AND is_active = true AND role = 'AGENT'
+    `;
+
+    // Only count non-AGENT pending invitations against seat limits
     const invitationCount = await db.queryRow<{ count: number }>`
       SELECT COUNT(*)::int as count FROM team_invitations
-      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING'
+      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING' AND role != 'AGENT'
     `;
 
-    const activeUsers = userCount?.count ?? 0;
+    const paidUsers = paidUserCount?.count ?? 0;
+    const agents = agentUserCount?.count ?? 0;
     const pendingInvitations = invitationCount?.count ?? 0;
 
     return {
       subscription,
-      activeUserCount: activeUsers,
+      activeUserCount: paidUsers,
+      agentCount: agents,
       pendingInvitationCount: pendingInvitations,
-      totalUsedSeats: activeUsers + pendingInvitations,
+      totalUsedSeats: paidUsers + pendingInvitations, // Agents don't count
     };
   },
 

@@ -104,7 +104,8 @@ export const inviteTeamMember = api<
 
     // Check subscription seat limits before inviting
     // This counts pending invitations + existing users against the limit
-    await checkCanAddUser(userContext.marketCenterId);
+    // AGENT role invitations are free and don't count against seat limits
+    await checkCanAddUser(userContext.marketCenterId, req.role);
 
     // Get inviter details
     const inviter = await userRepository.findById(userContext.userId);

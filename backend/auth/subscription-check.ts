@@ -49,8 +49,16 @@ export async function requireActiveSubscription(marketCenterId: string): Promise
 /**
  * Check if adding a new user/invitation would exceed subscription limits
  * Counts both active users AND pending invitations against the seat limit
+ *
+ * @param marketCenterId - The market center to check
+ * @param role - Optional role being added. If 'AGENT', the check is skipped since agents are free
  */
-export async function checkCanAddUser(marketCenterId: string): Promise<void> {
+export async function checkCanAddUser(marketCenterId: string, role?: string): Promise<void> {
+  // AGENT role users are free and don't count against seat limits
+  if (role === "AGENT") {
+    return;
+  }
+
   const result = await subscriptionRepository.findByMarketCenterIdWithUserCount(marketCenterId);
 
   if (!result) {
