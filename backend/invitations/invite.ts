@@ -6,6 +6,7 @@ import { canManageTeam } from "../auth/permissions";
 import { checkCanAddUser } from "../auth/subscription-check";
 import { db, userRepository, marketCenterRepository } from "../ticket/db";
 import { sendInvitationEmail } from "./email";
+import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
 import type { UserRole } from "../user/types";
 
@@ -352,8 +353,28 @@ export const acceptInvitation = api<
         clerkId: clerkId,
         role: invitation.role,
         marketCenterId: invitation.marketCenterId,
-        name: invitation.email.split("@")[0], // Will be updated from Clerk profile
+        name: invitation.name || invitation.email.split("@")[0],
       });
+    }
+
+    // Ensure user has notification preferences
+    const userWithSettings = await userRepository.findByIdWithSettings(user.id);
+    if (!userWithSettings?.userSettings || !userWithSettings?.userSettings?.id) {
+      // Create user settings with notification preferences
+      const newSettings = await userRepository.createUserSettings(user.id);
+      await userRepository.createNotificationPreferences(
+        newSettings.id,
+        defaultNotificationPreferences
+      );
+    } else if (
+      !userWithSettings.userSettings.notificationPreferences ||
+      userWithSettings.userSettings.notificationPreferences.length === 0
+    ) {
+      // User settings exist but no notification preferences
+      await userRepository.createNotificationPreferences(
+        userWithSettings.userSettings.id,
+        defaultNotificationPreferences
+      );
     }
 
     // Mark invitation as accepted

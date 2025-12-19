@@ -1,7 +1,28 @@
 import { APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { marketCenterRepository, userRepository } from "../ticket/db";
+import { defaultNotificationPreferences } from "../utils";
 import type { UserRole } from "../user/types";
+
+// Helper function to ensure user has notification preferences
+async function ensureNotificationPreferences(userId: string): Promise<void> {
+  const userWithSettings = await userRepository.findByIdWithSettings(userId);
+  if (!userWithSettings?.userSettings || !userWithSettings?.userSettings?.id) {
+    const newSettings = await userRepository.createUserSettings(userId);
+    await userRepository.createNotificationPreferences(
+      newSettings.id,
+      defaultNotificationPreferences
+    );
+  } else if (
+    !userWithSettings.userSettings.notificationPreferences ||
+    userWithSettings.userSettings.notificationPreferences.length === 0
+  ) {
+    await userRepository.createNotificationPreferences(
+      userWithSettings.userSettings.id,
+      defaultNotificationPreferences
+    );
+  }
+}
 
 export interface UserContext {
   userId: string;
@@ -52,6 +73,8 @@ export async function getUserContext(): Promise<UserContext> {
           role: userInvitation.role ?? "AGENT",
           marketCenterId: userInvitation.marketCenterId,
         });
+        // Create notification preferences for new user
+        await ensureNotificationPreferences(user.id);
       }
     }
   }
@@ -75,6 +98,8 @@ export async function getUserContext(): Promise<UserContext> {
       role: "AGENT", // New users default to AGENT role
       name: name,
     });
+    // Create notification preferences for new user
+    await ensureNotificationPreferences(user.id);
   }
 
   return {

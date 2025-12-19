@@ -22,7 +22,7 @@ export async function requireActiveSubscription(marketCenterId: string): Promise
 
   if (!subscription) {
     throw APIError.failedPrecondition(
-      "No subscription found. Please subscribe to continue."
+      `No subscription found for market center. Please subscribe to continue. (MC: ${marketCenterId?.slice(-8) || 'none'})`
     );
   }
 
@@ -63,7 +63,7 @@ export async function checkCanAddUser(marketCenterId: string, role?: string): Pr
 
   if (!result) {
     throw APIError.failedPrecondition(
-      "No subscription found. Please subscribe to continue."
+      `No subscription found for your organization. Please subscribe to continue. (MC: ${marketCenterId?.slice(-8) || 'none'})`
     );
   }
 
