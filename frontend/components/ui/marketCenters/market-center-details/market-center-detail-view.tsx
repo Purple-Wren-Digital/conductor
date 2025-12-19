@@ -312,10 +312,6 @@ export default function MarketCenterDetailView({
           <MarketCenterHistory marketCenterId={marketCenterId} />
         </TabsContent>
 
-        <TabsContent value="activity">
-          <MarketCenterHistory marketCenterId={marketCenterId} />
-        </TabsContent>
-
         {role === "ADMIN" && (
           <TabsContent value="notification-preferences">
             <MarketCenterNotificationPreferences

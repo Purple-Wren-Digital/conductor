@@ -160,6 +160,8 @@ export default function MarketCenterHistory({
         return <Mailbox className="h-3 w-3" />;
       case "ADD":
         return <CirclePlus className="h-3 w-3" />;
+      case "CANCEL_INVITE":
+        return <Trash2 className="h-3 w-3" />;
       case "REMOVE":
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
@@ -208,16 +210,20 @@ export default function MarketCenterHistory({
               processedLogs.length > 0 &&
               processedLogs.map(
                 (log: FormattedMarketCenterHistory, index: number) => {
+                  if (!log) return null;
+                  // if (log.field)
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
                       <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                         {getActionIcon(log.action)}
-                        {log.action.toLowerCase()}
+                        {log.action.split("_").join(" ").toLowerCase()}
                       </TableCell>
                       {/* FIELD */}
-                      <TableCell className="font-semibold">
-                        {log?.field ? capitalizeEveryWord(log?.field) : "N/a"}
+                      <TableCell className="font-semibold capitalize">
+                        {log?.field
+                          ? log.field.split("_").join(" ").toLowerCase()
+                          : "N/a"}
                       </TableCell>
                       {/* NEW VALUE */}
                       <TableCell
