@@ -107,6 +107,16 @@ const EditUserProfile = ({
           body: JSON.stringify(formData),
         });
 
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (errorData?.message && typeof errorData.message === "string") {
+            toast.error(`Error: ${errorData.message}`);
+            setFormErrors({ general: errorData.message });
+            throw new Error(errorData.message);
+          }
+          throw new Error("Failed to update user");
+        }
+
         const data = await response.json();
         if (!data || !data?.user)
           throw new Error("Prisma - Updated data was not found");
@@ -117,8 +127,9 @@ const EditUserProfile = ({
         setCurrentUser(data);
         toast.success("Profile updated");
       },
-      onError: () => {
+      onError: (error) => {
         toast.error("Failed to update user");
+        console.error("Update user error:", error);
       },
       onSettled: async () => {
         await invalidateUserQuery;
@@ -237,11 +248,15 @@ const EditUserProfile = ({
                 }
               />
               <p className="text-sm text-destructive h-5 text-center mt-1">
-                {formErrors?.email} {formErrors?.general}
+                {formErrors?.email}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-4 md:justify-end md:space-y-2">
+          <div className="flex items-center justify-end gap-3 pt-4">
+            {formErrors?.general && (
+              <p className="text-sm text-destructive">{formErrors.general}</p>
+            )}
+
             <Button
               variant="secondary"
               disabled={isSubmitting || !isCurrentUserProfile}
@@ -249,7 +264,7 @@ const EditUserProfile = ({
               className="w-full md:w-fit border"
               onClick={() => handleResetForm(user)}
             >
-              <RotateCcw />
+              <RotateCcw className="size-4" />
               Reset
             </Button>
             <Button
@@ -258,7 +273,7 @@ const EditUserProfile = ({
               aria-label="Submit updates for profile"
               className="w-full md:w-fit"
             >
-              <Save className="h-4 w-4" />
+              <Save className="size-4" />
               {isSubmitting ? "Saving..." : "Save Profile"}
             </Button>
           </div>
