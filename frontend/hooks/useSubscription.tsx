@@ -43,9 +43,9 @@ export function useSubscription() {
         }
         throw new Error("Failed to fetch subscription");
       }
-      console.log("Subscription Response:", response);
+      // console.log("Subscription Response:", response);
       const data = await response.json();
-      console.log("Subscription Data:", data);
+      // console.log("Subscription Data:", data);
       return data;
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes

@@ -52,7 +52,10 @@ function rowToComment(row: CommentRow): Comment {
     ticketId: row.ticket_id,
     userId: row.user_id,
     internal: row.internal,
+    source: row.source,
+    metadata: row.metadata,
     createdAt: fromTimestamp(row.created_at)!,
+    updatedAt: fromTimestamp(row.updated_at) ?? fromTimestamp(row.created_at)!,
   };
 }
 
@@ -66,7 +69,9 @@ export const commentRepository = {
   },
 
   // Find comment by ID with user
-  async findByIdWithUser(id: string): Promise<(Comment & { user?: User }) | null> {
+  async findByIdWithUser(
+    id: string
+  ): Promise<(Comment & { user?: User }) | null> {
     const row = await db.queryRow<CommentRow>`
       SELECT * FROM comments WHERE id = ${id}
     `;
@@ -87,12 +92,15 @@ export const commentRepository = {
   },
 
   // Find comments by ticket ID
-  async findByTicketId(ticketId: string, options?: {
-    includeInternal?: boolean;
-    orderBy?: 'asc' | 'desc';
-  }): Promise<Comment[]> {
+  async findByTicketId(
+    ticketId: string,
+    options?: {
+      includeInternal?: boolean;
+      orderBy?: "asc" | "desc";
+    }
+  ): Promise<Comment[]> {
     const includeInternal = options?.includeInternal ?? true;
-    const orderBy = options?.orderBy?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const orderBy = options?.orderBy?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
     let sql: string;
     const values: any[] = [ticketId];
@@ -116,10 +124,13 @@ export const commentRepository = {
   },
 
   // Find comments by ticket ID with users
-  async findByTicketIdWithUsers(ticketId: string, options?: {
-    includeInternal?: boolean;
-    orderBy?: 'asc' | 'desc';
-  }): Promise<(Comment & { user?: User })[]> {
+  async findByTicketIdWithUsers(
+    ticketId: string,
+    options?: {
+      includeInternal?: boolean;
+      orderBy?: "asc" | "desc";
+    }
+  ): Promise<(Comment & { user?: User })[]> {
     const comments = await this.findByTicketId(ticketId, options);
 
     const result: (Comment & { user?: User })[] = [];
@@ -144,7 +155,7 @@ export const commentRepository = {
     ticketId: string;
     userId: string;
     internal?: boolean;
-    source?: 'WEB' | 'EMAIL' | 'API';
+    source?: "WEB" | "EMAIL" | "API";
     metadata?: Record<string, any>;
   }): Promise<Comment> {
     const row = await db.queryRow<CommentRow>`
@@ -155,8 +166,8 @@ export const commentRepository = {
         ${data.ticketId},
         ${data.userId},
         ${data.internal ?? false},
-        ${data.source ?? 'WEB'},
-        ${toJson(data.metadata ?? { source: data.source ?? 'WEB' })}::jsonb,
+        ${data.source ?? "WEB"},
+        ${toJson(data.metadata ?? { source: data.source ?? "WEB" })}::jsonb,
         NOW(),
         NOW()
       )
@@ -171,7 +182,7 @@ export const commentRepository = {
     ticketId: string;
     userId: string;
     internal?: boolean;
-    source?: 'WEB' | 'EMAIL' | 'API';
+    source?: "WEB" | "EMAIL" | "API";
     metadata?: Record<string, any>;
   }): Promise<Comment & { user: User }> {
     const comment = await this.create(data);
@@ -187,11 +198,14 @@ export const commentRepository = {
   },
 
   // Update comment
-  async update(id: string, data: Partial<{
-    content: string;
-    internal: boolean;
-  }>): Promise<Comment | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async update(
+    id: string,
+    data: Partial<{
+      content: string;
+      internal: boolean;
+    }>
+  ): Promise<Comment | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -208,7 +222,7 @@ export const commentRepository = {
 
     const sql = `
       UPDATE comments
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -224,12 +238,16 @@ export const commentRepository = {
   },
 
   // Count comments for ticket
-  async countByTicketId(ticketId: string, options?: { internal?: boolean }): Promise<number> {
-    let sql = 'SELECT COUNT(*)::int as count FROM comments WHERE ticket_id = $1';
+  async countByTicketId(
+    ticketId: string,
+    options?: { internal?: boolean }
+  ): Promise<number> {
+    let sql =
+      "SELECT COUNT(*)::int as count FROM comments WHERE ticket_id = $1";
     const values: any[] = [ticketId];
 
     if (options?.internal !== undefined) {
-      sql += ' AND internal = $2';
+      sql += " AND internal = $2";
       values.push(options.internal);
     }
 

@@ -44,8 +44,9 @@ export const get = api<
     await getUserContext();
 
     const notificationTemplate = await db.queryRow<NotificationTemplateRow>`
-      SELECT * FROM notification_templates
-      WHERE template_name = ${req.id}
+    SELECT * FROM notification_templates
+    WHERE template_name = ${req.id}
+    AND is_active = true
     `;
 
     if (!notificationTemplate) {
@@ -57,8 +58,8 @@ export const get = api<
         id: notificationTemplate.id,
         templateName: notificationTemplate.template_name,
         templateDescription: notificationTemplate.template_description,
-        subject: notificationTemplate.subject ?? "",
-        body: notificationTemplate.body,
+        subject: notificationTemplate.subject || "",
+        body: notificationTemplate.body || "",
         category: notificationTemplate.category,
         channel: notificationTemplate.channel,
         type: notificationTemplate.category, // Use category as type
