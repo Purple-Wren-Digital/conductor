@@ -307,6 +307,39 @@ describe("Subscription Check", () => {
       await expect(checkCanAddUser("mc-123")).resolves.not.toThrow();
     });
 
+    it("should skip seat check entirely when adding AGENT role", async () => {
+      // Even with seats completely full, AGENT role should be allowed
+      // because agents are free and don't count against seat limits
+      // The repository should NOT even be called
+      await expect(checkCanAddUser("mc-123", "AGENT")).resolves.not.toThrow();
+      expect(mockSubscriptionRepository.findByMarketCenterIdWithUserCount).not.toHaveBeenCalled();
+    });
+
+    it("should still check seats when adding non-AGENT roles", async () => {
+      mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
+        {
+          subscription: createSubscription({
+            includedSeats: 5,
+            additionalSeats: 0,
+          }),
+          activeUserCount: 5,
+          agentCount: 0,
+          pendingInvitationCount: 0,
+          totalUsedSeats: 5,
+        }
+      );
+
+      // STAFF role should still be blocked when seats are full
+      await expect(checkCanAddUser("mc-123", "STAFF")).rejects.toThrow(
+        "Seat limit reached"
+      );
+
+      // ADMIN role should also be blocked
+      await expect(checkCanAddUser("mc-123", "ADMIN")).rejects.toThrow(
+        "Seat limit reached"
+      );
+    });
+
     it("should throw when no subscription found", async () => {
       mockSubscriptionRepository.findByMarketCenterIdWithUserCount.mockResolvedValue(
         null

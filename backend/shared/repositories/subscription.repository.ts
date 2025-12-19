@@ -125,9 +125,10 @@ export const subscriptionRepository = {
       WHERE market_center_id = ${marketCenterId} AND is_active = true AND role = 'AGENT'
     `;
 
+    // Only count non-AGENT pending invitations against seat limits
     const invitationCount = await db.queryRow<{ count: number }>`
       SELECT COUNT(*)::int as count FROM team_invitations
-      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING'
+      WHERE market_center_id = ${marketCenterId} AND status = 'PENDING' AND role != 'AGENT'
     `;
 
     const paidUsers = paidUserCount?.count ?? 0;
