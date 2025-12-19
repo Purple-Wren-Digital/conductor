@@ -2,6 +2,7 @@ import * as React from "react";
 import { Resend } from "resend";
 import { secret } from "encore.dev/config";
 import { formatEmailNotification } from "./utils";
+import { renderCustomizedEmailTemplate } from "./customization-renderer";
 import type { CreateEmailResponse } from "resend";
 import type { Notification } from "../../types";
 
@@ -21,15 +22,35 @@ function getResendClient(): Resend {
   return resend;
 }
 
-type SendEmailNotification = { userEmail: string; notification: Notification };
+type SendEmailNotification = {
+  userEmail: string;
+  notification: Notification;
+  marketCenterId?: string | null;
+  recipientName?: string;
+};
 
 export async function sendEmailNotification({
   userEmail,
   notification,
+  marketCenterId,
+  recipientName,
 }: SendEmailNotification) {
   try {
-    const emailContent: React.ReactElement | null =
-      formatEmailNotification(notification);
+    // First, check for market center customization
+    let emailContent: React.ReactElement | null = null;
+
+    if (marketCenterId) {
+      emailContent = await renderCustomizedEmailTemplate(
+        notification,
+        marketCenterId,
+        recipientName
+      );
+    }
+
+    // If no customization found, fall back to default templates
+    if (!emailContent) {
+      emailContent = formatEmailNotification(notification);
+    }
 
     if (!emailContent) {
       return;
@@ -37,9 +58,8 @@ export async function sendEmailNotification({
 
     const resendClient = getResendClient();
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <noreply@reply.conductorticket.com>", // "Conductor Ticketing <onboarding@resend.dev>", //
+      from: "Conductor Ticketing <noreply@reply.conductorticket.com>",
       to: [userEmail],
-      // replyTo: "<reply>@<conductor.com>",
       subject: `Conductor: ${notification.title}`,
       react: emailContent,
     });

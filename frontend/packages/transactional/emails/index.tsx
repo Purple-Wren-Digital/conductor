@@ -7,3 +7,5 @@ export { default as UserInvitation } from "./UserInvitation";
 export { default as UpdatedTicket } from "./EditedTicketNotification";
 export { default as TicketSurvey } from "./TicketSurvey";
 export { default as TicketSurveyResults } from "./TicketSurveyResults";
+export { default as CustomizableEmail } from "./CustomizableEmail";
+export type { CustomizableEmailProps } from "./CustomizableEmail";

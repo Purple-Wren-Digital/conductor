@@ -9,6 +9,18 @@ class ResizeObserverMock {
 }
 global.ResizeObserver = ResizeObserverMock;
 
+// Polyfill pointer capture methods for Radix UI Select
+if (typeof Element !== "undefined") {
+  Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+  Element.prototype.setPointerCapture = vi.fn();
+  Element.prototype.releasePointerCapture = vi.fn();
+}
+
+// Mock scrollIntoView
+if (typeof Element !== "undefined") {
+  Element.prototype.scrollIntoView = vi.fn();
+}
+
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
