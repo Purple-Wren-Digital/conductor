@@ -5,6 +5,7 @@ import { Comment } from "@/lib/types";
 import { CommentItem } from "./comment-item";
 import { CommentForm } from "./comment-form";
 import { ScrollArea } from "../scroll-area";
+import { useStore } from "@/context/store-provider";
 
 interface CommentListProps {
   ticketId: string;
@@ -12,6 +13,7 @@ interface CommentListProps {
 }
 
 export function CommentList({ ticketId, className }: CommentListProps) {
+  const { currentUser } = useStore();
   const { data: comments, error, isLoading, refetch } = useComments(ticketId);
 
   const commentList = comments || [];
@@ -55,12 +57,13 @@ export function CommentList({ ticketId, className }: CommentListProps) {
           </p>
         ) : (
           <ScrollArea className="h-100">
-            <div className="space-y-4 pr-4">
+            <div className="space-y-3 pr-4">
               {commentList.map((comment: Comment) => (
                 <CommentItem
                   key={comment.id}
                   comment={comment}
                   ticketId={ticketId}
+                  isOwn={currentUser?.id === comment.user?.id}
                 />
               ))}
             </div>
