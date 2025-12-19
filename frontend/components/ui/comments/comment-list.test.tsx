@@ -82,6 +82,8 @@ const createComment = (overrides: Partial<Comment> = {}): Comment => ({
   ticketId: "ticket-1",
   userId: "other-user-id",
   internal: false,
+  source: "WEB",
+  metadata: {},
   createdAt: new Date("2024-01-15T10:00:00Z"),
   user: otherUser,
   ...overrides,

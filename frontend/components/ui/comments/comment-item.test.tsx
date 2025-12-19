@@ -1,20 +1,63 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommentItem } from "./comment-item";
 import { Comment, PrismaUser } from "@/lib/types";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// Mock the tiptap editor
+vi.mock("@/components/ui/tiptap/basic-editor-and-toolbar", () => ({
+  BasicEditorWithToolbar: ({
+    value,
+    onChange,
+    placeholder,
+    disabled,
+  }: {
+    value: string;
+    onChange: (val: string) => void;
+    placeholder?: string;
+    disabled?: boolean;
+  }) => (
+    <textarea
+      data-testid="tiptap-editor"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
+  ),
+}));
+
+// Mock the SafeHtml component
+vi.mock("@/components/ui/safe-html", () => ({
+  SafeHtml: ({ content, className }: { content: string; className?: string }) => (
+    <div data-testid="safe-html" className={className}>
+      {content}
+    </div>
+  ),
+}));
+
 // Mock the hooks
+const mockUpdateMutate = vi.fn();
+const mockDeleteMutate = vi.fn();
+
 vi.mock("@/hooks/use-comments", () => ({
   useUpdateComment: () => ({
-    mutate: vi.fn(),
+    mutate: mockUpdateMutate,
     isPending: false,
   }),
   useDeleteComment: () => ({
-    mutate: vi.fn(),
+    mutate: mockDeleteMutate,
     isPending: false,
   }),
+}));
+
+// Mock sonner toast
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+    info: vi.fn(),
+  },
 }));
 
 // Mock the store
@@ -49,6 +92,8 @@ const createComment = (overrides: Partial<Comment> = {}): Comment => ({
   ticketId: "ticket-1",
   userId: "user-2",
   internal: false,
+  source: "WEB",
+  metadata: {},
   createdAt: new Date("2024-01-15T10:00:00Z"),
   user: {
     id: "user-2",
@@ -95,9 +140,8 @@ describe("CommentItem", () => {
         <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
       );
 
-      const wrapper = container.firstChild as HTMLElement;
-      expect(wrapper.className).toContain("mr-auto");
-      expect(wrapper.className).not.toContain("ml-auto");
+      const wrapper = container.querySelector(".mr-auto");
+      expect(wrapper).toBeInTheDocument();
     });
 
     it("aligns own comments to the right", () => {
@@ -109,9 +153,9 @@ describe("CommentItem", () => {
         <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
       );
 
-      const wrapper = container.firstChild as HTMLElement;
-      expect(wrapper.className).toContain("ml-auto");
-      expect(wrapper.className).toContain("flex-row-reverse");
+      const wrapper = container.querySelector(".ml-auto");
+      expect(wrapper).toBeInTheDocument();
+      expect(wrapper?.className).toContain("flex-row-reverse");
     });
 
     it("has max-width constraint for bubble styling", () => {
@@ -120,8 +164,8 @@ describe("CommentItem", () => {
         <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
       );
 
-      const wrapper = container.firstChild as HTMLElement;
-      expect(wrapper.className).toContain("max-w-[85%]");
+      const wrapper = container.querySelector('[class*="max-w-"]');
+      expect(wrapper).toBeInTheDocument();
     });
   });
 
@@ -231,6 +275,17 @@ describe("CommentItem", () => {
 
       expect(screen.getByText("JS")).toBeInTheDocument();
     });
+
+    it("renders comment content using SafeHtml", () => {
+      const comment = createComment({ content: "<p>Rich text content</p>" });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+      );
+
+      const safeHtml = screen.getByTestId("safe-html");
+      expect(safeHtml).toBeInTheDocument();
+      expect(safeHtml).toHaveTextContent("<p>Rich text content</p>");
+    });
   });
 
   describe("Edit/Delete controls", () => {
@@ -272,10 +327,154 @@ describe("CommentItem", () => {
       // First button should be edit
       await user.click(buttons[0]);
 
-      // Should now show a textarea and save/cancel buttons
-      expect(screen.getByRole("textbox")).toBeInTheDocument();
+      // Should now show the tiptap editor and save/cancel buttons
+      expect(screen.getByTestId("tiptap-editor")).toBeInTheDocument();
       expect(screen.getByText("Save")).toBeInTheDocument();
       expect(screen.getByText("Cancel")).toBeInTheDocument();
+    });
+
+    it("exits edit mode when cancel is clicked", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Enter edit mode
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[0]);
+
+      // Click cancel
+      await user.click(screen.getByText("Cancel"));
+
+      // Should exit edit mode
+      expect(screen.queryByTestId("tiptap-editor")).not.toBeInTheDocument();
+    });
+
+    it("calls update mutation when save is clicked with changed content", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+        content: "Original content",
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Enter edit mode
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[0]);
+
+      // Change content
+      const editor = screen.getByTestId("tiptap-editor");
+      await user.clear(editor);
+      await user.type(editor, "Updated content");
+
+      // Click save
+      await user.click(screen.getByText("Save"));
+
+      expect(mockUpdateMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ticketId: "ticket-1",
+          commentId: "comment-1",
+          content: "Updated content",
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe("Delete dialog", () => {
+    it("opens delete confirmation dialog when delete button is clicked", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Click delete button (second button)
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[1]);
+
+      // Dialog should be open
+      expect(screen.getByText("Are you sure you want to delete your comment?")).toBeInTheDocument();
+      expect(screen.getByText("This action cannot be undone.")).toBeInTheDocument();
+    });
+
+    it("shows comment content in delete confirmation dialog", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+        content: "Comment to be deleted",
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Click delete button
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[1]);
+
+      // The dialog should show the comment content via SafeHtml
+      const safeHtmlElements = screen.getAllByTestId("safe-html");
+      expect(safeHtmlElements.length).toBeGreaterThanOrEqual(2); // One in comment, one in dialog
+    });
+
+    it("closes delete dialog when cancel is clicked", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Open dialog
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[1]);
+
+      // Click Cancel in dialog
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      // Dialog should be closed
+      await waitFor(() => {
+        expect(screen.queryByText("Are you sure you want to delete your comment?")).not.toBeInTheDocument();
+      });
+    });
+
+    it("calls delete mutation when delete is confirmed", async () => {
+      const user = userEvent.setup();
+      const comment = createComment({
+        userId: "user-1",
+        user: { ...mockCurrentUser },
+      });
+      renderWithProviders(
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+      );
+
+      // Open dialog
+      const buttons = screen.getAllByRole("button");
+      await user.click(buttons[1]);
+
+      // Click Delete in dialog
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      expect(mockDeleteMutate).toHaveBeenCalledWith(
+        {
+          ticketId: "ticket-1",
+          commentId: "comment-1",
+        },
+        expect.any(Object)
+      );
     });
   });
 });

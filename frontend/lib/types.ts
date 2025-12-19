@@ -184,6 +184,8 @@ export interface Comment {
   ticketId: string;
   userId: string;
   internal: boolean;
+  source: string;
+  metadata: any;
   createdAt: Date;
   updatedAt?: Date;
   user?: PrismaUser;
@@ -555,6 +557,30 @@ export interface CreateNotificationPayload {
   data?: NotificationData;
   priority?: Urgency;
 }
+
+export type NotificationContent = {
+  //   getToken: GetToken;
+  templateName: string;
+  trigger:
+    | "App Permissions"
+    | "Invitation"
+    | "Account Information"
+    | "Ticket Created"
+    | "Ticket Updated"
+    | "Ticket Assignment"
+    | "Mentions"
+    | "New Comments"
+    | "Market Center Assignment"
+    | "Category Assignment"
+    | "Ticket Survey"
+    | "Ticket Survey Results";
+  receivingUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  data?: NotificationData;
+};
 
 export type MarketCenterNotificationCallback = {
   templateName:
