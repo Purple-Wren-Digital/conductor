@@ -766,15 +766,20 @@ describe("Subscription Repository", () => {
     expect(sub?.seatPrice).toBe(10.0);
   });
 
-  it("should find subscription with user count", async () => {
-    mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRow);
-    mockedDb.queryRow.mockResolvedValueOnce({ count: 8 });
+  it("should find subscription with user count (excluding agents)", async () => {
+    mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRow); // subscription
+    mockedDb.queryRow.mockResolvedValueOnce({ count: 5 }); // paid users (non-AGENT)
+    mockedDb.queryRow.mockResolvedValueOnce({ count: 3 }); // agents
+    mockedDb.queryRow.mockResolvedValueOnce({ count: 2 }); // pending invitations
 
     const result = await subscriptionRepository.findByMarketCenterIdWithUserCount("mc-123");
 
     expect(result).toBeDefined();
     expect(result?.subscription.marketCenterId).toBe("mc-123");
-    expect(result?.activeUserCount).toBe(8);
+    expect(result?.activeUserCount).toBe(5); // Only non-AGENT users
+    expect(result?.agentCount).toBe(3); // AGENT users (free)
+    expect(result?.pendingInvitationCount).toBe(2);
+    expect(result?.totalUsedSeats).toBe(7); // 5 paid + 2 pending (agents excluded)
   });
 
   it("should create subscription", async () => {

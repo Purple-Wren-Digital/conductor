@@ -16,7 +16,8 @@ export interface SubscriptionData {
   includedSeats: number;
   additionalSeats: number;
   totalSeats: number;
-  usedSeats: number;
+  usedSeats: number; // Paid seats only (excludes AGENT role)
+  agentCount: number; // AGENT role users (free, don't count against seat limit)
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   cancelAt: Date | null;

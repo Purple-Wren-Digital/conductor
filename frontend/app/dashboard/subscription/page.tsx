@@ -28,6 +28,7 @@ interface SubscriptionData {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  agentCount: number;
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelAt: string | null;
@@ -235,7 +236,12 @@ function SubscriptionPageContent() {
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   <p className="text-lg">
-                    {subscription.usedSeats} / {subscription.totalSeats}
+                    {subscription.usedSeats} / {subscription.totalSeats} paid
+                    {subscription.agentCount > 0 && (
+                      <span className="text-muted-foreground text-sm ml-1">
+                        + {subscription.agentCount} agent{subscription.agentCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

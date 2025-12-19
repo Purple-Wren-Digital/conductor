@@ -544,6 +544,7 @@ interface GetSubscriptionResponse {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  agentCount: number;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   cancelAt: Date | null;
@@ -578,7 +579,7 @@ export const getSubscription = api(
       throw APIError.notFound("No subscription found");
     }
 
-    const { subscription, activeUserCount } = result;
+    const { subscription, activeUserCount, agentCount } = result;
 
     return {
       id: subscription.id,
@@ -588,6 +589,7 @@ export const getSubscription = api(
       additionalSeats: subscription.additionalSeats,
       totalSeats: subscription.includedSeats + subscription.additionalSeats,
       usedSeats: activeUserCount,
+      agentCount: agentCount,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
       cancelAt: subscription.cancelAt,
@@ -634,10 +636,11 @@ export const updateSeats = api(
       throw APIError.permissionDenied("Only admins can update seats");
     }
 
+    // Only count non-AGENT users - agents are free and don't consume paid seats
     const currentUsers = await db.queryRow<{ count: number }>`
       SELECT COUNT(*)::int as count
       FROM users
-      WHERE market_center_id = ${user.marketCenterId} AND is_active = true
+      WHERE market_center_id = ${user.marketCenterId} AND is_active = true AND role != 'AGENT'
     `;
 
     const currentUsersCount = currentUsers?.count || 0;
@@ -645,7 +648,7 @@ export const updateSeats = api(
 
     if (newTotalSeats < currentUsersCount) {
       throw APIError.invalidArgument(
-        `Cannot reduce seats below current user count (${currentUsersCount})`
+        `Cannot reduce seats below current paid user count (${currentUsersCount})`
       );
     }
 
