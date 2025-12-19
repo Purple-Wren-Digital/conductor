@@ -464,7 +464,7 @@ export function usePreviewEmailTemplate() {
       }
 
       const response = await fetch(
-        `${API_BASE}/notifications/template-customizations/preview/email`,
+        `${API_BASE}/notifications/template-customizations/email/preview`,
         {
           method: "POST",
           headers: {
@@ -515,7 +515,7 @@ export function usePreviewInAppTemplate() {
       }
 
       const response = await fetch(
-        `${API_BASE}/notifications/template-customizations/preview/in-app`,
+        `${API_BASE}/notifications/template-customizations/in-app/preview`,
         {
           method: "POST",
           headers: {

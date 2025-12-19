@@ -118,7 +118,7 @@ export const saveInAppTemplate = api<
 
 export interface ResetInAppTemplateRequest {
   marketCenterId: string;
-  templateType: CustomizableTemplateType;
+  templateType: string;
 }
 
 export interface ResetInAppTemplateResponse {

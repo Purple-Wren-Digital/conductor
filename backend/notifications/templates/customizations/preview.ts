@@ -216,7 +216,7 @@ export const previewInAppTemplate = api<
 // =============================================================================
 
 export interface GetTemplateVariablesRequest {
-  templateType: CustomizableTemplateType;
+  templateType: string;
 }
 
 export interface GetTemplateVariablesResponse {
@@ -265,7 +265,7 @@ export const getTemplateVariables = api<
 // =============================================================================
 
 export interface GetDefaultTemplatesRequest {
-  templateType: CustomizableTemplateType;
+  templateType: string;
 }
 
 export interface GetDefaultTemplatesResponse {

@@ -127,7 +127,7 @@ export const saveEmailTemplate = api<
 
 export interface ResetEmailTemplateRequest {
   marketCenterId: string;
-  templateType: CustomizableTemplateType;
+  templateType: string;
 }
 
 export interface ResetEmailTemplateResponse {

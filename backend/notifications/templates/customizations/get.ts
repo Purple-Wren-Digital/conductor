@@ -21,7 +21,7 @@ import {
 
 export interface GetTemplateForEditingRequest {
   marketCenterId: string;
-  templateType: CustomizableTemplateType;
+  templateType: string;
 }
 
 export interface GetTemplateForEditingResponse {
