@@ -1,13 +1,18 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../auth/user-context";
 import { TicketCategory } from "../types";
-import { marketCenterRepository, userRepository, db, toJson } from "../../ticket/db";
+import {
+  marketCenterRepository,
+  userRepository,
+  db,
+  toJson,
+} from "../../ticket/db";
 import { subscriptionRepository } from "../../shared/repositories";
 
 export interface CreateCategoryRequest {
+  marketCenterId: string;
   name: string;
   description?: string;
-  marketCenterId: string;
   defaultAssigneeId?: string;
 }
 
@@ -60,9 +65,10 @@ export const createCategory = api<
 
     // Create ticket category
     // Handle "none" as null (frontend uses "none" for no selection)
-    const defaultAssigneeId = req.defaultAssigneeId && req.defaultAssigneeId !== "none"
-      ? req.defaultAssigneeId
-      : null;
+    const defaultAssigneeId =
+      req?.defaultAssigneeId && req?.defaultAssigneeId !== "none"
+        ? req.defaultAssigneeId
+        : undefined;
 
     const ticketCategory = await marketCenterRepository.createCategory({
       name: req.name,
@@ -72,9 +78,11 @@ export const createCategory = api<
     });
 
     // Get default assignee if exists
-    let defaultAssignee = null;
+    let defaultAssignee = undefined;
     if (ticketCategory.defaultAssigneeId) {
-      defaultAssignee = await userRepository.findById(ticketCategory.defaultAssigneeId);
+      defaultAssignee = await userRepository.findById(
+        ticketCategory.defaultAssigneeId
+      );
     }
 
     // Create market center history for category creation
@@ -98,9 +106,9 @@ export const createCategory = api<
     });
 
     // If there's a default assignee, create additional history records
-    if (req?.defaultAssigneeId) {
+    if (defaultAssigneeId) {
       await userRepository.createHistory({
-        userId: req.defaultAssigneeId,
+        userId: defaultAssigneeId,
         marketCenterId: marketCenter.id,
         action: "ASSIGNMENT",
         field: "category",
