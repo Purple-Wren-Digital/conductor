@@ -60,6 +60,7 @@ export const BasicEditorWithToolbar: FC<BasicEditorProps> = ({
         HTMLAttributes: {
           target: "_blank",
           rel: "noopener noreferrer",
+          class: "underline hover:text-primary/50",
         },
       }),
     ],

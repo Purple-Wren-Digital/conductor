@@ -30,6 +30,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     auth: true,
   },
   async (req) => {
+    console.log(" ************ Start Update user request ************ ");
     const userContext = await getUserContext();
 
     // Permission checks

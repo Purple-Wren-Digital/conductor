@@ -10,8 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useFetchTicketHistory } from "@/hooks/use-history";
+import { processCommentContent } from "@/lib/sanitize";
 import { OrderBy, TicketHistory } from "@/lib/types";
 import { calculateTotalPages } from "@/lib/utils";
 import {
@@ -148,13 +150,15 @@ export default function TicketHistoryTable({
               return (
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* ACTION */}
-                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                    {log?.field === "comment" ? (
-                      <MessageSquare className="h-3 w-3" />
-                    ) : (
-                      getActionIcon(log?.action)
-                    )}
-                    {log.action.toLowerCase()}
+                  <TableCell>
+                    <p className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
+                      {log?.field === "comment" ? (
+                        <MessageSquare className="h-3 w-3" />
+                      ) : (
+                        getActionIcon(log?.action)
+                      )}
+                      {log.action.toLowerCase()}
+                    </p>
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
@@ -162,27 +166,41 @@ export default function TicketHistoryTable({
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    <ToolTip
-                      content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {newValueFormatted ? newValueFormatted : "N/a"}
-                        </p>
-                      }
-                    />
+                    {log?.field === "comment" ? (
+                      <SafeHtml
+                        content={newValueFormatted ? newValueFormatted : "-"}
+                      />
+                    ) : (
+                      <ToolTip
+                        content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                            {newValueFormatted ? newValueFormatted : "N/a"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    <ToolTip
-                      content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {previousValueFormatted
-                            ? previousValueFormatted
-                            : "N/a"}
-                        </p>
-                      }
-                    />
+                    {log?.field === "comment" ? (
+                      <SafeHtml
+                        content={
+                          previousValueFormatted ? previousValueFormatted : "-"
+                        }
+                      />
+                    ) : (
+                      <ToolTip
+                        content={`Previous ${field}: ${previousValueFormatted ? processCommentContent(previousValueFormatted) : "N/a"}`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                            {previousValueFormatted
+                              ? processCommentContent(previousValueFormatted)
+                              : "N/a"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell

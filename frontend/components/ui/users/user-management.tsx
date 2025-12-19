@@ -339,8 +339,14 @@ export default function UserManagement() {
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update user`);
+        if (errorData?.message && typeof errorData.message === "string") {
+          toast.error(`Error: ${errorData.message}`);
+          setFormErrors({ general: errorData.message });
+          throw new Error(errorData.message);
+        }
+        throw new Error("Failed to update user");
       }
+
       const data = await response.json();
       if (!data || !data?.user) {
         throw new Error("Prisma - Updated data was not found");
@@ -888,9 +894,9 @@ export default function UserManagement() {
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <p className="text-sm text-destructive">
-                {formErrors?.general && formErrors.general}
-              </p>
+              {formErrors?.general && (
+                <p className="text-sm text-destructive">{formErrors.general}</p>
+              )}
               <Button
                 type="button"
                 variant="outline"
