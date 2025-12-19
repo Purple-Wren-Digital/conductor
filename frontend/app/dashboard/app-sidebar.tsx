@@ -234,7 +234,7 @@ export function AppSidebar({
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/notification-templates">
+                  <Link href="/dashboard/template-customization">
                     <Folder className="text-muted-foreground" /> Notification
                     Templates
                   </Link>

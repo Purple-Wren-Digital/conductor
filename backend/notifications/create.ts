@@ -158,6 +158,8 @@ export const create = api<CreateNotificationRequest>(
                   priority: safeNotification?.priority ?? undefined,
                   data: safeNotification?.data as NotificationData,
                 },
+                marketCenterId: foundUser.marketCenterId,
+                recipientName: foundUser.name ?? undefined,
               });
             }
             break;
