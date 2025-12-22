@@ -53,7 +53,7 @@ export const updateCategory = api<
     }
 
     // Get old default assignee if exists
-    let oldDefaultAssignee = null;
+    let oldDefaultAssignee = undefined;
     if (oldTicketCategory.defaultAssigneeId) {
       oldDefaultAssignee = await userRepository.findById(
         oldTicketCategory.defaultAssigneeId
@@ -116,7 +116,7 @@ export const updateCategory = api<
       }
 
       updateCategoryData.defaultAssigneeId =
-        req.defaultAssigneeId === "none" ? null : req.defaultAssigneeId;
+        req.defaultAssigneeId === "none" ? undefined : req.defaultAssigneeId;
 
       await marketCenterRepository.createHistory({
         marketCenterId: oldTicketCategory.marketCenterId,

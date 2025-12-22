@@ -8,6 +8,22 @@ const clerkClient = createClerkClient({
   secretKey: CLERK_SECRET_KEY(),
 });
 
+function isClerkAPIError(error: any): error is {
+  clerkError: true;
+  status: number;
+  errors?: { code?: string; message?: string; longMessage?: string }[];
+} {
+  return Boolean(error?.clerkError && Array.isArray(error?.errors));
+}
+
+function getClerkMessages(error: any): string[] {
+  if (!error?.errors) return [];
+
+  return error.errors
+    .map((e: any) => e.longMessage || e.message)
+    .filter(Boolean);
+}
+
 export const updateClerkUserName = async (
   clerkId: string,
   updateData: {
@@ -26,8 +42,14 @@ export const updateClerkUserName = async (
       lastName: updateData.lastName,
     });
     return updatedUser;
-  } catch (error) {
-    console.error("Error updating Clerk user:", error);
+  } catch (error: any) {
+    console.error("Error updating Clerk user name:", error);
+
+    if (isClerkAPIError(error)) {
+      const messages = getClerkMessages(error);
+      throw APIError.invalidArgument(messages.join(" "));
+    }
+
     throw APIError.internal("Failed to update Clerk user name");
   }
 };
@@ -58,16 +80,23 @@ export const updateClerkUserEmail = async (
         await clerkClient.emailAddresses.createEmailAddress({
           userId: clerkId,
           emailAddress: newEmail,
-          verified: true,
           primary: true,
+          verified: true,
         });
+
       await clerkClient.users.updateUser(clerkId, {
         primaryEmailAddressID: newEmailAddress.id,
         notifyPrimaryEmailAddressChanged: true,
       });
     }
-  } catch (error) {
-    console.error("Error updating Clerk user email:", error);
-    throw APIError.internal("Failed to update Clerk user email");
+  } catch (error: any) {
+    console.error("Error updating Clerk email:", error);
+
+    if (isClerkAPIError(error)) {
+      const messages = getClerkMessages(error);
+      throw APIError.invalidArgument(messages.join(" "));
+    }
+
+    throw APIError.internal("Failed to update user email in Clerk");
   }
 };

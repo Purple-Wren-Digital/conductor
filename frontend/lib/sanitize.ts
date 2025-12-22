@@ -23,7 +23,16 @@ export function sanitizeHtml(dirty: string): string {
       "h2",
       "h3",
     ],
-    ALLOWED_ATTR: ["href", "target", "rel", "alt", "disabled", "type"],
+    ALLOWED_ATTR: [
+      "href",
+      "target",
+      "rel",
+      "alt",
+      "disabled",
+      "type",
+      "className",
+      "class",
+    ],
     KEEP_CONTENT: true,
     RETURN_DOM_FRAGMENT: false,
   });

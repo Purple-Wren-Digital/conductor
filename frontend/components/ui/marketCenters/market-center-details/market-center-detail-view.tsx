@@ -65,7 +65,6 @@ export default function MarketCenterDetailView({
   const { role } = useUserRole();
 
   const { data: marketCenter } = useFetchMarketCenter(role, marketCenterId);
-  console.log("marketCenter", marketCenter);
 
   const totalTeamMembers = marketCenter?.users ? marketCenter?.users.length : 0;
   const totalCategories = marketCenter?.ticketCategories
@@ -307,10 +306,6 @@ export default function MarketCenterDetailView({
               invalidateMarketCenter={invalidateMarketCenter}
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <MarketCenterHistory marketCenterId={marketCenterId} />
         </TabsContent>
 
         <TabsContent value="activity">

@@ -20,10 +20,12 @@ import {
   CirclePlus,
   Clipboard,
   Mailbox,
+  MessageSquare,
   SquarePen,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SafeHtml } from "@/components/ui/safe-html";
 // TODO: export table to computer - excel/google sheets ??
 
 export default function UserTicketHistoryTable({
@@ -170,9 +172,15 @@ export default function UserTicketHistoryTable({
                     />
                   </TableCell>
                   {/* ACTION */}
-                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                    {getActionIcon(log.action)}
-                    {log.action.toLowerCase()}
+                  <TableCell>
+                    <p className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
+                      {log?.field === "comment" ? (
+                        <MessageSquare className="h-3 w-3" />
+                      ) : (
+                        getActionIcon(log?.action)
+                      )}
+                      {log.action.toLowerCase()}
+                    </p>
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
@@ -180,27 +188,41 @@ export default function UserTicketHistoryTable({
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    <ToolTip
-                      content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {newValueFormatted ? newValueFormatted : "N/a"}
-                        </p>
-                      }
-                    />
+                    {log?.field === "comment" ? (
+                      <SafeHtml
+                        content={newValueFormatted ? newValueFormatted : "-"}
+                      />
+                    ) : (
+                      <ToolTip
+                        content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                            {newValueFormatted ? newValueFormatted : "N/a"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    <ToolTip
-                      content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {previousValueFormatted
-                            ? previousValueFormatted
-                            : "N/a"}
-                        </p>
-                      }
-                    />
+                    {log?.field === "comment" ? (
+                      <SafeHtml
+                        content={
+                          previousValueFormatted ? previousValueFormatted : "-"
+                        }
+                      />
+                    ) : (
+                      <ToolTip
+                        content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "N/a"}`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                            {previousValueFormatted
+                              ? previousValueFormatted
+                              : "N/a"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell className="font-medium">

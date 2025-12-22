@@ -20,6 +20,7 @@ import type { Notification, NotificationData } from "@/lib/types";
 import { Bell, CheckCheck, Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UseMutationResult } from "@tanstack/react-query";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function AllNotifications({
   allNotifications,
@@ -196,18 +197,19 @@ export default function AllNotifications({
                     <div
                       className={`max-w-3xs pl-1 ${url && "hover:underline"}`}
                     >
-                      <p className="text-sm font-medium">
-                        {notification.title}
-                      </p>
+                      <span className="text-sm font-medium">
+                        {notification?.title &&
+                          sanitizeHtml(notification.title)}
+                      </span>
                       {notification?.createdAt && (
                         <p className="text-xs text-muted-foreground">
                           {new Date(notification.createdAt).toLocaleString()}
                         </p>
                       )}
                       {notification?.body && (
-                        <p className="text-xs text-muted-foreground line-clamp-3 text-ellipsis">
-                          {notification?.body}
-                        </p>
+                        <span className="text-xs text-muted-foreground line-clamp-3 text-ellipsis">
+                          {sanitizeHtml(notification.body)}
+                        </span>
                       )}
                     </div>
 

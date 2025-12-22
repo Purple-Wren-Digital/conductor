@@ -105,7 +105,7 @@ export default function MarketCenterTicketCategories({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!categoryFormData?.name || !categoryFormData?.name.trim) {
+    if (!categoryFormData?.name || !categoryFormData?.name.trim()) {
       errors.name = "Name is required";
     }
 
@@ -138,9 +138,9 @@ export default function MarketCenterTicketCategories({
     }
 
     const defaultAssigneeFormValue =
-      categoryFormData?.defaultAssigneeId === "none"
-        ? null
-        : categoryFormData?.defaultAssigneeId;
+      categoryFormData?.defaultAssigneeId !== "none"
+        ? categoryFormData?.defaultAssigneeId
+        : "none";
     if (editingTicketCategory?.defaultAssigneeId !== defaultAssigneeFormValue) {
       formattedBody.defaultAssigneeId = defaultAssigneeFormValue;
     }
@@ -280,8 +280,8 @@ export default function MarketCenterTicketCategories({
             description: categoryFormData?.description ?? null,
             defaultAssigneeId:
               categoryFormData?.defaultAssigneeId === "none"
-                ? null
-                : (categoryFormData?.defaultAssigneeId ?? null),
+                ? undefined
+                : (categoryFormData?.defaultAssigneeId ?? undefined),
           }),
         }
       );
