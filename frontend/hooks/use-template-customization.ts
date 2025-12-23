@@ -8,14 +8,14 @@ import type { UserRole } from "@/lib/types";
 // =============================================================================
 
 export type CustomizableTemplateType =
-  | "TICKET_CREATED"
-  | "TICKET_UPDATED"
-  | "TICKET_ASSIGNMENT"
-  | "NEW_COMMENTS"
-  | "MARKET_CENTER_ASSIGNMENT"
-  | "CATEGORY_ASSIGNMENT"
-  | "TICKET_SURVEY"
-  | "TICKET_SURVEY_RESULTS";
+  | "ticket_created"
+  | "ticket_updated"
+  | "ticket_assignment"
+  | "new_comments"
+  | "market_center_assignment"
+  | "category_assignment"
+  | "ticket_survey"
+  | "ticket_survey_results";
 
 export interface TemplateVariable {
   key: string;
@@ -110,7 +110,12 @@ export const templateCustomizationKeys = {
   statuses: (marketCenterId: string) =>
     [...templateCustomizationKeys.all, "statuses", marketCenterId] as const,
   forEditing: (marketCenterId: string, templateType: string) =>
-    [...templateCustomizationKeys.all, "edit", marketCenterId, templateType] as const,
+    [
+      ...templateCustomizationKeys.all,
+      "edit",
+      marketCenterId,
+      templateType,
+    ] as const,
 };
 
 // =============================================================================

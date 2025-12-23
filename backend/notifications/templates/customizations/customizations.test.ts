@@ -121,7 +121,7 @@ import {
 const createMockEmailCustomization = (overrides = {}) => ({
   id: "email-custom-123",
   marketCenterId: "mc-123",
-  templateType: "TICKET_CREATED" as const,
+  templateType: "ticket_created" as const,
   subject: "Custom: {{ticket_title}}",
   greeting: "Hello {{user_name}},",
   mainMessage: "<p>A ticket was created for you.</p>",
@@ -138,7 +138,7 @@ const createMockEmailCustomization = (overrides = {}) => ({
 const createMockInAppCustomization = (overrides = {}) => ({
   id: "inapp-custom-123",
   marketCenterId: "mc-123",
-  templateType: "TICKET_CREATED" as const,
+  templateType: "ticket_created" as const,
   title: "Custom: {{ticket_title}}",
   body: "{{creator_name}} created a ticket",
   isActive: true,
@@ -157,40 +157,55 @@ describe("Template Customizations - List", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123", "mc-456"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+      "mc-456",
+    ]);
   });
 
   describe("listTemplateStatuses", () => {
     it("should return all template types with customization status", async () => {
       const emailCustomizations = [
-        createMockEmailCustomization({ templateType: "TICKET_CREATED" }),
+        createMockEmailCustomization({ templateType: "ticket_created" }),
       ];
       const inAppCustomizations = [
-        createMockInAppCustomization({ templateType: "TICKET_CREATED" }),
-        createMockInAppCustomization({ templateType: "NEW_COMMENTS" }),
+        createMockInAppCustomization({ templateType: "ticket_created" }),
+        createMockInAppCustomization({ templateType: "new_comments" }),
       ];
 
-      mockEmailTemplateRepo.findAllByMarketCenter.mockResolvedValue(emailCustomizations);
-      mockInAppTemplateRepo.findAllByMarketCenter.mockResolvedValue(inAppCustomizations);
+      mockEmailTemplateRepo.findAllByMarketCenter.mockResolvedValue(
+        emailCustomizations
+      );
+      mockInAppTemplateRepo.findAllByMarketCenter.mockResolvedValue(
+        inAppCustomizations
+      );
 
       const result = await listTemplateStatuses({ marketCenterId: "mc-123" });
 
-      expect(result.templates).toHaveLength(Object.keys(TEMPLATE_TYPE_LABELS).length);
+      expect(result.templates).toHaveLength(
+        Object.keys(TEMPLATE_TYPE_LABELS).length
+      );
 
-      // TICKET_CREATED should have both customizations
-      const ticketCreated = result.templates.find(t => t.templateType === "TICKET_CREATED");
+      // ticket_created should have both customizations
+      const ticketCreated = result.templates.find(
+        (t) => t.templateType === "ticket_created"
+      );
       expect(ticketCreated?.hasEmailCustomization).toBe(true);
       expect(ticketCreated?.hasInAppCustomization).toBe(true);
       expect(ticketCreated?.emailCustomization).toBeDefined();
       expect(ticketCreated?.inAppCustomization).toBeDefined();
 
-      // NEW_COMMENTS should only have in-app customization
-      const newComments = result.templates.find(t => t.templateType === "NEW_COMMENTS");
+      // new_comments should only have in-app customization
+      const newComments = result.templates.find(
+        (t) => t.templateType === "new_comments"
+      );
       expect(newComments?.hasEmailCustomization).toBe(false);
       expect(newComments?.hasInAppCustomization).toBe(true);
 
-      // TICKET_UPDATED should have no customizations
-      const ticketUpdated = result.templates.find(t => t.templateType === "TICKET_UPDATED");
+      // ticket_updated should have no customizations
+      const ticketUpdated = result.templates.find(
+        (t) => t.templateType === "ticket_updated"
+      );
       expect(ticketUpdated?.hasEmailCustomization).toBe(false);
       expect(ticketUpdated?.hasInAppCustomization).toBe(false);
     });
@@ -201,7 +216,7 @@ describe("Template Customizations - List", () => {
 
       const result = await listTemplateStatuses({ marketCenterId: "mc-123" });
 
-      result.templates.forEach(template => {
+      result.templates.forEach((template) => {
         expect(template.hasEmailCustomization).toBe(false);
         expect(template.hasInAppCustomization).toBe(false);
         expect(template.emailCustomization).toBeNull();
@@ -210,7 +225,9 @@ describe("Template Customizations - List", () => {
     });
 
     it("should throw permission denied when user has no access to market center", async () => {
-      mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["other-mc"]);
+      mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(
+        ["other-mc"]
+      );
 
       await expect(
         listTemplateStatuses({ marketCenterId: "mc-123" })
@@ -240,7 +257,9 @@ describe("Template Customizations - Get", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("getTemplateForEditing", () => {
@@ -248,26 +267,34 @@ describe("Template Customizations - Get", () => {
       const emailCustomization = createMockEmailCustomization();
       const inAppCustomization = createMockInAppCustomization();
 
-      mockEmailTemplateRepo.findByMarketCenterAndType.mockResolvedValue(emailCustomization);
-      mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue(inAppCustomization);
+      mockEmailTemplateRepo.findByMarketCenterAndType.mockResolvedValue(
+        emailCustomization
+      );
+      mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue(
+        inAppCustomization
+      );
 
       const result = await getTemplateForEditing({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
-      expect(result.template.templateType).toBe("TICKET_CREATED");
+      expect(result.template.templateType).toBe("ticket_created");
       expect(result.template.label).toBe("Ticket Created");
       expect(result.template.variables).toBeDefined();
       expect(result.template.variables.length).toBeGreaterThan(0);
 
       // Email defaults
-      expect(result.template.emailDefault).toEqual(DEFAULT_EMAIL_TEMPLATES.TICKET_CREATED);
+      expect(result.template.emailDefault).toEqual(
+        DEFAULT_EMAIL_TEMPLATES.ticket_created
+      );
       expect(result.template.emailCustomization).toEqual(emailCustomization);
       expect(result.template.emailVisibleFieldOptions).toBeDefined();
 
       // In-app defaults
-      expect(result.template.inAppDefault).toEqual(DEFAULT_IN_APP_TEMPLATES.TICKET_CREATED);
+      expect(result.template.inAppDefault).toEqual(
+        DEFAULT_IN_APP_TEMPLATES.ticket_created
+      );
       expect(result.template.inAppCustomization).toEqual(inAppCustomization);
     });
 
@@ -277,7 +304,7 @@ describe("Template Customizations - Get", () => {
 
       const result = await getTemplateForEditing({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
       expect(result.template.emailCustomization).toBeNull();
@@ -305,9 +332,11 @@ describe("Template Customizations - Get", () => {
       await expect(
         getTemplateForEditing({
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
         })
-      ).rejects.toThrow("Only admins and staff leaders can edit notification templates");
+      ).rejects.toThrow(
+        "Only admins and staff leaders can edit notification templates"
+      );
     });
 
     it("should allow STAFF_LEADER to edit templates", async () => {
@@ -320,7 +349,7 @@ describe("Template Customizations - Get", () => {
 
       const result = await getTemplateForEditing({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
       expect(result.template).toBeDefined();
@@ -336,13 +365,15 @@ describe("Template Customizations - Email Save", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("saveEmailTemplate", () => {
     const validRequest = {
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED" as const,
+      templateType: "ticket_created" as const,
       subject: "New Ticket: {{ticket_title}}",
       greeting: "Hi {{user_name}},",
       mainMessage: "<p>A new ticket has been created.</p>",
@@ -363,7 +394,7 @@ describe("Template Customizations - Email Save", () => {
       expect(mockEmailTemplateRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           subject: validRequest.subject,
         }),
         "user-123"
@@ -373,7 +404,9 @@ describe("Template Customizations - Email Save", () => {
 
     it("should update existing email customization", async () => {
       const existingCustomization = createMockEmailCustomization();
-      mockEmailTemplateRepo.findByMarketCenterAndType.mockResolvedValue(existingCustomization);
+      mockEmailTemplateRepo.findByMarketCenterAndType.mockResolvedValue(
+        existingCustomization
+      );
 
       const updatedCustomization = {
         ...existingCustomization,
@@ -451,13 +484,12 @@ describe("Template Customizations - Email Save", () => {
 
       const result = await resetEmailTemplate({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
-      expect(mockEmailTemplateRepo.deleteByMarketCenterAndType).toHaveBeenCalledWith(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      expect(
+        mockEmailTemplateRepo.deleteByMarketCenterAndType
+      ).toHaveBeenCalledWith("mc-123", "ticket_created");
       expect(result.success).toBe(true);
     });
 
@@ -479,9 +511,11 @@ describe("Template Customizations - Email Save", () => {
       await expect(
         resetEmailTemplate({
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
         })
-      ).rejects.toThrow("Only admins and staff leaders can edit notification templates");
+      ).rejects.toThrow(
+        "Only admins and staff leaders can edit notification templates"
+      );
     });
   });
 });
@@ -494,13 +528,15 @@ describe("Template Customizations - In-App Save", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("saveInAppTemplate", () => {
     const validRequest = {
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED" as const,
+      templateType: "ticket_created" as const,
       title: "New: {{ticket_title}}",
       body: "{{creator_name}} created a ticket",
     };
@@ -515,7 +551,7 @@ describe("Template Customizations - In-App Save", () => {
       expect(mockInAppTemplateRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           title: validRequest.title,
           body: validRequest.body,
         }),
@@ -526,7 +562,9 @@ describe("Template Customizations - In-App Save", () => {
 
     it("should update existing in-app customization", async () => {
       const existingCustomization = createMockInAppCustomization();
-      mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue(existingCustomization);
+      mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue(
+        existingCustomization
+      );
 
       const updatedCustomization = {
         ...existingCustomization,
@@ -563,13 +601,12 @@ describe("Template Customizations - In-App Save", () => {
 
       const result = await resetInAppTemplate({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
-      expect(mockInAppTemplateRepo.deleteByMarketCenterAndType).toHaveBeenCalledWith(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      expect(
+        mockInAppTemplateRepo.deleteByMarketCenterAndType
+      ).toHaveBeenCalledWith("mc-123", "ticket_created");
       expect(result.success).toBe(true);
     });
   });
@@ -583,14 +620,16 @@ describe("Template Customizations - Preview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("previewEmailTemplate", () => {
     it("should render email preview with sample data", async () => {
       const result = await previewEmailTemplate({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
         subject: "New Ticket: {{ticket_title}}",
         greeting: "Hi {{user_name}},",
         mainMessage: "A ticket was created by {{creator_name}}",
@@ -611,7 +650,7 @@ describe("Template Customizations - Preview", () => {
     it("should handle missing visible fields gracefully", async () => {
       const result = await previewEmailTemplate({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
         subject: "Test",
         greeting: "Hi,",
         mainMessage: "Test message",
@@ -641,7 +680,7 @@ describe("Template Customizations - Preview", () => {
     it("should render in-app preview with sample data", async () => {
       const result = await previewInAppTemplate({
         marketCenterId: "mc-123",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
         title: "New: {{ticket_title}}",
         body: "Created by {{creator_name}}",
       });
@@ -653,14 +692,14 @@ describe("Template Customizations - Preview", () => {
     it("should handle all template types", async () => {
       // Test each template type has proper variables
       const templateTypes = [
-        "TICKET_CREATED",
-        "TICKET_UPDATED",
-        "TICKET_ASSIGNMENT",
-        "NEW_COMMENTS",
-        "MARKET_CENTER_ASSIGNMENT",
-        "CATEGORY_ASSIGNMENT",
-        "TICKET_SURVEY",
-        "TICKET_SURVEY_RESULTS",
+        "ticket_created",
+        "ticket_updated",
+        "ticket_assignment",
+        "new_comments",
+        "market_center_assignment",
+        "category_assignment",
+        "ticket_survey",
+        "ticket_survey_results",
       ] as const;
 
       for (const templateType of templateTypes) {
@@ -680,7 +719,7 @@ describe("Template Customizations - Preview", () => {
   describe("getTemplateVariables", () => {
     it("should return variables with insert text", async () => {
       const result = await getTemplateVariables({
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
       expect(result.variables.length).toBeGreaterThan(0);
@@ -694,14 +733,14 @@ describe("Template Customizations - Preview", () => {
 
     it("should return different variables for different template types", async () => {
       const ticketResult = await getTemplateVariables({
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
       const mcResult = await getTemplateVariables({
-        templateType: "MARKET_CENTER_ASSIGNMENT",
+        templateType: "market_center_assignment",
       });
 
-      const ticketKeys = ticketResult.variables.map(v => v.key);
-      const mcKeys = mcResult.variables.map(v => v.key);
+      const ticketKeys = ticketResult.variables.map((v) => v.key);
+      const mcKeys = mcResult.variables.map((v) => v.key);
 
       expect(ticketKeys).toContain("ticket_number");
       expect(ticketKeys).toContain("ticket_title");
@@ -713,11 +752,15 @@ describe("Template Customizations - Preview", () => {
   describe("getDefaultTemplates", () => {
     it("should return both email and in-app defaults", async () => {
       const result = await getDefaultTemplates({
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
       });
 
-      expect(result.emailDefault).toEqual(DEFAULT_EMAIL_TEMPLATES.TICKET_CREATED);
-      expect(result.inAppDefault).toEqual(DEFAULT_IN_APP_TEMPLATES.TICKET_CREATED);
+      expect(result.emailDefault).toEqual(
+        DEFAULT_EMAIL_TEMPLATES.ticket_created
+      );
+      expect(result.inAppDefault).toEqual(
+        DEFAULT_IN_APP_TEMPLATES.ticket_created
+      );
     });
 
     it("should throw error for invalid template type", async () => {
@@ -738,11 +781,15 @@ describe("Template Customizations - Edge Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(["mc-123"]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   it("should handle empty market center ID list", async () => {
-    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([]);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(
+      []
+    );
 
     await expect(
       listTemplateStatuses({ marketCenterId: "mc-123" })
@@ -752,8 +799,8 @@ describe("Template Customizations - Edge Cases", () => {
   it("should handle special characters in template content", async () => {
     const result = await previewInAppTemplate({
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED",
-      title: "Ticket: {{ticket_title}} - Special <chars> & \"quotes\"",
+      templateType: "ticket_created",
+      title: 'Ticket: {{ticket_title}} - Special <chars> & "quotes"',
       body: "Body with {{creator_name}}",
     });
 
@@ -765,10 +812,11 @@ describe("Template Customizations - Edge Cases", () => {
   it("should handle HTML in email main message", async () => {
     const result = await previewEmailTemplate({
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "Test",
       greeting: "Hi",
-      mainMessage: "<p><strong>Bold</strong> and <em>italic</em> by {{creator_name}}</p>",
+      mainMessage:
+        "<p><strong>Bold</strong> and <em>italic</em> by {{creator_name}}</p>",
       visibleFields: [],
     });
 
@@ -780,7 +828,7 @@ describe("Template Customizations - Edge Cases", () => {
   it("should handle variables that appear multiple times", async () => {
     const result = await previewInAppTemplate({
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       title: "{{ticket_title}} - {{ticket_title}}",
       body: "By {{creator_name}}",
     });

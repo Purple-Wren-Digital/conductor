@@ -51,7 +51,8 @@ describe("renderTemplate", () => {
 
   it("should replace multiple variables", () => {
     const result = renderTemplate({
-      templateContent: "Ticket {{ticket_number}}: {{ticket_title}} by {{creator_name}}",
+      templateContent:
+        "Ticket {{ticket_number}}: {{ticket_title}} by {{creator_name}}",
       variables: ["ticket_number", "ticket_title", "creator_name"],
       data: {
         ticket_number: "1234",
@@ -141,7 +142,7 @@ describe("renderTemplate", () => {
     const result = renderTemplate({
       templateContent: "Title: {{ticket_title}}",
       variables: ["ticket_title"],
-      data: { ticket_title: "Issue with <script> & \"quotes\"" },
+      data: { ticket_title: 'Issue with <script> & "quotes"' },
     });
 
     expect(result).toBe('Title: Issue with <script> & "quotes"');
@@ -176,7 +177,9 @@ describe("renderCustomizedInAppNotification", () => {
     );
 
     expect(result).toBeNull();
-    expect(mockInAppTemplateRepo.findByMarketCenterAndType).not.toHaveBeenCalled();
+    expect(
+      mockInAppTemplateRepo.findByMarketCenterAndType
+    ).not.toHaveBeenCalled();
   });
 
   it("should return null for unsupported notification type", async () => {
@@ -221,7 +224,7 @@ describe("renderCustomizedInAppNotification", () => {
     expect(result).toBeNull();
   });
 
-  it("should render customized TICKET_CREATED notification", async () => {
+  it("should render customized ticket_created notification", async () => {
     mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue({
       id: "custom-123",
       isActive: true,
@@ -247,7 +250,7 @@ describe("renderCustomizedInAppNotification", () => {
     expect(result?.body).toBe("Created by Jane Doe");
   });
 
-  it("should render customized TICKET_UPDATED notification", async () => {
+  it("should render customized ticket_updated notification", async () => {
     mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue({
       id: "custom-123",
       isActive: true,
@@ -274,7 +277,7 @@ describe("renderCustomizedInAppNotification", () => {
     expect(result?.body).toContain("Status, Priority");
   });
 
-  it("should render customized NEW_COMMENTS notification", async () => {
+  it("should render customized new_comments notification", async () => {
     mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue({
       id: "custom-123",
       isActive: true,
@@ -300,7 +303,7 @@ describe("renderCustomizedInAppNotification", () => {
     expect(result?.body).toContain("I've looked into this");
   });
 
-  it("should render customized MARKET_CENTER_ASSIGNMENT notification", async () => {
+  it("should render customized market_center_assignment notification", async () => {
     mockInAppTemplateRepo.findByMarketCenterAndType.mockResolvedValue({
       id: "custom-123",
       isActive: true,
@@ -366,14 +369,14 @@ describe("renderCustomizedInAppNotification", () => {
 describe("TEMPLATE_VARIABLES configuration", () => {
   it("should have variables defined for all template types", () => {
     const templateTypes = [
-      "TICKET_CREATED",
-      "TICKET_UPDATED",
-      "TICKET_ASSIGNMENT",
-      "NEW_COMMENTS",
-      "MARKET_CENTER_ASSIGNMENT",
-      "CATEGORY_ASSIGNMENT",
-      "TICKET_SURVEY",
-      "TICKET_SURVEY_RESULTS",
+      "ticket_created",
+      "ticket_updated",
+      "ticket_assignment",
+      "new_comments",
+      "market_center_assignment",
+      "category_assignment",
+      "ticket_survey",
+      "ticket_survey_results",
     ] as const;
 
     templateTypes.forEach((type) => {
@@ -405,8 +408,8 @@ describe("TEMPLATE_VARIABLES configuration", () => {
     });
   });
 
-  it("TICKET_CREATED should have ticket-specific variables", () => {
-    const vars = TEMPLATE_VARIABLES.TICKET_CREATED;
+  it("ticket_created should have ticket-specific variables", () => {
+    const vars = TEMPLATE_VARIABLES.ticket_created;
     const keys = vars.map((v) => v.key);
 
     expect(keys).toContain("ticket_number");
@@ -415,8 +418,8 @@ describe("TEMPLATE_VARIABLES configuration", () => {
     expect(keys).toContain("created_on");
   });
 
-  it("MARKET_CENTER_ASSIGNMENT should have MC-specific variables", () => {
-    const vars = TEMPLATE_VARIABLES.MARKET_CENTER_ASSIGNMENT;
+  it("market_center_assignment should have MC-specific variables", () => {
+    const vars = TEMPLATE_VARIABLES.market_center_assignment;
     const keys = vars.map((v) => v.key);
 
     expect(keys).toContain("market_center_name");
@@ -431,14 +434,14 @@ describe("TEMPLATE_VARIABLES configuration", () => {
 describe("DEFAULT_EMAIL_TEMPLATES configuration", () => {
   it("should have defaults for all template types", () => {
     const templateTypes = [
-      "TICKET_CREATED",
-      "TICKET_UPDATED",
-      "TICKET_ASSIGNMENT",
-      "NEW_COMMENTS",
-      "MARKET_CENTER_ASSIGNMENT",
-      "CATEGORY_ASSIGNMENT",
-      "TICKET_SURVEY",
-      "TICKET_SURVEY_RESULTS",
+      "ticket_created",
+      "ticket_updated",
+      "ticket_assignment",
+      "new_comments",
+      "market_center_assignment",
+      "category_assignment",
+      "ticket_survey",
+      "ticket_survey_results",
     ] as const;
 
     templateTypes.forEach((type) => {
@@ -482,14 +485,14 @@ describe("DEFAULT_EMAIL_TEMPLATES configuration", () => {
 describe("DEFAULT_IN_APP_TEMPLATES configuration", () => {
   it("should have defaults for all template types", () => {
     const templateTypes = [
-      "TICKET_CREATED",
-      "TICKET_UPDATED",
-      "TICKET_ASSIGNMENT",
-      "NEW_COMMENTS",
-      "MARKET_CENTER_ASSIGNMENT",
-      "CATEGORY_ASSIGNMENT",
-      "TICKET_SURVEY",
-      "TICKET_SURVEY_RESULTS",
+      "ticket_created",
+      "ticket_updated",
+      "ticket_assignment",
+      "new_comments",
+      "market_center_assignment",
+      "category_assignment",
+      "ticket_survey",
+      "ticket_survey_results",
     ] as const;
 
     templateTypes.forEach((type) => {

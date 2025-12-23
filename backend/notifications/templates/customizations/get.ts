@@ -45,9 +45,16 @@ export const getTemplateForEditing = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -77,26 +84,30 @@ export const getTemplateForEditing = api<
     const [emailCustomization, inAppCustomization] = await Promise.all([
       emailTemplateCustomizationRepository.findByMarketCenterAndType(
         req.marketCenterId,
-        req.templateType
+        req.templateType as CustomizableTemplateType
       ),
       inAppTemplateCustomizationRepository.findByMarketCenterAndType(
         req.marketCenterId,
-        req.templateType
+        req.templateType as CustomizableTemplateType
       ),
     ]);
 
     const template: TemplateWithDefaults = {
-      templateType: req.templateType,
-      label: TEMPLATE_TYPE_LABELS[req.templateType],
-      variables: TEMPLATE_VARIABLES[req.templateType],
+      templateType: req.templateType as CustomizableTemplateType,
+      label: TEMPLATE_TYPE_LABELS[req.templateType as CustomizableTemplateType],
+      variables:
+        TEMPLATE_VARIABLES[req.templateType as CustomizableTemplateType],
 
       // Email
-      emailDefault: DEFAULT_EMAIL_TEMPLATES[req.templateType],
+      emailDefault:
+        DEFAULT_EMAIL_TEMPLATES[req.templateType as CustomizableTemplateType],
       emailCustomization,
-      emailVisibleFieldOptions: EMAIL_VISIBLE_FIELDS[req.templateType],
+      emailVisibleFieldOptions:
+        EMAIL_VISIBLE_FIELDS[req.templateType as CustomizableTemplateType],
 
       // In-app
-      inAppDefault: DEFAULT_IN_APP_TEMPLATES[req.templateType],
+      inAppDefault:
+        DEFAULT_IN_APP_TEMPLATES[req.templateType as CustomizableTemplateType],
       inAppCustomization,
     };
 

@@ -234,6 +234,18 @@ export const notificationTemplatesDefault = [
   },
 ];
 
+function toSnakeCase(obj: Record<string, any>) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`),
+      value,
+    ])
+  );
+}
+function extractTemplateVariables(variables: Record<string, string>): string[] {
+  return Object.values(variables).map((v) => v.replace(/[{}]/g, ""));
+}
+
 //  START FORMATTING HELPERS
 export function renderTemplate({
   templateContent,
@@ -301,13 +313,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
 
     return (formattedNotification = {
@@ -340,13 +352,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      data: context,
-      variables: Object.keys(context),
+      data: toSnakeCase(context),
+      variables: extractTemplateVariables(template.variables || {}),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      data: context,
-      variables: Object.keys(context),
+      data: toSnakeCase(context),
+      variables: extractTemplateVariables(template.variables || {}),
     });
 
     return (formattedNotification = {
@@ -375,13 +387,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const assigneeId = content.data.createdTicket?.assigneeId;
     return (formattedNotification = {
@@ -423,13 +435,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     return (formattedNotification = {
       userId: content?.receivingUser?.id,
@@ -481,13 +493,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     return (formattedNotification = {
       userId: content?.receivingUser?.id,
@@ -499,6 +511,7 @@ export const formatNotificationWithTemplate = (
       data: { updatedTicket: content.data.updatedTicket },
     });
   }
+
   if (content.trigger === "New Comments" && content?.data?.newComment) {
     const context: NotificationContext = {
       ticketNumber: content.data.newComment?.ticketNumber,
@@ -513,13 +526,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const assigneeId = content.data.createdTicket?.assigneeId;
     return (formattedNotification = {
@@ -544,13 +557,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
 
     return (formattedNotification = {
@@ -575,13 +588,13 @@ export const formatNotificationWithTemplate = (
     };
     const subject = renderTemplate({
       templateContent: template.subject,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
     const body = renderTemplate({
       templateContent: template.body,
-      variables: Object.keys(context),
-      data: context,
+      variables: extractTemplateVariables(template.variables || {}),
+      data: toSnakeCase(context),
     });
 
     return (formattedNotification = {

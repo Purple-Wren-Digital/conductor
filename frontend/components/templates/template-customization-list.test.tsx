@@ -12,11 +12,13 @@ const mockUseFetchAllMarketCenters = vi.fn();
 const mockPush = vi.fn();
 
 vi.mock("@/hooks/use-template-customization", () => ({
-  useFetchTemplateStatuses: (props: unknown) => mockUseFetchTemplateStatuses(props),
+  useFetchTemplateStatuses: (props: unknown) =>
+    mockUseFetchTemplateStatuses(props),
 }));
 
 vi.mock("@/hooks/use-market-center", () => ({
-  useFetchAllMarketCenters: (role: unknown) => mockUseFetchAllMarketCenters(role),
+  useFetchAllMarketCenters: (role: unknown) =>
+    mockUseFetchAllMarketCenters(role),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -74,7 +76,7 @@ const mockMarketCenters = {
 
 const mockTemplateStatuses = [
   {
-    templateType: "TICKET_CREATED",
+    templateType: "ticket_created",
     label: "Ticket Created",
     hasEmailCustomization: false,
     hasInAppCustomization: false,
@@ -82,7 +84,7 @@ const mockTemplateStatuses = [
     inAppCustomization: null,
   },
   {
-    templateType: "TICKET_UPDATED",
+    templateType: "ticket_updated",
     label: "Ticket Updated",
     hasEmailCustomization: true,
     hasInAppCustomization: false,
@@ -94,7 +96,7 @@ const mockTemplateStatuses = [
     inAppCustomization: null,
   },
   {
-    templateType: "TICKET_ASSIGNMENT",
+    templateType: "ticket_assignment",
     label: "Ticket Assignment",
     hasEmailCustomization: false,
     hasInAppCustomization: true,
@@ -106,7 +108,7 @@ const mockTemplateStatuses = [
     },
   },
   {
-    templateType: "NEW_COMMENTS",
+    templateType: "new_comments",
     label: "New Comment",
     hasEmailCustomization: true,
     hasInAppCustomization: true,
@@ -122,7 +124,7 @@ const mockTemplateStatuses = [
     },
   },
   {
-    templateType: "MARKET_CENTER_ASSIGNMENT",
+    templateType: "market_center_assignment",
     label: "Market Center Assignment",
     hasEmailCustomization: false,
     hasInAppCustomization: false,
@@ -130,7 +132,7 @@ const mockTemplateStatuses = [
     inAppCustomization: null,
   },
   {
-    templateType: "CATEGORY_ASSIGNMENT",
+    templateType: "category_assignment",
     label: "Category Assignment",
     hasEmailCustomization: false,
     hasInAppCustomization: false,
@@ -138,7 +140,7 @@ const mockTemplateStatuses = [
     inAppCustomization: null,
   },
   {
-    templateType: "TICKET_SURVEY",
+    templateType: "ticket_survey",
     label: "Ticket Survey",
     hasEmailCustomization: false,
     hasInAppCustomization: false,
@@ -146,7 +148,7 @@ const mockTemplateStatuses = [
     inAppCustomization: null,
   },
   {
-    templateType: "TICKET_SURVEY_RESULTS",
+    templateType: "ticket_survey_results",
     label: "Survey Results",
     hasEmailCustomization: false,
     hasInAppCustomization: false,
@@ -299,7 +301,9 @@ describe("TemplateCustomizationList", () => {
         expect(screen.getByText("Ticket Updated")).toBeInTheDocument();
         expect(screen.getByText("Ticket Assignment")).toBeInTheDocument();
         expect(screen.getByText("New Comment")).toBeInTheDocument();
-        expect(screen.getByText("Market Center Assignment")).toBeInTheDocument();
+        expect(
+          screen.getByText("Market Center Assignment")
+        ).toBeInTheDocument();
         expect(screen.getByText("Category Assignment")).toBeInTheDocument();
         expect(screen.getByText("Ticket Survey")).toBeInTheDocument();
         expect(screen.getByText("Survey Results")).toBeInTheDocument();
@@ -326,7 +330,9 @@ describe("TemplateCustomizationList", () => {
 
       await waitFor(() => {
         // Find the Ticket Created row and check for Default badge
-        const ticketCreatedRow = screen.getByText("Ticket Created").closest("tr");
+        const ticketCreatedRow = screen
+          .getByText("Ticket Created")
+          .closest("tr");
         expect(ticketCreatedRow).toBeInTheDocument();
 
         // Should have Default badges for both email and in-app
@@ -355,11 +361,15 @@ describe("TemplateCustomizationList", () => {
 
       await waitFor(() => {
         // Find the Ticket Updated row (has email customization)
-        const ticketUpdatedRow = screen.getByText("Ticket Updated").closest("tr");
+        const ticketUpdatedRow = screen
+          .getByText("Ticket Updated")
+          .closest("tr");
         expect(ticketUpdatedRow).toBeInTheDocument();
 
         // Should have Customized badge for email
-        const customizedBadge = within(ticketUpdatedRow!).getByText("Customized");
+        const customizedBadge = within(ticketUpdatedRow!).getByText(
+          "Customized"
+        );
         expect(customizedBadge).toBeInTheDocument();
       });
     });
@@ -384,11 +394,15 @@ describe("TemplateCustomizationList", () => {
 
       await waitFor(() => {
         // Find the Ticket Assignment row (in-app customized, email default)
-        const assignmentRow = screen.getByText("Ticket Assignment").closest("tr");
+        const assignmentRow = screen
+          .getByText("Ticket Assignment")
+          .closest("tr");
         expect(assignmentRow).toBeInTheDocument();
 
         // Should have both Customized and Default badges
-        expect(within(assignmentRow!).getByText("Customized")).toBeInTheDocument();
+        expect(
+          within(assignmentRow!).getByText("Customized")
+        ).toBeInTheDocument();
         expect(within(assignmentRow!).getByText("Default")).toBeInTheDocument();
       });
     });
@@ -421,11 +435,15 @@ describe("TemplateCustomizationList", () => {
 
       // Find and click the Edit Email button for first template
       const row = screen.getByText("Ticket Created").closest("tr");
-      const editEmailButton = within(row!).getByRole("button", { name: /edit email/i });
+      const editEmailButton = within(row!).getByRole("button", {
+        name: /edit email/i,
+      });
       await user.click(editEmailButton);
 
       expect(mockPush).toHaveBeenCalledWith(
-        expect.stringContaining("/template-customization/mc-austin/TICKET_CREATED/email")
+        expect.stringContaining(
+          "/template-customization/mc-austin/ticket_created/email"
+        )
       );
     });
 
@@ -455,11 +473,15 @@ describe("TemplateCustomizationList", () => {
 
       // Find and click the Edit In-App button
       const row = screen.getByText("Ticket Created").closest("tr");
-      const editInAppButton = within(row!).getByRole("button", { name: /edit in-app/i });
+      const editInAppButton = within(row!).getByRole("button", {
+        name: /edit in-app/i,
+      });
       await user.click(editInAppButton);
 
       expect(mockPush).toHaveBeenCalledWith(
-        expect.stringContaining("/template-customization/mc-austin/TICKET_CREATED/in-app")
+        expect.stringContaining(
+          "/template-customization/mc-austin/ticket_created/in-app"
+        )
       );
     });
 
@@ -488,11 +510,13 @@ describe("TemplateCustomizationList", () => {
       });
 
       const row = screen.getByText("New Comment").closest("tr");
-      const editEmailButton = within(row!).getByRole("button", { name: /edit email/i });
+      const editEmailButton = within(row!).getByRole("button", {
+        name: /edit email/i,
+      });
       await user.click(editEmailButton);
 
       expect(mockPush).toHaveBeenCalledWith(
-        expect.stringContaining("NEW_COMMENTS")
+        expect.stringContaining("new_comments")
       );
     });
   });
@@ -591,7 +615,9 @@ describe("TemplateCustomizationList", () => {
       );
 
       await waitFor(() => {
-        expect(screen.queryByText(/you do not have permission/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/you do not have permission/i)
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -614,7 +640,9 @@ describe("TemplateCustomizationList", () => {
       );
 
       await waitFor(() => {
-        expect(screen.queryByText(/you do not have permission/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/you do not have permission/i)
+        ).not.toBeInTheDocument();
       });
     });
   });
@@ -641,7 +669,9 @@ describe("TemplateCustomizationList", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/failed to load templates/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(/failed to load templates/i)
+        ).toBeInTheDocument();
       });
     });
 
@@ -667,7 +697,9 @@ describe("TemplateCustomizationList", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /retry/i })
+        ).toBeInTheDocument();
       });
     });
   });
