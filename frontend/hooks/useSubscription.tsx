@@ -114,7 +114,7 @@ export function useCanPerformAction(
  */
 export function useIsEnterprise() {
   const { data: subscription, isLoading } = useSubscription();
-  console.log("Subscription Data:", subscription);
+  // console.log("Subscription Data:", subscription);
 
   return {
     isEnterprise: subscription?.planType === "ENTERPRISE",
