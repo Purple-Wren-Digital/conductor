@@ -187,7 +187,7 @@ export const inviteTeamMember = api<
     });
 
     // TODO: Remove token/signupUrl from response once email is confirmed working
-    const signupUrl = `${APP_BASE_URL}/sign-up?token=${token}`;
+    const signupUrl = `${APP_BASE_URL()}/sign-up?token=${token}`;
 
     return {
       success: true,

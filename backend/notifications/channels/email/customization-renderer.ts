@@ -155,9 +155,9 @@ function getButtonUrl(
 
   if (ticketId) {
     if (templateType === "ticket_survey") {
-      return `${APP_BASE_URL}/dashboard/tickets/${ticketId}?survey=true`;
+      return `${APP_BASE_URL()}/dashboard/tickets/${ticketId}?survey=true`;
     }
-    return `${APP_BASE_URL}/dashboard/tickets/${ticketId}`;
+    return `${APP_BASE_URL()}/dashboard/tickets/${ticketId}`;
   }
 
   const marketCenterId =
@@ -166,10 +166,10 @@ function getButtonUrl(
     notification.data?.categoryAssignment?.marketCenterId;
 
   if (marketCenterId) {
-    return `${APP_BASE_URL}/dashboard/market-centers/${marketCenterId}`;
+    return `${APP_BASE_URL()}/dashboard/market-centers/${marketCenterId}`;
   }
 
-  return `${APP_BASE_URL}/dashboard`;
+  return `${APP_BASE_URL()}/dashboard`;
 }
 
 /**
@@ -336,7 +336,7 @@ export function renderDefaultEmailTemplate(
     greeting: renderedGreeting,
     mainMessage: renderedMainMessage,
     buttonText: defaultTemplate.buttonText,
-    buttonUrl: `${APP_BASE_URL}/dashboard`,
+    buttonUrl: `${APP_BASE_URL()}/dashboard`,
     visibleFieldsData,
     previewText: renderedSubject,
   };
