@@ -97,9 +97,15 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: true,
     });
 
-    render(<MarketCenterNotificationPreferences marketCenterId="mc-123" />, {
-      wrapper: createWrapper(),
-    });
+    render(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />,
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     // Should show skeleton loading elements
     const skeletons = document.querySelectorAll('[data-slot="skeleton"]');
@@ -114,9 +120,15 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: false,
     });
 
-    render(<MarketCenterNotificationPreferences marketCenterId="mc-123" />, {
-      wrapper: createWrapper(),
-    });
+    render(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />,
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     // Wait for data to be displayed
     await waitFor(() => {
@@ -143,7 +155,10 @@ describe("MarketCenterNotificationPreferences", () => {
     });
 
     const { rerender } = render(
-      <MarketCenterNotificationPreferences marketCenterId="mc-123" />,
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={true}
+      />,
       { wrapper: createWrapper() }
     );
 
@@ -159,7 +174,12 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: false,
     });
 
-    rerender(<MarketCenterNotificationPreferences marketCenterId="mc-123" />);
+    rerender(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />
+    );
 
     // Wait for data to be displayed - preference cards should be shown
     await waitFor(() => {
@@ -178,9 +198,15 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: true,
     });
 
-    render(<MarketCenterNotificationPreferences marketCenterId="mc-123" />, {
-      wrapper: createWrapper(),
-    });
+    render(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />,
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     const saveButton = screen.getByRole("button", { name: /loading/i });
     expect(saveButton).toBeDisabled();
@@ -194,9 +220,15 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: false,
     });
 
-    render(<MarketCenterNotificationPreferences marketCenterId="mc-123" />, {
-      wrapper: createWrapper(),
-    });
+    render(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />,
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Notification Settings")).toBeInTheDocument();
@@ -214,9 +246,15 @@ describe("MarketCenterNotificationPreferences", () => {
       isLoading: true,
     });
 
-    render(<MarketCenterNotificationPreferences marketCenterId="mc-123" />, {
-      wrapper: createWrapper(),
-    });
+    render(
+      <MarketCenterNotificationPreferences
+        marketCenterId="mc-123"
+        isLoadingMarketCenters={false}
+      />,
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     // The loading state renders 4 skeleton cards
     const skeletons = document.querySelectorAll('[data-slot="skeleton"]');

@@ -25,8 +25,12 @@ const EXCLUDED_TYPES = ["App Permissions", "General", "Account Information"];
 
 export function MarketCenterNotificationPreferences({
   marketCenterId,
+  selectedMarketCenterName,
+  isLoadingMarketCenters,
 }: {
   marketCenterId?: string;
+  selectedMarketCenterName?: string;
+  isLoadingMarketCenters: boolean;
 }) {
   const queryClient = useQueryClient();
   const { getToken } = useAuth();
@@ -69,12 +73,13 @@ export function MarketCenterNotificationPreferences({
   // Sync local state when fetched data changes
   useEffect(() => {
     if (
+      !isLoadingMarketCenters &&
       marketCenterNotificationPreferences &&
       marketCenterNotificationPreferences.length > 0
     ) {
       setUpdatedNotificationPreferences(marketCenterNotificationPreferences);
     }
-  }, [marketCenterNotificationPreferences]);
+  }, [marketCenterNotificationPreferences, isLoadingMarketCenters]);
 
   function handleNotificationToggle(
     category: string,
@@ -217,12 +222,10 @@ export function MarketCenterNotificationPreferences({
       className="flex flex-col gap-2 justify-center space-y-6"
     >
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-col gap-2">
-          <CardTitle className="text-xl">Notification Settings</CardTitle>
-          <CardDescription>
-            Enable or disable app activity notifications for your market center
-          </CardDescription>
-        </div>
+        <CardTitle className="text-xl">
+          {isLoadingMarketCenters ? "Loading..." : selectedMarketCenterName}
+        </CardTitle>
+
         <div className="flex flex-row gap-2">
           {hasNotificationPreferenceUpdates &&
             hasNotificationPreferenceUpdates.length > 0 && (
@@ -249,8 +252,8 @@ export function MarketCenterNotificationPreferences({
             {isSubmitting
               ? "Saving Preferences..."
               : isLoadingSettings
-              ? "Loading..."
-              : "Save Preferences"}
+                ? "Loading..."
+                : "Save Preferences"}
           </Button>
         </div>
       </CardHeader>
