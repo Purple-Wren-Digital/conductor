@@ -10,6 +10,8 @@ import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
 import type { UserRole } from "../user/types";
 
+const APP_BASE_URL = process.env.FRONTEND_URL;
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -184,7 +186,7 @@ export const inviteTeamMember = api<
     });
 
     // TODO: Remove token/signupUrl from response once email is confirmed working
-    const signupUrl = `${process.env.APP_BASE_URL || "https://app.conductorticket.com"}/sign-up?token=${token}`;
+    const signupUrl = `${APP_BASE_URL}/sign-up?token=${token}`;
 
     return {
       success: true,
@@ -359,7 +361,10 @@ export const acceptInvitation = api<
 
     // Ensure user has notification preferences
     const userWithSettings = await userRepository.findByIdWithSettings(user.id);
-    if (!userWithSettings?.userSettings || !userWithSettings?.userSettings?.id) {
+    if (
+      !userWithSettings?.userSettings ||
+      !userWithSettings?.userSettings?.id
+    ) {
       // Create user settings with notification preferences
       const newSettings = await userRepository.createUserSettings(user.id);
       await userRepository.createNotificationPreferences(

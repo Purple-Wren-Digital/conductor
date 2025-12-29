@@ -11,8 +11,7 @@ import {
 } from "../../templates/customization-types";
 import { renderTemplate } from "../../templates/utils";
 
-const APP_BASE_URL =
-  process.env.APP_BASE_URL || "https://app.conductorticket.com";
+const APP_BASE_URL = process.env.FRONTEND_URL;
 
 /**
  * Maps notification types to our customizable template types
