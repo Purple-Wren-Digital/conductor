@@ -3,7 +3,7 @@ import { secret } from "encore.dev/config";
 import type { UserRole } from "../user/types";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");
-const APP_BASE_URL = process.env.APP_BASE_URL || "https://app.conductorticket.com";
+const APP_BASE_URL = process.env.APP_BASE_URL; // || "https://app.conductorticket.com";
 const EMAIL_FROM_ADDRESS = "noreply@reply.conductorticket.com";
 const EMAIL_FROM_NAME = "Conductor";
 
@@ -19,7 +19,9 @@ interface SendInvitationEmailParams {
   expiresAt: Date;
 }
 
-export async function sendInvitationEmail(params: SendInvitationEmailParams): Promise<void> {
+export async function sendInvitationEmail(
+  params: SendInvitationEmailParams
+): Promise<void> {
   const {
     to,
     inviteeName,
@@ -50,7 +52,9 @@ export async function sendInvitationEmail(params: SendInvitationEmailParams): Pr
 
   const apiKey = RESEND_API_KEY();
   if (!apiKey) {
-    console.warn("⚠️  RESEND_API_KEY not configured - email not sent (use URL above to test)");
+    console.warn(
+      "⚠️  RESEND_API_KEY not configured - email not sent (use URL above to test)"
+    );
     return;
   }
 

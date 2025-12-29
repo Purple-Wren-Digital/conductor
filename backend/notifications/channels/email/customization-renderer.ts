@@ -2,9 +2,7 @@ import * as React from "react";
 import { CustomizableEmail } from "@/emails/index";
 import type { CustomizableEmailProps } from "@/emails/index";
 import type { Notification, NotificationData } from "../../types";
-import {
-  emailTemplateCustomizationRepository,
-} from "../../templates/customization-repository";
+import { emailTemplateCustomizationRepository } from "../../templates/customization-repository";
 import {
   CustomizableTemplateType,
   TEMPLATE_VARIABLES,
@@ -13,12 +11,14 @@ import {
 } from "../../templates/customization-types";
 import { renderTemplate } from "../../templates/utils";
 
-const APP_BASE_URL = process.env.APP_BASE_URL || "https://app.conductorticket.com";
+const APP_BASE_URL = process.env.APP_BASE_URL; // || "https://app.conductorticket.com";
 
 /**
  * Maps notification types to our customizable template types
  */
-function getTemplateTypeFromNotification(notification: Notification): CustomizableTemplateType | null {
+function getTemplateTypeFromNotification(
+  notification: Notification
+): CustomizableTemplateType | null {
   const typeMap: Record<string, CustomizableTemplateType> = {
     "Ticket Created": "TICKET_CREATED",
     "Ticket Updated": "TICKET_UPDATED",
@@ -82,8 +82,10 @@ function extractContextFromNotification(
         context.ticket_number = data.ticketAssignment.ticketNumber || "";
         context.ticket_title = data.ticketAssignment.ticketTitle || "";
         context.editor_name = data.ticketAssignment.editorName || "";
-        context.current_assignment = data.ticketAssignment.currentAssignment?.name || "";
-        context.previous_assignment = data.ticketAssignment.previousAssignment?.name || "";
+        context.current_assignment =
+          data.ticketAssignment.currentAssignment?.name || "";
+        context.previous_assignment =
+          data.ticketAssignment.previousAssignment?.name || "";
       }
       break;
 
@@ -98,7 +100,8 @@ function extractContextFromNotification(
 
     case "MARKET_CENTER_ASSIGNMENT":
       if (data.marketCenterAssignment) {
-        context.market_center_name = data.marketCenterAssignment.marketCenterName || "";
+        context.market_center_name =
+          data.marketCenterAssignment.marketCenterName || "";
         context.editor_name = data.marketCenterAssignment.editorName || "";
       }
       break;
@@ -106,8 +109,10 @@ function extractContextFromNotification(
     case "CATEGORY_ASSIGNMENT":
       if (data.categoryAssignment) {
         context.category_name = data.categoryAssignment.categoryName || "";
-        context.category_description = data.categoryAssignment.categoryDescription || "";
-        context.market_center_name = data.categoryAssignment.marketCenterName || "";
+        context.category_description =
+          data.categoryAssignment.categoryDescription || "";
+        context.market_center_name =
+          data.categoryAssignment.marketCenterName || "";
         context.editor_name = data.categoryAssignment.editorName || "";
       }
       break;
@@ -134,7 +139,10 @@ function extractContextFromNotification(
 /**
  * Generates the CTA button URL based on notification type and data
  */
-function getButtonUrl(notification: Notification, templateType: CustomizableTemplateType): string {
+function getButtonUrl(
+  notification: Notification,
+  templateType: CustomizableTemplateType
+): string {
   const ticketId =
     notification.data?.ticketId ||
     notification.data?.createdTicket?.ticketNumber ||
@@ -184,10 +192,11 @@ export async function renderCustomizedEmailTemplate(
   }
 
   // Check for customization
-  const customization = await emailTemplateCustomizationRepository.findByMarketCenterAndType(
-    marketCenterId,
-    templateType
-  );
+  const customization =
+    await emailTemplateCustomizationRepository.findByMarketCenterAndType(
+      marketCenterId,
+      templateType
+    );
 
   // If no customization or not active, fall back to default
   if (!customization || !customization.isActive) {
@@ -195,7 +204,12 @@ export async function renderCustomizedEmailTemplate(
   }
 
   // We have a customization - render it
-  return renderEmailFromCustomization(notification, customization, templateType, recipientName);
+  return renderEmailFromCustomization(
+    notification,
+    customization,
+    templateType,
+    recipientName
+  );
 }
 
 /**
@@ -251,7 +265,9 @@ function renderEmailFromCustomization(
     .filter((f): f is { label: string; value: string } => f !== null);
 
   // Get button URL
-  const buttonUrl = customization.buttonText ? getButtonUrl(notification, templateType) : null;
+  const buttonUrl = customization.buttonText
+    ? getButtonUrl(notification, templateType)
+    : null;
 
   // Create props for customizable email
   const emailProps: CustomizableEmailProps = {
