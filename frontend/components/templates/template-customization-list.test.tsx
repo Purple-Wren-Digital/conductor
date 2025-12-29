@@ -177,7 +177,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="ADMIN" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -196,13 +196,9 @@ describe("TemplateCustomizationList", () => {
       });
 
       // Need to select a market center to see the loading state for templates
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, {
+        wrapper: createWrapper(),
+      });
 
       const skeletons = document.querySelectorAll('[data-slot="skeleton"]');
       expect(skeletons.length).toBeGreaterThan(0);
@@ -220,7 +216,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="ADMIN" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -239,7 +235,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="ADMIN" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -259,13 +255,7 @@ describe("TemplateCustomizationList", () => {
       });
 
       // Use initialMarketCenterId to test the hook is called correctly
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(mockUseFetchTemplateStatuses).toHaveBeenCalledWith(
@@ -288,13 +278,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText("Ticket Created")).toBeInTheDocument();
@@ -320,13 +304,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         // Find the Ticket Created row and check for Default badge
@@ -351,13 +329,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         // Find the Ticket Updated row (has email customization)
@@ -384,13 +356,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         // Find the Ticket Assignment row (in-app customized, email default)
@@ -421,13 +387,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText("Ticket Created")).toBeInTheDocument();
@@ -459,13 +419,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText("Ticket Created")).toBeInTheDocument();
@@ -497,13 +451,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText("New Comment")).toBeInTheDocument();
@@ -532,7 +480,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="ADMIN" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -553,7 +501,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="ADMIN" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -572,7 +520,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="STAFF" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -587,7 +535,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(<TemplateCustomizationList role="AGENT" />, {
+      render(<TemplateCustomizationList />, {
         wrapper: createWrapper(),
       });
 
@@ -606,13 +554,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(
@@ -631,13 +573,9 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="STAFF_LEADER"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => {
         expect(
@@ -660,13 +598,7 @@ describe("TemplateCustomizationList", () => {
         error: new Error("Failed to fetch templates"),
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(
@@ -688,13 +620,7 @@ describe("TemplateCustomizationList", () => {
         refetch: vi.fn(),
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(
@@ -715,13 +641,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText("Template")).toBeInTheDocument();
@@ -741,13 +661,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         const rows = screen.getAllByRole("row");
@@ -768,13 +682,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByRole("table")).toBeInTheDocument();
@@ -791,13 +699,7 @@ describe("TemplateCustomizationList", () => {
         isLoading: false,
       });
 
-      render(
-        <TemplateCustomizationList
-          role="ADMIN"
-          initialMarketCenterId="mc-austin"
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<TemplateCustomizationList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         const editButtons = screen.getAllByRole("button", { name: /edit/i });
