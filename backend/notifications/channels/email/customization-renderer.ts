@@ -10,8 +10,9 @@ import {
   EmailTemplateCustomization,
 } from "../../templates/customization-types";
 import { renderTemplate } from "../../templates/utils";
+import { secret } from "encore.dev/config";
 
-const APP_BASE_URL = process.env.FRONTEND_URL;
+const APP_BASE_URL = secret("FRONTEND_URL");
 
 /**
  * Maps notification types to our customizable template types

@@ -10,7 +10,8 @@ import {
 } from "@react-email/components";
 import { SurveyResultsProps } from "./types";
 
-const APP_BASE_URL = process.env.APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 // New Survey Results Available for Ticket #{{ticketNumber}}
 const TicketSurveyResults = ({
   ticketNumber,

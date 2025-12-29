@@ -9,8 +9,9 @@ import { sendInvitationEmail } from "./email";
 import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
 import type { UserRole } from "../user/types";
+import { secret } from "encore.dev/config";
 
-const APP_BASE_URL = process.env.FRONTEND_URL;
+const APP_BASE_URL = secret("FRONTEND_URL");
 
 // ============================================================================
 // Types
