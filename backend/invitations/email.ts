@@ -3,7 +3,7 @@ import { secret } from "encore.dev/config";
 import type { UserRole } from "../user/types";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");
-const APP_BASE_URL = process.env.FRONTEND_URL;
+const APP_BASE_URL = secret("FRONTEND_URL");
 const EMAIL_FROM_ADDRESS = "noreply@reply.conductorticket.com";
 const EMAIL_FROM_NAME = "Conductor";
 
