@@ -200,10 +200,10 @@ export const subscriptionRepository = {
         ${data.currentPeriodEnd},
         ${data.trialEnd ?? null},
         ${toJson(data.features ?? {})}::jsonb,
-        ${data.cancelAt ?? null},
-        ${data.canceledAt ?? null},
         NOW(),
-        NOW()
+        NOW(),
+        ${data.cancelAt ?? null},
+        ${data.canceledAt ?? null}
       )
       RETURNING *
     `;
