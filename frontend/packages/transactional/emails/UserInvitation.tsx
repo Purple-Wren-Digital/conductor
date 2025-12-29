@@ -10,7 +10,7 @@ import {
   Text,
 } from "@react-email/components";
 
-const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
+const APP_BASE_URL = process.env.APP_BASE_URL || process.env.FRONTEND_URL;
 
 const NewUserInvitation = ({
   newUserName,

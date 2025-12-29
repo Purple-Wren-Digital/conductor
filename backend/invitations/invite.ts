@@ -10,7 +10,7 @@ import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
 import type { UserRole } from "../user/types";
 
-const APP_BASE_URL = process.env.APP_BASE_URL;
+const APP_BASE_URL = process.env.FRONTEND_URL;
 
 // ============================================================================
 // Types

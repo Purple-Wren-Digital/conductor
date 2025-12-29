@@ -10,7 +10,7 @@ import {
 } from "@react-email/components";
 import { TicketSurveyProps } from "./types";
 
-const APP_BASE_URL = process.env.APP_BASE_URL; // TODO: Production url
+const APP_BASE_URL = process.env.APP_BASE_URL || process.env.FRONTEND_URL;
 
 const TicketSurvey = ({
   ticketNumber,
@@ -36,8 +36,8 @@ const TicketSurvey = ({
               Your ticket, &quot;{ticketTitle},&quot; was marked as resolved.
             </Text>
             <Text style={text}>
-              Please take a moment to provide feedback about your experience. Thank
-              you!
+              Please take a moment to provide feedback about your experience.
+              Thank you!
             </Text>
           </Section>
           <Section>
