@@ -52,8 +52,16 @@ export const previewEmailTemplate = api<
     const userContext = await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -160,8 +168,16 @@ export const previewInAppTemplate = api<
     const userContext = await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -247,11 +263,21 @@ export const getTemplateVariables = api<
     await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
-    const variables = TEMPLATE_VARIABLES[req.templateType].map((v) => ({
+    const variables = TEMPLATE_VARIABLES[
+      req.templateType as CustomizableTemplateType
+    ].map((v) => ({
       ...v,
       insertText: `{{${v.key}}}`,
     }));
@@ -300,13 +326,23 @@ export const getDefaultTemplates = api<
     await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     return {
-      emailDefault: DEFAULT_EMAIL_TEMPLATES[req.templateType],
-      inAppDefault: DEFAULT_IN_APP_TEMPLATES[req.templateType],
+      emailDefault:
+        DEFAULT_EMAIL_TEMPLATES[req.templateType as CustomizableTemplateType],
+      inAppDefault:
+        DEFAULT_IN_APP_TEMPLATES[req.templateType as CustomizableTemplateType],
     };
   }
 );

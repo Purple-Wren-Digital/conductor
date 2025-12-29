@@ -40,7 +40,7 @@ import {
 const mockEmailRow = {
   id: "email-123",
   market_center_id: "mc-123",
-  template_type: "TICKET_CREATED",
+  template_type: "ticket_created",
   subject: "Test Subject",
   greeting: "Hi {{user_name}},",
   main_message: "<p>Test message</p>",
@@ -56,7 +56,7 @@ const mockEmailRow = {
 const mockInAppRow = {
   id: "inapp-123",
   market_center_id: "mc-123",
-  template_type: "TICKET_CREATED",
+  template_type: "ticket_created",
   title: "Test Title",
   body: "Test body {{creator_name}}",
   is_active: true,
@@ -79,15 +79,16 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should return customization when found", async () => {
       mockDb.queryRow.mockResolvedValue(mockEmailRow);
 
-      const result = await emailTemplateCustomizationRepository.findByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await emailTemplateCustomizationRepository.findByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBeDefined();
       expect(result?.id).toBe("email-123");
       expect(result?.marketCenterId).toBe("mc-123");
-      expect(result?.templateType).toBe("TICKET_CREATED");
+      expect(result?.templateType).toBe("ticket_created");
       expect(result?.subject).toBe("Test Subject");
       expect(result?.visibleFields).toEqual(["ticket_number", "creator_name"]);
     });
@@ -95,10 +96,11 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should return null when not found", async () => {
       mockDb.queryRow.mockResolvedValue(null);
 
-      const result = await emailTemplateCustomizationRepository.findByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await emailTemplateCustomizationRepository.findByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBeNull();
     });
@@ -108,7 +110,7 @@ describe("emailTemplateCustomizationRepository", () => {
 
       await emailTemplateCustomizationRepository.findByMarketCenterAndType(
         "mc-123",
-        "TICKET_CREATED"
+        "ticket_created"
       );
 
       // The query should include is_active = true condition
@@ -119,12 +121,15 @@ describe("emailTemplateCustomizationRepository", () => {
   describe("findAllByMarketCenter", () => {
     it("should return all customizations for market center", async () => {
       const rows = [
-        { ...mockEmailRow, id: "email-1", template_type: "TICKET_CREATED" },
-        { ...mockEmailRow, id: "email-2", template_type: "TICKET_UPDATED" },
+        { ...mockEmailRow, id: "email-1", template_type: "ticket_created" },
+        { ...mockEmailRow, id: "email-2", template_type: "ticket_updated" },
       ];
       mockDb.queryAll.mockResolvedValue(rows);
 
-      const result = await emailTemplateCustomizationRepository.findAllByMarketCenter("mc-123");
+      const result =
+        await emailTemplateCustomizationRepository.findAllByMarketCenter(
+          "mc-123"
+        );
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe("email-1");
@@ -134,7 +139,10 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should return empty array when none exist", async () => {
       mockDb.queryAll.mockResolvedValue([]);
 
-      const result = await emailTemplateCustomizationRepository.findAllByMarketCenter("mc-123");
+      const result =
+        await emailTemplateCustomizationRepository.findAllByMarketCenter(
+          "mc-123"
+        );
 
       expect(result).toEqual([]);
     });
@@ -144,7 +152,8 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should return customization by ID", async () => {
       mockDb.queryRow.mockResolvedValue(mockEmailRow);
 
-      const result = await emailTemplateCustomizationRepository.findById("email-123");
+      const result =
+        await emailTemplateCustomizationRepository.findById("email-123");
 
       expect(result?.id).toBe("email-123");
     });
@@ -152,7 +161,8 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should return null when not found", async () => {
       mockDb.queryRow.mockResolvedValue(null);
 
-      const result = await emailTemplateCustomizationRepository.findById("nonexistent");
+      const result =
+        await emailTemplateCustomizationRepository.findById("nonexistent");
 
       expect(result).toBeNull();
     });
@@ -169,7 +179,7 @@ describe("emailTemplateCustomizationRepository", () => {
       const result = await emailTemplateCustomizationRepository.create(
         {
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           subject: "New Subject",
           greeting: "Hello",
           mainMessage: "<p>New message</p>",
@@ -194,7 +204,7 @@ describe("emailTemplateCustomizationRepository", () => {
       const result = await emailTemplateCustomizationRepository.create(
         {
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           subject: "Subject",
           greeting: "Hello",
           mainMessage: "Message",
@@ -256,7 +266,8 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should delete email customization by ID", async () => {
       mockDb.exec.mockResolvedValue(undefined);
 
-      const result = await emailTemplateCustomizationRepository.delete("email-123");
+      const result =
+        await emailTemplateCustomizationRepository.delete("email-123");
 
       expect(result).toBe(true);
       expect(mockDb.exec).toHaveBeenCalled();
@@ -267,10 +278,11 @@ describe("emailTemplateCustomizationRepository", () => {
     it("should delete by market center and type", async () => {
       mockDb.exec.mockResolvedValue(undefined);
 
-      const result = await emailTemplateCustomizationRepository.deleteByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await emailTemplateCustomizationRepository.deleteByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBe(true);
       expect(mockDb.exec).toHaveBeenCalled();
@@ -291,15 +303,16 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should return customization when found", async () => {
       mockDb.queryRow.mockResolvedValue(mockInAppRow);
 
-      const result = await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBeDefined();
       expect(result?.id).toBe("inapp-123");
       expect(result?.marketCenterId).toBe("mc-123");
-      expect(result?.templateType).toBe("TICKET_CREATED");
+      expect(result?.templateType).toBe("ticket_created");
       expect(result?.title).toBe("Test Title");
       expect(result?.body).toBe("Test body {{creator_name}}");
     });
@@ -307,10 +320,11 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should return null when not found", async () => {
       mockDb.queryRow.mockResolvedValue(null);
 
-      const result = await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBeNull();
     });
@@ -319,13 +333,16 @@ describe("inAppTemplateCustomizationRepository", () => {
   describe("findAllByMarketCenter", () => {
     it("should return all customizations for market center", async () => {
       const rows = [
-        { ...mockInAppRow, id: "inapp-1", template_type: "TICKET_CREATED" },
-        { ...mockInAppRow, id: "inapp-2", template_type: "NEW_COMMENTS" },
-        { ...mockInAppRow, id: "inapp-3", template_type: "TICKET_ASSIGNMENT" },
+        { ...mockInAppRow, id: "inapp-1", template_type: "ticket_created" },
+        { ...mockInAppRow, id: "inapp-2", template_type: "new_comments" },
+        { ...mockInAppRow, id: "inapp-3", template_type: "ticket_assignment" },
       ];
       mockDb.queryAll.mockResolvedValue(rows);
 
-      const result = await inAppTemplateCustomizationRepository.findAllByMarketCenter("mc-123");
+      const result =
+        await inAppTemplateCustomizationRepository.findAllByMarketCenter(
+          "mc-123"
+        );
 
       expect(result).toHaveLength(3);
     });
@@ -333,7 +350,10 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should return empty array when none exist", async () => {
       mockDb.queryAll.mockResolvedValue([]);
 
-      const result = await inAppTemplateCustomizationRepository.findAllByMarketCenter("mc-123");
+      const result =
+        await inAppTemplateCustomizationRepository.findAllByMarketCenter(
+          "mc-123"
+        );
 
       expect(result).toEqual([]);
     });
@@ -343,7 +363,8 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should return customization by ID", async () => {
       mockDb.queryRow.mockResolvedValue(mockInAppRow);
 
-      const result = await inAppTemplateCustomizationRepository.findById("inapp-123");
+      const result =
+        await inAppTemplateCustomizationRepository.findById("inapp-123");
 
       expect(result?.id).toBe("inapp-123");
     });
@@ -360,7 +381,7 @@ describe("inAppTemplateCustomizationRepository", () => {
       const result = await inAppTemplateCustomizationRepository.create(
         {
           marketCenterId: "mc-123",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           title: "New Title",
           body: "New body",
         },
@@ -407,7 +428,8 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should delete in-app customization", async () => {
       mockDb.exec.mockResolvedValue(undefined);
 
-      const result = await inAppTemplateCustomizationRepository.delete("inapp-123");
+      const result =
+        await inAppTemplateCustomizationRepository.delete("inapp-123");
 
       expect(result).toBe(true);
     });
@@ -417,10 +439,11 @@ describe("inAppTemplateCustomizationRepository", () => {
     it("should delete by market center and type", async () => {
       mockDb.exec.mockResolvedValue(undefined);
 
-      const result = await inAppTemplateCustomizationRepository.deleteByMarketCenterAndType(
-        "mc-123",
-        "TICKET_CREATED"
-      );
+      const result =
+        await inAppTemplateCustomizationRepository.deleteByMarketCenterAndType(
+          "mc-123",
+          "ticket_created"
+        );
 
       expect(result).toBe(true);
     });
@@ -439,12 +462,13 @@ describe("Data Mapping", () => {
   it("should correctly map snake_case database columns to camelCase", async () => {
     mockDb.queryRow.mockResolvedValue(mockEmailRow);
 
-    const result = await emailTemplateCustomizationRepository.findById("email-123");
+    const result =
+      await emailTemplateCustomizationRepository.findById("email-123");
 
     expect(result).toMatchObject({
       id: "email-123",
       marketCenterId: "mc-123",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "Test Subject",
       greeting: "Hi {{user_name}},",
       mainMessage: "<p>Test message</p>",
@@ -461,7 +485,8 @@ describe("Data Mapping", () => {
       visible_fields: JSON.stringify(["field1", "field2", "field3"]),
     });
 
-    const result = await emailTemplateCustomizationRepository.findById("email-123");
+    const result =
+      await emailTemplateCustomizationRepository.findById("email-123");
 
     expect(result?.visibleFields).toEqual(["field1", "field2", "field3"]);
   });
@@ -472,7 +497,8 @@ describe("Data Mapping", () => {
       visible_fields: null,
     });
 
-    const result = await emailTemplateCustomizationRepository.findById("email-123");
+    const result =
+      await emailTemplateCustomizationRepository.findById("email-123");
 
     // Should fall back to empty array or handle gracefully
     expect(result?.visibleFields).toEqual([]);
@@ -486,7 +512,8 @@ describe("Data Mapping", () => {
       updated_at: testDate,
     });
 
-    const result = await emailTemplateCustomizationRepository.findById("email-123");
+    const result =
+      await emailTemplateCustomizationRepository.findById("email-123");
 
     expect(result?.createdAt).toEqual(testDate);
     expect(result?.updatedAt).toEqual(testDate);

@@ -16,14 +16,18 @@ const mockBack = vi.fn();
 
 // Mutable state for mutations
 let saveMutationState = { isPending: false };
-let previewMutationData: { preview: { title: string; body: string } } | null = null;
+let previewMutationData: { preview: { title: string; body: string } } | null =
+  null;
 
 vi.mock("@/hooks/use-template-customization", () => ({
-  useFetchTemplateForEditing: (props: unknown) => mockUseFetchTemplateForEditing(props),
+  useFetchTemplateForEditing: (props: unknown) =>
+    mockUseFetchTemplateForEditing(props),
   useSaveInAppTemplate: () => ({
     mutate: mockSaveInAppTemplate,
     mutateAsync: mockSaveInAppTemplate,
-    get isPending() { return saveMutationState.isPending; },
+    get isPending() {
+      return saveMutationState.isPending;
+    },
     isSuccess: false,
     isError: false,
   }),
@@ -36,7 +40,9 @@ vi.mock("@/hooks/use-template-customization", () => ({
     mutate: mockPreviewInAppTemplate,
     mutateAsync: mockPreviewInAppTemplate,
     isPending: false,
-    get data() { return previewMutationData; },
+    get data() {
+      return previewMutationData;
+    },
   }),
 }));
 
@@ -49,9 +55,10 @@ vi.mock("next/navigation", () => ({
   }),
   useParams: () => ({
     marketCenterId: "mc-austin",
-    templateType: "TICKET_CREATED",
+    templateType: "ticket_created",
   }),
-  usePathname: () => "/dashboard/template-customization/mc-austin/TICKET_CREATED/in-app",
+  usePathname: () =>
+    "/dashboard/template-customization/mc-austin/ticket_created/in-app",
 }));
 
 vi.mock("sonner", () => ({
@@ -93,14 +100,39 @@ function createWrapper() {
 // =============================================================================
 
 const mockTemplateData = {
-  templateType: "TICKET_CREATED",
+  templateType: "ticket_created",
   label: "Ticket Created",
   variables: [
-    { key: "user_name", label: "User Name", description: "Name of the recipient", example: "John Smith" },
-    { key: "ticket_number", label: "Ticket Number", description: "The ticket ID", example: "1234" },
-    { key: "ticket_title", label: "Ticket Title", description: "Title of the ticket", example: "Login Issue" },
-    { key: "creator_name", label: "Creator Name", description: "Who created the ticket", example: "Jane Doe" },
-    { key: "created_on", label: "Created On", description: "Date created", example: "January 15, 2024" },
+    {
+      key: "user_name",
+      label: "User Name",
+      description: "Name of the recipient",
+      example: "John Smith",
+    },
+    {
+      key: "ticket_number",
+      label: "Ticket Number",
+      description: "The ticket ID",
+      example: "1234",
+    },
+    {
+      key: "ticket_title",
+      label: "Ticket Title",
+      description: "Title of the ticket",
+      example: "Login Issue",
+    },
+    {
+      key: "creator_name",
+      label: "Creator Name",
+      description: "Who created the ticket",
+      example: "Jane Doe",
+    },
+    {
+      key: "created_on",
+      label: "Created On",
+      description: "Date created",
+      example: "January 15, 2024",
+    },
   ],
   emailVisibleFields: [],
   emailDefault: {
@@ -123,7 +155,7 @@ const mockTemplateWithCustomization = {
   inAppCustomization: {
     id: "inapp-123",
     marketCenterId: "mc-austin",
-    templateType: "TICKET_CREATED",
+    templateType: "ticket_created",
     title: "Custom Title: {{ticket_title}}",
     body: "Custom body from {{creator_name}}",
     isActive: true,
@@ -264,10 +296,18 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /user name/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /ticket number/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /ticket title/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /creator name/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /user name/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /ticket number/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /ticket title/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /creator name/i })
+        ).toBeInTheDocument();
       });
     });
 
@@ -291,12 +331,16 @@ describe("InAppTemplateEditor", () => {
       await user.click(titleInput);
 
       // Click a variable button
-      const variableButton = screen.getByRole("button", { name: /ticket number/i });
+      const variableButton = screen.getByRole("button", {
+        name: /ticket number/i,
+      });
       await user.click(variableButton);
 
       // Check that the variable was inserted
       await waitFor(() => {
-        expect((titleInput as HTMLInputElement).value).toContain("{{ticket_number}}");
+        expect((titleInput as HTMLInputElement).value).toContain(
+          "{{ticket_number}}"
+        );
       });
     });
 
@@ -320,12 +364,16 @@ describe("InAppTemplateEditor", () => {
       await user.click(bodyInput);
 
       // Click a variable button
-      const variableButton = screen.getByRole("button", { name: /creator name/i });
+      const variableButton = screen.getByRole("button", {
+        name: /creator name/i,
+      });
       await user.click(variableButton);
 
       // Check that the variable was inserted
       await waitFor(() => {
-        expect((bodyInput as HTMLTextAreaElement).value).toContain("{{creator_name}}");
+        expect((bodyInput as HTMLTextAreaElement).value).toContain(
+          "{{creator_name}}"
+        );
       });
     });
 
@@ -339,8 +387,13 @@ describe("InAppTemplateEditor", () => {
 
       await waitFor(() => {
         // Variable buttons should have title attributes or tooltips with descriptions
-        const variableButton = screen.getByRole("button", { name: /ticket title/i });
-        expect(variableButton).toHaveAttribute("title", expect.stringContaining("Title of the ticket"));
+        const variableButton = screen.getByRole("button", {
+          name: /ticket title/i,
+        });
+        expect(variableButton).toHaveAttribute(
+          "title",
+          expect.stringContaining("Title of the ticket")
+        );
       });
     });
   });
@@ -431,7 +484,9 @@ describe("InAppTemplateEditor", () => {
 
       // Should show validation error
       await waitFor(() => {
-        expect(screen.getByText(/title must be less than/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(/title must be less than/i)
+        ).toBeInTheDocument();
       });
     });
 
@@ -493,7 +548,7 @@ describe("InAppTemplateEditor", () => {
         expect(mockSaveInAppTemplate).toHaveBeenCalledWith(
           expect.objectContaining({
             marketCenterId: "mc-austin",
-            templateType: "TICKET_CREATED",
+            templateType: "ticket_created",
             title: "New Ticket: {{ticket_title}}",
             body: "Created by {{creator_name}}",
           })
@@ -592,7 +647,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /reset to default/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /reset to default/i })
+        ).toBeInTheDocument();
       });
     });
 
@@ -605,7 +662,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.queryByRole("button", { name: /reset to default/i })).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /reset to default/i })
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -620,16 +679,24 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /reset to default/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /reset to default/i })
+        ).toBeInTheDocument();
       });
 
-      const resetButton = screen.getByRole("button", { name: /reset to default/i });
+      const resetButton = screen.getByRole("button", {
+        name: /reset to default/i,
+      });
       await user.click(resetButton);
 
       await waitFor(() => {
         expect(screen.getByText(/are you sure/i)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /confirm/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /cancel/i })
+        ).toBeInTheDocument();
       });
     });
 
@@ -644,14 +711,20 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /reset to default/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /reset to default/i })
+        ).toBeInTheDocument();
       });
 
-      const resetButton = screen.getByRole("button", { name: /reset to default/i });
+      const resetButton = screen.getByRole("button", {
+        name: /reset to default/i,
+      });
       await user.click(resetButton);
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /confirm/i })
+        ).toBeInTheDocument();
       });
 
       const confirmButton = screen.getByRole("button", { name: /confirm/i });
@@ -660,7 +733,7 @@ describe("InAppTemplateEditor", () => {
       await waitFor(() => {
         expect(mockResetInAppTemplate).toHaveBeenCalledWith({
           marketCenterId: "mc-austin",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
         });
       });
     });
@@ -681,7 +754,9 @@ describe("InAppTemplateEditor", () => {
         expect(titleInput.value).toBe("Custom Title: {{ticket_title}}");
       });
 
-      const resetButton = screen.getByRole("button", { name: /reset to default/i });
+      const resetButton = screen.getByRole("button", {
+        name: /reset to default/i,
+      });
       await user.click(resetButton);
 
       const confirmButton = screen.getByRole("button", { name: /confirm/i });
@@ -709,7 +784,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /preview/i })
+        ).toBeInTheDocument();
       });
     });
 
@@ -724,7 +801,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /preview/i })
+        ).toBeInTheDocument();
       });
 
       const previewButton = screen.getByRole("button", { name: /preview/i });
@@ -757,7 +836,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /preview/i })
+        ).toBeInTheDocument();
       });
 
       const previewButton = screen.getByRole("button", { name: /preview/i });
@@ -792,7 +873,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /preview/i })
+        ).toBeInTheDocument();
       });
 
       const previewButton = screen.getByRole("button", { name: /preview/i });
@@ -804,7 +887,9 @@ describe("InAppTemplateEditor", () => {
 
       // Close the modal - get the Close button within the dialog footer
       const dialog = screen.getByRole("dialog");
-      const closeButton = dialog.querySelector("button:last-of-type") as HTMLButtonElement;
+      const closeButton = dialog.querySelector(
+        "button:last-of-type"
+      ) as HTMLButtonElement;
       await user.click(closeButton);
 
       await waitFor(() => {
@@ -829,7 +914,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /cancel/i })
+        ).toBeInTheDocument();
       });
 
       const cancelButton = screen.getByRole("button", { name: /cancel/i });
@@ -851,7 +938,9 @@ describe("InAppTemplateEditor", () => {
       // Wait for form to be initialized with data
       const titleInput = await screen.findByLabelText(/title/i);
       await waitFor(() => {
-        expect((titleInput as HTMLInputElement).value).toBe("New Ticket: {{ticket_title}}");
+        expect((titleInput as HTMLInputElement).value).toBe(
+          "New Ticket: {{ticket_title}}"
+        );
       });
 
       // Make a change - type additional content to trigger isDirty
@@ -878,7 +967,9 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByRole("link", { name: /back to templates/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("link", { name: /back to templates/i })
+        ).toBeInTheDocument();
       });
     });
   });
@@ -995,9 +1086,13 @@ describe("InAppTemplateEditor", () => {
       render(<InAppTemplateEditor />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        const variableButtons = screen.getAllByRole("button").filter(
-          (btn) => btn.textContent?.includes("Name") || btn.textContent?.includes("Number")
-        );
+        const variableButtons = screen
+          .getAllByRole("button")
+          .filter(
+            (btn) =>
+              btn.textContent?.includes("Name") ||
+              btn.textContent?.includes("Number")
+          );
         variableButtons.forEach((btn) => {
           expect(btn).not.toHaveAttribute("tabindex", "-1");
         });

@@ -16,14 +16,14 @@ import {
 
 describe("CustomizableTemplateType", () => {
   const expectedTypes: CustomizableTemplateType[] = [
-    "TICKET_CREATED",
-    "TICKET_UPDATED",
-    "TICKET_ASSIGNMENT",
-    "NEW_COMMENTS",
-    "MARKET_CENTER_ASSIGNMENT",
-    "CATEGORY_ASSIGNMENT",
-    "TICKET_SURVEY",
-    "TICKET_SURVEY_RESULTS",
+    "ticket_created",
+    "ticket_updated",
+    "ticket_assignment",
+    "new_comments",
+    "market_center_assignment",
+    "category_assignment",
+    "ticket_survey",
+    "ticket_survey_results",
   ];
 
   it("should have exactly 8 template types", () => {
@@ -43,14 +43,18 @@ describe("CustomizableTemplateType", () => {
 
 describe("TEMPLATE_TYPE_LABELS", () => {
   it("should have human-readable labels for all types", () => {
-    expect(TEMPLATE_TYPE_LABELS.TICKET_CREATED).toBe("Ticket Created");
-    expect(TEMPLATE_TYPE_LABELS.TICKET_UPDATED).toBe("Ticket Updated");
-    expect(TEMPLATE_TYPE_LABELS.TICKET_ASSIGNMENT).toBe("Ticket Assignment");
-    expect(TEMPLATE_TYPE_LABELS.NEW_COMMENTS).toBe("New Comment");
-    expect(TEMPLATE_TYPE_LABELS.MARKET_CENTER_ASSIGNMENT).toBe("Market Center Assignment");
-    expect(TEMPLATE_TYPE_LABELS.CATEGORY_ASSIGNMENT).toBe("Category Assignment");
-    expect(TEMPLATE_TYPE_LABELS.TICKET_SURVEY).toBe("Ticket Survey");
-    expect(TEMPLATE_TYPE_LABELS.TICKET_SURVEY_RESULTS).toBe("Survey Results");
+    expect(TEMPLATE_TYPE_LABELS.ticket_created).toBe("Ticket Created");
+    expect(TEMPLATE_TYPE_LABELS.ticket_updated).toBe("Ticket Updated");
+    expect(TEMPLATE_TYPE_LABELS.ticket_assignment).toBe("Ticket Assignment");
+    expect(TEMPLATE_TYPE_LABELS.new_comments).toBe("New Comment");
+    expect(TEMPLATE_TYPE_LABELS.market_center_assignment).toBe(
+      "Market Center Assignment"
+    );
+    expect(TEMPLATE_TYPE_LABELS.category_assignment).toBe(
+      "Category Assignment"
+    );
+    expect(TEMPLATE_TYPE_LABELS.ticket_survey).toBe("Ticket Survey");
+    expect(TEMPLATE_TYPE_LABELS.ticket_survey_results).toBe("Survey Results");
   });
 
   it("should not have empty labels", () => {
@@ -67,14 +71,22 @@ describe("TEMPLATE_TYPE_LABELS", () => {
 
 describe("TEMPLATE_TYPE_TO_TRIGGER", () => {
   it("should map to notification trigger names", () => {
-    expect(TEMPLATE_TYPE_TO_TRIGGER.TICKET_CREATED).toBe("Ticket Created");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.TICKET_UPDATED).toBe("Ticket Updated");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.TICKET_ASSIGNMENT).toBe("Ticket Assignment");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.NEW_COMMENTS).toBe("New Comments");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.MARKET_CENTER_ASSIGNMENT).toBe("Market Center Assignment");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.CATEGORY_ASSIGNMENT).toBe("Category Assignment");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.TICKET_SURVEY).toBe("Ticket Survey");
-    expect(TEMPLATE_TYPE_TO_TRIGGER.TICKET_SURVEY_RESULTS).toBe("Ticket Survey Results");
+    expect(TEMPLATE_TYPE_TO_TRIGGER.ticket_created).toBe("Ticket Created");
+    expect(TEMPLATE_TYPE_TO_TRIGGER.ticket_updated).toBe("Ticket Updated");
+    expect(TEMPLATE_TYPE_TO_TRIGGER.ticket_assignment).toBe(
+      "Ticket Assignment"
+    );
+    expect(TEMPLATE_TYPE_TO_TRIGGER.new_comments).toBe("New Comments");
+    expect(TEMPLATE_TYPE_TO_TRIGGER.market_center_assignment).toBe(
+      "Market Center Assignment"
+    );
+    expect(TEMPLATE_TYPE_TO_TRIGGER.category_assignment).toBe(
+      "Category Assignment"
+    );
+    expect(TEMPLATE_TYPE_TO_TRIGGER.ticket_survey).toBe("Ticket Survey");
+    expect(TEMPLATE_TYPE_TO_TRIGGER.ticket_survey_results).toBe(
+      "Ticket Survey Results"
+    );
   });
 
   it("should have same keys as TEMPLATE_TYPE_LABELS", () => {
@@ -141,9 +153,15 @@ describe("TEMPLATE_VARIABLES", () => {
 
   describe("common variables", () => {
     it("all ticket-related types should have ticket_number", () => {
-      const ticketTypes = ["TICKET_CREATED", "TICKET_UPDATED", "TICKET_ASSIGNMENT", "NEW_COMMENTS"];
+      const ticketTypes = [
+        "ticket_created",
+        "ticket_updated",
+        "ticket_assignment",
+        "new_comments",
+      ];
       ticketTypes.forEach((type) => {
-        const vars = TEMPLATE_VARIABLES[type as keyof typeof TEMPLATE_VARIABLES];
+        const vars =
+          TEMPLATE_VARIABLES[type as keyof typeof TEMPLATE_VARIABLES];
         const hasTicketNumber = vars.some((v) => v.key === "ticket_number");
         expect(hasTicketNumber).toBe(true);
       });
@@ -338,11 +356,21 @@ describe("Cross-configuration consistency", () => {
   const templateTypes = Object.keys(TEMPLATE_TYPE_LABELS);
 
   it("all configurations should have same template types", () => {
-    expect(Object.keys(TEMPLATE_TYPE_TO_TRIGGER).sort()).toEqual(templateTypes.sort());
-    expect(Object.keys(TEMPLATE_VARIABLES).sort()).toEqual(templateTypes.sort());
-    expect(Object.keys(EMAIL_VISIBLE_FIELDS).sort()).toEqual(templateTypes.sort());
-    expect(Object.keys(DEFAULT_EMAIL_TEMPLATES).sort()).toEqual(templateTypes.sort());
-    expect(Object.keys(DEFAULT_IN_APP_TEMPLATES).sort()).toEqual(templateTypes.sort());
+    expect(Object.keys(TEMPLATE_TYPE_TO_TRIGGER).sort()).toEqual(
+      templateTypes.sort()
+    );
+    expect(Object.keys(TEMPLATE_VARIABLES).sort()).toEqual(
+      templateTypes.sort()
+    );
+    expect(Object.keys(EMAIL_VISIBLE_FIELDS).sort()).toEqual(
+      templateTypes.sort()
+    );
+    expect(Object.keys(DEFAULT_EMAIL_TEMPLATES).sort()).toEqual(
+      templateTypes.sort()
+    );
+    expect(Object.keys(DEFAULT_IN_APP_TEMPLATES).sort()).toEqual(
+      templateTypes.sort()
+    );
   });
 
   it("default visible fields should match visible field options", () => {
@@ -359,7 +387,8 @@ describe("Cross-configuration consistency", () => {
 
   it("default visible fields should match the defaultVisible settings", () => {
     Object.entries(DEFAULT_EMAIL_TEMPLATES).forEach(([type, template]) => {
-      const fieldOptions = EMAIL_VISIBLE_FIELDS[type as keyof typeof EMAIL_VISIBLE_FIELDS];
+      const fieldOptions =
+        EMAIL_VISIBLE_FIELDS[type as keyof typeof EMAIL_VISIBLE_FIELDS];
       const defaultVisibleKeys = fieldOptions
         .filter((f) => f.defaultVisible)
         .map((f) => f.key);

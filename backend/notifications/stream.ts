@@ -5,7 +5,10 @@ import { Notification } from "./types";
 // Store active streams for broadcasting
 // Map key is clerkId, value is the stream instance and a flag to indicate if it's active
 interface StreamEntry {
-  stream: { send: (msg: Notification) => Promise<void>; close: () => Promise<void> };
+  stream: {
+    send: (msg: Notification) => Promise<void>;
+    close: () => Promise<void>;
+  };
   active: boolean;
 }
 const activeStreams = new Map<string, StreamEntry>();

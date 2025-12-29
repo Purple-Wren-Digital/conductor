@@ -20,14 +20,14 @@ function getTemplateTypeFromNotification(
   notification: Notification
 ): CustomizableTemplateType | null {
   const typeMap: Record<string, CustomizableTemplateType> = {
-    "Ticket Created": "TICKET_CREATED",
-    "Ticket Updated": "TICKET_UPDATED",
-    "Ticket Assignment": "TICKET_ASSIGNMENT",
-    "New Comments": "NEW_COMMENTS",
-    "Market Center Assignment": "MARKET_CENTER_ASSIGNMENT",
-    "Category Assignment": "CATEGORY_ASSIGNMENT",
-    "Ticket Survey": "TICKET_SURVEY",
-    "Ticket Survey Results": "TICKET_SURVEY_RESULTS",
+    "Ticket Created": "ticket_created",
+    "Ticket Updated": "ticket_updated",
+    "Ticket Assignment": "ticket_assignment",
+    "New Comments": "new_comments",
+    "Market Center Assignment": "market_center_assignment",
+    "Category Assignment": "category_assignment",
+    "Ticket Survey": "ticket_survey",
+    "Ticket Survey Results": "ticket_survey_results",
   };
 
   return typeMap[notification.type] || null;
@@ -45,7 +45,7 @@ function extractContextFromNotification(
 
   // Common extraction based on template type
   switch (templateType) {
-    case "TICKET_CREATED":
+    case "ticket_created":
       if (data.createdTicket) {
         context.ticket_number = data.createdTicket.ticketNumber || "";
         context.ticket_title = data.createdTicket.ticketTitle || "";
@@ -60,7 +60,7 @@ function extractContextFromNotification(
       }
       break;
 
-    case "TICKET_UPDATED":
+    case "ticket_updated":
       if (data.updatedTicket) {
         context.ticket_number = data.updatedTicket.ticketNumber || "";
         context.ticket_title = data.updatedTicket.ticketTitle || "";
@@ -77,7 +77,7 @@ function extractContextFromNotification(
       }
       break;
 
-    case "TICKET_ASSIGNMENT":
+    case "ticket_assignment":
       if (data.ticketAssignment) {
         context.ticket_number = data.ticketAssignment.ticketNumber || "";
         context.ticket_title = data.ticketAssignment.ticketTitle || "";
@@ -89,7 +89,7 @@ function extractContextFromNotification(
       }
       break;
 
-    case "NEW_COMMENTS":
+    case "new_comments":
       if (data.newComment) {
         context.ticket_number = data.newComment.ticketNumber || "";
         context.ticket_title = data.newComment.ticketTitle || "";
@@ -98,7 +98,7 @@ function extractContextFromNotification(
       }
       break;
 
-    case "MARKET_CENTER_ASSIGNMENT":
+    case "market_center_assignment":
       if (data.marketCenterAssignment) {
         context.market_center_name =
           data.marketCenterAssignment.marketCenterName || "";
@@ -106,7 +106,7 @@ function extractContextFromNotification(
       }
       break;
 
-    case "CATEGORY_ASSIGNMENT":
+    case "category_assignment":
       if (data.categoryAssignment) {
         context.category_name = data.categoryAssignment.categoryName || "";
         context.category_description =
@@ -117,14 +117,14 @@ function extractContextFromNotification(
       }
       break;
 
-    case "TICKET_SURVEY":
+    case "ticket_survey":
       if (data.ticketSurvey) {
         context.ticket_number = data.ticketSurvey.ticketNumber || "";
         context.ticket_title = data.ticketSurvey.ticketTitle || "";
       }
       break;
 
-    case "TICKET_SURVEY_RESULTS":
+    case "ticket_survey_results":
       if (data.surveyResults) {
         context.ticket_number = data.surveyResults.ticketNumber || "";
         context.ticket_title = data.surveyResults.ticketTitle || "";
@@ -153,7 +153,7 @@ function getButtonUrl(
     notification.data?.surveyResults?.ticketNumber;
 
   if (ticketId) {
-    if (templateType === "TICKET_SURVEY") {
+    if (templateType === "ticket_survey") {
       return `${APP_BASE_URL}/dashboard/tickets/${ticketId}?survey=true`;
     }
     return `${APP_BASE_URL}/dashboard/tickets/${ticketId}`;

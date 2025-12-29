@@ -47,8 +47,16 @@ export const saveEmailTemplate = api<
     const userContext = await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -75,10 +83,11 @@ export const saveEmailTemplate = api<
     }
 
     // Check if customization already exists
-    const existing = await emailTemplateCustomizationRepository.findByMarketCenterAndType(
-      req.marketCenterId,
-      req.templateType
-    );
+    const existing =
+      await emailTemplateCustomizationRepository.findByMarketCenterAndType(
+        req.marketCenterId,
+        req.templateType
+      );
 
     let emailCustomization: EmailTemplateCustomization;
 
@@ -97,7 +106,9 @@ export const saveEmailTemplate = api<
         userContext.userId
       );
       if (!updated) {
-        throw APIError.internal("Failed to update email template customization");
+        throw APIError.internal(
+          "Failed to update email template customization"
+        );
       }
       emailCustomization = updated;
     } else {
@@ -151,8 +162,16 @@ export const resetEmailTemplate = api<
     const userContext = await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -180,7 +199,7 @@ export const resetEmailTemplate = api<
 
     await emailTemplateCustomizationRepository.deleteByMarketCenterAndType(
       req.marketCenterId,
-      req.templateType
+      req.templateType as CustomizableTemplateType
     );
 
     return { success: true };

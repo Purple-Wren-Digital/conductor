@@ -16,6 +16,9 @@ export function useFetchAllUserNotifications({
   return useQuery({
     queryKey: ["all-user-notifications", email],
     queryFn: async () => {
+      if (!email) {
+        throw new Error("Email is required to fetch notifications");
+      }
       try {
         const token = await getToken();
         if (!token) throw new Error("Failed to get authentication token");
@@ -44,7 +47,7 @@ export function useFetchAllUserNotifications({
         return { unReadAmount: 0, notifications: [] };
       }
     },
-    enabled: isAccountLoaded,
+    enabled: isAccountLoaded && !!email,
   });
 }
 

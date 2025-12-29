@@ -106,7 +106,7 @@ export default function RootLayout({
           className={cn("antialiased", geistSans.variable, geistMono.variable)}
         >
           <StoreProvider>
-            <Toaster />
+            <Toaster duration={10000} richColors theme="light" />
             <QueryClientProvider>{children}</QueryClientProvider>
           </StoreProvider>
         </body>

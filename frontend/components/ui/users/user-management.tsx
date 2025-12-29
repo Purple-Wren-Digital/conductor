@@ -75,7 +75,7 @@ export default function UserManagement() {
 
   const { role, permissions } = useUserRole();
 
-  const { currentUser } = useStore();
+  const { currentUser, setCurrentUser } = useStore();
 
   const marketCenterId = currentUser?.marketCenterId
     ? currentUser.marketCenterId
@@ -356,6 +356,9 @@ export default function UserManagement() {
     },
     onSuccess: async (data: PrismaUser) => {
       toast.success(`${userToDelete?.name || "User"} was updated`);
+      if (currentUser?.id === data?.id) {
+        setCurrentUser(data);
+      }
       await handleSendUserNotifications({
         trigger: "Account Information",
         receivingUser: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/app/dashboard/app-sidebar";
 import { useUser, UserButton, useAuth } from "@clerk/nextjs";
 
@@ -25,7 +25,7 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const [newestNotification, setNewestNotification] =
     useState<Notification | null>(null);
-  const { setCurrentUser } = useStore();
+  const { currentUser, setCurrentUser } = useStore();
   const { user: clerkUser, isLoaded } = useUser();
   const { getToken } = useAuth();
 
@@ -73,10 +73,17 @@ export default function DashboardLayout({
     persistUserContext();
   }, [clerkUser, isLoaded, setCurrentUser, getToken]);
 
+  const userEmail = useMemo(() => {
+    const clerkEmail: string[] | undefined = clerkUser?.emailAddresses.map(
+      (email) => email.emailAddress
+    );
+    return clerkEmail?.find((email) => email === currentUser?.email);
+  }, [clerkUser, currentUser]);
+
   const { data: notificationsData, isLoading: isNotificationsLoading } =
     useFetchAllUserNotifications({
       isAccountLoaded: isLoaded,
-      email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
+      email: userEmail,
       getToken,
     });
 
@@ -87,12 +94,9 @@ export default function DashboardLayout({
 
   const invalidateFetchAllUserNotifications = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [
-        "all-user-notifications",
-        clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
-      ],
+      queryKey: ["all-user-notifications", userEmail],
     });
-  }, [queryClient, clerkUser]);
+  }, [queryClient, userEmail]);
 
   const markAsReadMutation = useMutation<
     { success: boolean },
