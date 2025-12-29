@@ -79,7 +79,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { currentUser } = useStore();
+  const { currentUser, setCurrentUser } = useStore();
   const { role, permissions } = useUserRole();
 
   const getRoleIcon = (userRole: UserRole) => {
@@ -196,6 +196,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     },
     onSuccess: async (data: PrismaUser) => {
       toast.success(`${data?.name || "User"} was updated`);
+      if (currentUser?.id === data?.id) {
+        setCurrentUser(data);
+      }
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");

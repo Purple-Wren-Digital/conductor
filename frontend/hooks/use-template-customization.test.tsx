@@ -61,7 +61,7 @@ function createWrapper() {
 const mockTemplateStatuses = {
   templates: [
     {
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       label: "Ticket Created",
       hasEmailCustomization: false,
       hasInAppCustomization: false,
@@ -69,14 +69,14 @@ const mockTemplateStatuses = {
       inAppCustomization: null,
     },
     {
-      templateType: "TICKET_UPDATED",
+      templateType: "ticket_updated",
       label: "Ticket Updated",
       hasEmailCustomization: true,
       hasInAppCustomization: false,
       emailCustomization: {
         id: "email-123",
         marketCenterId: "mc-austin",
-        templateType: "TICKET_UPDATED",
+        templateType: "ticket_updated",
         subject: "Custom Subject",
         greeting: "Custom Greeting",
         mainMessage: "<p>Custom Message</p>",
@@ -91,11 +91,21 @@ const mockTemplateStatuses = {
 
 const mockTemplateForEditing = {
   template: {
-    templateType: "TICKET_CREATED",
+    templateType: "ticket_created",
     label: "Ticket Created",
     variables: [
-      { key: "user_name", label: "User Name", description: "Recipient name", example: "John" },
-      { key: "ticket_number", label: "Ticket Number", description: "Ticket ID", example: "1234" },
+      {
+        key: "user_name",
+        label: "User Name",
+        description: "Recipient name",
+        example: "John",
+      },
+      {
+        key: "ticket_number",
+        label: "Ticket Number",
+        description: "Ticket ID",
+        example: "1234",
+      },
     ],
     emailVisibleFields: [
       { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
@@ -167,7 +177,9 @@ describe("useFetchTemplateStatuses", () => {
 
     expect(result.current.data).toEqual(mockTemplateStatuses.templates);
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/notifications/template-customizations/market-center/mc-austin"),
+      expect.stringContaining(
+        "/notifications/template-customizations/market-center/mc-austin"
+      ),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer mock-token",
@@ -285,7 +297,7 @@ describe("useFetchTemplateForEditing", () => {
       () =>
         useFetchTemplateForEditing({
           marketCenterId: "mc-austin",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           role: "ADMIN",
         }),
       { wrapper: createWrapper() }
@@ -297,7 +309,9 @@ describe("useFetchTemplateForEditing", () => {
 
     expect(result.current.data).toEqual(mockTemplateForEditing.template);
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/notifications/template-customizations/market-center/mc-austin/template/TICKET_CREATED"),
+      expect.stringContaining(
+        "/notifications/template-customizations/market-center/mc-austin/template/ticket_created"
+      ),
       expect.any(Object)
     );
   });
@@ -327,7 +341,7 @@ describe("useFetchTemplateForEditing", () => {
       () =>
         useFetchTemplateForEditing({
           marketCenterId: "mc-austin",
-          templateType: "TICKET_CREATED",
+          templateType: "ticket_created",
           role: "ADMIN",
         }),
       { wrapper: createWrapper() }
@@ -358,7 +372,7 @@ describe("useSaveEmailTemplate", () => {
       emailCustomization: {
         id: "email-new",
         marketCenterId: "mc-austin",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
         subject: "New Subject",
         greeting: "Hello",
         mainMessage: "<p>Test</p>",
@@ -379,7 +393,7 @@ describe("useSaveEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "New Subject",
       greeting: "Hello",
       mainMessage: "<p>Test</p>",
@@ -412,7 +426,7 @@ describe("useSaveEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "Subject",
       greeting: "Hi",
       mainMessage: "<p>Message</p>",
@@ -441,7 +455,7 @@ describe("useSaveEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "",
       greeting: "",
       mainMessage: "",
@@ -469,7 +483,7 @@ describe("useSaveInAppTemplate", () => {
       inAppCustomization: {
         id: "inapp-new",
         marketCenterId: "mc-austin",
-        templateType: "TICKET_CREATED",
+        templateType: "ticket_created",
         title: "New Title",
         body: "New Body",
         isActive: true,
@@ -487,7 +501,7 @@ describe("useSaveInAppTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       title: "New Title",
       body: "New Body",
     });
@@ -516,7 +530,7 @@ describe("useSaveInAppTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       title: "{{ticket_title}} - New",
       body: "Created by {{creator_name}}",
     });
@@ -553,7 +567,7 @@ describe("useResetEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
     });
 
     await waitFor(() => {
@@ -561,7 +575,9 @@ describe("useResetEmailTemplate", () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/notifications/template-customizations/email/mc-austin/TICKET_CREATED"),
+      expect.stringContaining(
+        "/notifications/template-customizations/email/mc-austin/ticket_created"
+      ),
       expect.objectContaining({
         method: "DELETE",
       })
@@ -580,7 +596,7 @@ describe("useResetEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "NEW_COMMENTS",
+      templateType: "new_comments",
     });
 
     await waitFor(() => {
@@ -611,7 +627,7 @@ describe("useResetInAppTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
     });
 
     await waitFor(() => {
@@ -619,7 +635,9 @@ describe("useResetInAppTemplate", () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/notifications/template-customizations/in-app/mc-austin/TICKET_CREATED"),
+      expect.stringContaining(
+        "/notifications/template-customizations/in-app/mc-austin/ticket_created"
+      ),
       expect.objectContaining({
         method: "DELETE",
       })
@@ -649,7 +667,7 @@ describe("usePreviewEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "New Ticket: {{ticket_title}}",
       greeting: "Hi {{user_name}},",
       mainMessage: "<p>A new ticket has been created.</p>",
@@ -661,7 +679,9 @@ describe("usePreviewEmailTemplate", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.preview.subject).toBe("New Ticket: Login Issue");
+    expect(result.current.data?.preview.subject).toBe(
+      "New Ticket: Login Issue"
+    );
     expect(result.current.data?.preview.visibleFieldsData).toHaveLength(1);
   });
 
@@ -687,7 +707,7 @@ describe("usePreviewEmailTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "Ticket {{ticket_number}}: {{ticket_title}}",
       greeting: "Hi {{user_name}},",
       mainMessage: "<p>Created by {{creator_name}} on {{created_on}}</p>",
@@ -727,7 +747,7 @@ describe("usePreviewInAppTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       title: "New Ticket: {{ticket_title}}",
       body: "Created by {{creator_name}}",
     });
@@ -759,7 +779,7 @@ describe("usePreviewInAppTemplate", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_SURVEY",
+      templateType: "ticket_survey",
       title: "Feedback Request",
       body: "How was your experience?",
     });
@@ -800,7 +820,9 @@ describe("Query Invalidation", () => {
 
     function Wrapper({ children }: { children: ReactNode }) {
       return (
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
       );
     }
 
@@ -816,7 +838,7 @@ describe("Query Invalidation", () => {
 
     result.current.mutate({
       marketCenterId: "mc-austin",
-      templateType: "TICKET_CREATED",
+      templateType: "ticket_created",
       subject: "Test",
       greeting: "Hi",
       mainMessage: "<p>Test</p>",

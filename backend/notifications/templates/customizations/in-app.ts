@@ -44,8 +44,16 @@ export const saveInAppTemplate = api<
     const userContext = await getUserContext();
 
     // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -72,10 +80,11 @@ export const saveInAppTemplate = api<
     }
 
     // Check if customization already exists
-    const existing = await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
-      req.marketCenterId,
-      req.templateType
-    );
+    const existing =
+      await inAppTemplateCustomizationRepository.findByMarketCenterAndType(
+        req.marketCenterId,
+        req.templateType
+      );
 
     let inAppCustomization: InAppTemplateCustomization;
 
@@ -91,7 +100,9 @@ export const saveInAppTemplate = api<
         userContext.userId
       );
       if (!updated) {
-        throw APIError.internal("Failed to update in-app template customization");
+        throw APIError.internal(
+          "Failed to update in-app template customization"
+        );
       }
       inAppCustomization = updated;
     } else {
@@ -141,9 +152,16 @@ export const resetInAppTemplate = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    // Validate template type
-    if (!TEMPLATE_TYPE_LABELS[req.templateType]) {
-      throw APIError.invalidArgument(`Invalid template type: ${req.templateType}`);
+    const allowedTypes = Object.keys(TEMPLATE_TYPE_LABELS);
+
+    if (
+      !req.templateType ||
+      typeof req.templateType !== "string" ||
+      !allowedTypes.includes(req.templateType)
+    ) {
+      throw APIError.invalidArgument(
+        `Invalid template type: ${req.templateType}`
+      );
     }
 
     // Check user has access to this market center
@@ -171,7 +189,7 @@ export const resetInAppTemplate = api<
 
     await inAppTemplateCustomizationRepository.deleteByMarketCenterAndType(
       req.marketCenterId,
-      req.templateType
+      req.templateType as CustomizableTemplateType
     );
 
     return { success: true };
