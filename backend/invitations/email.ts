@@ -35,7 +35,7 @@ export async function sendInvitationEmail(
   } = params;
 
   // Generate the signup URL
-  const signupUrl = `${APP_BASE_URL}/sign-up?token=${token}`;
+  const signupUrl = `${APP_BASE_URL()}/sign-up?token=${token}`;
 
   // Always log invitation URL for local development/testing
   console.log("\n========================================");
