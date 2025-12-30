@@ -68,6 +68,9 @@ import {
   Plus,
   Search,
   X,
+  Eye,
+  EyeOff,
+  EyeClosed,
 } from "lucide-react";
 import type {
   Ticket,
@@ -88,6 +91,12 @@ import { toast } from "sonner";
 import { useFetchAllUsers } from "@/hooks/use-users";
 import { useIsEnterprise } from "@/hooks/useSubscription";
 import { useStore } from "@/context/store-provider";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type CategoryOption = { label: string; ids: string[] };
 
@@ -102,6 +111,7 @@ export default function AdminTicketList() {
     () => ({ label: "all", ids: [] }),
     []
   );
+  const [viewDashboardHeader, setViewDashboardHeader] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -168,6 +178,7 @@ export default function AdminTicketList() {
     localStorage.setItem(
       "ticket-filters",
       JSON.stringify({
+        viewDashboardHeader,
         searchQuery,
         selectedStatuses,
         selectedUrgencies,
@@ -186,6 +197,7 @@ export default function AdminTicketList() {
       })
     );
   }, [
+    viewDashboardHeader,
     hydrated,
     searchQuery,
     selectedStatuses,
@@ -208,7 +220,7 @@ export default function AdminTicketList() {
     const filtersString = localStorage.getItem("ticket-filters");
     if (filtersString) {
       const fetchedFilters = JSON.parse(filtersString);
-
+      setViewDashboardHeader(fetchedFilters.viewDashboardHeader || true);
       setSearchQuery(fetchedFilters.searchQuery || "");
       setSelectedStatuses(
         fetchedFilters.selectedStatuses || defaultActiveStatuses
@@ -617,387 +629,431 @@ export default function AdminTicketList() {
 
   return (
     <>
-      <section className="space-y-4">
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <h1 className="text-xl font-bold text-left w-full sm:w-fit">
-            Tickets ({totalTickets})
-          </h1>
+      <Collapsible
+        open={viewDashboardHeader}
+        onOpenChange={setViewDashboardHeader}
+      >
+        <CollapsibleContent>
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <h1 className="text-xl font-bold text-left w-full sm:w-fit">
+              Tickets ({totalTickets})
+            </h1>
 
-          <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
-            {
-              <TeamSwitcher
-                selectedMarketCenterId={selectedMarketCenterId}
-                setSelectedMarketCenterId={setSelectedMarketCenterId}
-                handleMarketCenterSelected={() => {
-                  setSelectedCategory(defaultSelectedCategory);
-                  setCurrentPage(1);
-                }}
-                setMarketCenters={setMarketCenters}
-              />
-            }
-            <Button
-              className="gap-2 w-full sm:w-fit"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Create Ticket
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-4 mt-4">
-          <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
-            <div className="relative flex-1 w-full sm:w-fit">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tickets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 bg-transparent w-full sm:w-fit"
-              onClick={() => setShowFilters(!showFilters)}
-              type="button"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-              {hasActiveFilters && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 h-2 w-2 rounded-full p-0"
+            <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
+              {isEnterprise && (
+                <TeamSwitcher
+                  selectedMarketCenterId={selectedMarketCenterId}
+                  setSelectedMarketCenterId={setSelectedMarketCenterId}
+                  handleMarketCenterSelected={() => {
+                    setSelectedCategory(defaultSelectedCategory);
+                    setCurrentPage(1);
+                  }}
+                  setMarketCenters={setMarketCenters}
                 />
               )}
-            </Button>
-            {hasActiveFilters && (
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
                 className="gap-2 w-full sm:w-fit"
+                onClick={() => setIsCreateOpen(true)}
+                size={"sm"}
+              >
+                <Plus className="h-4 w-4" />
+                Create Ticket
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-4 mt-4">
+            <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+              <div className="relative flex-1 w-full sm:w-fit">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tickets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-transparent w-full sm:w-fit"
+                onClick={() => setShowFilters(!showFilters)}
                 type="button"
               >
-                <X className="h-4 w-4" />
-                Clear
+                <Filter className="h-4 w-4" />
+                Filters
+                {hasActiveFilters && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-2 w-2 rounded-full p-0"
+                  />
+                )}
               </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="gap-2 w-full sm:w-fit"
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            {showFilters && (
+              <Card className="p-4 bg-muted/50">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Assignee</Label>
+                    <Select
+                      value={selectedAssignee}
+                      onValueChange={(v) => {
+                        setSelectedAssignee(v);
+                        setCurrentPage(1);
+                      }}
+                      disabled={usersLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {usersLoading ? "Loading..." : "All assignees"}
+                        </SelectItem>
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                        {!usersLoading &&
+                          users.map((user: PrismaUser) => {
+                            return (
+                              <SelectItem key={user.id} value={user.id}>
+                                <span className="font-medium">
+                                  {user.name}:
+                                </span>
+                                <span className="hidden md:block text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}{" "}
+                                  •{" "}
+                                  {findMarketCenterName(
+                                    user?.marketCenterId,
+                                    user?.role
+                                  )}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Creator</Label>
+                    <Select
+                      value={selectedCreator}
+                      onValueChange={(v) => {
+                        setSelectedCreator(v);
+                        setCurrentPage(1);
+                      }}
+                      disabled={usersLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select creator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {usersLoading ? "Loading..." : "All creators"}
+                        </SelectItem>
+                        {!usersLoading &&
+                          users.map((user: PrismaUser) => {
+                            return (
+                              <SelectItem key={user.id} value={user.id}>
+                                <span className="font-medium">
+                                  {user.name}:
+                                </span>
+                                <span className="hidden md:block text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}{" "}
+                                  •{" "}
+                                  {findMarketCenterName(
+                                    user?.marketCenterId,
+                                    user?.role
+                                  )}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2 lg:row-span-3">
+                    <Label>Status</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {statusOptions.map((status) => (
+                        <div
+                          key={status}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`status-${status}`}
+                            checked={selectedStatuses.includes(status)}
+                            onCheckedChange={(v: boolean | "indeterminate") => {
+                              const checked = v === true;
+                              setSelectedStatuses((prev) =>
+                                checked
+                                  ? [...prev, status]
+                                  : prev.filter((s) => s !== status)
+                              );
+                              setCurrentPage(1);
+                            }}
+                          />
+                          <Label
+                            htmlFor={`status-${status}`}
+                            className="text-sm font-normal"
+                          >
+                            <Badge variant={status.toLowerCase() as any}>
+                              {status.replace("_", " ")}
+                            </Badge>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Date From</Label>
+                    <Popover open={openFrom} onOpenChange={setOpenFrom}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal bg-transparent"
+                          onClick={() => setOpenFrom(true)}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateFrom}
+                          onSelect={(d) => {
+                            setDateFrom(d);
+                            setCurrentPage(1);
+                            setOpenFrom(false);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Date To</Label>
+                    <Popover open={openTo} onOpenChange={setOpenTo}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal bg-transparent"
+                          onClick={() => setOpenTo(true)}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateTo}
+                          onSelect={(d) => {
+                            setDateTo(d);
+                            setCurrentPage(1);
+                            setOpenTo(false);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select
+                      defaultValue={"all"}
+                      value={selectedCategory?.label}
+                      onValueChange={(value) => {
+                        if (value === "all") {
+                          setSelectedCategory(defaultSelectedCategory);
+                          setCurrentPage(1);
+                          return;
+                        }
+                        const selected: CategoryOption | undefined =
+                          categoryOptions.find((c) => c.label === value);
+                        if (
+                          selected &&
+                          selected?.label &&
+                          selected?.ids &&
+                          selected?.ids.length > 0
+                        ) {
+                          setSelectedCategory(selected);
+                          setCurrentPage(1);
+                        }
+                      }}
+                      aria-label="Filter by ticket categories"
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          All Categories ({categoryOptions?.length ?? 0})
+                        </SelectItem>
+                        {categoryOptions.map((option) => (
+                          <SelectItem key={option.label} value={option.label}>
+                            {option?.label ?? "Unlabeled"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Urgency</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {urgencyOptions.map((urgency) => (
+                        <div
+                          key={urgency}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`urgency-${urgency}`}
+                            checked={selectedUrgencies.includes(urgency)}
+                            onCheckedChange={(v: boolean | "indeterminate") => {
+                              const checked = v === true;
+                              setSelectedUrgencies((prev) =>
+                                checked
+                                  ? [...prev, urgency]
+                                  : prev.filter((u) => u !== urgency)
+                              );
+                              setCurrentPage(1);
+                            }}
+                          />
+                          <Label
+                            htmlFor={`urgency-${urgency}`}
+                            className="text-sm font-normal"
+                          >
+                            <Badge variant={urgency.toLowerCase() as any}>
+                              {urgency}
+                            </Badge>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
             )}
           </div>
+        </CollapsibleContent>
 
-          {showFilters && (
-            <Card className="p-4 bg-muted/50">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Assignee</Label>
-                  <Select
-                    value={selectedAssignee}
-                    onValueChange={(v) => {
-                      setSelectedAssignee(v);
-                      setCurrentPage(1);
-                    }}
-                    disabled={usersLoading}
+        <div className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
+          <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
+            <CollapsibleTrigger asChild>
+              <ToolTip
+                content={
+                  viewDashboardHeader
+                    ? "Hide ticket dashboard header"
+                    : "Show ticket dashboard header"
+                }
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Toggle ticket dashboard visibility"
+                    onClick={() => setViewDashboardHeader(!viewDashboardHeader)}
+                    className={`h-8 w-8 rounded-full`}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {usersLoading ? "Loading..." : "All assignees"}
-                      </SelectItem>
-                      <SelectItem value="Unassigned">Unassigned</SelectItem>
-                      {!usersLoading &&
-                        users.map((user: PrismaUser) => {
-                          return (
-                            <SelectItem key={user.id} value={user.id}>
-                              <span className="font-medium">{user.name}:</span>
-                              <span className="hidden md:block text-muted-foreground capitalize">
-                                {user?.role
-                                  ? user.role.split("_").join(" ").toLowerCase()
-                                  : "No role"}{" "}
-                                •{" "}
-                                {findMarketCenterName(
-                                  user?.marketCenterId,
-                                  user?.role
-                                )}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Creator</Label>
-                  <Select
-                    value={selectedCreator}
-                    onValueChange={(v) => {
-                      setSelectedCreator(v);
-                      setCurrentPage(1);
-                    }}
-                    disabled={usersLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select creator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {usersLoading ? "Loading..." : "All creators"}
-                      </SelectItem>
-                      {!usersLoading &&
-                        users.map((user: PrismaUser) => {
-                          return (
-                            <SelectItem key={user.id} value={user.id}>
-                              <span className="font-medium">{user.name}:</span>
-                              <span className="hidden md:block text-muted-foreground capitalize">
-                                {user?.role
-                                  ? user.role.split("_").join(" ").toLowerCase()
-                                  : "No role"}{" "}
-                                •{" "}
-                                {findMarketCenterName(
-                                  user?.marketCenterId,
-                                  user?.role
-                                )}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 lg:row-span-3">
-                  <Label>Status</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {statusOptions.map((status) => (
-                      <div key={status} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`status-${status}`}
-                          checked={selectedStatuses.includes(status)}
-                          onCheckedChange={(v: boolean | "indeterminate") => {
-                            const checked = v === true;
-                            setSelectedStatuses((prev) =>
-                              checked
-                                ? [...prev, status]
-                                : prev.filter((s) => s !== status)
-                            );
-                            setCurrentPage(1);
-                          }}
-                        />
-                        <Label
-                          htmlFor={`status-${status}`}
-                          className="text-sm font-normal"
-                        >
-                          <Badge variant={status.toLowerCase() as any}>
-                            {status.replace("_", " ")}
-                          </Badge>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Date From</Label>
-                  <Popover open={openFrom} onOpenChange={setOpenFrom}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal bg-transparent"
-                        onClick={() => setOpenFrom(true)}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateFrom}
-                        onSelect={(d) => {
-                          setDateFrom(d);
-                          setCurrentPage(1);
-                          setOpenFrom(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Date To</Label>
-                  <Popover open={openTo} onOpenChange={setOpenTo}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal bg-transparent"
-                        onClick={() => setOpenTo(true)}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateTo ? format(dateTo, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateTo}
-                        onSelect={(d) => {
-                          setDateTo(d);
-                          setCurrentPage(1);
-                          setOpenTo(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    defaultValue={"all"}
-                    value={selectedCategory?.label}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedCategory(defaultSelectedCategory);
-                        setCurrentPage(1);
-                        return;
-                      }
-                      const selected: CategoryOption | undefined =
-                        categoryOptions.find((c) => c.label === value);
-                      if (
-                        selected &&
-                        selected?.label &&
-                        selected?.ids &&
-                        selected?.ids.length > 0
-                      ) {
-                        setSelectedCategory(selected);
-                        setCurrentPage(1);
-                      }
-                    }}
-                    aria-label="Filter by ticket categories"
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        All Categories ({categoryOptions?.length ?? 0})
-                      </SelectItem>
-                      {categoryOptions.map((option) => (
-                        <SelectItem key={option.label} value={option.label}>
-                          {option?.label ?? "Unlabeled"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Urgency</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {urgencyOptions.map((urgency) => (
-                      <div
-                        key={urgency}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`urgency-${urgency}`}
-                          checked={selectedUrgencies.includes(urgency)}
-                          onCheckedChange={(v: boolean | "indeterminate") => {
-                            const checked = v === true;
-                            setSelectedUrgencies((prev) =>
-                              checked
-                                ? [...prev, urgency]
-                                : prev.filter((u) => u !== urgency)
-                            );
-                            setCurrentPage(1);
-                          }}
-                        />
-                        <Label
-                          htmlFor={`urgency-${urgency}`}
-                          className="text-sm font-normal"
-                        >
-                          <Badge variant={urgency.toLowerCase() as any}>
-                            {urgency}
-                          </Badge>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-        </div>
-      </section>
-
-      <section className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
-        <p className="text-sm text-muted-foreground">
-          {selectedStatuses.includes("RESOLVED") &&
-            `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
-        </p>
-        <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
-          {/* SORT BY */}
-          <div className="space-y-2 w-full sm:w-fit">
-            <Select
-              value={sortBy}
-              onValueChange={(value: TicketSortBy) => {
-                setSortBy(value);
-                setCurrentPage(1);
-              }}
-              disabled={ticketsLoading || !tickets || !tickets.length}
-            >
-              <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
-                <SelectValue placeholder={"Sort by..."} />
-              </SelectTrigger>
-
-              <SelectContent>
-                {sortByTicketOptions.map((ticketOption) => (
-                  <SelectItem key={ticketOption} value={ticketOption}>
-                    <div className="flex gap-1 items-center mr-1">
-                      <ArrowDownUp />
-                      <p className="text-sm font-medium">
-                        {formatTicketOptions(ticketOption)}
-                      </p>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    {viewDashboardHeader ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <EyeClosed className="h-5 w-5" />
+                    )}
+                  </Button>
+                }
+              />
+            </CollapsibleTrigger>
+            <p className="text-sm text-muted-foreground">
+              {selectedStatuses.includes("RESOLVED") &&
+                `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
+            </p>
           </div>
-          {/* ORDER BY */}
-          <div className="space-y-2 w-full sm:w-fit">
-            <Select
-              value={sortDir}
-              onValueChange={(value: OrderBy) => {
-                setSortDir(value);
-                setCurrentPage(1);
-              }}
-              disabled={ticketsLoading || !tickets || !tickets.length}
-            >
-              <SelectTrigger aria-label="Order by ascending or descending data">
-                <SelectValue placeholder={"Order by..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {orderByOptions.map((direction) => (
-                  <SelectItem key={direction} value={direction}>
-                    <div className="flex gap-1 items-center mr-1">
-                      {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
-                      <p className="text-sm font-medium">
-                        {formatOrderBy(direction)}
-                      </p>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
+            {/* SORT BY */}
+            <div className="space-y-2 w-full sm:w-fit">
+              <Select
+                value={sortBy}
+                onValueChange={(value: TicketSortBy) => {
+                  setSortBy(value);
+                  setCurrentPage(1);
+                }}
+                disabled={ticketsLoading || !tickets || !tickets.length}
+              >
+                <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
+                  <SelectValue placeholder={"Sort by..."} />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {sortByTicketOptions.map((ticketOption) => (
+                    <SelectItem key={ticketOption} value={ticketOption}>
+                      <div className="flex gap-1 items-center mr-1">
+                        <ArrowDownUp />
+                        <p className="text-sm font-medium">
+                          {formatTicketOptions(ticketOption)}
+                        </p>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* ORDER BY */}
+            <div className="space-y-2 w-full sm:w-fit">
+              <Select
+                value={sortDir}
+                onValueChange={(value: OrderBy) => {
+                  setSortDir(value);
+                  setCurrentPage(1);
+                }}
+                disabled={ticketsLoading || !tickets || !tickets.length}
+              >
+                <SelectTrigger aria-label="Order by ascending or descending data">
+                  <SelectValue placeholder={"Order by..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {orderByOptions.map((direction) => (
+                    <SelectItem key={direction} value={direction}>
+                      <div className="flex gap-1 items-center mr-1">
+                        {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
+                        <p className="text-sm font-medium">
+                          {formatOrderBy(direction)}
+                        </p>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
-      </section>
+      </Collapsible>
 
       <section
         className={`"flex flex-col gap-5 overflow-x-auto" space-y-4 transition-opacity duration-300 ${
