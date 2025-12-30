@@ -1,7 +1,7 @@
 import { TicketTemplate } from "./types";
 
 // Hardcoded templates for now - could be moved to database later
-export const TICKET_TEMPLATES: TicketTemplate[] = [
+export const TICKET_TEMPLATES: Partial<TicketTemplate>[] = [
   {
     id: "Appraisal_Template",
     name: "Appraisal",
