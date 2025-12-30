@@ -15,12 +15,14 @@ export function TicketListItemWrapper({
   onEdit,
   onClose,
   onClick,
+  onReopen
 }: {
   ticket: TicketWithUpdatedAt;
   selected?: boolean;
   onSelect?: (checked: boolean) => void;
   onEdit?: (e: React.MouseEvent) => void;
   onClose?: (e: React.MouseEvent) => void;
+  onReopen?: (e: React.MouseEvent) => void;
   onClick?: () => void;
 }) {
   const { currentUser } = useStore();
@@ -85,6 +87,7 @@ export function TicketListItemWrapper({
       onSelect={showCheckbox ? onSelect : undefined}
       onEdit={canEdit && onEdit ? onEdit : () => {}}
       onClose={canClose && onClose ? onClose : () => {}}
+      onReopen={onReopen ? onReopen : () => {}}
       onClick={onClick}
     />
   );

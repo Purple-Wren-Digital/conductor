@@ -37,7 +37,7 @@ export const reopen = api<ReopenTicketRequest, ReopenTicketResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
-    if (ticket.status !== "RESOLVED") {
+    if (ticket?.status !== "RESOLVED") {
       throw APIError.invalidArgument("Only closed tickets can be reopened");
     }
 

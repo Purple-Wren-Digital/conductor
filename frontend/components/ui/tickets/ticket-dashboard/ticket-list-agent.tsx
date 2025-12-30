@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
@@ -325,63 +325,66 @@ export default function AgentTicketList() {
     setIsEditOpen(true);
   };
 
-  const handleSendTicketClosedNotifications = async ({
-    userToNotify,
-    ticket,
-  }: {
-    userToNotify: UsersToNotify;
-    ticket: { id: string; title: string; createdAt: Date };
-  }) => {
-    const notifyCreator = userToNotify.updateType === "unchanged";
-    const notifySurvey =
-      userToNotify?.updateType === "ticketSurvey" ||
-      userToNotify?.updateType === "ticketSurveyResults";
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          ticketSurvey:
-            notifySurvey && !notifyCreator
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  surveyorName: userToNotify?.name ?? "No name provided",
-                }
-              : undefined,
-          updatedTicket:
-            !notifySurvey && notifyCreator
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  createdOn: ticket?.createdAt,
-                  updatedOn: new Date(),
-                  editorName: userToNotify?.name ?? "Unknown",
-                  editorId: userToNotify?.id ?? "",
-                  changedDetails: [
-                    {
-                      label: "Status",
-                      newValue: "RESOLVED",
-                      originalValue: "ASSIGNED",
-                    },
-                  ],
-                }
-              : undefined,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "TicketListAgent - Unable to generate Survey notifications",
-        error
-      );
-    }
-  };
+  const handleSendTicketClosedNotifications = useCallback(
+    async ({
+      userToNotify,
+      ticket,
+    }: {
+      userToNotify: UsersToNotify;
+      ticket: { id: string; title: string; createdAt: Date };
+    }) => {
+      const notifyCreator = userToNotify.updateType === "unchanged";
+      const notifySurvey =
+        userToNotify?.updateType === "ticketSurvey" ||
+        userToNotify?.updateType === "ticketSurveyResults";
+      try {
+        const response = await createAndSendNotification({
+          getToken: getToken,
+          templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+          trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+          receivingUser: {
+            id: userToNotify?.id,
+            name: userToNotify?.name,
+            email: userToNotify?.email,
+          },
+          data: {
+            ticketSurvey:
+              notifySurvey && !notifyCreator
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    surveyorName: userToNotify?.name ?? "No name provided",
+                  }
+                : undefined,
+            updatedTicket:
+              !notifySurvey && notifyCreator
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    createdOn: ticket?.createdAt,
+                    updatedOn: new Date(),
+                    editorName: userToNotify?.name ?? "Unknown",
+                    editorId: userToNotify?.id ?? "",
+                    changedDetails: [
+                      {
+                        label: "Status",
+                        newValue: "RESOLVED",
+                        originalValue: "ASSIGNED",
+                      },
+                    ],
+                  }
+                : undefined,
+          },
+        });
+      } catch (error) {
+        console.error(
+          "TicketListAgent - Unable to generate Survey notifications",
+          error
+        );
+      }
+    },
+    [getToken]
+  );
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticket: Ticket) => {
@@ -439,10 +442,139 @@ export default function AgentTicketList() {
     },
   });
 
-  const handleQuickClose = (e: React.MouseEvent, ticket: Ticket) => {
-    e.stopPropagation();
-    closeTicketMutation.mutate(ticket);
-  };
+  const handleQuickClose = useCallback(
+    (e: React.MouseEvent, ticket: Ticket) => {
+      e.stopPropagation();
+      closeTicketMutation.mutate(ticket);
+    },
+    [closeTicketMutation]
+  );
+
+  const handleSendTicketNotifications = useCallback(
+    async ({
+      ticket,
+      userToNotify,
+      changedDetails,
+    }: {
+      ticket: Ticket;
+      userToNotify: UsersToNotify;
+      changedDetails: ActivityUpdates[] | null;
+    }) => {
+      const title = ticket?.title ?? "";
+
+      const notifyAssigneeChanges =
+        userToNotify.updateType === "added" ||
+        userToNotify.updateType === "removed";
+
+      try {
+        const response = await createAndSendNotification({
+          getToken: getToken,
+          templateName:
+            notifyAssigneeChanges && userToNotify.updateType === "added"
+              ? "Ticket Assignment - Added"
+              : notifyAssigneeChanges && userToNotify.updateType === "removed"
+                ? "Ticket Assignment - Removed"
+                : "Ticket Updated",
+          trigger: notifyAssigneeChanges
+            ? "Ticket Assignment"
+            : "Ticket Updated",
+          receivingUser: {
+            id: userToNotify?.id,
+            name: userToNotify?.name,
+            email: userToNotify?.email,
+          },
+          data: {
+            updatedTicket:
+              !notifyAssigneeChanges && changedDetails
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    createdOn: ticket?.createdAt,
+                    updatedOn: ticket?.updatedAt,
+                    editorName: currentUser?.name ?? "Unknown",
+                    editorId: currentUser?.id ?? "",
+                    changedDetails: changedDetails,
+                  }
+                : undefined,
+            ticketAssignment: notifyAssigneeChanges
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: title,
+                  createdOn: ticket?.createdAt,
+                  updatedOn: ticket?.createdAt,
+                  editorName: currentUser?.name ?? "Unknown",
+                  editorId: currentUser?.id ?? "",
+                  updateType: userToNotify.updateType,
+                  currentAssignment: {
+                    id: userToNotify?.id,
+                    name: userToNotify?.name,
+                  },
+                  previousAssignment: null,
+                }
+              : undefined,
+          },
+        });
+      } catch {
+        // Notification failed silently
+      }
+    },
+    [getToken, currentUser]
+  );
+
+  const handleReopenTicket = useCallback(
+    async (ticket: Ticket) => {
+      if (!ticket?.id) {
+        throw new Error("Ticket ID is required to reopen a ticket");
+      }
+      setIsLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await fetch(
+          `${API_BASE}/tickets/reopen/${ticket.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to reopen ticket");
+        }
+        const data = await response.json();
+        if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
+          await Promise.all(
+            data.usersToNotify.map(async (user: UsersToNotify) =>
+              handleSendTicketNotifications({
+                ticket: ticket as Ticket,
+                userToNotify: user,
+                changedDetails: [
+                  {
+                    label: "Ticket Reopened",
+                    originalValue: "RESOLVED",
+                    newValue: "IN_PROGRESS",
+                  },
+                ],
+              })
+            )
+          );
+        }
+      } catch (error) {
+        toast.error("Error: Failed to reopen ticket");
+        console.error("Reopen ticket error:", error);
+      } finally {
+        await agentTicketsQueryInvalidator();
+        setIsLoading(false);
+      }
+    },
+    [getToken, handleSendTicketNotifications]
+  );
 
   const stats = useMemo(() => {
     const resolvedTicketsCount = tickets.filter(
@@ -927,6 +1059,7 @@ export default function AgentTicketList() {
                     onClose={(e: React.MouseEvent) =>
                       handleQuickClose(e, ticket)
                     }
+                    onReopen={() => handleReopenTicket(ticket)}
                   />
                 ))}
 

@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { Ticket } from "@/lib/types";
 import { getCategoryStyle } from "@/lib/utils";
-import { MessageSquare, Paperclip } from "lucide-react";
+import { MessageSquare, Paperclip, Undo2 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 
 type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
@@ -17,14 +17,16 @@ export function TicketListTable({
   selected = false,
   onSelect,
   onEdit,
+  onReopen,
   onClose,
   onClick,
 }: {
   ticket: TicketWithUpdatedAt;
   selected?: boolean;
-  onSelect?: (checked: boolean) => void;
   onEdit: (e: React.MouseEvent) => void;
   onClose: (e: React.MouseEvent) => void;
+  onReopen: (e: React.MouseEvent) => void;
+  onSelect?: (checked: boolean) => void;
   onClick?: () => void;
 }) {
   const { permissions } = useUserRole();
@@ -59,7 +61,7 @@ export function TicketListTable({
       <TableCell className="font-medium">
         {ticket?.assignee?.name ? ticket.assignee.name : "Unassigned"}
       </TableCell>
-      <TableCell>
+      <TableCell className="text-center">
         <Badge
           variant={ticket.status.toLowerCase() as any}
           className="capitalize"
@@ -67,12 +69,12 @@ export function TicketListTable({
           {ticket.status.split("_").join(" ").toLowerCase()}
         </Badge>
       </TableCell>
-      <TableCell>
+      <TableCell className="text-center">
         <Badge variant={ticket.urgency.toLowerCase() as any}>
           {ticket.urgency}
         </Badge>
       </TableCell>
-      <TableCell>
+      <TableCell className="text-center">
         <Badge
           variant="category"
           style={getCategoryStyle(ticket?.category?.name ?? "Misc")}
@@ -80,52 +82,64 @@ export function TicketListTable({
           {ticket?.category?.name ?? "Misc"}
         </Badge>
       </TableCell>
-      <TableCell className="flex gap-2 items-center justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onEdit}
-          disabled={ticket?.status === "RESOLVED"}
-          aria-label="Open edit ticket modal"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <TableCell className="flex gap-2 items-center justify-center">
+        {ticket?.status === "RESOLVED" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Reopen ticket"
+            onClick={onReopen}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-          Edit
-        </Button>
+            <Undo2 className="h-4 w-4" />
+            Reopen
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              aria-label="Open edit ticket modal"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Edit
+            </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={ticket?.status === "RESOLVED"}
-          onClick={onClose}
-          aria-label="Open close ticket modal"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          Close
-        </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              aria-label="Open close ticket modal"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Close
+            </Button>
+          </>
+        )}
       </TableCell>
     </TableRow>
   );
