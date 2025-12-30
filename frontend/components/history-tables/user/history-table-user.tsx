@@ -22,6 +22,7 @@ import {
   Mailbox,
   SquarePen,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -86,6 +87,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPENED":
+        return <Undo2 className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }

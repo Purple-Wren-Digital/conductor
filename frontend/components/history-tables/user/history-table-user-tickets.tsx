@@ -23,6 +23,7 @@ import {
   MessageSquare,
   SquarePen,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SafeHtml } from "@/components/ui/safe-html";
@@ -88,6 +89,8 @@ export default function UserTicketHistoryTable({
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPENED":
+        return <Undo2 className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
