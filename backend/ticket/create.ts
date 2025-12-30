@@ -62,7 +62,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         status:
           req?.assigneeId && req?.assigneeId !== "Unassigned"
             ? "ASSIGNED"
-            : "CREATED",
+            : "UNASSIGNED",
         dueDate: req.dueDate,
       });
 

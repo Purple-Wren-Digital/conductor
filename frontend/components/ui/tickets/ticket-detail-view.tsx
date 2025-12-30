@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { Separator } from "@/components/ui/separator";
 import { AttachmentsList } from "@/components/ui/tickets/attachments-list";
 import { FileUpload } from "@/components/ui/tickets/file-upload";
@@ -45,6 +46,7 @@ import {
   Paperclip,
   SquarePen,
   Trash2,
+  Undo2,
   User,
   X,
 } from "lucide-react";
@@ -209,7 +211,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   }) => {
     const title = ticket?.title ?? "";
 
-    const notifyCreator = userToNotify.updateType === "unchanged";
     const notifyAssigneeChanges =
       userToNotify.updateType === "added" ||
       userToNotify.updateType === "removed";
@@ -231,7 +232,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         },
         data: {
           updatedTicket:
-            notifyCreator && changedDetails
+            !notifyAssigneeChanges && changedDetails
               ? {
                   ticketNumber: ticket.id,
                   ticketTitle: ticket?.title ?? "No title provided",
@@ -409,7 +410,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       setTicket(prev);
     } finally {
       await refreshAllData();
-      await invalidateTicketHistory;
+      await invalidateTicketHistory();
       setIsLoading(false);
     }
   };
@@ -474,7 +475,57 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       setTicket(prev);
     } finally {
       await refreshAllData();
-      await invalidateTicketHistory;
+      await invalidateTicketHistory();
+      setIsLoading(false);
+    }
+  };
+
+  const handleReopenTicket = async () => {
+    if (!ticketId) {
+      throw new Error("Ticket ID is required to reopen a ticket");
+    }
+    setIsLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const response = await fetch(`${API_BASE}/tickets/reopen/${ticketId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reopen ticket");
+      }
+      const data = await response.json();
+      if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
+        await Promise.all(
+          data.usersToNotify.map(async (user: UsersToNotify) =>
+            handleSendTicketNotifications({
+              ticket: ticket as Ticket,
+              userToNotify: user,
+              changedDetails: [
+                {
+                  label: "Ticket Reopened",
+                  originalValue: "RESOLVED",
+                  newValue: "IN_PROGRESS",
+                },
+              ],
+            })
+          )
+        );
+      }
+    } catch (error) {
+      toast.error("Error: Failed to reopen ticket");
+      console.error("Reopen ticket error:", error);
+    } finally {
+      await refreshAllData();
+      await invalidateTicketHistory();
       setIsLoading(false);
     }
   };
@@ -495,6 +546,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPENED":
+        return <Undo2 className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -537,7 +590,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           {canEditTicket && (
             <>
               <Button
-                // size={"sm"}
                 variant={"outline"}
                 onClick={async () => {
                   await handleCloseTicket();
@@ -564,10 +616,20 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
               variant={!surveyData?.completed ? "destructive" : "secondary"}
               onClick={() => setShowSurveyModal(true)}
               disabled={isLoading || isSurveyLoading}
-              className="gap-2"
+              className="gap-2 w-full sm:w-fit"
             >
               <ClipboardListIcon className="h-4 w-4" />
               {!surveyData?.completed ? "Take Survey" : "Retake Survey"}
+            </Button>
+          )}
+          {ticket?.status === "RESOLVED" && (
+            <Button
+              onClick={handleReopenTicket}
+              disabled={isLoading}
+              className="gap-2 w-full sm:w-fit"
+            >
+              <Undo2 className="h-4 w-4" />
+              Reopen Ticket
             </Button>
           )}
         </div>
@@ -982,29 +1044,35 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                           <Label>
                             {log?.action && capitalizeEveryWord(log?.action)}{" "}
-                            {log?.field && capitalizeEveryWord(log?.field)}
+                            {log?.field && log?.action !== "REOPENED"
+                              ? capitalizeEveryWord(log?.field)
+                              : "Ticket"}
                           </Label>
                           <p className="text-sm font-medium">
                             {new Date(log?.changedAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex flex-col justify-between gap-2 mb-1">
-                          <div className="flex gap-1 flex-wrap items-center text-muted-foreground">
+                          <div className="flex gap-1.5 flex-wrap items-center text-muted-foreground">
                             {log?.field === "comment" ? (
                               <MessageSquare className="h-3 w-3" />
                             ) : (
                               getActionIcon(log?.action)
                             )}
-                            <p
+                            <span
                               className={`text-sm font-medium ${
                                 log?.field === "comment" &&
                                 "truncate max-w-[100px] xs:max-w-[350px] lg:max-w-[175px]"
                               }`}
                             >
-                              {log?.newValue
-                                ? log.newValue.split("_").join(" ")
-                                : ""}
-                            </p>
+                              <SafeHtml
+                                content={
+                                  log?.newValue
+                                    ? log.newValue.split("_").join(" ")
+                                    : ""
+                                }
+                              />
+                            </span>
                           </div>
                           <div className="flex gap-1 flex-wrap items-center text-muted-foreground">
                             <p className="text-sm font-medium">

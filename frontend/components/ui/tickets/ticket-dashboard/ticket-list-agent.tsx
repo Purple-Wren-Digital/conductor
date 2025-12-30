@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/context/store-provider";
@@ -46,9 +46,7 @@ import {
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
-  getResolvedInBusinessDays,
   orderByOptions,
-  ROLE_ICONS,
   sortByTicketOptions,
   statusOptions,
   urgencyOptions,
@@ -59,10 +57,11 @@ import {
   ArrowDownUp,
   ArrowUp,
   CalendarIcon,
+  Eye,
+  EyeClosed,
   Filter,
   Plus,
   Search,
-  User,
   Users,
   X,
 } from "lucide-react";
@@ -76,17 +75,23 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
-  UserRole,
   UsersToNotify,
 } from "@/lib/types";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export default function AgentTicketList() {
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
+  const [viewDashboardHeader, setViewDashboardHeader] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -128,6 +133,8 @@ export default function AgentTicketList() {
     localStorage.setItem(
       "ticket-filters",
       JSON.stringify({
+        viewDashboardHeader,
+
         searchQuery,
         selectedStatuses,
         selectedUrgencies,
@@ -144,6 +151,7 @@ export default function AgentTicketList() {
       })
     );
   }, [
+    viewDashboardHeader,
     hydrated,
     searchQuery,
     selectedStatuses,
@@ -164,6 +172,7 @@ export default function AgentTicketList() {
     const filtersString = localStorage.getItem("ticket-filters");
     if (filtersString) {
       const fetchedFilters = JSON.parse(filtersString);
+      setViewDashboardHeader(fetchedFilters.viewDashboardHeader || true);
       setSearchQuery(fetchedFilters.searchQuery || "");
       setSelectedStatuses(
         fetchedFilters.selectedStatuses || defaultActiveStatuses
@@ -316,63 +325,66 @@ export default function AgentTicketList() {
     setIsEditOpen(true);
   };
 
-  const handleSendTicketClosedNotifications = async ({
-    userToNotify,
-    ticket,
-  }: {
-    userToNotify: UsersToNotify;
-    ticket: { id: string; title: string; createdAt: Date };
-  }) => {
-    const notifyCreator = userToNotify.updateType === "unchanged";
-    const notifySurvey =
-      userToNotify?.updateType === "ticketSurvey" ||
-      userToNotify?.updateType === "ticketSurveyResults";
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          ticketSurvey:
-            notifySurvey && !notifyCreator
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  surveyorName: userToNotify?.name ?? "No name provided",
-                }
-              : undefined,
-          updatedTicket:
-            !notifySurvey && notifyCreator
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  createdOn: ticket?.createdAt,
-                  updatedOn: new Date(),
-                  editorName: userToNotify?.name ?? "Unknown",
-                  editorId: userToNotify?.id ?? "",
-                  changedDetails: [
-                    {
-                      label: "Status",
-                      newValue: "RESOLVED",
-                      originalValue: "ASSIGNED",
-                    },
-                  ],
-                }
-              : undefined,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "TicketListAgent - Unable to generate Survey notifications",
-        error
-      );
-    }
-  };
+  const handleSendTicketClosedNotifications = useCallback(
+    async ({
+      userToNotify,
+      ticket,
+    }: {
+      userToNotify: UsersToNotify;
+      ticket: { id: string; title: string; createdAt: Date };
+    }) => {
+      const notifyCreator = userToNotify.updateType === "unchanged";
+      const notifySurvey =
+        userToNotify?.updateType === "ticketSurvey" ||
+        userToNotify?.updateType === "ticketSurveyResults";
+      try {
+        const response = await createAndSendNotification({
+          getToken: getToken,
+          templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+          trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
+          receivingUser: {
+            id: userToNotify?.id,
+            name: userToNotify?.name,
+            email: userToNotify?.email,
+          },
+          data: {
+            ticketSurvey:
+              notifySurvey && !notifyCreator
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    surveyorName: userToNotify?.name ?? "No name provided",
+                  }
+                : undefined,
+            updatedTicket:
+              !notifySurvey && notifyCreator
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    createdOn: ticket?.createdAt,
+                    updatedOn: new Date(),
+                    editorName: userToNotify?.name ?? "Unknown",
+                    editorId: userToNotify?.id ?? "",
+                    changedDetails: [
+                      {
+                        label: "Status",
+                        newValue: "RESOLVED",
+                        originalValue: "ASSIGNED",
+                      },
+                    ],
+                  }
+                : undefined,
+          },
+        });
+      } catch (error) {
+        console.error(
+          "TicketListAgent - Unable to generate Survey notifications",
+          error
+        );
+      }
+    },
+    [getToken]
+  );
 
   const closeTicketMutation = useMutation({
     mutationFn: async (ticket: Ticket) => {
@@ -430,10 +442,139 @@ export default function AgentTicketList() {
     },
   });
 
-  const handleQuickClose = (e: React.MouseEvent, ticket: Ticket) => {
-    e.stopPropagation();
-    closeTicketMutation.mutate(ticket);
-  };
+  const handleQuickClose = useCallback(
+    (e: React.MouseEvent, ticket: Ticket) => {
+      e.stopPropagation();
+      closeTicketMutation.mutate(ticket);
+    },
+    [closeTicketMutation]
+  );
+
+  const handleSendTicketNotifications = useCallback(
+    async ({
+      ticket,
+      userToNotify,
+      changedDetails,
+    }: {
+      ticket: Ticket;
+      userToNotify: UsersToNotify;
+      changedDetails: ActivityUpdates[] | null;
+    }) => {
+      const title = ticket?.title ?? "";
+
+      const notifyAssigneeChanges =
+        userToNotify.updateType === "added" ||
+        userToNotify.updateType === "removed";
+
+      try {
+        const response = await createAndSendNotification({
+          getToken: getToken,
+          templateName:
+            notifyAssigneeChanges && userToNotify.updateType === "added"
+              ? "Ticket Assignment - Added"
+              : notifyAssigneeChanges && userToNotify.updateType === "removed"
+                ? "Ticket Assignment - Removed"
+                : "Ticket Updated",
+          trigger: notifyAssigneeChanges
+            ? "Ticket Assignment"
+            : "Ticket Updated",
+          receivingUser: {
+            id: userToNotify?.id,
+            name: userToNotify?.name,
+            email: userToNotify?.email,
+          },
+          data: {
+            updatedTicket:
+              !notifyAssigneeChanges && changedDetails
+                ? {
+                    ticketNumber: ticket.id,
+                    ticketTitle: ticket?.title ?? "No title provided",
+                    createdOn: ticket?.createdAt,
+                    updatedOn: ticket?.updatedAt,
+                    editorName: currentUser?.name ?? "Unknown",
+                    editorId: currentUser?.id ?? "",
+                    changedDetails: changedDetails,
+                  }
+                : undefined,
+            ticketAssignment: notifyAssigneeChanges
+              ? {
+                  ticketNumber: ticket.id,
+                  ticketTitle: title,
+                  createdOn: ticket?.createdAt,
+                  updatedOn: ticket?.createdAt,
+                  editorName: currentUser?.name ?? "Unknown",
+                  editorId: currentUser?.id ?? "",
+                  updateType: userToNotify.updateType,
+                  currentAssignment: {
+                    id: userToNotify?.id,
+                    name: userToNotify?.name,
+                  },
+                  previousAssignment: null,
+                }
+              : undefined,
+          },
+        });
+      } catch {
+        // Notification failed silently
+      }
+    },
+    [getToken, currentUser]
+  );
+
+  const handleReopenTicket = useCallback(
+    async (ticket: Ticket) => {
+      if (!ticket?.id) {
+        throw new Error("Ticket ID is required to reopen a ticket");
+      }
+      setIsLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await fetch(
+          `${API_BASE}/tickets/reopen/${ticket.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to reopen ticket");
+        }
+        const data = await response.json();
+        if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
+          await Promise.all(
+            data.usersToNotify.map(async (user: UsersToNotify) =>
+              handleSendTicketNotifications({
+                ticket: ticket as Ticket,
+                userToNotify: user,
+                changedDetails: [
+                  {
+                    label: "Ticket Reopened",
+                    originalValue: "RESOLVED",
+                    newValue: "IN_PROGRESS",
+                  },
+                ],
+              })
+            )
+          );
+        }
+      } catch (error) {
+        toast.error("Error: Failed to reopen ticket");
+        console.error("Reopen ticket error:", error);
+      } finally {
+        await agentTicketsQueryInvalidator();
+        setIsLoading(false);
+      }
+    },
+    [getToken, handleSendTicketNotifications]
+  );
 
   const stats = useMemo(() => {
     const resolvedTicketsCount = tickets.filter(
@@ -446,295 +587,337 @@ export default function AgentTicketList() {
 
   return (
     <>
-      <section className="space-y-4">
-        <div>
-          <div className="flex flex-wrap gap-4 items-center justify-between space-y-0.5">
-            <h1 className="text-xl font-bold text-left w-full sm:w-fit">
-              Tickets ({totalTickets})
-            </h1>
-            <div className="flex items-center gap-4 w-full sm:w-fit">
-              {permissions?.canCreateTicket && (
-                <Button
-                  className="gap-2 w-full sm:w-fit"
-                  onClick={() => setIsCreateOpen(true)}
-                  disabled={isLoading}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Ticket
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-4 mt-4">
-            <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
-              <div className="relative flex-1 w-full sm:w-fit">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search tickets..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 bg-transparent w-full sm:w-fit"
-                onClick={() => setShowFilters(!showFilters)}
-                type="button"
-                disabled={isLoading}
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-1 h-2 w-2 rounded-full p-0"
-                  />
+      <Collapsible
+        open={viewDashboardHeader}
+        onOpenChange={setViewDashboardHeader}
+      >
+        <CollapsibleContent>
+          <section className="space-y-4 mb-4">
+            <div className="flex flex-wrap gap-4 items-center justify-between space-y-0.5">
+              <h1 className="text-xl font-bold text-left w-full sm:w-fit">
+                Tickets ({totalTickets})
+              </h1>
+              <div className="flex items-center gap-4 w-full sm:w-fit">
+                {permissions?.canCreateTicket && (
+                  <Button
+                    className="gap-2 w-full sm:w-fit"
+                    onClick={() => setIsCreateOpen(true)}
+                    disabled={isLoading}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Ticket
+                  </Button>
                 )}
-              </Button>
-              {hasActiveFilters && (
+              </div>
+            </div>
+
+            <div className="space-y-4 mt-4">
+              <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
+                <div className="relative flex-1 w-full sm:w-fit">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search tickets..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    disabled={isLoading}
+                  />
+                </div>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={clearFilters}
-                  className="gap-2 w-full sm:w-fit"
+                  className="gap-2 bg-transparent w-full sm:w-fit"
+                  onClick={() => setShowFilters(!showFilters)}
                   type="button"
                   disabled={isLoading}
                 >
-                  <X className="h-4 w-4" />
-                  Clear
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {hasActiveFilters && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-2 w-2 rounded-full p-0"
+                    />
+                  )}
                 </Button>
-              )}
-            </div>
-            {showFilters && (
-              <Card className="p-4 bg-muted/50">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Assignee</Label>
-                    <Select
-                      value={selectedAssignee}
-                      onValueChange={(v) => {
-                        setSelectedAssignee(v);
-                        setCurrentPage(1);
-                      }}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          value="all"
-                          className="flex items-center gap-2"
-                        >
-                          <Users className="h-4 w-4" />
-                          All Team Members
-                        </SelectItem>
-                        {teamMembersAssignedToTickets &&
-                          teamMembersAssignedToTickets.length > 0 &&
-                          teamMembersAssignedToTickets.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              <span className="font-medium">{user.name}:</span>
-                              <span className="hidden md:block text-muted-foreground capitalize">
-                                {user?.role
-                                  ? user.role.split("_").join(" ").toLowerCase()
-                                  : "No role"}
-                              </span>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {/* Date From */}
-                  <div className="space-y-2">
-                    <Label>Date From</Label>
-                    <Popover open={openFrom} onOpenChange={setOpenFrom}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-transparent"
-                          onClick={() => setOpenFrom(true)}
-                          disabled={isLoading}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateFrom}
-                          onSelect={(d) => {
-                            setDateFrom(d);
-                            setCurrentPage(1);
-                            setOpenFrom(false);
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Date To */}
-                  <div className="space-y-2">
-                    <Label>Date To</Label>
-                    <Popover open={openTo} onOpenChange={setOpenTo}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-transparent"
-                          onClick={() => setOpenTo(true)}
-                          disabled={isLoading}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateTo ? format(dateTo, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateTo}
-                          onSelect={(d) => {
-                            setDateTo(d);
-                            setCurrentPage(1);
-                            setOpenTo(false);
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  {/* STATUS */}
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {statusOptions.map((status) => (
-                        <div
-                          key={status}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`status-${status}`}
-                            checked={selectedStatuses.includes(status)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedStatuses((prev) =>
-                                checked
-                                  ? [...prev, status]
-                                  : prev.filter((s) => s !== status)
-                              );
-                              setCurrentPage(1);
-                            }}
-                          />
-                          <Label
-                            htmlFor={`status-${status}`}
-                            className="text-sm font-normal"
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="gap-2 w-full sm:w-fit"
+                    type="button"
+                    disabled={isLoading}
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {showFilters && (
+                <Card className="p-4 bg-muted/50">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Assignee</Label>
+                      <Select
+                        value={selectedAssignee}
+                        onValueChange={(v) => {
+                          setSelectedAssignee(v);
+                          setCurrentPage(1);
+                        }}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select assignee" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            value="all"
+                            className="flex items-center gap-2"
                           >
-                            <Badge variant={status.toLowerCase() as any}>
-                              {status.replace("_", " ")}
-                            </Badge>{" "}
-                          </Label>
-                        </div>
-                      ))}
+                            <Users className="h-4 w-4" />
+                            All Team Members
+                          </SelectItem>
+                          {teamMembersAssignedToTickets &&
+                            teamMembersAssignedToTickets.length > 0 &&
+                            teamMembersAssignedToTickets.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                <span className="font-medium">
+                                  {user.name}:
+                                </span>
+                                <span className="hidden md:block text-muted-foreground capitalize">
+                                  {user?.role
+                                    ? user.role
+                                        .split("_")
+                                        .join(" ")
+                                        .toLowerCase()
+                                    : "No role"}
+                                </span>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  {/* URGENCY */}
-                  <div className="space-y-2">
-                    <Label>Urgency</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {urgencyOptions.map((urgency) => (
-                        <div
-                          key={urgency}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`urgency-${urgency}`}
-                            checked={selectedUrgencies.includes(urgency)}
-                            onCheckedChange={(v: boolean | "indeterminate") => {
-                              const checked = v === true;
-                              setSelectedUrgencies((prev) =>
-                                checked
-                                  ? [...prev, urgency]
-                                  : prev.filter((u) => u !== urgency)
-                              );
-                              setCurrentPage(1);
-                            }}
+                    {/* Date From */}
+                    <div className="space-y-2">
+                      <Label>Date From</Label>
+                      <Popover open={openFrom} onOpenChange={setOpenFrom}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal bg-transparent"
+                            onClick={() => setOpenFrom(true)}
                             disabled={isLoading}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateFrom}
+                            onSelect={(d) => {
+                              setDateFrom(d);
+                              setCurrentPage(1);
+                              setOpenFrom(false);
+                            }}
                           />
-                          <Label
-                            htmlFor={`urgency-${urgency}`}
-                            className="text-sm font-normal"
-                          >
-                            <Badge variant={urgency.toLowerCase() as any}>
-                              {urgency}
-                            </Badge>
-                          </Label>
-                        </div>
-                      ))}
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label>Category</Label>
-                    <RadioGroup
-                      value={selectedCategory}
-                      onValueChange={(value) => setSelectedCategory(value)}
-                      defaultValue="all"
-                      aria-label="Filter by ticket categories"
-                      className="flex flex-wrap gap-4"
-                      disabled={isLoading}
-                    >
-                      <div className="flex flex-wrap gap-2">
-                        <RadioGroupItem value={"all"} id={`category-all`} />
-                        <Label
-                          htmlFor={`category-all`}
-                          className="text-sm font-normal"
-                        >
-                          All
-                        </Label>
-                      </div>
-                      {categories &&
-                        categories &&
-                        categories.length > 0 &&
-                        categories.map((category: TicketCategory) => (
-                          <div
-                            key={category?.id}
-                            className="flex flex-wrap gap-2"
+                    {/* Date To */}
+                    <div className="space-y-2">
+                      <Label>Date To</Label>
+                      <Popover open={openTo} onOpenChange={setOpenTo}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal bg-transparent"
+                            onClick={() => setOpenTo(true)}
+                            disabled={isLoading}
                           >
-                            <RadioGroupItem
-                              value={category?.id}
-                              id={`category-${category?.id}`}
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateTo ? format(dateTo, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateTo}
+                            onSelect={(d) => {
+                              setDateTo(d);
+                              setCurrentPage(1);
+                              setOpenTo(false);
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    {/* STATUS */}
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {statusOptions.map((status) => (
+                          <div
+                            key={status}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={`status-${status}`}
+                              checked={selectedStatuses.includes(status)}
+                              onCheckedChange={(
+                                v: boolean | "indeterminate"
+                              ) => {
+                                const checked = v === true;
+                                setSelectedStatuses((prev) =>
+                                  checked
+                                    ? [...prev, status]
+                                    : prev.filter((s) => s !== status)
+                                );
+                                setCurrentPage(1);
+                              }}
                             />
-
                             <Label
-                              htmlFor={`category-${category?.id}`}
+                              htmlFor={`status-${status}`}
                               className="text-sm font-normal"
                             >
-                              {category?.name}
+                              <Badge variant={status.toLowerCase() as any}>
+                                {status.replace("_", " ")}
+                              </Badge>{" "}
                             </Label>
                           </div>
                         ))}
-                    </RadioGroup>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-        </div>
+                      </div>
+                    </div>
+                    {/* URGENCY */}
+                    <div className="space-y-2">
+                      <Label>Urgency</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {urgencyOptions.map((urgency) => (
+                          <div
+                            key={urgency}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={`urgency-${urgency}`}
+                              checked={selectedUrgencies.includes(urgency)}
+                              onCheckedChange={(
+                                v: boolean | "indeterminate"
+                              ) => {
+                                const checked = v === true;
+                                setSelectedUrgencies((prev) =>
+                                  checked
+                                    ? [...prev, urgency]
+                                    : prev.filter((u) => u !== urgency)
+                                );
+                                setCurrentPage(1);
+                              }}
+                              disabled={isLoading}
+                            />
+                            <Label
+                              htmlFor={`urgency-${urgency}`}
+                              className="text-sm font-normal"
+                            >
+                              <Badge variant={urgency.toLowerCase() as any}>
+                                {urgency}
+                              </Badge>
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-        <div
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <RadioGroup
+                        value={selectedCategory}
+                        onValueChange={(value) => setSelectedCategory(value)}
+                        defaultValue="all"
+                        aria-label="Filter by ticket categories"
+                        className="flex flex-wrap gap-4"
+                        disabled={isLoading}
+                      >
+                        <div className="flex flex-wrap gap-2">
+                          <RadioGroupItem value={"all"} id={`category-all`} />
+                          <Label
+                            htmlFor={`category-all`}
+                            className="text-sm font-normal"
+                          >
+                            All
+                          </Label>
+                        </div>
+                        {categories &&
+                          categories &&
+                          categories.length > 0 &&
+                          categories.map((category: TicketCategory) => (
+                            <div
+                              key={category?.id}
+                              className="flex flex-wrap gap-2"
+                            >
+                              <RadioGroupItem
+                                value={category?.id}
+                                id={`category-${category?.id}`}
+                              />
+
+                              <Label
+                                htmlFor={`category-${category?.id}`}
+                                className="text-sm font-normal"
+                              >
+                                {category?.name}
+                              </Label>
+                            </div>
+                          ))}
+                      </RadioGroup>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </section>
+        </CollapsibleContent>
+
+        <section
           className={`space-y-4 transition-opacity duration-300 ${
             ticketsLoading ? "opacity-50 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="flex flex-wrap justify-between items-center pb-2 py-2 gap-4 w-full">
-            <p className="text-sm text-muted-foreground">
-              {selectedStatuses.includes("RESOLVED") &&
-                `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
-            </p>
+          <div className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
+            <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
+              <CollapsibleTrigger asChild>
+                <ToolTip
+                  content={
+                    viewDashboardHeader
+                      ? "Hide ticket dashboard header"
+                      : "Show ticket dashboard header"
+                  }
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Toggle ticket dashboard visibility"
+                      onClick={() =>
+                        setViewDashboardHeader(!viewDashboardHeader)
+                      }
+                      className={`h-8 w-8 rounded-full`}
+                    >
+                      {viewDashboardHeader ? (
+                        <Eye className="h-5 w-5" />
+                      ) : (
+                        <EyeClosed className="h-5 w-5" />
+                      )}
+                    </Button>
+                  }
+                />
+              </CollapsibleTrigger>
+              <p className="text-sm text-muted-foreground">
+                {selectedStatuses.includes("RESOLVED") &&
+                  `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
+              </p>
+            </div>
             <div className="flex flex-wrap items-center gap-4">
               <div className="space-y-2 w-full sm:w-fit">
                 <Select
@@ -876,6 +1059,7 @@ export default function AgentTicketList() {
                     onClose={(e: React.MouseEvent) =>
                       handleQuickClose(e, ticket)
                     }
+                    onReopen={() => handleReopenTicket(ticket)}
                   />
                 ))}
 
@@ -897,9 +1081,8 @@ export default function AgentTicketList() {
             setCurrentPage={setCurrentPage}
             totalPages={totalPages}
           />
-        </div>
-      </section>
-
+        </section>
+      </Collapsible>
       {/* Edit Ticket Modal */}
       <EditTicketForm
         disabled={isLoading}
