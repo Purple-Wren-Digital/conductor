@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFetchTemplateStatuses } from "@/hooks/use-template-customization";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
-import type { UserRole, MarketCenter } from "@/lib/types";
+import type { MarketCenter } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,31 +23,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Mail, Bell, AlertCircle } from "lucide-react";
+import { Mail, Bell, AlertCircle, Building2 } from "lucide-react";
+import { useStore } from "@/context/store-provider";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
-interface TemplateCustomizationListProps {
-  role: UserRole | undefined;
-  initialMarketCenterId?: string;
-}
-
-// =============================================================================
-// COMPONENT
-// =============================================================================
-
-export default function TemplateCustomizationList({
-  role,
-  initialMarketCenterId,
-}: TemplateCustomizationListProps) {
+export default function TemplateCustomizationList() {
   const router = useRouter();
-  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
-    string | undefined
-  >(initialMarketCenterId);
+  const [selectedMarketCenterId, setSelectedMarketCenterId] =
+    useState<string>("");
 
-  // Check permissions
+  const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
+
+  useEffect(() => {
+    if (isEnterprise || !currentUser?.marketCenterId) return;
+    setSelectedMarketCenterId(currentUser.marketCenterId);
+  }, [isEnterprise, currentUser?.marketCenterId]);
+
+  const { role } = useUserRole();
   const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
 
   // Fetch market centers
@@ -161,7 +155,7 @@ export default function TemplateCustomizationList({
       {/* No market center selected */}
       {!selectedMarketCenterId && (
         <div className="flex flex-col items-center justify-center py-12 border rounded-lg bg-muted/30">
-          <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+          <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
           <h2 className="text-lg font-semibold mb-2">Select a Market Center</h2>
           <p className="text-muted-foreground">
             Select a market center to view and customize notification templates.

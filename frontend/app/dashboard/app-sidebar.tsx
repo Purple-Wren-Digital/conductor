@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Dispatch, SetStateAction } from "react";
+import React, { Dispatch, SetStateAction, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,25 +9,31 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import SideBarNewNotification from "@/components/notifications/new-notification-detail";
 import { useStore } from "@/context/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import { cn } from "@/lib/cn";
 import type { Notification } from "@/lib/types";
 import {
-  HomeIcon,
-  Users as UsersIcon,
-  CircleUserRound,
-  Ticket,
-  Building2,
-  Building,
+  BellRing,
   BookMarked,
-  Folder,
-  Clock,
+  Building,
+  Building2,
+  CalendarClock,
   ChartNoAxesCombined,
+  ChevronDown,
+  CircleUserRound,
+  CogIcon,
   CreditCard,
-  TagIcon,
+  FolderPen,
+  HomeIcon,
+  Ticket,
+  Users as UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -55,9 +61,13 @@ export function AppSidebar({
   setNewestNotification,
   markAsReadMutation,
 }: AppSidebarProps) {
+  const [settingsSubMenuOpen, setSettingsSubMenuOpen] = useState(false);
+  const [marketCenterSubMenuOpen, setMarketCenterSubMenuOpen] = useState(false);
+
   const { className, ...rest } = props;
   const { role, permissions, isLoading } = useUserRole();
   const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
 
   if (!currentUser) {
     return (
@@ -120,6 +130,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarMenu>
           <SidebarGroup>
+            {/* DASHBOARD */}
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading}>
                 <Link href="/dashboard">
@@ -135,47 +146,6 @@ export function AppSidebar({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            {/* ADMIN - USER MANAGEMENT */}
-            {permissions?.canManageAllUsers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/users?tab=users">
-                    <UsersIcon className="text-muted-foreground" /> User
-                    Management
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-            {/* ADMIN - MARKET CENTER MANAGEMENT */}
-            {permissions?.canManageAllUsers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/marketCenters">
-                    <Building2 className="text-muted-foreground" /> Market
-                    Centers
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-            {/* STAFF - MARKET CENTER MANAGEMENT */}
-            {(role === "STAFF" || role === "STAFF_LEADER") &&
-              currentUser?.marketCenterId && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    disabled={isLoading || !currentUser?.marketCenterId}
-                  >
-                    <Link
-                      href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
-                    >
-                      <Building className="text-muted-foreground" /> Market
-                      Center Team
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-
             {/* AGENT - MARKET CENTER INFORMATION */}
             {role === "AGENT" && currentUser?.marketCenterId && (
               <SidebarMenuItem>
@@ -192,53 +162,157 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {/* CATEGORY MANAGEMENT */}
-            {permissions?.canManageMarketCenterCategories && (
+
+            {permissions?.canAccessReports && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link
-                    href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=categories`}
-                  >
-                    <TagIcon className="text-muted-foreground" /> Ticket
-                    Categories
+                <SidebarMenuButton
+                  asChild
+                  disabled={isLoading || !currentUser?.marketCenterId}
+                >
+                  <Link href={`/dashboard/reports`}>
+                    <ChartNoAxesCombined className="text-muted-foreground" />
+                    Reports
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {role && role !== "AGENT" && (
-              <>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    disabled={isLoading || !currentUser?.marketCenterId}
-                  >
-                    <Link href={`/dashboard/reports`}>
-                      <ChartNoAxesCombined className="text-muted-foreground" />
-                      Reports
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {role !== "STAFF" && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild disabled={isLoading}>
-                      <Link href="/dashboard/sla">
-                        <Clock className="text-muted-foreground" /> SLA
-                        Management
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </>
-            )}
-            {/* NOTIFICATION TEMPLATES */}
+
+            {/* ADMIN - USER MANAGEMENT */}
             {permissions?.canManageAllUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild disabled={isLoading}>
-                  <Link href="/dashboard/template-customization">
-                    <Folder className="text-muted-foreground" /> Notification
-                    Templates
+                  <Link href="/dashboard/users?tab=users">
+                    <UsersIcon className="text-muted-foreground" /> Users
                   </Link>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {/* ENTERPRISE - ADMIN - MARKET CENTERS MANAGEMENT */}
+            {isEnterprise && permissions?.canManageAllMarketCenters && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild disabled={isLoading}>
+                  <Link href="/dashboard/marketCenters">
+                    <Building2 className="text-muted-foreground" /> Market
+                    Centers
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
+            {/* NON-ENTERPRISE - ADMIN, STAFF LEADER, STAFF - MARKET CENTER MANAGEMENT */}
+            {!isEnterprise &&
+              currentUser?.marketCenterId &&
+              permissions?.canManageTeam && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    // asChild
+                    disabled={isLoading || !currentUser?.marketCenterId}
+                    onClick={() => setMarketCenterSubMenuOpen((prev) => !prev)}
+                    className="flex justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building className="text-muted-foreground w-4 h-4" />{" "}
+                      Market Center
+                    </div>
+
+                    <ChevronDown
+                      className={cn(
+                        "text-muted-foreground w-4 h-4 transition-transform",
+                        marketCenterSubMenuOpen && "rotate-180"
+                      )}
+                    />
+                  </SidebarMenuButton>
+
+                  {marketCenterSubMenuOpen && (
+                    <SidebarMenuSub className={``}>
+                      {/* TEAM MANAGEMENT */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=team`}
+                          >
+                            Team Members
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      {/* CATEGORY MANAGEMENT */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=categories`}
+                          >
+                            Ticket Categories
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            href={`/dashboard/marketCenters/${currentUser.marketCenterId}?tab=activity`}
+                          >
+                            Activity
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
+            {permissions?.canAccessSettings && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  disabled={isLoading}
+                  onClick={() => setSettingsSubMenuOpen((prev) => !prev)}
+                  className="flex justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <CogIcon className="text-muted-foreground w-4 h-4" />
+                    Settings
+                  </div>
+
+                  <ChevronDown
+                    className={cn(
+                      "text-muted-foreground w-4 h-4 transition-transform",
+                      settingsSubMenuOpen && "rotate-180"
+                    )}
+                  />
+                </SidebarMenuButton>
+                {settingsSubMenuOpen && (
+                  <SidebarMenuSub>
+                    {permissions?.canManageMCNotificationSettings && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild disabled={isLoading}>
+                          <Link href={`/dashboard/notification-preferences`}>
+                            <BellRing className="text-muted-foreground" />
+                            Alert Preferences
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+
+                    {permissions?.canManageTemplateSettings && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuButton asChild disabled={isLoading}>
+                          <Link href="/dashboard/template-customization">
+                            <FolderPen className="text-muted-foreground" />
+                            Notification Templates
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuSubItem>
+                    )}
+
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild disabled={isLoading}>
+                        <Link href="/dashboard/sla">
+                          <CalendarClock className="text-muted-foreground" />
+                          SLA Management
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
             )}
           </SidebarGroup>
@@ -274,15 +348,6 @@ export function AppSidebar({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            {/* SUPPORT/HELP */}
-            {/* <SidebarMenuItem>
-              <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
-                <Link href={`/help`}>
-                  <Info className="text-muted-foreground" /> Support
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem> */}
           </SidebarGroup>
         </SidebarMenu>
       </SidebarContent>

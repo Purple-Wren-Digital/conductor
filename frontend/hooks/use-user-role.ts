@@ -26,6 +26,8 @@ export interface UserPermissions {
   canAccessReports: boolean;
   canManageSubscription: boolean;
   canManageMarketCenterCategories: boolean;
+  canManageTemplateSettings: boolean;
+  canManageMCNotificationSettings: boolean;
 }
 
 export function getUserPermissions(role: UserRole): UserPermissions {
@@ -53,6 +55,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: true,
         canManageSubscription: true,
         canManageMarketCenterCategories: true,
+        canManageTemplateSettings: true,
+        canManageMCNotificationSettings: true,
       };
     case "STAFF_LEADER":
       return {
@@ -77,6 +81,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: true,
         canManageSubscription: false,
         canManageMarketCenterCategories: true,
+        canManageTemplateSettings: false,
+        canManageMCNotificationSettings: false,
       };
     case "STAFF":
       return {
@@ -97,10 +103,12 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageAllMarketCenters: false,
         canDeactivateMarketCenters: false,
         canDeactivateUsers: false,
-        canAccessSettings: true,
+        canAccessSettings: false,
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: true,
+        canManageTemplateSettings: false,
+        canManageMCNotificationSettings: false,
       };
     case "AGENT":
       return {
@@ -125,6 +133,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: false,
+        canManageTemplateSettings: false,
+        canManageMCNotificationSettings: false,
       };
     default:
       return {
@@ -149,6 +159,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: false,
+        canManageTemplateSettings: false,
+        canManageMCNotificationSettings: false,
       };
   }
 }
