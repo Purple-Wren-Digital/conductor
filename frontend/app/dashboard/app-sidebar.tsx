@@ -311,6 +311,15 @@ export function AppSidebar({
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild disabled={isLoading}>
+                        <Link href="/dashboard/settings">
+                          <CogIcon className="text-muted-foreground" />
+                          General Settings
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
