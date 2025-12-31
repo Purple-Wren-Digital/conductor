@@ -55,7 +55,7 @@ export function CreateTicketForm({
   const { getToken } = useAuth();
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (mcId: string) => {
       if (!isLoaded) return;
 
       try {
@@ -63,13 +63,10 @@ export function CreateTicketForm({
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(
-          `${API_BASE}/ticket-templates/:${marketCenterId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: "no-store",
-          }
-        );
+        const res = await fetch(`${API_BASE}/ticket-templates/${mcId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error("Failed to fetch templates");
         const data = await res.json();
         setTemplates(data.templates || []);
@@ -83,16 +80,18 @@ export function CreateTicketForm({
       setValues(initialValues);
       setErrors({});
       setSelectedTemplateId("");
-      fetchTemplates();
     }
 
-    const userMarketCenterId =
-      (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
-      currentUser?.marketCenterId
-        ? currentUser.marketCenterId
-        : null;
+    const userMarketCenterId = currentUser?.marketCenterId
+      ? currentUser.marketCenterId
+      : null;
 
     setMarketCenterId(userMarketCenterId);
+    if (userMarketCenterId) {
+      fetchTemplates(userMarketCenterId);
+    } else {
+      setTemplates([]);
+    }
   }, [
     isOpen,
     isLoaded,

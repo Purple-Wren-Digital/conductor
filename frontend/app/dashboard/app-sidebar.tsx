@@ -292,25 +292,26 @@ export function AppSidebar({
                       </SidebarMenuItem>
                     )}
 
-                    {permissions?.canManageTemplateSettings && (
-                      <>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuButton asChild disabled={isLoading}>
-                            <Link href="/dashboard/template-customization">
-                              <FolderPen className="text-muted-foreground" />
-                              Notification Templates
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuButton asChild disabled={isLoading}>
-                            <Link href="/dashboard/ticket-templates">
-                              <FolderPen className="text-muted-foreground" />
-                              Ticket Templates
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuSubItem>
-                      </>
+                    {permissions?.canManageNotificationTemplateSettings && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuButton asChild disabled={isLoading}>
+                          <Link href="/dashboard/template-customization">
+                            <FolderPen className="text-muted-foreground" />
+                            Notification Templates
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuSubItem>
+                    )}
+
+                    {permissions?.canManageTicketTemplateSettings && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuButton asChild disabled={isLoading}>
+                          <Link href="/dashboard/ticket-templates">
+                            <FolderPen className="text-muted-foreground" />
+                            Ticket Templates
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuSubItem>
                     )}
 
                     <SidebarMenuItem>

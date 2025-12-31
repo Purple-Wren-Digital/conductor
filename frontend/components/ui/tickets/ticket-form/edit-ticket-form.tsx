@@ -60,19 +60,16 @@ export function EditTicketForm({
     if (ticket?.status === "RESOLVED") {
       return;
     }
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (mcId: string) => {
       try {
         const token = await getToken();
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(
-          `${API_BASE}/ticket-templates/:${marketCenterId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: "no-store",
-          }
-        );
+        const res = await fetch(`${API_BASE}/ticket-templates/${mcId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error("Failed to fetch templates");
         const data = await res.json();
         setTemplates(data.templates || []);
@@ -109,7 +106,11 @@ export function EditTicketForm({
 
       setMarketCenterId(ticketMarketCenter);
       setSelectedTemplateId("");
-      fetchTemplates();
+      if (ticketMarketCenter) {
+        fetchTemplates(ticketMarketCenter);
+      } else {
+        setTemplates([]);
+      }
     }
   }, [isOpen, ticket, clerkUser, role, currentUser, getToken, marketCenterId]);
 
