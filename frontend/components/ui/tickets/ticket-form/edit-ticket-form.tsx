@@ -66,10 +66,13 @@ export function EditTicketForm({
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(`${API_BASE}/ticket-templates`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `${API_BASE}/ticket-templates/:${marketCenterId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          }
+        );
         if (!res.ok) throw new Error("Failed to fetch templates");
         const data = await res.json();
         setTemplates(data.templates || []);
@@ -108,7 +111,7 @@ export function EditTicketForm({
       setSelectedTemplateId("");
       fetchTemplates();
     }
-  }, [isOpen, ticket, clerkUser, role, currentUser, getToken]);
+  }, [isOpen, ticket, clerkUser, role, currentUser, getToken, marketCenterId]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -124,10 +127,10 @@ export function EditTicketForm({
         title: t.title,
         description: t.ticketDescription,
         urgency: t?.urgency || "MEDIUM",
-        categoryId: t?.category || "",
+        categoryId: t?.categoryId || "",
         dueDate: undefined,
         assigneeId: "Unassigned",
-        todos: [...t.todos],
+        todos: t.todos && t.todos.length > 0 ? [...t.todos] : [],
       });
     }
   };

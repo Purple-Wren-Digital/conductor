@@ -1,7 +1,7 @@
 import { API_BASE } from "@/lib/api/utils";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { UserRole } from "@/lib/types";
+import type { TicketTemplate, UserRole } from "@/lib/types";
 
 // =============================================================================
 // TYPES
@@ -163,6 +163,57 @@ export function useFetchTemplateStatuses({
 
       const data = await response.json();
       return data.templates as TemplateStatus[];
+    },
+    enabled: !!marketCenterId && canAccess,
+  });
+}
+
+export function useFetchTicketTemplates({
+  marketCenterId,
+  role,
+}: UseFetchTemplateStatusesProps) {
+  const { getToken } = useAuth();
+
+  const canAccess = role === "ADMIN";
+
+  return useQuery({
+    queryKey: templateCustomizationKeys.statuses(marketCenterId ?? ""),
+    queryFn: async () => {
+      if (!marketCenterId) {
+        throw new Error("Market center ID is required");
+      }
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/ticket-templates/${marketCenterId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // console.log("Fetch Ticket Templates Response:", response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to fetch ticket templates: ${errorData.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      // console.log("Fetch Ticket Templates Data:", data);
+
+      if (!data.templates) {
+        throw new Error("No templates data found in response");
+      }
+      return data.templates as TicketTemplate[];
     },
     enabled: !!marketCenterId && canAccess,
   });

@@ -7,9 +7,6 @@ import { ticketTemplateRepository } from "../../shared/repositories/ticket.templ
 
 export interface GetTemplatesRequest {
   marketCenterId: string;
-
-  categoryId?: string;
-  isActive?: boolean;
 }
 
 export interface GetTemplatesResponse {
@@ -24,6 +21,7 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
     auth: true,
   },
   async (req) => {
+    console.log("****** GetTemplates request received ******", req);
     const userContext = await getUserContext();
     if (!req.marketCenterId) {
       throw new Error("marketCenterId is required");
@@ -35,13 +33,13 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
     if (!marketCenter) {
       throw APIError.notFound("Market center not found");
     }
+    // console.log("Market center found:", marketCenter);
 
     const ticketTemplates =
       await ticketTemplateRepository.findAllByMarketCenter(req.marketCenterId);
 
-    if (!ticketTemplates) {
+      if (!ticketTemplates || ticketTemplates.length === 0) {
       for (const template of TICKET_TEMPLATES) {
-        const createdTemplates: TicketTemplate[] = [];
         const created = await ticketTemplateRepository.create(
           {
             name: template.name ?? "Untitled Template",
@@ -59,9 +57,13 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
           },
           userContext.userId
         );
-        if (created) createdTemplates.push(created);
       }
-      // return { templates: ticketTemplates };
+      const createdTemplates =
+        await ticketTemplateRepository.findAllByMarketCenter(
+          req.marketCenterId
+        );
+      console.log("Created default templates:", createdTemplates);
+      return { templates: createdTemplates };
     }
 
     return { templates: ticketTemplates };

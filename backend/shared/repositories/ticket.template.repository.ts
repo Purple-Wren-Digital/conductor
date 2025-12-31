@@ -80,6 +80,8 @@ export const ticketTemplateRepository = {
     input: Omit<TicketTemplate, "id" | "createdAt" | "updatedAt">,
     userId: string
   ): Promise<TicketTemplate | null> {
+    console.log("Creating ticket template with input:", input);
+
     const id = await generateId();
 
     const row = await db.queryRow<TicketTemplateRow>`
@@ -90,10 +92,12 @@ export const ticketTemplateRepository = {
         description,
         title,
         ticket_description,
-        category,
+        categoryId,
         urgency,
         tags,
         todos,
+        created_at,
+        updated_at,
         created_by_id,
         updated_by_id
       )
@@ -108,6 +112,8 @@ export const ticketTemplateRepository = {
         ${input.urgency ?? null},
         ${toJson(input.tags ?? [])},
         ${toJson(input.todos ?? [])},
+        NOW(),
+        NOW(),
         ${userId},
         ${userId}
       )
@@ -129,7 +135,7 @@ export const ticketTemplateRepository = {
         description = COALESCE(${input.description}, description),
         title = COALESCE(${input.title}, title),
         ticket_description = COALESCE(${input.ticketDescription}, ticket_description),
-        category_id = COALESCE(${input.categoryId}, category_id),
+        categoryId = COALESCE(${input.categoryId}, categoryId),
         urgency = COALESCE(${input.urgency}, urgency),
         tags = COALESCE(${input.tags ? toJson(input.tags) : null}, tags),
         todos = COALESCE(${input.todos ? toJson(input.todos) : null}, todos),
