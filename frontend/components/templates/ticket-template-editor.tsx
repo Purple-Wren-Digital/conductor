@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -25,17 +25,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useFetchTicketTemplateById } from "@/hooks/use-template-customization";
 import { useUserRole } from "@/hooks/use-user-role";
+import { API_BASE } from "@/lib/api/utils";
 import type { MarketCenter, TicketCategory, Urgency } from "@/lib/types";
 import { findMarketCenter, urgencyOptions } from "@/lib/utils";
 import { ArrowLeft, Building, InfoIcon } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/nextjs";
+import { useQueryClient } from "@tanstack/react-query";
 
-export default function TicketTemplateEditor() {
+type TicketTemplateEditorProps = {
+  templateId?: string;
+  type: "create" | "edit";
+};
+
+export default function TicketTemplateEditor({
+  templateId,
+  type,
+}: TicketTemplateEditorProps) {
   const router = useRouter();
   const params = useParams();
   const defaultMarketCenterId = params.marketCenterId as string | undefined;
@@ -54,11 +66,13 @@ export default function TicketTemplateEditor() {
   const [templateDescription, setTemplateDescription] = useState("");
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
+  const [todos, setTodos] = useState<string[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState<string>("");
   const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
-  const [todos, setTodos] = useState<string[]>([]);
+  const [isActive, setIsActive] = useState<boolean>(true);
 
   const [errors, setErrors] = useState<{
+    general?: string;
     marketCenter?: string;
     templateName?: string;
     templateDescription?: string;
@@ -69,79 +83,15 @@ export default function TicketTemplateEditor() {
     todos?: string;
     urgency?: string;
     categoryId?: string;
+    isActive?: string;
   }>({});
 
   const newSubtaskTitleDivRef = useRef<HTMLDivElement>(null);
   const editingSubtaskDivRef = useRef<HTMLDivElement>(null);
 
-  const { role, permissions } = useUserRole();
+  const queryClient = useQueryClient();
+  const { role } = useUserRole();
   const { getToken } = useAuth();
-
-  useEffect(() => {
-    if (!hydrated) return; // prevents overwrite on load
-    localStorage.setItem(
-      "new-ticket-template",
-      JSON.stringify({
-        selectedMarketCenter,
-        templateName,
-        templateDescription,
-        newSubtaskTitle,
-        editingSubtask,
-        todos,
-        categoryId,
-        urgency,
-      })
-    );
-  }, [
-    templateName,
-    templateDescription,
-    newSubtaskTitle,
-    editingSubtask,
-    todos,
-    categoryId,
-    urgency,
-    selectedMarketCenter,
-    hydrated,
-  ]);
-
-  useEffect(() => {
-    const newTemplate = localStorage.getItem("new-ticket-template");
-    if (newTemplate) {
-      const fetchedInputs = JSON.parse(newTemplate);
-      setTemplateName(fetchedInputs?.templateName);
-      setSelectedMarketCenter(fetchedInputs?.selectedMarketCenter);
-      setCategoryId(fetchedInputs?.categoryId);
-      setUrgency(fetchedInputs?.urgency);
-      setTemplateDescription(fetchedInputs?.templateDescription);
-      setNewSubtaskTitle(fetchedInputs?.newSubtaskTitle);
-      setEditingSubtask(fetchedInputs?.editingSubtask);
-      setTodos(fetchedInputs?.todos);
-    }
-
-    setHydrated(true);
-  }, []);
-
-  const hasMadeChanges = useMemo(() => {
-    return (
-      templateName !== "" ||
-      templateDescription !== "" ||
-      ticketTitle !== "" ||
-      ticketDescription !== "" ||
-      todos.length > 0 ||
-      urgency !== "MEDIUM" ||
-      categoryId !== "" ||
-      (!!selectedMarketCenter && Object.keys(selectedMarketCenter).length === 1)
-    );
-  }, [
-    templateName,
-    templateDescription,
-    ticketTitle,
-    ticketDescription,
-    todos.length,
-    urgency,
-    categoryId,
-    selectedMarketCenter,
-  ]);
 
   const { data: marketCentersData, isLoading: isMarketCentersLoading } =
     useFetchAllMarketCenters(role);
@@ -165,11 +115,114 @@ export default function TicketTemplateEditor() {
   );
 
   useEffect(() => {
-    if (!defaultMarketCenterId || defaultMarketCenterId === "") return;
+    if (type === "edit" || !defaultMarketCenterId) return;
     prefillMarketCenterData(defaultMarketCenterId);
-  }, [defaultMarketCenterId, prefillMarketCenterData]);
+  }, [type, defaultMarketCenterId, prefillMarketCenterData]);
 
-  //   Subtask Handlers
+  const {
+    data: template,
+    isLoading: isLoadingTemplate,
+    refetch,
+  } = useFetchTicketTemplateById({
+    templateId: type === "edit" && templateId ? templateId : undefined,
+    role,
+  });
+
+  const hasMadeChanges = useMemo(() => {
+    return (
+      templateName !== (template?.name || "") ||
+      templateDescription !== (template?.description || "") ||
+      ticketTitle !== (template?.title || "") ||
+      ticketDescription !== (template?.ticketDescription || "") ||
+      todos.length !== (template?.todos?.length || 0) ||
+      urgency !== (template?.urgency || "MEDIUM") ||
+      categoryId !== (template?.categoryId || "") ||
+      (!!selectedMarketCenter &&
+        Object.keys(selectedMarketCenter).length === 1) ||
+      (template && selectedMarketCenter?.id !== template.marketCenterId) ||
+      (template && isActive !== template?.isActive)
+    );
+  }, [
+    template,
+    templateName,
+    templateDescription,
+    ticketTitle,
+    ticketDescription,
+    todos.length,
+    urgency,
+    categoryId,
+    selectedMarketCenter,
+    isActive,
+  ]);
+
+  useEffect(() => {
+    if (!hydrated) return; // prevents overwrite on load
+    localStorage.setItem(
+      `${type}-ticket-template-${templateId}`,
+      JSON.stringify({
+        isActive,
+        selectedMarketCenter,
+        templateName,
+        templateDescription,
+        newSubtaskTitle,
+        editingSubtask,
+        todos,
+        categoryId,
+        urgency,
+      })
+    );
+  }, [
+    type,
+    templateId,
+    isActive,
+    templateName,
+    templateDescription,
+    newSubtaskTitle,
+    editingSubtask,
+    todos,
+    categoryId,
+    urgency,
+    selectedMarketCenter,
+    hydrated,
+  ]);
+
+  useEffect(() => {
+    const templateInputs = localStorage.getItem(
+      `${type}-ticket-template-${templateId}`
+    );
+    if (templateInputs) {
+      const fetchedInputs = JSON.parse(templateInputs);
+      setIsActive(fetchedInputs?.isActive);
+      setTemplateName(fetchedInputs?.templateName);
+      setTemplateDescription(fetchedInputs?.templateDescription);
+      setSelectedMarketCenter(fetchedInputs?.selectedMarketCenter);
+      setCategoryId(fetchedInputs?.categoryId);
+      setUrgency(fetchedInputs?.urgency);
+      setNewSubtaskTitle(fetchedInputs?.newSubtaskTitle);
+      setEditingSubtask(fetchedInputs?.editingSubtask);
+      setTodos(fetchedInputs?.todos);
+    }
+
+    if (templateId && template) {
+      setIsActive(template.isActive);
+      setTemplateName(template.name);
+      if (template?.description) {
+        setTemplateDescription(template.description);
+      }
+      if (template?.marketCenterId) {
+        prefillMarketCenterData(template.marketCenterId);
+      }
+      setCategoryId(template.categoryId || "");
+      setUrgency(template?.urgency || "MEDIUM");
+
+      setTicketTitle(template.title);
+      setTicketDescription(template.ticketDescription);
+      setTodos(template.todos || []);
+    }
+
+    setHydrated(true);
+  }, [type, templateId, template, prefillMarketCenterData]);
+
   const closeNewSubtaskTitle = useCallback(() => {
     setErrors({});
     setNewSubtaskTitle("");
@@ -260,6 +313,10 @@ export default function TicketTemplateEditor() {
       newErrors.marketCenter = "Market center selection is required";
     }
 
+    if (!categoryId) {
+      newErrors.categoryId = "Category selection is required";
+    }
+
     if (!urgency) {
       newErrors.urgency = "Urgency selection is required";
     }
@@ -271,6 +328,14 @@ export default function TicketTemplateEditor() {
       newErrors.ticketDescription = "Ticket description is required";
     }
 
+    if (typeof isActive !== "boolean") {
+      newErrors.isActive = "Please specify status";
+    }
+
+    if (type === "edit" && templateId && !hasMadeChanges) {
+      newErrors.general = "No changes made";
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return false;
@@ -278,9 +343,21 @@ export default function TicketTemplateEditor() {
     return true;
   };
 
-  const handleSubmitTemplate = async () => {
-    setIsLoading(true);
+  const hasErrors = useMemo(
+    () => Object.values(errors).some(Boolean),
+    [errors]
+  );
 
+  const invalidateTicketTemplateListQueryKey = useCallback(async () => {
+    // Invalidate ticket template list query key
+    await queryClient.invalidateQueries({
+      queryKey: ["ticket-templates-list"],
+    });
+  }, [queryClient]);
+
+  const handleSubmitNewTemplate = async () => {
+    setIsLoading(true);
+    setErrors({});
     if (!validateInputs()) {
       toast.error("Invalid input(s)");
       setIsLoading(false);
@@ -334,76 +411,159 @@ export default function TicketTemplateEditor() {
     }
   };
 
+  const handleSubmitEditTemplate = async () => {
+    setIsLoading(true);
+    setErrors({});
+    if (!validateInputs()) {
+      toast.error("Invalid input(s)");
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(
+        `${API_BASE}/ticket-templates/template/${templateId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            templateId: templateId,
+            isActive: isActive,
+            templateName: templateName,
+            templateDescription: templateDescription,
+            selectedMarketCenter: selectedMarketCenter.id,
+            categoryId: categoryId,
+            urgency: urgency,
+            ticketTitle: ticketTitle,
+            ticketTemplateDescription: ticketDescription,
+            ticketTemplateTodos: todos,
+          }),
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update template (${res.status}): ${text}`);
+      }
+      toast.success("Ticket template updated successfully");
+      await refetch();
+    } catch (error) {
+      console.error("Error editing ticket template:", error);
+      toast.error(`Error editing ticket template`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Loading state
-  //   if (isLoading) {
-  //     return (
-  //       <div className="space-y-6">
-  //         <div className="flex items-center gap-4">
-  //           <Skeleton data-slot="skeleton" className="h-8 w-8" />
-  //           <div>
-  //             <Skeleton data-slot="skeleton" className="h-8 w-48 mb-2" />
-  //             <Skeleton data-slot="skeleton" className="h-4 w-32" />
-  //           </div>
-  //         </div>
-  //         <div className="text-muted-foreground">Email Template</div>
-  //         <Skeleton data-slot="skeleton" className="h-10 w-full" />
-  //         <Skeleton data-slot="skeleton" className="h-10 w-full" />
-  //         <Skeleton data-slot="skeleton" className="h-32 w-full" />
-  //         <Skeleton data-slot="skeleton" className="h-10 w-full" />
-  //         <div className="flex gap-2">
-  //           <Skeleton data-slot="skeleton" className="h-10 w-24" />
-  //           <Skeleton data-slot="skeleton" className="h-10 w-24" />
-  //         </div>
-  //       </div>
-  //     );
-  //   }
+  if (isLoadingTemplate) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton data-slot="skeleton" className="h-8 w-8" />
+          <div>
+            <Skeleton data-slot="skeleton" className="h-8 w-48 mb-2" />
+            <Skeleton data-slot="skeleton" className="h-4 w-32" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant={"ghost"}
-            onClick={() => {
-              if (hasMadeChanges) {
-                setShowUnsavedWarning(true);
-              } else {
-                localStorage.removeItem("new-ticket-template");
-                router.push(`/dashboard/ticket-templates`);
-              }
-            }}
-            aria-label="Back to ticket templates"
-          >
-            <ArrowLeft className="h-5 w-5 text-muted-foreground hover:text-foreground" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">New Ticket Template</h1>
-            <p className="text-sm text-muted-foreground">
-              Create ticket templates for your market center
-            </p>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={"ghost"}
+              onClick={() => {
+                if (hasMadeChanges) {
+                  setShowUnsavedWarning(true);
+                } else {
+                  localStorage.removeItem(
+                    `${type}-ticket-template-${templateId}`
+                  );
+                  router.push(`/dashboard/ticket-templates`);
+                }
+              }}
+              aria-label="Back to ticket templates"
+            >
+              <ArrowLeft className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">
+                {type === "create" ? "New" : "Edit"} Ticket Template
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {type === "create"
+                  ? "Create ticket templates for your market center"
+                  : "Edit your ticket template"}
+                {hasMadeChanges && " • (Unsaved Changes)"}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-4 ml-auto">
+
+          <div className="flex flex-wrap gap-4">
             <Button
               variant={"outline"}
               onClick={handleClearTemplate}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingTemplate}
             >
-              Clear
+              Clear All
             </Button>
-
-            <Button onClick={handleSubmitTemplate} disabled={isLoading}>
-              Submit
-            </Button>
+            <div className=" flex flex-col items-center gap-2">
+              <Button
+                variant={hasErrors ? "destructive" : "default"}
+                onClick={
+                  type === "create"
+                    ? handleSubmitNewTemplate
+                    : handleSubmitEditTemplate
+                }
+                disabled={isLoading || isLoadingTemplate}
+              >
+                Submit & Save
+              </Button>
+              <p className="text-sm text-destructive">
+                {errors?.general && errors.general}
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="space-y-6">
+          {/* Edit Only - isActive */}
+          {type === "edit" && (
+            <fieldset className="space-y-2" role="group">
+              <div className="flex items-center flex-wrap ">
+                <Label htmlFor="isActive" className="text-md w-20">
+                  {isActive ? "Active" : "Inactive"}
+                </Label>
+                <Switch
+                  id="isActive"
+                  checked={isActive}
+                  onCheckedChange={(checked) => {
+                    setIsActive(checked);
+                  }}
+                  aria-label={`Current: ${isActive ? "Active" : "Inactive"} status`}
+                />
+              </div>
+              <p className="text-sm text-destructive">
+                {errors.isActive && errors.isActive}
+              </p>
+            </fieldset>
+          )}
           {/* Template Name */}
           <fieldset className="space-y-2" role="group">
             <div className="flex items-center justify-between">
               <Label htmlFor="templateName" className="text-md">
-                Template Label *
+                Template Label
               </Label>
               <ToolTip
                 content="An internal label that helps your team identify the ticket template easily"
@@ -415,11 +575,40 @@ export default function TicketTemplateEditor() {
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="e.g., 'Compliance' or 'Listings'"
+              aria-label="Template label input"
               aria-invalid={!!errors.templateName}
+              disabled={isLoading || isLoadingTemplate}
+              className={errors.templateName ? "border-destructive" : ""}
             />
-            {errors.templateName && (
-              <p className="text-sm text-destructive">{errors.templateName}</p>
-            )}
+            <p className="text-sm text-destructive">
+              {errors.templateName && errors.templateName}
+            </p>
+          </fieldset>
+
+          {/* Template Description */}
+          <fieldset className="space-y-2" role="group">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="templateDescription" className="text-md">
+                Template Description
+              </Label>
+              <ToolTip
+                content="Optional: Internal description"
+                trigger={<InfoIcon className="size-4" />}
+              />
+            </div>
+            <Input
+              id="templateDescription"
+              value={templateDescription}
+              onChange={(e) => setTemplateDescription(e.target.value)}
+              placeholder="e.g., 'Template for compliance-related tickets...'"
+              aria-label="Template description input"
+              aria-invalid={!!errors.templateDescription}
+              disabled={isLoading || isLoadingTemplate}
+              className={errors.templateDescription ? "border-destructive" : ""}
+            />
+            <p className="text-sm text-destructive">
+              {errors.templateDescription && errors.templateDescription}
+            </p>
           </fieldset>
 
           {/* Market Center, Category, Urgency */}
@@ -428,7 +617,7 @@ export default function TicketTemplateEditor() {
             <fieldset className="space-y-2" role="group">
               <div className="flex items-center justify-between">
                 <Label htmlFor="templateName" className="text-md">
-                  Market Center *
+                  Market Center
                 </Label>
               </div>
               <Select
@@ -462,11 +651,9 @@ export default function TicketTemplateEditor() {
                     ))}
                 </SelectContent>
               </Select>
-              {errors.marketCenter && (
-                <p className="text-sm text-destructive">
-                  {errors.marketCenter}
-                </p>
-              )}
+              <p className="text-sm text-destructive">
+                {errors.marketCenter && errors.marketCenter}
+              </p>
             </fieldset>
 
             {/* Category */}
@@ -475,11 +662,15 @@ export default function TicketTemplateEditor() {
               <Select
                 value={categoryId}
                 onValueChange={(value) => setCategoryId(value)}
-                disabled={isLoading || !marketCenters.length}
+                disabled={
+                  isLoading || !marketCenters.length || isLoadingTemplate
+                }
               >
                 <SelectTrigger
-                  className={errors.urgency ? "border-destructive" : ""}
-                  disabled={isLoading || !marketCenters.length}
+                  className={errors.categoryId ? "border-destructive" : ""}
+                  disabled={
+                    isLoading || !marketCenters.length || isLoadingTemplate
+                  }
                 >
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
@@ -492,6 +683,9 @@ export default function TicketTemplateEditor() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-destructive">
+                {errors.categoryId && errors.categoryId}
+              </p>
             </fieldset>
 
             {/* Urgency */}
@@ -500,11 +694,15 @@ export default function TicketTemplateEditor() {
               <Select
                 value={urgency}
                 onValueChange={(value: Urgency) => setUrgency(value)}
-                disabled={isLoading || !marketCenters.length}
+                disabled={
+                  isLoading || !marketCenters.length || isLoadingTemplate
+                }
               >
                 <SelectTrigger
                   className={errors.urgency ? "border-destructive" : ""}
-                  disabled={isLoading || !marketCenters.length}
+                  disabled={
+                    isLoading || !marketCenters.length || isLoadingTemplate
+                  }
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -525,7 +723,7 @@ export default function TicketTemplateEditor() {
           <fieldset className="space-y-2" role="group">
             <div className="flex items-center justify-between">
               <Label htmlFor="subject" className="text-md">
-                Ticket Title *
+                Ticket Title
               </Label>
             </div>
             <Input
@@ -533,7 +731,10 @@ export default function TicketTemplateEditor() {
               value={ticketTitle}
               onChange={(e) => setTicketTitle(e.target.value)}
               placeholder="Default ticket title..."
+              aria-label="Default ticket title"
               aria-invalid={!!errors.ticketTitle}
+              disabled={isLoading || isLoadingTemplate}
+              className={errors.ticketTitle ? "border-destructive" : ""}
             />
             <p className="text-sm text-destructive">
               {errors?.ticketTitle && errors.ticketTitle}
@@ -549,19 +750,15 @@ export default function TicketTemplateEditor() {
                 trigger={<InfoIcon className="size-4" />}
               />
             </div>
-
             <BasicEditorWithToolbar
               value={ticketDescription}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingTemplate}
               onChange={(value: string) => setTicketDescription(value)}
               placeholder="Default ticket description..."
             />
-
-            {errors.ticketDescription && (
-              <p className="text-sm text-destructive">
-                {errors.ticketDescription}
-              </p>
-            )}
+            <p className="text-sm text-destructive">
+              {errors?.ticketDescription && errors.ticketDescription}
+            </p>
           </fieldset>
 
           {/* New Subtask Field */}
@@ -584,6 +781,10 @@ export default function TicketTemplateEditor() {
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 placeholder="New default subtask..."
+                className={errors.newSubtaskTitle ? "border-destructive" : ""}
+                aria-label="Create a new default subtask"
+                aria-invalid={!!errors.newSubtaskTitle}
+                disabled={isLoading || isLoadingTemplate}
                 onBlur={closeNewSubtaskTitle}
                 onKeyDown={async (e) => {
                   if (e.key === "Enter") {
@@ -604,9 +805,7 @@ export default function TicketTemplateEditor() {
                 type="submit"
                 variant="outline"
                 size={"sm"}
-                disabled={
-                  isLoading || !newSubtaskTitle || newSubtaskTitle.trim() === ""
-                }
+                disabled={isLoading || isLoadingTemplate}
                 aria-label="Create new subtask for ticket"
                 onClick={handleCreateNewSubtask}
               >
@@ -616,9 +815,7 @@ export default function TicketTemplateEditor() {
                 type="reset"
                 variant="outline"
                 size={"sm"}
-                disabled={
-                  isLoading || !newSubtaskTitle || newSubtaskTitle.trim() === ""
-                }
+                disabled={!newSubtaskTitle || newSubtaskTitle.trim() === ""}
                 aria-label="Reset new subtask input"
                 className="bg-muted"
                 onBlur={closeNewSubtaskTitle}
@@ -655,8 +852,8 @@ export default function TicketTemplateEditor() {
                         setEditingSubtask(todo);
                       }}
                       className={`flex-1 space-y-2 ${
-                        isLoading
-                          ? ""
+                        isLoading || isLoadingTemplate
+                          ? "cursor-not-allowed"
                           : editingSubtask
                             ? "cursor-default"
                             : "hover:cursor-pointer hover:underline"
@@ -710,11 +907,14 @@ export default function TicketTemplateEditor() {
                           >
                             <Input
                               type="text"
-                              className={` h-8 ${errors?.editingSubtask ? "border-rose-500" : ""}`}
+                              className={`h-8 ${errors?.editingSubtask ? "border-destructive" : ""}`}
                               value={editingSubtask}
                               onChange={(e) =>
                                 setEditingSubtask(e.target.value)
                               }
+                              disabled={isLoading || isLoadingTemplate}
+                              aria-label="Default subtask title editor"
+                              aria-invalid={!!errors.editingSubtask}
                               onKeyDown={async (e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault();
@@ -729,8 +929,6 @@ export default function TicketTemplateEditor() {
                                   return;
                                 }
                               }}
-                              aria-label="Input to edit subtask title"
-                              disabled={isLoading}
                             />
                             <div className="flex items-center justify-end gap-2 w-full md:w-fit md:flex-nowrap">
                               <Button
@@ -753,11 +951,7 @@ export default function TicketTemplateEditor() {
                                     toast.error("Failed to update subtask");
                                   }
                                 }}
-                                disabled={
-                                  isLoading ||
-                                  !editingSubtask ||
-                                  editingSubtask.trim() === ""
-                                }
+                                disabled={isLoading || isLoadingTemplate}
                                 aria-label="Save edited subtask title"
                               >
                                 Save
@@ -772,7 +966,7 @@ export default function TicketTemplateEditor() {
                                   setTodos(updatedTodos);
                                 }}
                                 className="bg-muted"
-                                disabled={isLoading}
+                                disabled={isLoading || isLoadingTemplate}
                                 aria-label="Delete subtask from list"
                               >
                                 Remove
@@ -806,7 +1000,9 @@ export default function TicketTemplateEditor() {
             <AlertDialogAction
               className="text-white bg-[#6D1C24]  hover:bg-[#4B1D22]"
               onClick={() => {
-                localStorage.removeItem("new-ticket-template");
+                localStorage.removeItem(
+                  `${type}-ticket-template-${templateId}`
+                );
                 handleClearTemplate();
                 router.push(`/dashboard/ticket-templates`);
               }}
@@ -828,9 +1024,12 @@ export default function TicketTemplateEditor() {
           <AlertDialogFooter>
             <AlertDialogAction
               className="text-black border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground "
-              onClick={() => {
-                localStorage.removeItem("new-ticket-template");
+              onClick={async () => {
+                localStorage.removeItem(
+                  `${type}-ticket-template-${templateId}`
+                );
                 handleClearTemplate();
+                await invalidateTicketTemplateListQueryKey();
                 router.push(`/dashboard/ticket-templates`);
               }}
             >
@@ -839,7 +1038,9 @@ export default function TicketTemplateEditor() {
             <AlertDialogAction
               className="text-white bg-[#6D1C24]  hover:bg-[#4B1D22]"
               onClick={() => {
-                localStorage.removeItem("new-ticket-template");
+                localStorage.removeItem(
+                  `${type}-ticket-template-${templateId}`
+                );
                 handleClearTemplate();
               }}
             >

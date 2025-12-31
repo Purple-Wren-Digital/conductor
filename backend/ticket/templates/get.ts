@@ -1,43 +1,40 @@
 import { api, APIError } from "encore.dev/api";
+import type { TicketTemplate } from "./types";
 import { getUserContext } from "../../auth/user-context";
 import { ticketTemplateRepository } from "../../shared/repositories/ticket.template.repository";
 import { canModifyTicketTemplate } from "../../auth/permissions";
 
-export interface DeleteTemplatesRequest {
+export interface GetTemplateRequest {
   templateId: string;
 }
 
-export interface DeleteTemplatesResponse {
-  success: boolean;
-}
-export const deleteTemplate = api<
-  DeleteTemplatesRequest,
-  DeleteTemplatesResponse
->(
+export const getTemplateById = api<GetTemplateRequest, TicketTemplate>(
   {
     expose: true,
-    method: "DELETE",
-    path: "/ticket-templates/delete/:templateId",
+    method: "GET",
+    path: "/ticket-templates/template/:templateId",
     auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
+
     const template = await ticketTemplateRepository.findById(req.templateId);
+
     if (!template) {
       throw APIError.notFound("Template not found");
     }
-    const canDelete = await canModifyTicketTemplate(
+
+    const canModify = await canModifyTicketTemplate(
       userContext,
       template?.marketCenterId
     );
 
-    if (!canDelete) {
+    if (!canModify) {
       throw APIError.permissionDenied(
-        "You do not have permission to delete this template"
+        "You do not have permission to access this template"
       );
     }
-    await ticketTemplateRepository.delete(req.templateId);
 
-    return { success: true };
+    return template;
   }
 );

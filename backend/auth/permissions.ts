@@ -361,3 +361,23 @@ export async function getAccessibleMarketCenterIds(
 
   return [userContext.marketCenterId];
 }
+
+export async function canModifyTicketTemplate(
+  userContext: UserContext,
+  marketCenterId?: string
+): Promise<boolean> {
+  if (userContext.role === "ADMIN") {
+    return true;
+  }
+
+  if (
+    userContext.role === "STAFF_LEADER" &&
+    marketCenterId &&
+    userContext?.marketCenterId &&
+    marketCenterId === userContext.marketCenterId
+  ) {
+    return true;
+  }
+
+  return false;
+}

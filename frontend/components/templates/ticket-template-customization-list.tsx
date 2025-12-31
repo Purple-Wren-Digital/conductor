@@ -76,6 +76,12 @@ export default function TicketTemplateCustomizationList() {
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
     useFetchAllMarketCenters(role);
 
+  const ticketTemplateListQueryKey = [
+    "ticket-templates-list",
+    selectedMarketCenterId,
+    role ?? "USER",
+  ];
+
   // Fetch template statuses
   const {
     data: templates,
@@ -86,6 +92,7 @@ export default function TicketTemplateCustomizationList() {
   } = useFetchTicketTemplates({
     marketCenterId: selectedMarketCenterId,
     role,
+    ticketTemplateQueryKey: ticketTemplateListQueryKey,
   });
 
   const marketCenters: MarketCenter[] = useMemo(
@@ -178,7 +185,7 @@ export default function TicketTemplateCustomizationList() {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between flex-wrap">
           <div>
             <h1 className="text-2xl font-bold">Ticket Templates</h1>
             <p className="text-muted-foreground">
@@ -210,12 +217,12 @@ export default function TicketTemplateCustomizationList() {
               </Select>
             </div>
             <Button
-              className="w-full md:w-fit"
               onClick={() =>
                 router.push(
                   `/dashboard/ticket-templates/create${selectedMarketCenterId ? `?marketCenterId=${selectedMarketCenterId}` : ""}`
                 )
               }
+              className="w-full md:w-fit"
               disabled={isLoadingTemplates || isLoading}
             >
               <PlusIcon className="h-4 w-4 mr-2" />
@@ -299,9 +306,13 @@ export default function TicketTemplateCustomizationList() {
                           <Button
                             size="sm"
                             variant="outline"
-                            // onClick={() => handleEditEmail(template.type)}
+                            onClick={() =>
+                              router.push(
+                                `/dashboard/ticket-templates/${template.id}`
+                              )
+                            }
                             aria-label={`Edit ticket template for ${template.name}`}
-                            disabled
+                            disabled={isLoadingTemplates || isLoading}
                           >
                             <PenIcon className="h-4 w-4 mr-1" />
                             Edit

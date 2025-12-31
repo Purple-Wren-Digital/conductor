@@ -125,6 +125,7 @@ export const templateCustomizationKeys = {
 interface UseFetchTemplateStatusesProps {
   marketCenterId: string | undefined;
   role: UserRole | undefined;
+  templateId?: string;
 }
 
 export function useFetchTemplateStatuses({
@@ -163,57 +164,6 @@ export function useFetchTemplateStatuses({
 
       const data = await response.json();
       return data.templates as TemplateStatus[];
-    },
-    enabled: !!marketCenterId && canAccess,
-  });
-}
-
-export function useFetchTicketTemplates({
-  marketCenterId,
-  role,
-}: UseFetchTemplateStatusesProps) {
-  const { getToken } = useAuth();
-
-  const canAccess = role === "ADMIN";
-
-  return useQuery({
-    queryKey: templateCustomizationKeys.statuses(marketCenterId ?? ""),
-    queryFn: async () => {
-      if (!marketCenterId) {
-        throw new Error("Market center ID is required");
-      }
-
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-
-      const response = await fetch(
-        `${API_BASE}/ticket-templates/${marketCenterId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      // console.log("Fetch Ticket Templates Response:", response);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          `Failed to fetch ticket templates: ${errorData.message || response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      // console.log("Fetch Ticket Templates Data:", data);
-
-      if (!data.templates) {
-        throw new Error("No templates data found in response");
-      }
-      return data.templates as TicketTemplate[];
     },
     enabled: !!marketCenterId && canAccess,
   });
@@ -594,5 +544,113 @@ export function usePreviewInAppTemplate() {
       const data = await response.json();
       return { preview: data.preview as InAppPreviewData };
     },
+  });
+}
+
+// =============================================================================
+// Ticket Templates
+// =============================================================================
+
+export function useFetchTicketTemplates({
+  marketCenterId,
+  role,
+  ticketTemplateQueryKey,
+}: {
+  marketCenterId?: string;
+  role?: UserRole;
+  ticketTemplateQueryKey: string[];
+}) {
+  const { getToken } = useAuth();
+
+  const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
+
+  return useQuery({
+    queryKey: ticketTemplateQueryKey,
+    queryFn: async () => {
+      if (!marketCenterId) {
+        throw new Error("Market center ID is required");
+      }
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/ticket-templates/${marketCenterId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to fetch ticket templates: ${errorData.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.templates) {
+        throw new Error("No templates data found in response");
+      }
+      return data.templates as TicketTemplate[];
+    },
+    enabled: !!marketCenterId && canAccess,
+  });
+}
+
+export function useFetchTicketTemplateById({
+  templateId,
+  role,
+}: {
+  templateId?: string;
+  role?: UserRole;
+}) {
+  const { getToken } = useAuth();
+
+  const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
+
+  return useQuery({
+    queryKey: ["ticket-template", templateId],
+    queryFn: async () => {
+      if (!templateId) {
+        throw new Error("Template ID is required");
+      }
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/ticket-templates/template/${templateId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to fetch ticket template by id: ${errorData.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data) {
+        throw new Error("No template data found in response");
+      }
+      return data as TicketTemplate;
+    },
+    enabled: !!templateId && canAccess,
   });
 }

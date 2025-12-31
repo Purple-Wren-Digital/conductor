@@ -19,6 +19,7 @@ interface TicketTemplateRow {
   title: string;
   ticket_description: string;
   categoryId: string | null;
+  categoryid: string | null;
   urgency: Urgency | null;
   tags: any;
   todos: any;
@@ -40,7 +41,7 @@ function mapTicketTemplateRow(row: TicketTemplateRow): TicketTemplate {
     isActive: row.is_active,
     title: row.title,
     ticketDescription: row.ticket_description,
-    categoryId: row.categoryId ?? undefined,
+    categoryId: row.categoryId ?? row.categoryid ?? undefined,
     urgency: row.urgency ?? undefined,
     tags: fromJson(row.tags) ?? [],
     todos: fromJson(row.todos) ?? [],
@@ -120,6 +121,8 @@ export const ticketTemplateRepository = {
       RETURNING *
     `;
 
+    console.log("Created ticket template row:", row);
+
     return row ? mapTicketTemplateRow(row) : null;
   },
 
@@ -128,6 +131,9 @@ export const ticketTemplateRepository = {
     input: Partial<TicketTemplate>,
     userId: string
   ): Promise<TicketTemplate | null> {
+    console.log("Updating ticket template ID:", id);
+    console.log("Updating ticket template with input:", input);
+
     const row = await db.queryRow<TicketTemplateRow>`
       UPDATE ticket_templates
       SET
@@ -145,7 +151,7 @@ export const ticketTemplateRepository = {
       WHERE id = ${id}
       RETURNING *
     `;
-
+    console.log("!!!! Updated ticket template row:", row);
     return row ? mapTicketTemplateRow(row) : null;
   },
 

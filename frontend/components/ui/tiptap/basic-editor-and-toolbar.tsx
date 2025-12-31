@@ -87,6 +87,24 @@ export const BasicEditorWithToolbar: FC<BasicEditorProps> = ({
     },
   });
 
+  // Sync external value changes to editor content
+  useEffect(() => {
+    if (!editor) return;
+
+    const currentHTML = editor.getHTML();
+    if (value !== currentHTML) {
+      editor.commands.setContent(value || "", {
+        emitUpdate: false,
+      });
+    }
+
+    if (!value) {
+      editor.commands.setContent("", { emitUpdate: false });
+      editor.commands.blur();
+    }
+  }, [value, editor]);
+
+  // Close link dialog on editor blur
   useEffect(() => {
     if (!editor) return;
 
