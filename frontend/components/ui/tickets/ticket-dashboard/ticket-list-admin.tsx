@@ -1229,8 +1229,8 @@ export default function AdminTicketList() {
             <ToolTip
               content={
                 viewDashboardHeader
-                  ? "Hide ticket dashboard header"
-                  : "Show ticket dashboard header"
+                  ? "Hide ticket search and filters"
+                  : "Show ticket search and filters"
               }
               trigger={
                 <Button
