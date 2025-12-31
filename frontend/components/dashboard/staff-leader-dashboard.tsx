@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ import Link from "next/link";
 import type { PrismaUser, SurveyResults, Ticket } from "@/lib/types";
 import {
   chartColors,
+  defaultActiveStatuses,
   getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -72,9 +74,17 @@ export function StaffLeaderDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
 
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
   const { user: clerkUser } = useUser();
+
+  const navigateToTicketsWithFilter = useCallback(
+    (filterType: "active" | "new" | "overdue" | "resolved") => {
+      router.push(`/dashboard/tickets?filter=${filterType}`);
+    },
+    [router]
+  );
 
   const marketCenterId = currentUser?.marketCenterId
     ? currentUser?.marketCenterId
@@ -384,7 +394,10 @@ export function StaffLeaderDashboard() {
         </section>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("active")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Active Tickets
@@ -400,7 +413,10 @@ export function StaffLeaderDashboard() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("new")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 New Tickets
@@ -416,7 +432,10 @@ export function StaffLeaderDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("overdue")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Overdue Tickets
@@ -432,7 +451,10 @@ export function StaffLeaderDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("resolved")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Resolved Tickets

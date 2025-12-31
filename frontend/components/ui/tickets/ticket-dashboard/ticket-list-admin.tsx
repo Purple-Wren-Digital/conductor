@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -102,6 +102,7 @@ type CategoryOption = { label: string; ids: string[] };
 
 export default function AdminTicketList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { role } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
@@ -152,6 +153,7 @@ export default function AdminTicketList() {
   const [openTo, setOpenTo] = useState(false);
 
   const [sortBy, setSortBy] = useState<TicketSortBy>("updatedAt");
+  const [filterOverdue, setFilterOverdue] = useState(false);
   const [sortDir, setSortDir] = useState<OrderBy>("desc");
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -248,6 +250,46 @@ export default function AdminTicketList() {
     setHydrated(true);
   }, []);
 
+  // Handle filter query param from dashboard navigation
+  useEffect(() => {
+    const filterParam = searchParams.get("filter");
+    if (!filterParam || !hydrated) return;
+
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    switch (filterParam) {
+      case "active":
+        setSelectedStatuses(defaultActiveStatuses);
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        setFilterOverdue(false);
+        break;
+      case "new":
+        setSelectedStatuses([...defaultActiveStatuses, "RESOLVED"]);
+        setDateFrom(oneWeekAgo);
+        setDateTo(now);
+        setFilterOverdue(false);
+        break;
+      case "overdue":
+        setSelectedStatuses(defaultActiveStatuses);
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        setFilterOverdue(true);
+        break;
+      case "resolved":
+        setSelectedStatuses(["RESOLVED"]);
+        setDateFrom(oneWeekAgo);
+        setDateTo(now);
+        setFilterOverdue(false);
+        break;
+    }
+
+    setCurrentPage(1);
+    // Clear the query param from URL without causing a navigation
+    router.replace("/dashboard/tickets", { scroll: false });
+  }, [searchParams, hydrated, router]);
+
   // TICKETS QUERY PARAMS
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -314,7 +356,20 @@ export default function AdminTicketList() {
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);
-  const totalTickets: number = ticketsData?.total ?? 0;
+
+  const displayedTickets: TicketWithUpdatedAt[] = useMemo(() => {
+    if (!filterOverdue) return tickets;
+    const now = new Date();
+    return tickets.filter((ticket) => {
+      if (ticket.status === "RESOLVED" || !ticket.dueDate) return false;
+      const dueDate = new Date(ticket.dueDate);
+      return dueDate < now;
+    });
+  }, [tickets, filterOverdue]);
+
+  const totalTickets: number = filterOverdue
+    ? displayedTickets.length
+    : (ticketsData?.total ?? 0);
   const totalPages = calculateTotalPages({
     totalItems: totalTickets,
     itemsPerPage,
@@ -433,9 +488,9 @@ export default function AdminTicketList() {
   );
   const handleSelectAll = useCallback(
     (checked: boolean) => {
-      setSelectedTickets(checked ? tickets.map((t) => t.id) : []);
+      setSelectedTickets(checked ? displayedTickets.map((t) => t.id) : []);
     },
-    [tickets]
+    [displayedTickets]
   );
 
   const handleSendTicketClosedNotifications = useCallback(
@@ -703,6 +758,7 @@ export default function AdminTicketList() {
     setCurrentPage(1);
     setSortBy("updatedAt");
     setSortDir("desc");
+    setFilterOverdue(false);
   };
 
   const hasActiveFilters = useMemo(() => {
@@ -720,7 +776,8 @@ export default function AdminTicketList() {
       !!dateFrom ||
       !!dateTo ||
       sortDir !== "desc" ||
-      sortBy !== "updatedAt"
+      sortBy !== "updatedAt" ||
+      filterOverdue
     );
   }, [
     searchQuery,
@@ -734,6 +791,7 @@ export default function AdminTicketList() {
     dateTo,
     sortDir,
     sortBy,
+    filterOverdue,
   ]);
 
   const handleQuickEdit = useCallback((e: React.MouseEvent, ticket: Ticket) => {
@@ -1100,96 +1158,97 @@ export default function AdminTicketList() {
               </Card>
             )}
           </div>
-        </CollapsibleContent>
 
-        <div className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
-          <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
-            <CollapsibleTrigger asChild>
-              <ToolTip
-                content={
-                  viewDashboardHeader
-                    ? "Hide ticket dashboard header"
-                    : "Show ticket dashboard header"
-                }
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Toggle ticket dashboard visibility"
-                    onClick={() => setViewDashboardHeader(!viewDashboardHeader)}
-                    className={`h-8 w-8 rounded-full`}
-                  >
-                    {viewDashboardHeader ? (
-                      <Eye className="h-5 w-5" />
-                    ) : (
-                      <EyeClosed className="h-5 w-5" />
-                    )}
-                  </Button>
-                }
-              />
-            </CollapsibleTrigger>
+          <div className="flex flex-wrap justify-between items-center py-4 px-2 gap-4 w-full">
             <p className="text-sm text-muted-foreground">
               {selectedStatuses.includes("RESOLVED") &&
                 `${stats?.resolvedTicketsCount ?? 0} resolved tickets`}
             </p>
-          </div>
-          <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
-            {/* SORT BY */}
-            <div className="space-y-2 w-full sm:w-fit">
-              <Select
-                value={sortBy}
-                onValueChange={(value: TicketSortBy) => {
-                  setSortBy(value);
-                  setCurrentPage(1);
-                }}
-                disabled={ticketsLoading || !tickets || !tickets.length}
-              >
-                <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
-                  <SelectValue placeholder={"Sort by..."} />
-                </SelectTrigger>
+            <div className="flex flex-wrap items-center space-x-2 gap-4 w-full sm:w-fit">
+              {/* SORT BY */}
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: TicketSortBy) => {
+                    setSortBy(value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={ticketsLoading || !displayedTickets || !displayedTickets.length}
+                >
+                  <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
+                    <SelectValue placeholder={"Sort by..."} />
+                  </SelectTrigger>
 
-                <SelectContent>
-                  {sortByTicketOptions.map((ticketOption) => (
-                    <SelectItem key={ticketOption} value={ticketOption}>
-                      <div className="flex gap-1 items-center mr-1">
-                        <ArrowDownUp />
-                        <p className="text-sm font-medium">
-                          {formatTicketOptions(ticketOption)}
-                        </p>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* ORDER BY */}
-            <div className="space-y-2 w-full sm:w-fit">
-              <Select
-                value={sortDir}
-                onValueChange={(value: OrderBy) => {
-                  setSortDir(value);
-                  setCurrentPage(1);
-                }}
-                disabled={ticketsLoading || !tickets || !tickets.length}
-              >
-                <SelectTrigger aria-label="Order by ascending or descending data">
-                  <SelectValue placeholder={"Order by..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {orderByOptions.map((direction) => (
-                    <SelectItem key={direction} value={direction}>
-                      <div className="flex gap-1 items-center mr-1">
-                        {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
-                        <p className="text-sm font-medium">
-                          {formatOrderBy(direction)}
-                        </p>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectContent>
+                    {sortByTicketOptions.map((ticketOption) => (
+                      <SelectItem key={ticketOption} value={ticketOption}>
+                        <div className="flex gap-1 items-center mr-1">
+                          <ArrowDownUp />
+                          <p className="text-sm font-medium">
+                            {formatTicketOptions(ticketOption)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* ORDER BY */}
+              <div className="space-y-2 w-full sm:w-fit">
+                <Select
+                  value={sortDir}
+                  onValueChange={(value: OrderBy) => {
+                    setSortDir(value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={ticketsLoading || !displayedTickets || !displayedTickets.length}
+                >
+                  <SelectTrigger aria-label="Order by ascending or descending data">
+                    <SelectValue placeholder={"Order by..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orderByOptions.map((direction) => (
+                      <SelectItem key={direction} value={direction}>
+                        <div className="flex gap-1 items-center mr-1">
+                          {direction === "desc" ? <ArrowDown /> : <ArrowUp />}
+                          <p className="text-sm font-medium">
+                            {formatOrderBy(direction)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
+        </CollapsibleContent>
+
+        <div className="flex items-center py-2 px-2">
+          <CollapsibleTrigger asChild>
+            <ToolTip
+              content={
+                viewDashboardHeader
+                  ? "Hide ticket dashboard header"
+                  : "Show ticket dashboard header"
+              }
+              trigger={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Toggle ticket dashboard visibility"
+                  onClick={() => setViewDashboardHeader(!viewDashboardHeader)}
+                  className={`h-8 w-8 rounded-full`}
+                >
+                  {viewDashboardHeader ? (
+                    <Eye className="h-5 w-5" />
+                  ) : (
+                    <EyeClosed className="h-5 w-5" />
+                  )}
+                </Button>
+              }
+            />
+          </CollapsibleTrigger>
         </div>
       </Collapsible>
 
@@ -1205,8 +1264,8 @@ export default function AdminTicketList() {
                 <Checkbox
                   className="mr-2 bg-white"
                   checked={
-                    selectedTickets.length === tickets.length &&
-                    tickets.length > 0
+                    selectedTickets.length === displayedTickets.length &&
+                    displayedTickets.length > 0
                   }
                   onCheckedChange={(v: boolean | "indeterminate") =>
                     handleSelectAll(v === true)
@@ -1275,8 +1334,8 @@ export default function AdminTicketList() {
 
             {!ticketsLoading &&
               tickets &&
-              tickets.length > 0 &&
-              tickets.map((ticket: TicketWithUpdatedAt) => (
+              displayedTickets.length > 0 &&
+              displayedTickets.map((ticket: TicketWithUpdatedAt) => (
                 <TicketListItemWrapper
                   key={ticket.id}
                   ticket={ticket}
@@ -1291,7 +1350,7 @@ export default function AdminTicketList() {
                 />
               ))}
 
-            {!ticketsLoading && (!tickets || !tickets.length) && (
+            {!ticketsLoading && (!displayedTickets || !displayedTickets.length) && (
               <TableRow className="text-center text-muted-foreground">
                 <TableCell colSpan={5} className="py-8">
                   No tickets found
