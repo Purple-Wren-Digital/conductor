@@ -536,17 +536,16 @@ export const formatNotificationWithTemplate = (
       variables: extractTemplateVariables(template.variables || {}),
       data: toSnakeCase(context),
     });
-    const assigneeId = content.data.createdTicket?.assigneeId;
     return (formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: subject,
       body: body,
-      priority: assigneeId ? "HIGH" : "MEDIUM",
+      priority: "MEDIUM",
       data: {
-        ticketId: content.data.createdTicket?.ticketNumber,
-        createdTicket: content.data.createdTicket,
+        ticketId: content.data.newComment?.ticketNumber,
+        newComment: content.data.newComment,
       },
     });
   }

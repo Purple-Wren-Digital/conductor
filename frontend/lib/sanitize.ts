@@ -63,3 +63,16 @@ export function sanitizeHtml(dirty: string): string {
 export function processCommentContent(content: string): string {
   return sanitizeHtml(content);
 }
+
+/**
+ * Strip HTML tags from content for plain text display
+ * Useful for notifications where HTML should not be rendered
+ */
+export function stripHtmlTags(html: string): string {
+  if (!html) return "";
+  // Use DOMPurify with no allowed tags to strip all HTML
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [],
+    KEEP_CONTENT: true,
+  }).trim();
+}
