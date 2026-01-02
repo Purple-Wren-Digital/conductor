@@ -93,12 +93,16 @@ export const create = api<CreateNotificationRequest>(
       priority?: Urgency;
     }> = [];
 
-    if (
-      marketCenterTypeSettings &&
-      marketCenterTypeSettings.inApp === true &&
-      userTypeSettings &&
-      userTypeSettings.inApp === true
-    ) {
+    // Default to true if preferences are not set (opt-out model, not opt-in)
+    const inAppEnabled =
+      (marketCenterTypeSettings?.inApp ?? true) &&
+      (userTypeSettings?.inApp ?? true);
+
+    const emailEnabled =
+      (marketCenterTypeSettings?.email ?? true) &&
+      (userTypeSettings?.email ?? true);
+
+    if (inAppEnabled) {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "IN_APP",
@@ -110,12 +114,7 @@ export const create = api<CreateNotificationRequest>(
         priority: req?.priority ?? "LOW",
       });
     }
-    if (
-      marketCenterTypeSettings &&
-      marketCenterTypeSettings.email === true &&
-      userTypeSettings &&
-      userTypeSettings.email === true
-    ) {
+    if (emailEnabled) {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "EMAIL",
