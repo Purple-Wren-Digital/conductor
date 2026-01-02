@@ -55,7 +55,7 @@ export function CreateTicketForm({
   const { getToken } = useAuth();
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (mcId: string) => {
       if (!isLoaded) return;
 
       try {
@@ -63,7 +63,7 @@ export function CreateTicketForm({
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(`${API_BASE}/ticket-templates`, {
+        const res = await fetch(`${API_BASE}/ticket-templates/${mcId}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
@@ -80,17 +80,27 @@ export function CreateTicketForm({
       setValues(initialValues);
       setErrors({});
       setSelectedTemplateId("");
-      fetchTemplates();
     }
 
-    const userMarketCenterId =
-      (role === "STAFF" || role === "STAFF_LEADER" || role === "AGENT") &&
-      currentUser?.marketCenterId
-        ? currentUser.marketCenterId
-        : null;
+    const userMarketCenterId = currentUser?.marketCenterId
+      ? currentUser.marketCenterId
+      : null;
 
     setMarketCenterId(userMarketCenterId);
-  }, [isOpen, isLoaded, clerkUser, role, currentUser, getToken]);
+    if (userMarketCenterId) {
+      fetchTemplates(userMarketCenterId);
+    } else {
+      setTemplates([]);
+    }
+  }, [
+    isOpen,
+    isLoaded,
+    clerkUser,
+    role,
+    currentUser,
+    getToken,
+    marketCenterId,
+  ]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -106,10 +116,10 @@ export function CreateTicketForm({
         title: t.title,
         description: t.ticketDescription,
         urgency: t?.urgency || "MEDIUM",
-        categoryId: t?.category || "",
+        categoryId: t?.categoryId || "",
         dueDate: undefined,
         assigneeId: "Unassigned",
-        todos: [...t.todos],
+        todos: t.todos && t.todos.length > 0 ? [...t.todos] : [],
       });
     }
   };

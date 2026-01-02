@@ -26,7 +26,9 @@ export interface UserPermissions {
   canAccessReports: boolean;
   canManageSubscription: boolean;
   canManageMarketCenterCategories: boolean;
-  canManageTemplateSettings: boolean;
+  canManageNotificationTemplateSettings: boolean;
+  canManageTicketTemplateSettings: boolean;
+
   canManageMCNotificationSettings: boolean;
 }
 
@@ -55,7 +57,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: true,
         canManageSubscription: true,
         canManageMarketCenterCategories: true,
-        canManageTemplateSettings: true,
+        canManageNotificationTemplateSettings: true,
+        canManageTicketTemplateSettings: true,
         canManageMCNotificationSettings: true,
       };
     case "STAFF_LEADER":
@@ -81,7 +84,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: true,
         canManageSubscription: false,
         canManageMarketCenterCategories: true,
-        canManageTemplateSettings: false,
+        canManageNotificationTemplateSettings: false,
+        canManageTicketTemplateSettings: true,
         canManageMCNotificationSettings: false,
       };
     case "STAFF":
@@ -107,7 +111,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: true,
-        canManageTemplateSettings: false,
+        canManageNotificationTemplateSettings: false,
+        canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
       };
     case "AGENT":
@@ -133,7 +138,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: false,
-        canManageTemplateSettings: false,
+        canManageNotificationTemplateSettings: false,
+        canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
       };
     default:
@@ -159,7 +165,8 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canAccessReports: false,
         canManageSubscription: false,
         canManageMarketCenterCategories: false,
-        canManageTemplateSettings: false,
+        canManageNotificationTemplateSettings: false,
+        canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
       };
   }

@@ -129,14 +129,19 @@ export interface TicketSearchParams {
 export interface TicketTemplate {
   id: string;
   name: string;
-  description: string;
+  description?: string;
+  isActive: boolean;
   title: string;
   ticketDescription: string;
-  category?: string;
-  urgency?: Urgency;
+  categoryId?: string;
+  urgency: Urgency | "MEDIUM";
   tags?: string[];
-  isActive: boolean;
-  todos: string[];
+  todos?: string[];
+  marketCenterId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdById: string | null;
+  updatedById: string | null;
 }
 
 export interface BulkAssignRequest {

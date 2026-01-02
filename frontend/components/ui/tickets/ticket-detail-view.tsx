@@ -756,9 +756,10 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                   <h4 className="text-lg font-semibold">Ticket Details</h4>
                 </div>
                 <div className="space-y-2">
-                  <p className="font-medium leading-relaxed text-muted-foreground">
-                    {ticket.description}
-                  </p>
+                  <SafeHtml
+                    content={ticket.description || ""}
+                    className="font-medium leading-relaxed text-muted-foreground line-spacing-10 break-words rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
+                  />
                 </div>
               </div>
               <div className="space-y-4">

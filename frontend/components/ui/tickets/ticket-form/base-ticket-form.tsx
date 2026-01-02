@@ -45,6 +45,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/context/store-provider";
+import { BasicEditorWithToolbar } from "@/components/ui/tiptap/basic-editor-and-toolbar";
 
 export type TicketFormValues = {
   title: string;
@@ -184,6 +185,45 @@ export function BaseTicketForm({
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-6">
+          {/* MARKET CENTER */}
+          <div className={"space-y-2 col-span-2"}>
+            <div className="flex flex-row align-center justify-between">
+              <Label>Market Center *</Label>
+              <ToolTip
+                trigger={<Info className="w-3 h-3" />}
+                content="Select a Market Center to access all templates, team members, and categories"
+              />
+            </div>
+            <Select
+              value={selectedMarketCenter?.id}
+              onValueChange={(value) =>
+                setSelectedMarketCenter(findMarketCenter(marketCenters, value))
+              }
+              disabled={role !== "ADMIN" || disabled}
+            >
+              <SelectTrigger
+                className={errors.marketCenter ? "border-destructive" : ""}
+                disabled={role !== "ADMIN" || disabled}
+              >
+                <SelectValue placeholder={"Select Market Center"} />
+              </SelectTrigger>
+              <SelectContent>
+                {marketCenters &&
+                  marketCenters.length > 0 &&
+                  marketCenters.map((marketCenter: MarketCenter) => (
+                    <SelectItem key={marketCenter?.id} value={marketCenter?.id}>
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 " />
+                        {marketCenter?.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {errors.marketCenter && (
+              <p className="text-sm text-destructive">{errors.marketCenter}</p>
+            )}
+          </div>
           {templateSection}
           {/* TITLE */}
           <div className="space-y-2">
@@ -203,16 +243,13 @@ export function BaseTicketForm({
           {/* DESCRIPTION */}
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
+            <BasicEditorWithToolbar
               value={values.description}
-              onChange={(e) => onChange({ description: e.target.value })}
-              placeholder="Detailed description of the issue, including steps to reproduce, expected behavior, etc."
-              className={`min-h-[120px] ${
-                errors.description ? "border-destructive" : ""
-              }`}
               disabled={disabled}
+              onChange={(content) => onChange({ description: content })}
+              placeholder="Detailed description of the issue, including steps to reproduce, expected behavior, etc."
             />
+
             {errors.description && (
               <p className="text-sm text-destructive">{errors.description}</p>
             )}
@@ -273,55 +310,8 @@ export function BaseTicketForm({
               </Popover>
             </div>
           </div>
-          {/* MARKET CENTER + CATEGORY + ASSIGNEE */}
+          {/* CATEGORY + ASSIGNEE */}
           <div className="grid gap-4 md:grid-cols-2">
-            {/* MARKET CENTER */}
-            <div className={"space-y-2 col-span-2"}>
-              <div className="flex flex-row align-center justify-between">
-                <Label>Market Center *</Label>
-                <ToolTip
-                  trigger={<Info className="w-3 h-3" />}
-                  content="Select a Market Center to view all team members and categories"
-                />
-              </div>
-              <Select
-                value={selectedMarketCenter?.id}
-                onValueChange={(value) =>
-                  setSelectedMarketCenter(
-                    findMarketCenter(marketCenters, value)
-                  )
-                }
-                disabled={role !== "ADMIN" || disabled}
-              >
-                <SelectTrigger
-                  className={errors.marketCenter ? "border-destructive" : ""}
-                  disabled={role !== "ADMIN" || disabled}
-                >
-                  <SelectValue placeholder={"Select Market Center"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {marketCenters &&
-                    marketCenters.length > 0 &&
-                    marketCenters.map((marketCenter: MarketCenter) => (
-                      <SelectItem
-                        key={marketCenter?.id}
-                        value={marketCenter?.id}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4 " />
-                          {marketCenter?.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {errors.marketCenter && (
-                <p className="text-sm text-destructive">
-                  {errors.marketCenter}
-                </p>
-              )}
-            </div>
-
             {/* CATEGORY */}
             <div className="space-y-2">
               <div className="flex flex-row align-center justify-between">
