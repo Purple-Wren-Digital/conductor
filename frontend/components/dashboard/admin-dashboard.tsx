@@ -254,30 +254,34 @@ export function AdminDashboard() {
     };
   }, [tickets, teamMembers]);
 
-  const teamStats = teamMembers.reduce((acc: any, member: any) => {
-    const memberTickets = tickets.filter(
-      (t: any) => t.assigneeId === member.id
-    );
+  const staffStats = useMemo(() => {
+    return teamMembers
+      .filter((m: any) => m.role !== "AGENT")
+      .reduce((acc: any, member: any) => {
+        const memberTickets = tickets.filter(
+          (t: any) => t.assigneeId === member.id
+        );
 
-    acc[member.id] = {
-      name: member.name,
-      role: member.role,
-      assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
-        .length,
-      active: memberTickets.length,
-      resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
-        .length,
-      overdue: memberTickets.filter((t: Ticket) => {
-        if (t.status !== "RESOLVED" && t?.dueDate) {
-          const dueDate = new Date(t.dueDate);
-          const now = new Date();
-          return dueDate < now;
-        }
-        return false;
-      }).length,
-    };
-    return acc;
-  }, {});
+        acc[member.id] = {
+          name: member.name,
+          role: member.role,
+          assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
+            .length,
+          active: memberTickets.length,
+          resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
+            .length,
+          overdue: memberTickets.filter((t: Ticket) => {
+            if (t.status !== "RESOLVED" && t?.dueDate) {
+              const dueDate = new Date(t.dueDate);
+              const now = new Date();
+              return dueDate < now;
+            }
+            return false;
+          }).length,
+        };
+        return acc;
+      }, {});
+  }, [teamMembers, tickets]);
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -515,20 +519,20 @@ export function AdminDashboard() {
                   </p>
                 )}
                 {!isUsersLoading &&
-                  (!teamStats || Object.keys(teamStats).length === 0) && (
+                  Object.keys(staffStats).length === 0 && (
                     <p className="space-y-4 text-sm text-muted-foreground font-medium">
-                      No team members found
+                      No staff members found
                     </p>
                   )}
 
-                {Object.entries(teamStats).map(
+                {Object.entries(staffStats).map(
                   ([memberId, stats]: [string, any], index: number) => {
                     if (!memberId) return null;
 
                     return (
                       <div
                         key={memberId}
-                        className={`grid grid-cols-6 gap-2 rounded hover:bg-muted text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
+                        className={`grid grid-cols-6 gap-2 rounded text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
                       >
                         <Link
                           href={`/dashboard/users/${memberId}`}
