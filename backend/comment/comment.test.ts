@@ -17,6 +17,7 @@ const {
     findById: vi.fn(),
     findByIdWithRelations: vi.fn(),
     createHistory: vi.fn(),
+    update: vi.fn(),
   },
   mockCommentRepository: {
     findById: vi.fn(),
@@ -129,6 +130,7 @@ describe("Comment Service Tests", () => {
       const mockTicket = {
         id: "ticket-123",
         title: "Test Ticket",
+        status: "IN_PROGRESS",
         creatorId: "user-456",
         assigneeId: "user-789",
         creator: { id: "user-456", name: "Creator", email: "creator@test.com", role: "AGENT" },
@@ -150,6 +152,7 @@ describe("Comment Service Tests", () => {
       mockCommentRepository.findByTicketIdWithUsers.mockResolvedValue([]);
       mockCommentRepository.createWithUser.mockResolvedValue(mockComment);
       mockTicketRepository.createHistory.mockResolvedValue({});
+      mockTicketRepository.update.mockResolvedValue(mockTicket);
       mockNotificationRepository.createMany.mockResolvedValue([]);
 
       const result = await create({
@@ -167,6 +170,7 @@ describe("Comment Service Tests", () => {
       const mockTicket = {
         id: "ticket-123",
         title: "Test Ticket",
+        status: "IN_PROGRESS",
         creatorId: "user-456",
         assigneeId: null,
         creator: { id: "user-456", name: "Creator", email: "creator@test.com", role: "AGENT" },
@@ -188,6 +192,7 @@ describe("Comment Service Tests", () => {
       mockCommentRepository.findByTicketIdWithUsers.mockResolvedValue([]);
       mockCommentRepository.createWithUser.mockResolvedValue(mockComment);
       mockTicketRepository.createHistory.mockResolvedValue({});
+      mockTicketRepository.update.mockResolvedValue(mockTicket);
       mockNotificationRepository.createMany.mockResolvedValue([]);
 
       const result = await create({
@@ -227,6 +232,7 @@ describe("Comment Service Tests", () => {
       const mockTicket = {
         id: "ticket-123",
         title: "Test Ticket",
+        status: "IN_PROGRESS",
         creatorId: "user-creator",
         assigneeId: "user-assignee",
         creator: { id: "user-creator", name: "Creator", email: "creator@test.com", role: "AGENT" },
@@ -254,6 +260,7 @@ describe("Comment Service Tests", () => {
       mockCommentRepository.findByTicketIdWithUsers.mockResolvedValue(mockPreviousComments);
       mockCommentRepository.createWithUser.mockResolvedValue(mockComment);
       mockTicketRepository.createHistory.mockResolvedValue({});
+      mockTicketRepository.update.mockResolvedValue(mockTicket);
       mockNotificationRepository.createMany.mockResolvedValue([]);
 
       const result = await create({

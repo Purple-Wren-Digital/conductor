@@ -8,6 +8,7 @@ import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { createAndSendNotification } from "@/lib/utils/notifications";
+import { stripHtmlTags } from "@/lib/sanitize";
 
 interface CreateCommentParams {
   userId: string;
@@ -235,7 +236,7 @@ export function useCreateComment() {
                   isInternal: newComment.internal,
                   commenterId: newComment.userId,
                   commenterName: newComment.user?.name || "",
-                  comment: newComment.content,
+                  comment: stripHtmlTags(newComment.content),
                 },
               },
             });

@@ -516,8 +516,8 @@ export const formatNotificationWithTemplate = (
     const context: NotificationContext = {
       ticketNumber: content.data.newComment?.ticketNumber,
       ticketTitle: content.data.newComment?.ticketTitle,
-      creatorName: content.data.newComment?.commenterName,
-      creatorId: content.data.newComment?.commenterId,
+      commenterName: content.data.newComment?.commenterName,
+      commenterId: content.data.newComment?.commenterId,
       createdOn: content.data.newComment?.createdOn
         ? new Date(content.data.newComment?.createdOn).toISOString()
         : undefined,
@@ -534,17 +534,16 @@ export const formatNotificationWithTemplate = (
       variables: extractTemplateVariables(template.variables || {}),
       data: toSnakeCase(context),
     });
-    const assigneeId = content.data.createdTicket?.assigneeId;
     return (formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
       title: subject,
       body: body,
-      priority: assigneeId ? "HIGH" : "MEDIUM",
+      priority: "MEDIUM",
       data: {
-        ticketId: content.data.createdTicket?.ticketNumber,
-        createdTicket: content.data.createdTicket,
+        ticketId: content.data.newComment?.ticketNumber,
+        newComment: content.data.newComment,
       },
     });
   }

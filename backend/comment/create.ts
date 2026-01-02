@@ -139,6 +139,30 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       await slaService.recordFirstResponse(req.ticketId);
     }
 
+    // Automatically update ticket status based on commenter role
+    // Only update if ticket is not resolved or draft
+    const nonUpdatableStatuses = ["RESOLVED", "DRAFT"];
+    if (!nonUpdatableStatuses.includes(ticket.status)) {
+      const isStaffComment = userContext.role === "STAFF" || userContext.role === "STAFF_LEADER" || userContext.role === "ADMIN";
+      const newStatus = isStaffComment ? "AWAITING_RESPONSE" : "IN_PROGRESS";
+
+      // Only update if status is actually changing
+      if (ticket.status !== newStatus) {
+        await ticketRepository.update(ticket.id, { status: newStatus });
+
+        // Record status change in ticket history
+        await ticketRepository.createHistory({
+          ticketId: ticket.id,
+          action: "UPDATE",
+          field: "status",
+          previousValue: ticket.status,
+          newValue: newStatus,
+          changedById: userContext.userId,
+          snapshot: { ...ticket, status: newStatus },
+        });
+      }
+    }
+
     // Create ticket history
     await ticketRepository.createHistory({
       ticketId: ticket.id,
