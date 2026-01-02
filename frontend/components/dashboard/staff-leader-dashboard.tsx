@@ -253,30 +253,34 @@ export function StaffLeaderDashboard() {
     };
   }, [filteredTickets, teamMembers]);
 
-  const teamStats = teamMembers.reduce((acc: any, member: any) => {
-    const memberTickets = tickets.filter(
-      (t: any) => t.assigneeId === member.id
-    );
+  const staffStats = useMemo(() => {
+    return teamMembers
+      .filter((m: any) => m.role !== "AGENT")
+      .reduce((acc: any, member: any) => {
+        const memberTickets = tickets.filter(
+          (t: any) => t.assigneeId === member.id
+        );
 
-    acc[member.id] = {
-      name: member.name,
-      role: member.role,
-      assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
-        .length,
-      active: memberTickets.length,
-      resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
-        .length,
-      overdue: memberTickets.filter((t: Ticket) => {
-        if (t.status !== "RESOLVED" && t?.dueDate) {
-          const dueDate = new Date(t.dueDate);
-          const now = new Date();
-          return dueDate < now;
-        }
-        return false;
-      }).length,
-    };
-    return acc;
-  }, {});
+        acc[member.id] = {
+          name: member.name,
+          role: member.role,
+          assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
+            .length,
+          active: memberTickets.length,
+          resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
+            .length,
+          overdue: memberTickets.filter((t: Ticket) => {
+            if (t.status !== "RESOLVED" && t?.dueDate) {
+              const dueDate = new Date(t.dueDate);
+              const now = new Date();
+              return dueDate < now;
+            }
+            return false;
+          }).length,
+        };
+        return acc;
+      }, {});
+  }, [teamMembers, tickets]);
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -503,41 +507,38 @@ export function StaffLeaderDashboard() {
                 </p>
               </div>
               <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
-                {Object.entries(teamStats).map(
-                  ([memberId, stats]: [string, any], index: number) => {
-                    const isViewingStats = selectedTeamMemberId === memberId;
-                    return (
-                      <div
-                        key={memberId}
-                        className={`grid grid-cols-6 gap-2 rounded hover:bg-muted text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
+                {Object.entries(staffStats).map(
+                  ([memberId, stats]: [string, any], index: number) => (
+                    <div
+                      key={memberId}
+                      className={`grid grid-cols-6 gap-2 rounded text-[10px] sm:text-sm border-b px-1 pb-2 ${index === 0 && "pt-2"}`}
+                    >
+                      <Link
+                        href={`/dashboard/users/${memberId}`}
+                        className="font-medium hover:underline cursor-pointer col-span-2"
                       >
-                        <Link
-                          href={`/dashboard/users/${memberId}`}
-                          className="font-medium hover:underline cursor-pointer col-span-2"
-                        >
-                          <p className="overflow-hidden text-ellipsis whitespace-nowrap">
-                            {stats.name}
-                          </p>
-                        </Link>
-                        <p className="text-muted-foreground text-center">
-                          {stats.assigned}
+                        <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                          {stats.name}
                         </p>
-                        <p className="text-muted-foreground text-center">
-                          {stats.active}
-                        </p>
-                        <p className="text-muted-foreground text-center">
-                          {stats.overdue}
-                        </p>
-                        <p className="text-muted-foreground text-center">
-                          {stats.resolved}
-                        </p>
-                      </div>
-                    );
-                  }
+                      </Link>
+                      <p className="text-muted-foreground text-center">
+                        {stats.assigned}
+                      </p>
+                      <p className="text-muted-foreground text-center">
+                        {stats.active}
+                      </p>
+                      <p className="text-muted-foreground text-center">
+                        {stats.overdue}
+                      </p>
+                      <p className="text-muted-foreground text-center">
+                        {stats.resolved}
+                      </p>
+                    </div>
+                  )
                 )}
-                {(!teamStats || Object.keys(teamStats).length === 0) && (
+                {Object.keys(staffStats).length === 0 && (
                   <p className="text-muted-foreground text-center py-4">
-                    No team data available
+                    No staff data available
                   </p>
                 )}
               </ScrollArea>
