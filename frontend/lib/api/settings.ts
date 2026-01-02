@@ -113,6 +113,21 @@ export interface SettingsImportResponse {
   importedSettings: MarketCenterSettings;
 }
 
+export interface AutoCloseSettings {
+  enabled: boolean;
+  awaitingResponseDays: number;
+}
+
+export interface AutoCloseSettingsResponse {
+  autoClose: AutoCloseSettings;
+}
+
+export interface UpdateAutoCloseSettingsRequest {
+  marketCenterId: string;
+  enabled: boolean;
+  awaitingResponseDays?: number;
+}
+
 // Get the correct encore environment
 let environment = Local;
 if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
@@ -251,6 +266,23 @@ export const settingsApi = {
   ): Promise<SettingsImportResponse> => {
     return fetchApi("/settings/import", clerkUserId, {
       method: "POST",
+      body: JSON.stringify(request),
+    });
+  },
+
+  getAutoCloseSettings: async (
+    clerkUserId: string,
+    marketCenterId: string
+  ): Promise<AutoCloseSettingsResponse> => {
+    return fetchApi(`/settings/auto-close/${marketCenterId}`, clerkUserId);
+  },
+
+  updateAutoCloseSettings: async (
+    clerkUserId: string,
+    request: UpdateAutoCloseSettingsRequest
+  ): Promise<AutoCloseSettingsResponse> => {
+    return fetchApi(`/settings/auto-close/${request.marketCenterId}`, clerkUserId, {
+      method: "PUT",
       body: JSON.stringify(request),
     });
   },
