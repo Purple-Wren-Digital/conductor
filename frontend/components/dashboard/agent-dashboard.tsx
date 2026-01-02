@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AgentTicketList from "@/components/ui/tickets/ticket-dashboard/ticket-list-agent";
 import { useQuery } from "@tanstack/react-query";
@@ -8,12 +9,20 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
-import { getResolvedInBusinessDays, statusOptions } from "@/lib/utils";
+import { statusOptions } from "@/lib/utils";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const { currentUser } = useStore();
+  const router = useRouter();
+
+  const navigateToTicketsWithFilter = useCallback(
+    (filterType: "active" | "new" | "overdue" | "resolved") => {
+      router.push(`/dashboard/tickets?filter=${filterType}`);
+    },
+    [router]
+  );
 
   const { data: ticketsData, isLoading } = useQuery({
     queryKey: ["agent-tickets", currentUser?.email],
@@ -115,7 +124,10 @@ export function AgentDashboard() {
         <p className="text-muted-foreground">Manage your assigned tickets</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-4">
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-muted/50"
+          onClick={() => navigateToTicketsWithFilter("active")}
+        >
           <CardHeader>
             <CardTitle className="font-medium text-center">
               Active Tickets
@@ -131,7 +143,10 @@ export function AgentDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-muted/50"
+          onClick={() => navigateToTicketsWithFilter("new")}
+        >
           <CardHeader>
             <CardTitle className="font-medium text-center">
               New Tickets
@@ -147,7 +162,10 @@ export function AgentDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-muted/50"
+          onClick={() => navigateToTicketsWithFilter("overdue")}
+        >
           <CardHeader>
             <CardTitle className="font-medium text-center">
               Overdue Tickets
@@ -163,7 +181,10 @@ export function AgentDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-muted/50"
+          onClick={() => navigateToTicketsWithFilter("resolved")}
+        >
           <CardHeader>
             <CardTitle className="text-center font-medium">
               Resolved Tickets

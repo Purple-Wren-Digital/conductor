@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -40,6 +41,7 @@ import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
 import {
   chartColors,
+  defaultActiveStatuses,
   getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -69,7 +71,15 @@ export function AdminDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   // const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string>("all");
 
+  const router = useRouter();
   const queryClient = useQueryClient();
+
+  const navigateToTicketsWithFilter = useCallback(
+    (filterType: "active" | "new" | "overdue" | "resolved") => {
+      router.push(`/dashboard/tickets?filter=${filterType}`);
+    },
+    [router]
+  );
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -390,7 +400,10 @@ export function AdminDashboard() {
 
         {/* TOP STATS */}
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("active")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Active Tickets
@@ -406,7 +419,10 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("new")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 New Tickets
@@ -422,7 +438,10 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("overdue")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Overdue Tickets
@@ -438,7 +457,10 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/50"
+            onClick={() => navigateToTicketsWithFilter("resolved")}
+          >
             <CardHeader>
               <CardTitle className="text-center font-medium">
                 Resolved Tickets

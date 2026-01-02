@@ -11,10 +11,16 @@ export interface MarketCenterNotificationPreferences {
   sms: boolean;
 }
 
+export interface AutoCloseSettings {
+  enabled: boolean;
+  awaitingResponseDays: number; // Number of business days before auto-closing. Default: 2
+}
+
 export interface MarketCenterSettings {
   notificationPreferences?: MarketCenterNotificationPreferences[];
   ticketTemplates?: TicketTemplate[];
   marketCenter?: MarketCenter;
+  autoClose?: AutoCloseSettings;
 
   // businessHours: BusinessHours;
   // branding: BrandingSettings;

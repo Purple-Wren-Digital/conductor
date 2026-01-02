@@ -32,6 +32,7 @@ import {
   CreditCard,
   FolderPen,
   HomeIcon,
+  LockKeyholeIcon,
   Ticket,
   Users as UsersIcon,
 } from "lucide-react";
@@ -319,6 +320,15 @@ export function AppSidebar({
                         <Link href="/dashboard/sla">
                           <CalendarClock className="text-muted-foreground" />
                           SLA Management
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild disabled={isLoading}>
+                        <Link href="/dashboard/settings">
+                          <LockKeyholeIcon className="text-muted-foreground" />
+                          Auto-Close Management
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
