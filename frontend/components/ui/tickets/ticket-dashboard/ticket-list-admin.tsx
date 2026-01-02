@@ -112,7 +112,7 @@ export default function AdminTicketList() {
     () => ({ label: "all", ids: [] }),
     []
   );
-  const [viewDashboardHeader, setViewDashboardHeader] = useState(true);
+  const [viewDashboardHeader, setViewDashboardHeader] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -414,9 +414,10 @@ export default function AdminTicketList() {
     }));
   }, [groupedCategories]);
 
-  const adminTicketsQueryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
-
+  const adminTicketsQueryInvalidator = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey }),
+    [queryClient, adminTicketsQueryKey]
+  );
   const bulkAssignMutation = useMutation({
     mutationFn: async (payload: {
       ticketIds: string[];
@@ -740,7 +741,7 @@ export default function AdminTicketList() {
         setIsLoading(false);
       }
     },
-    [getToken, handleSendTicketNotifications]
+    [adminTicketsQueryInvalidator, getToken, handleSendTicketNotifications]
   );
 
   const clearFilters = () => {
@@ -829,34 +830,61 @@ export default function AdminTicketList() {
         open={viewDashboardHeader}
         onOpenChange={setViewDashboardHeader}
       >
-        <CollapsibleContent>
-          <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
+          <div className="flex items-center gap-5">
             <h1 className="text-xl font-bold text-left w-full sm:w-fit">
               Tickets ({totalTickets})
             </h1>
-
-            <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
-              {isEnterprise && (
-                <TeamSwitcher
-                  selectedMarketCenterId={selectedMarketCenterId}
-                  setSelectedMarketCenterId={setSelectedMarketCenterId}
-                  handleMarketCenterSelected={() => {
-                    setSelectedCategory(defaultSelectedCategory);
-                    setCurrentPage(1);
-                  }}
-                  setMarketCenters={setMarketCenters}
-                />
-              )}
-              <Button
-                className="gap-2 w-full sm:w-fit"
-                onClick={() => setIsCreateOpen(true)}
-                size={"sm"}
-              >
-                <Plus className="h-4 w-4" />
-                Create Ticket
-              </Button>
-            </div>
+            <CollapsibleTrigger asChild>
+              <ToolTip
+                content={
+                  viewDashboardHeader
+                    ? "Hide ticket search and filters"
+                    : "Show ticket search and filters"
+                }
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Toggle visibility for ticket search and filters"
+                    onClick={() => setViewDashboardHeader(!viewDashboardHeader)}
+                    className={`h-8 w-8 rounded-full`}
+                  >
+                    {viewDashboardHeader ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <EyeClosed className="h-5 w-5" />
+                    )}
+                  </Button>
+                }
+              />
+            </CollapsibleTrigger>
           </div>
+
+          <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
+            {isEnterprise && (
+              <TeamSwitcher
+                selectedMarketCenterId={selectedMarketCenterId}
+                setSelectedMarketCenterId={setSelectedMarketCenterId}
+                handleMarketCenterSelected={() => {
+                  setSelectedCategory(defaultSelectedCategory);
+                  setCurrentPage(1);
+                }}
+                setMarketCenters={setMarketCenters}
+              />
+            )}
+            <Button
+              className="gap-2 w-full sm:w-fit"
+              onClick={() => setIsCreateOpen(true)}
+              size={"sm"}
+            >
+              <Plus className="h-4 w-4" />
+              Create Ticket
+            </Button>
+          </div>
+        </div>
+        {/* FILTERS */}
+        <CollapsibleContent>
           <div className="space-y-4 mt-4">
             <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
               <div className="relative flex-1 w-full sm:w-fit">
@@ -1173,7 +1201,11 @@ export default function AdminTicketList() {
                     setSortBy(value);
                     setCurrentPage(1);
                   }}
-                  disabled={ticketsLoading || !displayedTickets || !displayedTickets.length}
+                  disabled={
+                    ticketsLoading ||
+                    !displayedTickets ||
+                    !displayedTickets.length
+                  }
                 >
                   <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
                     <SelectValue placeholder={"Sort by..."} />
@@ -1201,7 +1233,11 @@ export default function AdminTicketList() {
                     setSortDir(value);
                     setCurrentPage(1);
                   }}
-                  disabled={ticketsLoading || !displayedTickets || !displayedTickets.length}
+                  disabled={
+                    ticketsLoading ||
+                    !displayedTickets ||
+                    !displayedTickets.length
+                  }
                 >
                   <SelectTrigger aria-label="Order by ascending or descending data">
                     <SelectValue placeholder={"Order by..."} />
@@ -1223,33 +1259,6 @@ export default function AdminTicketList() {
             </div>
           </div>
         </CollapsibleContent>
-
-        <div className="flex items-center py-2 px-2">
-          <CollapsibleTrigger asChild>
-            <ToolTip
-              content={
-                viewDashboardHeader
-                  ? "Hide ticket search and filters"
-                  : "Show ticket search and filters"
-              }
-              trigger={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Toggle ticket dashboard visibility"
-                  onClick={() => setViewDashboardHeader(!viewDashboardHeader)}
-                  className={`h-8 w-8 rounded-full`}
-                >
-                  {viewDashboardHeader ? (
-                    <Eye className="h-5 w-5" />
-                  ) : (
-                    <EyeClosed className="h-5 w-5" />
-                  )}
-                </Button>
-              }
-            />
-          </CollapsibleTrigger>
-        </div>
       </Collapsible>
 
       <section
@@ -1350,13 +1359,14 @@ export default function AdminTicketList() {
                 />
               ))}
 
-            {!ticketsLoading && (!displayedTickets || !displayedTickets.length) && (
-              <TableRow className="text-center text-muted-foreground">
-                <TableCell colSpan={5} className="py-8">
-                  No tickets found
-                </TableCell>
-              </TableRow>
-            )}
+            {!ticketsLoading &&
+              (!displayedTickets || !displayedTickets.length) && (
+                <TableRow className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-8">
+                    No tickets found
+                  </TableCell>
+                </TableRow>
+              )}
           </TableBody>
         </Table>
         <PagesAndItemsCount
