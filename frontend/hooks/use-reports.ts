@@ -269,3 +269,76 @@ export function useFetchTicketsResolvedReport({
     placeholderData: keepPreviousData,
   });
 }
+
+// Ticket Reviews Report
+export type TicketReview = {
+  id: string;
+  ticketId: string;
+  ticketTitle: string;
+  surveyorName: string;
+  assigneeName: string | null;
+  marketCenterName: string | null;
+  overallRating: number | null;
+  assigneeRating: number | null;
+  marketCenterRating: number | null;
+  comment: string | null;
+  completedAt: string;
+};
+
+export type TicketReviewsResponse = {
+  reviews: TicketReview[];
+  totalReviews: number;
+  averageOverallRating: number | null;
+  averageAssigneeRating: number | null;
+  averageMarketCenterRating: number | null;
+};
+
+export const ticketReviewsDefaultValues: TicketReviewsResponse = {
+  reviews: [],
+  totalReviews: 0,
+  averageOverallRating: null,
+  averageAssigneeRating: null,
+  averageMarketCenterRating: null,
+};
+
+export function useFetchTicketReviewsReport({
+  ticketsReportQueryKey,
+  queryParams,
+  isSelected,
+}: {
+  ticketsReportQueryKey: readonly [string, Record<string, string>];
+  queryParams: URLSearchParams;
+  isSelected: boolean;
+}) {
+  const { getToken } = useAuth();
+
+  return useQuery({
+    queryKey: ticketsReportQueryKey,
+    queryFn: async (): Promise<TicketReviewsResponse> => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
+        const res = await fetch(
+          `${API_BASE}/reports/ticket-reviews${queryParams ? `?${queryParams.toString()}` : ""}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+        if (!res.ok) throw new Error("Failed to fetch ticket reviews");
+        const data = await res.json();
+        return data;
+      } catch {
+        return ticketReviewsDefaultValues;
+      }
+    },
+    enabled: !!isSelected,
+    placeholderData: keepPreviousData,
+  });
+}

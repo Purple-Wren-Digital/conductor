@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockDb, mockUserContext } = vi.hoisted(() => ({
+const { mockDb, mockUserContext, mockFromTimestamp } = vi.hoisted(() => ({
   mockDb: {
     queryAll: vi.fn(),
     queryRow: vi.fn(),
@@ -18,6 +18,7 @@ const { mockDb, mockUserContext } = vi.hoisted(() => ({
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
   },
+  mockFromTimestamp: vi.fn((date: Date | null) => date),
 }));
 
 // Mock encore.dev/api
@@ -46,6 +47,7 @@ vi.mock("encore.dev/api", () => ({
 // Mock the database module
 vi.mock("../ticket/db", () => ({
   db: mockDb,
+  fromTimestamp: mockFromTimestamp,
 }));
 
 // Mock the auth module
@@ -58,6 +60,7 @@ import { createdByMonth } from "./created-volume-report";
 import { resolvedByMonth } from "./resolved-volume-report";
 import { slaCompliance } from "./sla-compliance-report";
 import { slaComplianceByUsers } from "./users-overdue-at-risk";
+import { ticketReviews } from "./ticket-reviews-report";
 import { getTicketSlaStatus } from "./utils";
 import { getUserContext } from "../auth/user-context";
 
@@ -442,6 +445,262 @@ describe("Reports", () => {
       await expect(slaComplianceByUsers({})).rejects.toThrow(
         "User not permitted to generate ticket reports"
       );
+    });
+  });
+
+  describe("ticketReviews", () => {
+    it("should return completed reviews with averages for ADMIN", async () => {
+      const reviewDate = new Date("2024-01-15T10:00:00Z");
+
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket 1",
+          surveyor_name: "John Agent",
+          assignee_name: "Jane Staff",
+          market_center_name: "Downtown MC",
+          overall_rating: "4.50",
+          assignee_rating: "5.00",
+          market_center_rating: "4.00",
+          comment: "Great service!",
+          updated_at: reviewDate,
+        },
+        {
+          id: "review-2",
+          ticket_id: "ticket-2",
+          ticket_title: "Test Ticket 2",
+          surveyor_name: "Bob Agent",
+          assignee_name: "Jane Staff",
+          market_center_name: "Downtown MC",
+          overall_rating: "3.50",
+          assignee_rating: "4.00",
+          market_center_rating: "3.00",
+          comment: null,
+          updated_at: reviewDate,
+        },
+      ]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(2);
+      expect(result.reviews).toHaveLength(2);
+      expect(result.averageOverallRating).toBe(4.0);
+      expect(result.averageAssigneeRating).toBe(4.5);
+      expect(result.averageMarketCenterRating).toBe(3.5);
+    });
+
+    it("should return empty reviews when none exist", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(0);
+      expect(result.reviews).toEqual([]);
+      expect(result.averageOverallRating).toBeNull();
+      expect(result.averageAssigneeRating).toBeNull();
+      expect(result.averageMarketCenterRating).toBeNull();
+    });
+
+    it("should filter by market center IDs for ADMIN", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket",
+          surveyor_name: "John Agent",
+          assignee_name: "Jane Staff",
+          market_center_name: "Downtown MC",
+          overall_rating: "4.00",
+          assignee_rating: "4.00",
+          market_center_rating: "4.00",
+          comment: null,
+          updated_at: new Date(),
+        },
+      ]);
+
+      const result = await ticketReviews({ marketCenterIds: ["mc-456"] });
+
+      expect(result.totalReviews).toBe(1);
+      expect(mockDb.queryAll).toHaveBeenCalled();
+    });
+
+    it("should filter by date range", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket",
+          surveyor_name: "John Agent",
+          assignee_name: "Jane Staff",
+          market_center_name: "Downtown MC",
+          overall_rating: "4.00",
+          assignee_rating: "4.00",
+          market_center_rating: "4.00",
+          comment: null,
+          updated_at: new Date("2024-03-15"),
+        },
+      ]);
+
+      const result = await ticketReviews({
+        dateFrom: "2024-03-01",
+        dateTo: "2024-03-31",
+      });
+
+      expect(result.totalReviews).toBe(1);
+    });
+
+    it("should work for STAFF role with market center", async () => {
+      vi.mocked(getUserContext).mockResolvedValue({
+        userId: "staff-123",
+        email: "staff@test.com",
+        role: "STAFF" as const,
+        marketCenterId: "mc-123",
+        clerkId: "clerk-staff",
+      });
+
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket",
+          surveyor_name: "John Agent",
+          assignee_name: "Staff User",
+          market_center_name: "Downtown MC",
+          overall_rating: "4.50",
+          assignee_rating: "5.00",
+          market_center_rating: "4.00",
+          comment: "Excellent!",
+          updated_at: new Date(),
+        },
+      ]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(1);
+      expect(result.reviews[0].surveyorName).toBe("John Agent");
+    });
+
+    it("should work for STAFF role without market center (sees only their assigned tickets)", async () => {
+      vi.mocked(getUserContext).mockResolvedValue({
+        userId: "staff-123",
+        email: "staff@test.com",
+        role: "STAFF" as const,
+        marketCenterId: null,
+        clerkId: "clerk-staff",
+      });
+
+      mockDb.queryAll.mockResolvedValueOnce([]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(0);
+    });
+
+    it("should work for STAFF_LEADER role", async () => {
+      vi.mocked(getUserContext).mockResolvedValue({
+        userId: "leader-123",
+        email: "leader@test.com",
+        role: "STAFF_LEADER" as const,
+        marketCenterId: "mc-123",
+        clerkId: "clerk-leader",
+      });
+
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket",
+          surveyor_name: "Agent User",
+          assignee_name: "Staff User",
+          market_center_name: "Downtown MC",
+          overall_rating: "4.00",
+          assignee_rating: "4.00",
+          market_center_rating: "4.00",
+          comment: null,
+          updated_at: new Date(),
+        },
+      ]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(1);
+    });
+
+    it("should throw permission denied for AGENT role", async () => {
+      vi.mocked(getUserContext).mockResolvedValue({
+        userId: "agent-123",
+        email: "agent@test.com",
+        role: "AGENT" as const,
+        marketCenterId: "mc-123",
+        clerkId: "clerk-agent",
+      });
+
+      await expect(ticketReviews({})).rejects.toThrow(
+        "User not permitted to view ticket reviews"
+      );
+    });
+
+    it("should handle null ratings correctly", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-1",
+          ticket_id: "ticket-1",
+          ticket_title: "Test Ticket",
+          surveyor_name: "John Agent",
+          assignee_name: null,
+          market_center_name: null,
+          overall_rating: null,
+          assignee_rating: null,
+          market_center_rating: null,
+          comment: null,
+          updated_at: new Date(),
+        },
+      ]);
+
+      const result = await ticketReviews({});
+
+      expect(result.totalReviews).toBe(1);
+      expect(result.reviews[0].overallRating).toBeNull();
+      expect(result.reviews[0].assigneeRating).toBeNull();
+      expect(result.reviews[0].marketCenterRating).toBeNull();
+      expect(result.averageOverallRating).toBeNull();
+    });
+
+    it("should include review details in response", async () => {
+      const reviewDate = new Date("2024-02-20T14:30:00Z");
+
+      mockDb.queryAll.mockResolvedValueOnce([
+        {
+          id: "review-123",
+          ticket_id: "ticket-456",
+          ticket_title: "Help with login",
+          surveyor_name: "Alice Agent",
+          assignee_name: "Bob Staff",
+          market_center_name: "Central MC",
+          overall_rating: "4.75",
+          assignee_rating: "5.00",
+          market_center_rating: "4.50",
+          comment: "Very helpful and responsive!",
+          updated_at: reviewDate,
+        },
+      ]);
+
+      const result = await ticketReviews({});
+
+      expect(result.reviews[0]).toEqual({
+        id: "review-123",
+        ticketId: "ticket-456",
+        ticketTitle: "Help with login",
+        surveyorName: "Alice Agent",
+        assigneeName: "Bob Staff",
+        marketCenterName: "Central MC",
+        overallRating: 4.75,
+        assigneeRating: 5.0,
+        marketCenterRating: 4.5,
+        comment: "Very helpful and responsive!",
+        completedAt: expect.any(String),
+      });
     });
   });
 });

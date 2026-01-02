@@ -8,6 +8,7 @@ import SlaComplianceByUsersReport from "@/components/reports/users-tickets-overd
 import TicketBacklogReport from "@/components/reports/backlog-report";
 import CreatedVolumeByMonthReport from "@/components/reports/created-volume-report";
 import ResolvedTicketsByMonthReport from "@/components/reports/resolved-volume-report";
+import TicketReviewsReport from "@/components/reports/ticket-reviews-report";
 import {
   ReportFilters,
   ReportFiltersState,
@@ -29,6 +30,7 @@ const reportType = [
   { value: "ticket-backlog", label: "Ticket Backlog (Current)" },
   { value: "ticket-created-volume", label: "Created Tickets By Month" },
   { value: "ticket-resolved-volume", label: "Resolved Tickets By Month" },
+  { value: "ticket-reviews", label: "Ticket Reviews" },
 ];
 
 export default function ReportsDashboard() {
@@ -128,6 +130,7 @@ export default function ReportsDashboard() {
                   "ticket-created-volume",
                   "ticket-resolved-volume",
                   "ticket-backlog",
+                  "ticket-reviews",
                 ].includes(selectedReportType)}
                 showMarketCenterFilter={true}
                 showCategoryFilter={true}
@@ -151,6 +154,10 @@ export default function ReportsDashboard() {
                 />
                 <ResolvedTicketsByMonthReport
                   isSelected={selectedReportType === "ticket-resolved-volume"}
+                  filters={filters}
+                />
+                <TicketReviewsReport
+                  isSelected={selectedReportType === "ticket-reviews"}
                   filters={filters}
                 />
               </Card>
