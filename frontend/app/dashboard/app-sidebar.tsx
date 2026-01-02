@@ -32,6 +32,7 @@ import {
   CreditCard,
   FolderPen,
   HomeIcon,
+  LockKeyholeIcon,
   Ticket,
   Users as UsersIcon,
 } from "lucide-react";
@@ -315,8 +316,8 @@ export function AppSidebar({
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild disabled={isLoading}>
                         <Link href="/dashboard/settings">
-                          <CogIcon className="text-muted-foreground" />
-                          General Settings
+                          <LockKeyholeIcon className="text-muted-foreground" />
+                          Auto-Close Management
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
