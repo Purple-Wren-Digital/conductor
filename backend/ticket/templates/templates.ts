@@ -21,7 +21,6 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
     auth: true,
   },
   async (req) => {
-    console.log("****** GetTemplates request received ******", req);
     const userContext = await getUserContext();
     if (!req.marketCenterId) {
       throw new Error("marketCenterId is required");
@@ -38,7 +37,7 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
     const ticketTemplates =
       await ticketTemplateRepository.findAllByMarketCenter(req.marketCenterId);
 
-      if (!ticketTemplates || ticketTemplates.length === 0) {
+    if (!ticketTemplates || !ticketTemplates.length) {
       for (const template of TICKET_TEMPLATES) {
         const created = await ticketTemplateRepository.create(
           {
@@ -62,7 +61,6 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
         await ticketTemplateRepository.findAllByMarketCenter(
           req.marketCenterId
         );
-      console.log("Created default templates:", createdTemplates);
       return { templates: createdTemplates };
     }
 

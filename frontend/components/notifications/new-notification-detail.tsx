@@ -9,11 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { SidebarMenuItem } from "@/components/ui/sidebar";
 import { CheckCheck, X } from "lucide-react";
 import type { Notification } from "@/lib/types";
 import { UseMutationResult } from "@tanstack/react-query";
-import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function SideBarNewNotification({
   newestNotification,
@@ -40,9 +40,13 @@ export default function SideBarNewNotification({
         <Card className="p-2.5 gap-2 mt-5">
           <CardHeader className="p-0 m-0 flex flex-row flex-wrap justify-between text-md">
             <div className="flex flex-col px-1 pt-1">
-              <CardTitle className="text-sm">
-                {newestNotification?.title &&
-                  sanitizeHtml(newestNotification.title)}
+              <CardTitle>
+                {newestNotification?.title && (
+                  <SafeHtml
+                    content={newestNotification.title}
+                    className="text-sm"
+                  />
+                )}
               </CardTitle>
               {newestNotification?.createdAt && (
                 <CardDescription className="text-xs">
@@ -53,9 +57,10 @@ export default function SideBarNewNotification({
           </CardHeader>
           <CardContent className="p-1 space-y-2">
             {newestNotification?.body && (
-              <span className="text-sm line-clamp-10 font-medium">
-                {sanitizeHtml(newestNotification.body)}
-              </span>
+              <SafeHtml
+                content={newestNotification.body}
+                className="text-sm line-clamp-10 font-medium"
+              />
             )}
 
             <div className="flex flex-row flex-wrap items-center justify-between gap-1">

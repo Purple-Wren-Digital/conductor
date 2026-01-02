@@ -31,7 +31,9 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       throw APIError.invalidArgument("Status is required");
     }
 
-    const oldTicket = await ticketRepository.findByIdWithRelations(req.ticketId);
+    const oldTicket = await ticketRepository.findByIdWithRelations(
+      req.ticketId
+    );
 
     if (!oldTicket) {
       throw APIError.notFound("Ticket not found");
@@ -55,17 +57,16 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       );
     }
 
+    if (!oldTicket?.creatorId) {
+      throw APIError.invalidArgument("Ticket creator is required");
+    }
+
     // Create survey using repository
-    const survey = await surveyRepository.create({
+    const survey = await surveyRepository.findOrCreate({
       ticketId: req.ticketId,
       surveyorId: oldTicket.creatorId,
       assigneeId: oldTicket.assigneeId || null,
       marketCenterId: marketCenterId,
-      overallRating: null,
-      assigneeRating: null,
-      marketCenterRating: null,
-      comment: null,
-      completed: false,
     });
 
     if (!survey) {
@@ -93,7 +94,7 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
     // Get updated ticket
     const ticket = await ticketRepository.findByIdWithRelations(req.ticketId);
 
-    if (!ticket) {
+    if (!ticket || !ticket?.id || !ticket?.creatorId) {
       throw APIError.internal("Failed to retrieve updated ticket");
     }
 

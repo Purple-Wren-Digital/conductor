@@ -37,8 +37,8 @@ export type NotificationTypes =
   | "General" // ACCOUNT, MARKETING, PRODUCT
   | "Account Information"
   // ACTIVITY ONLY
-  | "Daily Summary"
-  | "Weekly Report"
+  // | "Daily Summary"
+  // | "Weekly Report"
   | "Ticket Created"
   | "Ticket Updated"
   | "Ticket Assignment"

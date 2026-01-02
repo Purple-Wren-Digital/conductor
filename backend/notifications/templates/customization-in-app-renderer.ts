@@ -85,7 +85,7 @@ function extractContextFromNotificationData(
       if (data.newComment) {
         context.ticket_number = data.newComment.ticketNumber || "";
         context.ticket_title = data.newComment.ticketTitle || "";
-        context.commenter_name = data.newComment.commenterName || "";
+        context.commenter_name = data?.newComment?.commenterName || "";
         context.comment = data.newComment.comment || "";
       }
       break;

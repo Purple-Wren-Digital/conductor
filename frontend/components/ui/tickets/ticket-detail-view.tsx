@@ -261,8 +261,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
             : undefined,
         },
       });
-    } catch {
-      // Notification failed silently
+    } catch (error) {
+      console.error("Failed to send ticket notification:", error);
     }
   };
 
@@ -316,8 +316,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
               : undefined,
         },
       });
-    } catch {
-      // Notification failed silently
+    } catch (error) {
+      console.error("Failed to send ticket closed notification:", error);
     }
   };
 
@@ -331,7 +331,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      const res = await fetch(`${API_BASE}/tickets/close/${ticketId}`, {
+      const response = await fetch(`${API_BASE}/tickets/close/${ticketId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -340,8 +340,13 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         cache: "no-store",
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
       });
-      if (!res.ok) throw new Error("Failed to close ticket");
-      const data = await res.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("ERROR DATA - Close ticket", errorData);
+        throw new Error(errorData.message || "Failed to close ticket");
+      }
+      const data = await response.json();
+
       if (!data || !data?.usersToNotify || !data?.usersToNotify.length) {
         throw new Error("No data returned from close ticket");
       }
@@ -356,7 +361,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       );
 
       toast.success("Ticket closed successfully.");
-    } catch {
+    } catch (error) {
+      console.error("Failed to close ticket:", error);
       toast.error("Error: Failed to close ticket. Please try again.");
     } finally {
       await refreshAllData();
