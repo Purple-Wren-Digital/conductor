@@ -52,20 +52,20 @@ export interface SettingsAuditLogEntry {
 
 export interface TeamInviteRequest {
   email: string;
-  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 
 export interface TeamMember {
   id: string;
   email: string;
   name: string;
-  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
   isActive: boolean;
   createdAt: Date;
 }
 
 export interface UpdateMemberRoleRequest {
-  role: "AGENT" | "STAFF"| "STAFF_LEADER" | "ADMIN";
+  role: "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 }
 
 export interface AuditLogResponse {
@@ -141,13 +141,20 @@ if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
   );
 }
 
-// Note: Clerk user ID must be passed from components that use useUser() hook
-async function fetchApi(path: string, clerkUserId: string, options: RequestInit = {}) {
+// Note: Token must be passed from components that use useAuth() hook
+async function fetchApi(
+  path: string,
+  token: string,
+  options: RequestInit = {}
+) {
+  if (!token) {
+    throw new Error("User is not authenticated");
+  }
   const response = await fetch(`${environment}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${clerkUserId}`,
+      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
   });
@@ -161,127 +168,141 @@ async function fetchApi(path: string, clerkUserId: string, options: RequestInit 
 }
 
 export const settingsApi = {
-  getMarketCenterSettings: async (clerkUserId: string): Promise<MarketCenterSettings> => {
-    return fetchApi("/settings/market-center", clerkUserId);
+  getMarketCenterSettings: async (
+    token: string
+  ): Promise<MarketCenterSettings> => {
+    return fetchApi("/settings/market-center", token);
   },
 
   updateMarketCenterSettings: async (
-    clerkUserId: string,
+    token: string,
     request: SettingsUpdateRequest
   ): Promise<MarketCenterSettings> => {
-    return fetchApi("/settings/market-center", clerkUserId, {
+    return fetchApi("/settings/market-center", token, {
       method: "PUT",
       body: JSON.stringify(request),
     });
   },
 
-  getAuditLog: async (clerkUserId: string, page = 1, limit = 10): Promise<AuditLogResponse> => {
-    return fetchApi(`/settings/audit-log?page=${page}&limit=${limit}`, clerkUserId);
+  getAuditLog: async (
+    token: string,
+    page = 1,
+    limit = 10
+  ): Promise<AuditLogResponse> => {
+    return fetchApi(`/settings/audit-log?page=${page}&limit=${limit}`, token);
   },
 
-  getTeamMembers: async (clerkUserId: string): Promise<TeamMembersResponse> => {
-    return await fetchApi("/settings/team/members", clerkUserId, {
+  getTeamMembers: async (token: string): Promise<TeamMembersResponse> => {
+    return await fetchApi("/settings/team/members", token, {
       method: "GET",
     });
   },
 
   inviteTeamMember: async (
-    clerkUserId: string,
+    token: string,
     request: TeamInviteRequest
   ): Promise<{ success: boolean }> => {
-    return fetchApi("/settings/team/invite", clerkUserId, {
+    return fetchApi("/settings/team/invite", token, {
       method: "POST",
       body: JSON.stringify(request),
     });
   },
 
-  removeTeamMember: async (clerkUserId: string, userId: string): Promise<{ success: boolean }> => {
-    return fetchApi(`/users/${userId}`, clerkUserId, {
+  removeTeamMember: async (
+    token: string,
+    userId: string
+  ): Promise<{ success: boolean }> => {
+    return fetchApi(`/users/${userId}`, token, {
       method: "DELETE",
       body: JSON.stringify({ id: userId }),
     });
   },
 
   updateTeamMemberRole: async (
-    clerkUserId: string,
+    token: string,
     userId: string,
     request: UpdateMemberRoleRequest
   ): Promise<TeamMember> => {
-    return fetchApi(`/settings/team/role/${userId}`, clerkUserId, {
+    return fetchApi(`/settings/team/role/${userId}`, token, {
       method: "PUT",
       body: JSON.stringify(request),
     });
   },
 
   updateTeamMemberData: async (
-    clerkUserId: string,
+    token: string,
     userId: string,
     request: UpdateMemberRoleRequest
   ): Promise<TeamMember> => {
-    return fetchApi(`/settings/team/member/${userId}`, clerkUserId, {
+    return fetchApi(`/settings/team/member/${userId}`, token, {
       method: "PUT",
       body: JSON.stringify(request),
     });
   },
 
-  getTicketCategories: async (clerkUserId: string): Promise<TicketCategoriesResponse> => {
-    return fetchApi("/settings/categories", clerkUserId);
+  getTicketCategories: async (
+    token: string
+  ): Promise<TicketCategoriesResponse> => {
+    return fetchApi("/settings/categories", token);
   },
 
   createTicketCategory: async (
-    clerkUserId: string,
+    token: string,
     name: string,
     defaultAssigneeId?: string
   ): Promise<TicketCategory> => {
-    return fetchApi("/settings/categories", clerkUserId, {
+    return fetchApi("/settings/categories", token, {
       method: "POST",
       body: JSON.stringify({ name, defaultAssigneeId }),
     });
   },
 
   updateTicketCategory: async (
-    clerkUserId: string,
+    token: string,
     id: string,
     data: { name?: string; defaultAssigneeId?: string; isActive?: boolean }
   ): Promise<TicketCategory> => {
-    return fetchApi(`/settings/categories/${id}`, clerkUserId, {
+    return fetchApi(`/settings/categories/${id}`, token, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
-  deleteTicketCategory: async (clerkUserId: string, id: string): Promise<{ success: boolean }> => {
-    return fetchApi(`/settings/categories/${id}`, clerkUserId, {
+  deleteTicketCategory: async (
+    token: string,
+    id: string
+  ): Promise<{ success: boolean }> => {
+    return fetchApi(`/settings/categories/${id}`, token, {
       method: "DELETE",
     });
   },
 
-  exportSettings: async (clerkUserId: string): Promise<SettingsExportData> => {
-    return fetchApi("/settings/export", clerkUserId);
+  exportSettings: async (token: string): Promise<SettingsExportData> => {
+    return fetchApi("/settings/export", token);
   },
 
   importSettings: async (
-    clerkUserId: string,
+    token: string,
     request: SettingsImportRequest
   ): Promise<SettingsImportResponse> => {
-    return fetchApi("/settings/import", clerkUserId, {
+    return fetchApi("/settings/import", token, {
       method: "POST",
       body: JSON.stringify(request),
     });
   },
 
   getAutoCloseSettings: async (
-    clerkUserId: string,
+    token: string,
     marketCenterId: string
   ): Promise<AutoCloseSettingsResponse> => {
-    return fetchApi(`/settings/auto-close/${marketCenterId}`, clerkUserId);
+    return fetchApi(`/settings/auto-close/${marketCenterId}`, token);
   },
 
   updateAutoCloseSettings: async (
-    clerkUserId: string,
+    token: string,
     request: UpdateAutoCloseSettingsRequest
   ): Promise<AutoCloseSettingsResponse> => {
-    return fetchApi(`/settings/auto-close/${request.marketCenterId}`, clerkUserId, {
+    return fetchApi(`/settings/auto-close/${request.marketCenterId}`, token, {
       method: "PUT",
       body: JSON.stringify(request),
     });
