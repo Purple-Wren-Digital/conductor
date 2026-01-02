@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { 
-  settingsApi, 
-  MarketCenterSettings, 
-  SettingsUpdateRequest, 
-  TeamInviteRequest, 
+import {
+  settingsApi,
+  MarketCenterSettings,
+  SettingsUpdateRequest,
+  TeamInviteRequest,
   UpdateMemberRoleRequest,
   AuditLogResponse,
   TeamMembersResponse,
-  TicketCategoriesResponse
+  TicketCategoriesResponse,
+  UpdateAutoCloseSettingsRequest
 } from '@/lib/api/settings';
 
 export const settingsKeys = {
@@ -16,6 +17,7 @@ export const settingsKeys = {
   auditLog: (page?: number, limit?: number) => [...settingsKeys.all, 'audit-log', { page, limit }] as const,
   teamMembers: () => [...settingsKeys.all, 'team-members'] as const,
   ticketCategories: () => [...settingsKeys.all, 'ticket-categories'] as const,
+  autoClose: (marketCenterId?: string) => [...settingsKeys.all, 'auto-close', marketCenterId] as const,
 };
 
 export function useMarketCenterSettings(clerkUserId: string | undefined) {
@@ -171,6 +173,37 @@ export function useDeleteTicketCategory(clerkUserId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.ticketCategories() });
+    },
+  });
+}
+
+export function useAutoCloseSettings(getToken: (() => Promise<string | null>) | undefined, marketCenterId: string | undefined) {
+  return useQuery({
+    queryKey: settingsKeys.autoClose(marketCenterId),
+    queryFn: async () => {
+      if (!getToken) throw new Error("Not authenticated");
+      if (!marketCenterId) throw new Error("Market center ID required");
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+      return settingsApi.getAutoCloseSettings(token, marketCenterId);
+    },
+    enabled: !!getToken && !!marketCenterId,
+  });
+}
+
+export function useUpdateAutoCloseSettings(getToken: (() => Promise<string | null>) | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAutoCloseSettingsRequest) => {
+      if (!getToken) throw new Error("Not authenticated");
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+      return settingsApi.updateAutoCloseSettings(token, request);
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(settingsKeys.autoClose(variables.marketCenterId), data);
+      queryClient.invalidateQueries({ queryKey: settingsKeys.auditLog() });
     },
   });
 }

@@ -3,12 +3,17 @@ import type { Urgency } from "../types";
 export interface TicketTemplate {
   id: string;
   name: string;
-  description: string;
+  description?: string;
+  isActive: boolean;
   title: string;
   ticketDescription: string;
-  category?: string;
+  categoryId?: string;
   urgency?: Urgency;
   tags?: string[];
-  isActive: boolean;
-  todos: string[];
+  todos?: string[];
+  marketCenterId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdById: string | null;
+  updatedById: string | null;
 }

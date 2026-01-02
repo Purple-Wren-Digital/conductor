@@ -60,13 +60,13 @@ export function EditTicketForm({
     if (ticket?.status === "RESOLVED") {
       return;
     }
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (mcId: string) => {
       try {
         const token = await getToken();
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(`${API_BASE}/ticket-templates`, {
+        const res = await fetch(`${API_BASE}/ticket-templates/${mcId}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
@@ -106,9 +106,13 @@ export function EditTicketForm({
 
       setMarketCenterId(ticketMarketCenter);
       setSelectedTemplateId("");
-      fetchTemplates();
+      if (ticketMarketCenter) {
+        fetchTemplates(ticketMarketCenter);
+      } else {
+        setTemplates([]);
+      }
     }
-  }, [isOpen, ticket, clerkUser, role, currentUser, getToken]);
+  }, [isOpen, ticket, clerkUser, role, currentUser, getToken, marketCenterId]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -124,10 +128,10 @@ export function EditTicketForm({
         title: t.title,
         description: t.ticketDescription,
         urgency: t?.urgency || "MEDIUM",
-        categoryId: t?.category || "",
+        categoryId: t?.categoryId || "",
         dueDate: undefined,
         assigneeId: "Unassigned",
-        todos: [...t.todos],
+        todos: t.todos && t.todos.length > 0 ? [...t.todos] : [],
       });
     }
   };

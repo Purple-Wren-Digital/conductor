@@ -32,6 +32,7 @@ import {
   CreditCard,
   FolderPen,
   HomeIcon,
+  LockKeyholeIcon,
   Ticket,
   Users as UsersIcon,
 } from "lucide-react";
@@ -292,7 +293,7 @@ export function AppSidebar({
                       </SidebarMenuItem>
                     )}
 
-                    {permissions?.canManageTemplateSettings && (
+                    {permissions?.canManageNotificationTemplateSettings && (
                       <SidebarMenuSubItem>
                         <SidebarMenuButton asChild disabled={isLoading}>
                           <Link href="/dashboard/template-customization">
@@ -303,11 +304,31 @@ export function AppSidebar({
                       </SidebarMenuSubItem>
                     )}
 
+                    {permissions?.canManageTicketTemplateSettings && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuButton asChild disabled={isLoading}>
+                          <Link href="/dashboard/ticket-templates">
+                            <FolderPen className="text-muted-foreground" />
+                            Ticket Templates
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuSubItem>
+                    )}
+
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild disabled={isLoading}>
                         <Link href="/dashboard/sla">
                           <CalendarClock className="text-muted-foreground" />
                           SLA Management
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild disabled={isLoading}>
+                        <Link href="/dashboard/settings">
+                          <LockKeyholeIcon className="text-muted-foreground" />
+                          Auto-Close Management
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

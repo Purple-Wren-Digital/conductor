@@ -191,9 +191,11 @@ export default function UserTicketHistoryTable({
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    {log?.field === "comment" ? (
+                    {log?.field === "comment" ||
+                    log?.field === "description" ? (
                       <SafeHtml
                         content={newValueFormatted ? newValueFormatted : "-"}
+                        className="font-normal leading-relaxed text-muted-foreground line-spacing-10 break-words rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
                       />
                     ) : (
                       <ToolTip
@@ -208,11 +210,13 @@ export default function UserTicketHistoryTable({
                   </TableCell>
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    {log?.field === "comment" ? (
+                    {log?.field === "comment" ||
+                    log?.field === "description" ? (
                       <SafeHtml
                         content={
                           previousValueFormatted ? previousValueFormatted : "-"
                         }
+                        className="leading-relaxed text-muted-foreground line-spacing-10 break-words rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
                       />
                     ) : (
                       <ToolTip

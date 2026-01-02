@@ -1,14 +1,30 @@
 import { TicketTemplate } from "./types";
 
 // Hardcoded templates for now - could be moved to database later
-export const TICKET_TEMPLATES: TicketTemplate[] = [
+export const TICKET_TEMPLATES: Partial<TicketTemplate>[] = [
   {
     id: "Appraisal_Template",
     name: "Appraisal",
     description: "Template for managing property appraisals",
     title: "Appraisal - [Property Address]",
-    ticketDescription:
-      "Appraisal needed for property at [Address].\n\nAppraisal type:\n[ ] Full appraisal\n[ ] Drive-by appraisal\n[ ] Desktop appraisal\n\nPreferred dates/times:\n- \n\nContact person:\n- Name: \n- Phone: \n- Email:\n\nAdditional notes:",
+    ticketDescription: `<p>Appraisal needed for property at [Address]</p>
+      <p>Appraisal type:</p>
+      <ul>
+        <li>Full appraisal</li>
+        <li>Drive-by appraisal</li>
+        <li>Desktop appraisal</li>
+      </ul>
+      <p>Preferred dates/times:</p>
+      <ul>
+        <li>mm/dd/yyyy; hh:mm</li>
+      </ul>
+      <p>Contact person:</p>
+      <ul>
+        <li>Name: </li>
+        <li>Phone: </li>
+        <li>Email:</li>
+      </ul>
+      `,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -27,8 +43,18 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Client Complaint",
     description: "Template for handling client complaints",
     title: "Client Complaint - [Client Name]",
-    ticketDescription:
-      "Client complaint received.\n\nClient: \nDate of incident: \n\nNature of complaint:\n\nDetails:\n\nClient's desired resolution:\n\nPriority level: \n\nAssigned to:",
+    ticketDescription: `<p>Client Information:</p>
+      <ul>
+        <li>Name:</li>
+        <li>Phone:</li>
+        <li>Email:</li>
+      </ul>
+      <p>Complaint details:</p>
+      <ul>
+        <li>Details of the complaint</li>
+      </ul>
+      <p>Preferred resolution:</p>
+      <p>Additional notes:</p>`,
     urgency: "HIGH",
     isActive: true,
     todos: [
@@ -45,8 +71,22 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Contract Issue",
     description: "Template for urgent contract-related issues",
     title: "URGENT: Contract Issue - [Property/Client]",
-    ticketDescription:
-      "Urgent issue with contract for [Property/Client].\n\nIssue type:\n[ ] Missing signatures\n[ ] Incorrect terms\n[ ] Deadline approaching\n[ ] Other: \n\nDetails:\n\nDeadline: \n\nAction needed:",
+    ticketDescription: `<p>Property/Client Information</p>
+      <ul>
+        <li>Name: </li>
+        <li>Phone: </li>
+        <li>Email:</li>
+      </ul>
+      <p>Issue type:</p>
+      <ul>
+        <li>Missing signatures</li>
+        <li>Incorrect terms</li>
+        <li>Deadline approaching</li>
+        <li>Other: </li>
+      </ul>
+      <p>Details:</p>
+      <p>Deadline: </p>
+      <p>Action needed:</p>`,
     urgency: "HIGH",
     isActive: true,
     todos: [
@@ -62,8 +102,30 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Document Request",
     description: "Template for document requests",
     title: "Document Request - [Document Type]",
-    ticketDescription:
-      "Document request from [Requester].\n\nDocuments needed:\n[ ] Purchase agreement\n[ ] Disclosure forms\n[ ] Inspection reports\n[ ] Title documents\n[ ] Other: \n\nRequired by: \nPurpose: \n\nDelivery method:\n[ ] Email\n[ ] Physical copy\n[ ] Upload to portal",
+    ticketDescription: `<p>Requester Information:</p>
+      <ul>
+        <li>Name:</li>
+        <li>Phone:</li>
+        <li>Email:</li>
+      </ul>
+      <p>[Request Date: mm/dd/yyyy]</p>
+      <p>[Address, City, State, ZIP]</p>
+      <p>Documents needed:</p>
+      <ol>
+        <li>Purchase agreement</li>
+        <li>Disclosure forms</li>
+        <li>Inspection reports</li>
+        <li>Title documents</li>
+        <li>Other: </li>
+      </ol>
+      <p>Required by: </p>
+      <p>Purpose: </p>
+      <p>Delivery method:</p>
+      <ul>
+        <li>Email</li>
+        <li>Physical copy</li>
+        <li>Upload to portal</li>
+      </ul>`,
     urgency: "LOW",
     isActive: true,
     todos: [
@@ -79,8 +141,25 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Inspection Scheduling",
     description: "Template for scheduling property inspections",
     title: "Schedule Inspection - [Property Address]",
-    ticketDescription:
-      "Inspection needed for property at [Address].\n\nInspection type:\n[ ] Home inspection\n[ ] Pest inspection\n[ ] Appraisal\n[ ] Other: \n\nPreferred dates/times:\n- \n\nContact person:\n- Name: \n- Phone: \n- Email:\n\nAdditional notes:",
+    ticketDescription: `<p>[Address, City, State, ZIP]</p>
+       <p>Inspection type:</p>
+       <ul>
+         <li>Home inspection</li>
+         <li>Pest inspection</li>
+         <li>Appraisal</li>
+         <li>Other: </li>
+       </ul>
+       <p>Preferred dates/times:</p>
+       <ul>
+         <li>mm/dd/yyyy; hh:mm</li>
+       </ul>
+       <p>Contact person:</p>
+       <ul>
+         <li>Name: </li>
+         <li>Phone: </li>
+         <li>Email:</li>
+       </ul>
+       <p>Additional notes:</p>`,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -97,8 +176,27 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Maintenance Request",
     description: "Template for property maintenance requests",
     title: "Maintenance Request - [Property Address]",
-    ticketDescription:
-      "Maintenance request for property.\n\nProperty: \nTenant/Owner: \n\nIssue description:\n\nUrgency:\n[ ] Emergency (immediate)\n[ ] Urgent (24-48 hours)\n[ ] Routine (within a week)\n\nAccess instructions:\n\nPreferred service window:",
+    ticketDescription: `<p>Property:[Address, City, State, ZIP]</p>
+    <Property type: </p>
+
+    <p>Tenant/Owner Info:</p>
+    <ul>
+      <li>Name:</li>
+      <li>Phone: </li>
+      <li>Email:</li>
+    </ul>
+    <p>Issue:</p>
+    <ul>
+      <li>Emergency (immediate)</li>
+      <li>Urgent (24-48 hours)</li>
+      <li>Routine (within a week)</li>
+    </ul>
+    <p>Access instructions:</p>
+    <p>Preferred service window:</p>
+    <ul>
+      <li>mm/dd/yyyy; hh:mm</li>
+    </ul>
+    <p>Additional notes:</p>`,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -118,9 +216,22 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     id: "Employee_Onboarding_Template",
     name: "Employee Onboarding",
     description: "Template for onboarding new employees",
-    title: "Onboarding  - [Employee Name]",
-    ticketDescription:
-      "New employee onboarding process.\n\nEmployee Name: \nPosition: \nStart Date: \nMarket Center:",
+    title: "Employee Onboarding  - [Employee Name]",
+    ticketDescription: `
+      <ul>
+        <li>Start Date: </li>
+        <li>Employee Name: </li>
+        <li>Contact Information:</li>
+        <ul>
+          <li>Phone:</li>
+          <li>Email:</li>
+        </ul>
+        <li>Market Center:</li>
+        <li>Department:</li>
+        <li>Position: </li>
+        <li>License Number:</li>
+      </ul>
+      `,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -142,8 +253,17 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "New Listing",
     description: "Template for setting up a new property listing",
     title: "Setup New Listing - [Property Address]",
-    ticketDescription:
-      "New listing to be set up.\n\nProperty details:\n- Address: \n- Price: \n- Bedrooms: \n- Bathrooms: \n- Square feet: \n\nTasks needed:\n[ ] Photography scheduled\n[ ] MLS entry\n[ ] Marketing materials\n[ ] Sign installation\n[ ] Open house planning\n\nTarget go-live date:",
+    ticketDescription: `
+      <p>Target go-live date:</p>
+      <p>Property details:</p>
+      <ul>
+        <li>[Address, City, State, ZIP]</li>
+        <li>Price: $</li>
+        <li>Bedrooms: </li>
+        <li>Bathrooms: </li>
+        <li>Square feet: </li>
+      </ul>
+      `,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -160,8 +280,18 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Showing Request",
     description: "Template for scheduling property showings",
     title: "Property Showing Request - [Property Address]",
-    ticketDescription:
-      "Client wants to schedule a showing for the property at [Address].\n\nPreferred dates/times:\n- \n\nClient contact:\n- Name: \n- Phone: \n- Email: \n\nAdditional notes:",
+    ticketDescription: `<p>[Address, City, State, ZIP]</p>
+    <p>Preferred dates/times:</p>
+      <ul>
+        <li>mm/dd/yyyy; hh:mm</li>
+      </ul>
+      <p>Client contact:</p>
+      <ul>
+        <li>Name:</li>
+        <li>Phone:</li>
+        <li>Email:</li>
+      </ul>
+      <p>Access Instructions:</p>`,
     urgency: "MEDIUM",
     isActive: true,
     todos: [
@@ -180,8 +310,20 @@ export const TICKET_TEMPLATES: TicketTemplate[] = [
     name: "Vendor Onboarding",
     description: "Template for onboarding new vendors",
     title: "Vendor Onboarding - [Vendor Name]",
-    ticketDescription:
-      "Onboarding new vendor: [Vendor Name].\n\nServices provided:\n\nContact person:\n- Name: \n- Phone: \n- Email: \n\nRequired documentation:\n[ ] W-9 form\n[ ] Insurance certificates\n[ ] Service agreements\n\nSetup tasks:",
+    ticketDescription: `<p>[Vendor Name]</p>
+    <p>Services provided:</p>
+    <p>Contact person:</p>
+    <ul>
+      <li>Name: </li>
+      <li>Phone: </li>
+      <li>Email:</li>
+    </ul>
+    <p>Required documentation:</p>
+    <ul>
+      <li>[ ] W-9 form</li>
+      <li>[ ] Insurance certificates</li>
+      <li>[ ] Service agreements</li>
+    </ul>`,
     urgency: "LOW",
     isActive: true,
     todos: [

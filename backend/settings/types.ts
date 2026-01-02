@@ -1,5 +1,6 @@
 import type { MarketCenter } from "../marketCenters/types";
 import { NotificationCategory } from "../notifications/types";
+import { TicketTemplate } from "../ticket/templates/types";
 
 export interface MarketCenterNotificationPreferences {
   category: NotificationCategory;
@@ -10,8 +11,16 @@ export interface MarketCenterNotificationPreferences {
   sms: boolean;
 }
 
+export interface AutoCloseSettings {
+  enabled: boolean;
+  awaitingResponseDays: number; // Number of business days before auto-closing. Default: 2
+}
+
 export interface MarketCenterSettings {
   notificationPreferences?: MarketCenterNotificationPreferences[];
+  ticketTemplates?: TicketTemplate[];
+  marketCenter?: MarketCenter;
+  autoClose?: AutoCloseSettings;
 
   // businessHours: BusinessHours;
   // branding: BrandingSettings;
@@ -30,8 +39,6 @@ export interface MarketCenterSettings {
   //   autoAssignment: boolean;
   // };
   // teamMembers: number;
-
-  marketCenter?: MarketCenter;
 }
 
 export interface BusinessHours {
