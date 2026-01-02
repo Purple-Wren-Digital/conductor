@@ -94,7 +94,7 @@ export default function AgentTicketList() {
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  const [viewDashboardHeader, setViewDashboardHeader] = useState(true);
+  const [viewDashboardHeader, setViewDashboardHeader] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -292,8 +292,10 @@ export default function AgentTicketList() {
     [queryKeyParams]
   );
 
-  const agentTicketsQueryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey });
+  const agentTicketsQueryInvalidator = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: agentTicketsQueryKey }),
+    [queryClient, agentTicketsQueryKey]
+  );
 
   const { data: ticketsData, isFetching: ticketsLoading } =
     useFetchAgentTickets({ queryParams, agentTicketsQueryKey, hydrated });
@@ -628,7 +630,7 @@ export default function AgentTicketList() {
         setIsLoading(false);
       }
     },
-    [getToken, handleSendTicketNotifications]
+    [getToken, handleSendTicketNotifications, agentTicketsQueryInvalidator]
   );
 
   const stats = useMemo(() => {
@@ -646,26 +648,55 @@ export default function AgentTicketList() {
         open={viewDashboardHeader}
         onOpenChange={setViewDashboardHeader}
       >
-        <CollapsibleContent>
-          <section className="space-y-4 mb-4">
-            <div className="flex flex-wrap gap-4 items-center justify-between space-y-0.5">
+        <section className="space-y-4 mb-4">
+          <div className="flex flex-wrap gap-4 items-center justify-between ">
+            <div className="flex items-center gap-5">
               <h1 className="text-xl font-bold text-left w-full sm:w-fit">
                 Tickets ({totalTickets})
               </h1>
-              <div className="flex items-center gap-4 w-full sm:w-fit">
-                {permissions?.canCreateTicket && (
-                  <Button
-                    className="gap-2 w-full sm:w-fit"
-                    onClick={() => setIsCreateOpen(true)}
-                    disabled={isLoading}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Ticket
-                  </Button>
-                )}
-              </div>
+              <CollapsibleTrigger asChild>
+                <ToolTip
+                  content={
+                    viewDashboardHeader
+                      ? "Hide ticket search and filters"
+                      : "Show ticket search and filters"
+                  }
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Toggle visibility for ticket search and filters"
+                      onClick={() =>
+                        setViewDashboardHeader(!viewDashboardHeader)
+                      }
+                      className={`h-8 w-8 rounded-full`}
+                    >
+                      {viewDashboardHeader ? (
+                        <Eye className="h-5 w-5" />
+                      ) : (
+                        <EyeClosed className="h-5 w-5" />
+                      )}
+                    </Button>
+                  }
+                />
+              </CollapsibleTrigger>
             </div>
+            <div className="flex items-center gap-4 w-full sm:w-fit">
+              {permissions?.canCreateTicket && (
+                <Button
+                  className="gap-2 w-full sm:w-fit"
+                  onClick={() => setIsCreateOpen(true)}
+                  disabled={isLoading}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Ticket
+                </Button>
+              )}
+            </div>
+          </div>
 
+          {/* Filters */}
+          <CollapsibleContent>
             <div className="space-y-4 mt-4">
               <div className="flex flex-col w-full items-center gap-4 sm:flex-row sm:w-none">
                 <div className="relative flex-1 w-full sm:w-fit">
@@ -944,7 +975,10 @@ export default function AgentTicketList() {
                     value={sortBy}
                     onValueChange={(value: TicketSortBy) => setSortBy(value)}
                     disabled={
-                      ticketsLoading || !displayedTickets || !displayedTickets.length || isLoading
+                      ticketsLoading ||
+                      !displayedTickets ||
+                      !displayedTickets.length ||
+                      isLoading
                     }
                   >
                     <SelectTrigger aria-label="Sort by tickets created on date, updated on date, urgency or status">
@@ -970,7 +1004,10 @@ export default function AgentTicketList() {
                     value={sortDir}
                     onValueChange={(value: OrderBy) => setSortDir(value)}
                     disabled={
-                      ticketsLoading || !displayedTickets || !displayedTickets.length || isLoading
+                      ticketsLoading ||
+                      !displayedTickets ||
+                      !displayedTickets.length ||
+                      isLoading
                     }
                   >
                     <SelectTrigger aria-label="Order by ascending or descending data">
@@ -992,37 +1029,8 @@ export default function AgentTicketList() {
                 </div>
               </div>
             </div>
-          </section>
-        </CollapsibleContent>
-
-        <div className="flex items-center py-2 px-2">
-          <CollapsibleTrigger asChild>
-            <ToolTip
-              content={
-                viewDashboardHeader
-                  ? "Hide ticket dashboard header"
-                  : "Show ticket dashboard header"
-              }
-              trigger={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Toggle ticket dashboard visibility"
-                  onClick={() =>
-                    setViewDashboardHeader(!viewDashboardHeader)
-                  }
-                  className={`h-8 w-8 rounded-full`}
-                >
-                  {viewDashboardHeader ? (
-                    <Eye className="h-5 w-5" />
-                  ) : (
-                    <EyeClosed className="h-5 w-5" />
-                  )}
-                </Button>
-              }
-            />
-          </CollapsibleTrigger>
-        </div>
+          </CollapsibleContent>
+        </section>
 
         <section
           className={`space-y-4 transition-opacity duration-300 ${
@@ -1120,13 +1128,14 @@ export default function AgentTicketList() {
                   />
                 ))}
 
-              {!ticketsLoading && (!displayedTickets || !displayedTickets.length) && (
-                <TableRow className="text-center text-muted-foreground">
-                  <TableCell colSpan={5} className="py-8">
-                    No tickets found
-                  </TableCell>
-                </TableRow>
-              )}
+              {!ticketsLoading &&
+                (!displayedTickets || !displayedTickets.length) && (
+                  <TableRow className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8">
+                      No tickets found
+                    </TableCell>
+                  </TableRow>
+                )}
             </TableBody>
           </Table>
 
