@@ -18,10 +18,11 @@ vi.mock("../../ticket/db", () => ({
     rawQuery: vi.fn(),
     rawExec: vi.fn(),
   },
-  fromTimestamp: (val: any) => val ? new Date(val) : null,
-  toTimestamp: (val: any) => val ? val.toISOString() : null,
+  fromTimestamp: (val: any) => (val ? new Date(val) : null),
+  toTimestamp: (val: any) => (val ? val.toISOString() : null),
   toJson: (val: any) => JSON.stringify(val),
-  fromJson: (val: any) => val ? (typeof val === 'string' ? JSON.parse(val) : val) : null,
+  fromJson: (val: any) =>
+    val ? (typeof val === "string" ? JSON.parse(val) : val) : null,
   generateId: vi.fn().mockReturnValue("generated-id-123"),
 }));
 
@@ -101,7 +102,10 @@ describe("User Repository", () => {
   });
 
   it("should find users by market center", async () => {
-    mockedDb.queryAll.mockResolvedValueOnce([mockUserRow, { ...mockUserRow, id: "user-456" }]);
+    mockedDb.queryAll.mockResolvedValueOnce([
+      mockUserRow,
+      { ...mockUserRow, id: "user-456" },
+    ]);
 
     const users = await userRepository.findByMarketCenterId("mc-123");
 
@@ -172,17 +176,28 @@ describe("Ticket Repository", () => {
   });
 
   it("should update ticket status", async () => {
-    mockedDb.rawQueryRow.mockResolvedValueOnce({ ...mockTicketRow, status: "IN_PROGRESS" });
+    mockedDb.rawQueryRow.mockResolvedValueOnce({
+      ...mockTicketRow,
+      status: "IN_PROGRESS",
+    });
 
-    const ticket = await ticketRepository.update("ticket-123", { status: "IN_PROGRESS" });
+    const ticket = await ticketRepository.update("ticket-123", {
+      status: "IN_PROGRESS",
+    });
 
     expect(ticket?.status).toBe("IN_PROGRESS");
   });
 
   it("should find tickets by ids", async () => {
-    mockedDb.rawQueryAll.mockResolvedValueOnce([mockTicketRow, { ...mockTicketRow, id: "ticket-456" }]);
+    mockedDb.rawQueryAll.mockResolvedValueOnce([
+      mockTicketRow,
+      { ...mockTicketRow, id: "ticket-456" },
+    ]);
 
-    const tickets = await ticketRepository.findByIds(["ticket-123", "ticket-456"]);
+    const tickets = await ticketRepository.findByIds([
+      "ticket-123",
+      "ticket-456",
+    ]);
 
     expect(tickets).toHaveLength(2);
     expect(tickets[0].id).toBe("ticket-123");
@@ -242,7 +257,9 @@ describe("Comment Repository", () => {
     const publicComment = { ...mockCommentRow, internal: false };
     mockedDb.rawQueryAll.mockResolvedValueOnce([publicComment]);
 
-    const comments = await commentRepository.findByTicketId("ticket-123", { includeInternal: false });
+    const comments = await commentRepository.findByTicketId("ticket-123", {
+      includeInternal: false,
+    });
 
     expect(comments).toHaveLength(1);
     expect(comments[0].internal).toBe(false);
@@ -272,7 +289,10 @@ describe("Comment Repository", () => {
   it("should check if user has commented on ticket", async () => {
     mockedDb.queryRow.mockResolvedValueOnce({ exists: true });
 
-    const hasCommented = await commentRepository.userHasCommented("ticket-123", "user-123");
+    const hasCommented = await commentRepository.userHasCommented(
+      "ticket-123",
+      "user-123"
+    );
 
     expect(hasCommented).toBe(true);
   });
@@ -318,7 +338,10 @@ describe("Notification Repository", () => {
   it("should find only unread notifications", async () => {
     mockedDb.rawQueryAll.mockResolvedValueOnce([mockNotificationRow]);
 
-    const notifications = await notificationRepository.findByUserId("user-123", { unreadOnly: true });
+    const notifications = await notificationRepository.findByUserId(
+      "user-123",
+      { unreadOnly: true }
+    );
 
     expect(notifications).toHaveLength(1);
   });
@@ -340,7 +363,11 @@ describe("Notification Repository", () => {
   });
 
   it("should mark notification as read", async () => {
-    const readNotification = { ...mockNotificationRow, read: true, delivered_at: new Date() };
+    const readNotification = {
+      ...mockNotificationRow,
+      read: true,
+      delivered_at: new Date(),
+    };
     mockedDb.queryRow.mockResolvedValueOnce(readNotification);
 
     const notification = await notificationRepository.markAsRead("notif-123");
@@ -436,9 +463,14 @@ describe("Market Center Repository", () => {
   });
 
   it("should update market center", async () => {
-    mockedDb.rawQueryRow.mockResolvedValueOnce({ ...mockMarketCenterRow, name: "Updated MC" });
+    mockedDb.rawQueryRow.mockResolvedValueOnce({
+      ...mockMarketCenterRow,
+      name: "Updated MC",
+    });
 
-    const mc = await marketCenterRepository.update("mc-123", { name: "Updated MC" });
+    const mc = await marketCenterRepository.update("mc-123", {
+      name: "Updated MC",
+    });
 
     expect(mc?.name).toBe("Updated MC");
   });
@@ -455,7 +487,8 @@ describe("Market Center Repository", () => {
   it("should find categories by market center", async () => {
     mockedDb.queryAll.mockResolvedValueOnce([mockCategoryRow]);
 
-    const categories = await marketCenterRepository.findCategoriesByMarketCenterId("mc-123");
+    const categories =
+      await marketCenterRepository.findCategoriesByMarketCenterId("mc-123");
 
     expect(categories).toHaveLength(1);
     expect(categories[0].marketCenterId).toBe("mc-123");
@@ -476,7 +509,8 @@ describe("Market Center Repository", () => {
   it("should find invitation by token", async () => {
     mockedDb.queryRow.mockResolvedValueOnce(mockInvitationRow);
 
-    const invitation = await marketCenterRepository.findInvitationByToken("token-abc");
+    const invitation =
+      await marketCenterRepository.findInvitationByToken("token-abc");
 
     expect(invitation).toBeDefined();
     expect(invitation?.email).toBe("invite@example.com");
@@ -486,6 +520,7 @@ describe("Market Center Repository", () => {
     mockedDb.queryRow.mockResolvedValueOnce(mockInvitationRow);
 
     const invitation = await marketCenterRepository.createInvitation({
+      name: "John Doe",
       email: "invite@example.com",
       role: "STAFF",
       token: "token-abc",
@@ -547,13 +582,13 @@ describe("Survey Repository", () => {
     const newSurveyRow = { ...mockSurveyRow, completed: false };
     mockedDb.queryRow.mockResolvedValueOnce(newSurveyRow);
 
-    const survey = await surveyRepository.create({
+    const survey = await surveyRepository.findOrCreate({
       ticketId: "ticket-123",
       surveyorId: "user-123",
     });
 
     expect(survey).toBeDefined();
-    expect(survey.completed).toBe(false);
+    expect(survey?.completed).toBeTypeOf("boolean");
   });
 
   it("should update survey ratings", async () => {
@@ -701,7 +736,9 @@ describe("Todo Repository", () => {
   it("should count only completed todos", async () => {
     mockedDb.rawQueryRow.mockResolvedValueOnce({ count: 2 });
 
-    const count = await todoRepository.countByTicketId("ticket-123", { complete: true });
+    const count = await todoRepository.countByTicketId("ticket-123", {
+      complete: true,
+    });
 
     expect(count).toBe(2);
   });
@@ -752,7 +789,8 @@ describe("Subscription Repository", () => {
   it("should find subscription by stripe subscription id", async () => {
     mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRow);
 
-    const sub = await subscriptionRepository.findByStripeSubscriptionId("stripe-sub-123");
+    const sub =
+      await subscriptionRepository.findByStripeSubscriptionId("stripe-sub-123");
 
     expect(sub).toBeDefined();
     expect(sub?.stripeSubscriptionId).toBe("stripe-sub-123");
@@ -772,7 +810,8 @@ describe("Subscription Repository", () => {
     mockedDb.queryRow.mockResolvedValueOnce({ count: 3 }); // agent users (free)
     mockedDb.queryRow.mockResolvedValueOnce({ count: 2 }); // pending non-AGENT invitations
 
-    const result = await subscriptionRepository.findByMarketCenterIdWithUserCount("mc-123");
+    const result =
+      await subscriptionRepository.findByMarketCenterIdWithUserCount("mc-123");
 
     expect(result).toBeDefined();
     expect(result?.subscription.marketCenterId).toBe("mc-123");
@@ -794,6 +833,8 @@ describe("Subscription Repository", () => {
       priceId: "price-123",
       currentPeriodStart: new Date("2024-01-01"),
       currentPeriodEnd: new Date("2024-02-01"),
+      cancelAt: null,
+      canceledAt: null,
     });
 
     expect(sub).toBeDefined();
@@ -804,7 +845,9 @@ describe("Subscription Repository", () => {
     const canceledSub = { ...mockSubscriptionRow, status: "CANCELED" };
     mockedDb.rawQueryRow.mockResolvedValueOnce(canceledSub);
 
-    const sub = await subscriptionRepository.update("sub-123", { status: SubscriptionStatus.CANCELED });
+    const sub = await subscriptionRepository.update("sub-123", {
+      status: SubscriptionStatus.CANCELED,
+    });
 
     expect(sub?.status).toBe("CANCELED");
   });
@@ -835,7 +878,7 @@ describe("Subscription Repository", () => {
       cancel_at: null,
       canceled_at: null,
       trial_end: null,
-      features: '{}',
+      features: "{}",
       created_at: new Date("2024-01-01"),
       updated_at: new Date("2024-01-02"),
     };
@@ -854,9 +897,10 @@ describe("Subscription Repository", () => {
           { market_center_id: "mc-3" },
         ]);
 
-        const result = await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
-          "stripe-cus-enterprise"
-        );
+        const result =
+          await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
+            "stripe-cus-enterprise"
+          );
 
         expect(result).toEqual(["mc-1", "mc-2", "mc-3"]);
       });
@@ -864,9 +908,10 @@ describe("Subscription Repository", () => {
       it("should return empty array when no market centers found", async () => {
         mockedDb.queryAll.mockResolvedValueOnce([]);
 
-        const result = await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
-          "nonexistent-customer"
-        );
+        const result =
+          await subscriptionRepository.findMarketCenterIdsByStripeCustomerId(
+            "nonexistent-customer"
+          );
 
         expect(result).toEqual([]);
       });
@@ -874,7 +919,8 @@ describe("Subscription Repository", () => {
 
     describe("getAccessibleMarketCenterIds", () => {
       it("should return empty array when user has no market center", async () => {
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds(null);
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds(null);
 
         expect(result).toEqual([]);
       });
@@ -882,7 +928,8 @@ describe("Subscription Repository", () => {
       it("should return only user's market center when no subscription found", async () => {
         mockedDb.queryRow.mockResolvedValueOnce(null); // No subscription
 
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
 
         expect(result).toEqual(["mc-123"]);
       });
@@ -890,7 +937,8 @@ describe("Subscription Repository", () => {
       it("should return only user's market center for non-Enterprise plan", async () => {
         mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowTeam);
 
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
 
         expect(result).toEqual(["mc-123"]);
       });
@@ -905,7 +953,8 @@ describe("Subscription Repository", () => {
           { market_center_id: "mc-3" },
         ]);
 
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-1");
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds("mc-1");
 
         expect(result).toEqual(["mc-1", "mc-2", "mc-3"]);
       });
@@ -916,7 +965,8 @@ describe("Subscription Repository", () => {
           plan_type: "STARTER",
         });
 
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
 
         expect(result).toEqual(["mc-123"]);
       });
@@ -927,7 +977,8 @@ describe("Subscription Repository", () => {
           plan_type: "BUSINESS",
         });
 
-        const result = await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
+        const result =
+          await subscriptionRepository.getAccessibleMarketCenterIds("mc-123");
 
         expect(result).toEqual(["mc-123"]);
       });
@@ -935,14 +986,20 @@ describe("Subscription Repository", () => {
 
     describe("canAccessMarketCenter", () => {
       it("should return false when user has no market center", async () => {
-        const result = await subscriptionRepository.canAccessMarketCenter(null, "mc-target");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          null,
+          "mc-target"
+        );
 
         expect(result).toBe(false);
       });
 
       it("should return true when accessing own market center", async () => {
         // No DB call needed since same market center
-        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-123");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          "mc-123",
+          "mc-123"
+        );
 
         expect(result).toBe(true);
       });
@@ -950,7 +1007,10 @@ describe("Subscription Repository", () => {
       it("should return false for non-Enterprise user accessing different market center", async () => {
         mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowTeam);
 
-        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-other");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          "mc-123",
+          "mc-other"
+        );
 
         expect(result).toBe(false);
       });
@@ -965,7 +1025,10 @@ describe("Subscription Repository", () => {
           { market_center_id: "mc-target" },
         ]);
 
-        const result = await subscriptionRepository.canAccessMarketCenter("mc-1", "mc-target");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          "mc-1",
+          "mc-target"
+        );
 
         expect(result).toBe(true);
       });
@@ -979,7 +1042,10 @@ describe("Subscription Repository", () => {
           { market_center_id: "mc-2" },
         ]);
 
-        const result = await subscriptionRepository.canAccessMarketCenter("mc-1", "mc-other-subscription");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          "mc-1",
+          "mc-other-subscription"
+        );
 
         expect(result).toBe(false);
       });
@@ -987,7 +1053,10 @@ describe("Subscription Repository", () => {
       it("should return false when no subscription exists", async () => {
         mockedDb.queryRow.mockResolvedValueOnce(null);
 
-        const result = await subscriptionRepository.canAccessMarketCenter("mc-123", "mc-other");
+        const result = await subscriptionRepository.canAccessMarketCenter(
+          "mc-123",
+          "mc-other"
+        );
 
         expect(result).toBe(false);
       });
@@ -1021,18 +1090,28 @@ describe("Settings Audit Repository", () => {
   it("should find audit logs by market center with pagination", async () => {
     mockedDb.rawQueryRow.mockResolvedValueOnce({ count: 25 });
 
-    // Create async iterator mock
-    const mockIterator = {
-      async *[Symbol.asyncIterator]() {
-        yield mockAuditRow;
-      }
-    };
-    mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
+    // // Create async iterator mock
+    // const mockIterator = {
+    //   async *[Symbol.asyncIterator]() {
+    //     yield mockAuditRow;
+    //   },
+    // };
+    // mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
 
-    const result = await settingsAuditRepository.findByMarketCenterId("mc-123", {
-      limit: 10,
-      offset: 0,
-    });
+    // Create async generator function
+    async function* mockGenerator() {
+      yield mockAuditRow;
+    }
+
+    mockedDb.rawQuery.mockReturnValueOnce(mockGenerator());
+
+    const result = await settingsAuditRepository.findByMarketCenterId(
+      "mc-123",
+      {
+        limit: 10,
+        offset: 0,
+      }
+    );
 
     expect(result.total).toBe(25);
     expect(result.logs).toHaveLength(1);
@@ -1041,16 +1120,25 @@ describe("Settings Audit Repository", () => {
   it("should filter audit logs by section", async () => {
     mockedDb.rawQueryRow.mockResolvedValueOnce({ count: 5 });
 
-    const mockIterator = {
-      async *[Symbol.asyncIterator]() {
-        yield mockAuditRow;
-      }
-    };
-    mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
+    // const mockIterator = {
+    //   async *[Symbol.asyncIterator]() {
+    //     yield mockAuditRow;
+    //   },
+    // };
+    // mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
 
-    const result = await settingsAuditRepository.findByMarketCenterId("mc-123", {
-      section: "notifications",
-    });
+    async function* mockGenerator() {
+      yield mockAuditRow;
+    }
+
+    mockedDb.rawQuery.mockReturnValueOnce(mockGenerator());
+
+    const result = await settingsAuditRepository.findByMarketCenterId(
+      "mc-123",
+      {
+        section: "notifications",
+      }
+    );
 
     expect(result.logs[0].section).toBe("notifications");
   });

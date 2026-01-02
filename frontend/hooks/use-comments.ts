@@ -191,7 +191,11 @@ export function useCreateComment() {
           context.previousComments
         );
       }
-      toast.error(error.message || "Failed to add comment");
+      console.error("Failed to add comment", error);
+
+      if (!error?.message?.includes("payload not formatted correctly")) {
+        toast.error("Failed to add comment");
+      }
     },
     onSuccess: async (response, { ticketId, onSubmitSuccess }, context) => {
       const newComment = response.comment;
@@ -235,7 +239,7 @@ export function useCreateComment() {
                   createdOn: newComment.createdAt,
                   isInternal: newComment.internal,
                   commenterId: newComment.userId,
-                  commenterName: newComment.user?.name || "",
+                  commenterName: newComment.user?.name || "A team member",
                   comment: stripHtmlTags(newComment.content),
                 },
               },

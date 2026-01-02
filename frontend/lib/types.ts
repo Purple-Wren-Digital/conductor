@@ -170,9 +170,26 @@ export interface Survey {
   createdAt: Date;
   updatedAt?: Date;
   ticket?: Ticket;
-  surveyor?: PrismaUser;
-  assignee?: PrismaUser;
-  marketCenter?: MarketCenter;
+  surveyor?:
+    | PrismaUser
+    | {
+        id: string;
+        name: string;
+        email: string;
+      };
+  assignee?:
+    | PrismaUser
+    | {
+        id: string;
+        name: string;
+        email: string;
+      };
+  marketCenter?:
+    | MarketCenter
+    | {
+        id: string;
+        name: string;
+      };
 }
 
 export interface SurveyResults {

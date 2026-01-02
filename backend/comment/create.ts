@@ -78,7 +78,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     ) {
       usersToNotify.push({
         id: ticket.assigneeId,
-        name: ticket.assignee?.name || "",
+        name: ticket.assignee?.name || "The assigned staff member",
         email: ticket.assignee?.email || "",
         updateType: "created",
       });
@@ -95,14 +95,16 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     ) {
       usersToNotify.push({
         id: ticket.creatorId,
-        name: ticket.creator?.name || "",
+        name: ticket.creator?.name || "The ticket creator",
         email: ticket.creator?.email || "",
         updateType: "created",
       });
     }
 
     // Get previous comments to notify other commenters
-    const previousComments = await commentRepository.findByTicketIdWithUsers(req.ticketId);
+    const previousComments = await commentRepository.findByTicketIdWithUsers(
+      req.ticketId
+    );
 
     const notifiedUserIds = new Set(usersToNotify.map((user) => user.id));
 
@@ -115,7 +117,7 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       if (!alreadyNotified && canAccess) {
         usersToNotify.push({
           id: commenter.id,
-          name: commenter.name || "",
+          name: commenter.name || "A team member",
           email: commenter.email || "",
           updateType: "created",
         });
@@ -135,7 +137,11 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
 
     // Record first response for SLA tracking if staff member comments
     // A staff/admin comment counts as a response to the ticket
-    if (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER" || userContext.role === "ADMIN") {
+    if (
+      userContext.role === "STAFF" ||
+      userContext.role === "STAFF_LEADER" ||
+      userContext.role === "ADMIN"
+    ) {
       await slaService.recordFirstResponse(req.ticketId);
     }
 

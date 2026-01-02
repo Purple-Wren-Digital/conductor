@@ -128,9 +128,11 @@ export async function createAndSendNotification(
     );
 
     if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Create and Send Notification - Failed:", errorData);
       throw new Error(
-        response?.statusText
-          ? response.statusText
+        errorData?.message
+          ? errorData.message
           : "Failed to create and send notification"
       );
     }

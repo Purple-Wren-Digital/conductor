@@ -27,10 +27,14 @@ function rowToSurvey(row: SurveyRow): Survey {
     ticketId: row.ticket_id,
     comment: row.comment,
     createdAt: fromTimestamp(row.created_at)!,
-    updatedAt: row.updated_at ? fromTimestamp(row.updated_at) : undefined,
+    updatedAt: fromTimestamp(row?.updated_at) ?? undefined,
     surveyorId: row.surveyor_id,
-    assigneeRating: row.assignee_rating ? parseFloat(row.assignee_rating) : null,
-    marketCenterRating: row.market_center_rating ? parseFloat(row.market_center_rating) : null,
+    assigneeRating: row.assignee_rating
+      ? parseFloat(row.assignee_rating)
+      : null,
+    marketCenterRating: row.market_center_rating
+      ? parseFloat(row.market_center_rating)
+      : null,
     overallRating: row.overall_rating ? parseFloat(row.overall_rating) : null,
     assigneeId: row.assignee_id,
     marketCenterId: row.market_center_id,
@@ -56,12 +60,15 @@ export const surveyRepository = {
   },
 
   // Create survey
-  async create(data: {
+  async findOrCreate(data: {
     ticketId: string;
     surveyorId: string;
     assigneeId?: string | null;
     marketCenterId?: string | null;
-  }): Promise<Survey> {
+  }): Promise<Survey | null> {
+    const existing = await this.findByTicketId(data.ticketId);
+    if (existing) return existing;
+
     const row = await db.queryRow<SurveyRow>`
       INSERT INTO ticket_ratings (
         ticket_id, surveyor_id, assignee_id, market_center_id, completed, created_at
@@ -75,18 +82,21 @@ export const surveyRepository = {
       )
       RETURNING *
     `;
-    return rowToSurvey(row!);
+    return row ? rowToSurvey(row) : null;
   },
 
   // Update survey (submit ratings)
-  async update(id: string, data: Partial<{
-    assigneeRating: number | null;
-    marketCenterRating: number | null;
-    overallRating: number | null;
-    comment: string | null;
-    completed: boolean;
-  }>): Promise<Survey | null> {
-    const updates: string[] = ['updated_at = NOW()'];
+  async update(
+    id: string,
+    data: Partial<{
+      assigneeRating: number | null;
+      marketCenterRating: number | null;
+      overallRating: number | null;
+      comment: string | null;
+      completed: boolean;
+    }>
+  ): Promise<Survey | null> {
+    const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -115,7 +125,7 @@ export const surveyRepository = {
 
     const sql = `
       UPDATE ticket_ratings
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
@@ -148,9 +158,15 @@ export const surveyRepository = {
 
     return {
       totalSurveys: result?.total ?? 0,
-      assigneeAverageRating: result?.assignee_avg ? parseFloat(result.assignee_avg) : null,
-      overallAverageRating: result?.overall_avg ? parseFloat(result.overall_avg) : null,
-      marketCenterAverageRating: result?.mc_avg ? parseFloat(result.mc_avg) : null,
+      assigneeAverageRating: result?.assignee_avg
+        ? parseFloat(result.assignee_avg)
+        : null,
+      overallAverageRating: result?.overall_avg
+        ? parseFloat(result.overall_avg)
+        : null,
+      marketCenterAverageRating: result?.mc_avg
+        ? parseFloat(result.mc_avg)
+        : null,
     };
   },
 
@@ -178,9 +194,15 @@ export const surveyRepository = {
 
     return {
       totalSurveys: result?.total ?? 0,
-      assigneeAverageRating: result?.assignee_avg ? parseFloat(result.assignee_avg) : null,
-      overallAverageRating: result?.overall_avg ? parseFloat(result.overall_avg) : null,
-      marketCenterAverageRating: result?.mc_avg ? parseFloat(result.mc_avg) : null,
+      assigneeAverageRating: result?.assignee_avg
+        ? parseFloat(result.assignee_avg)
+        : null,
+      overallAverageRating: result?.overall_avg
+        ? parseFloat(result.overall_avg)
+        : null,
+      marketCenterAverageRating: result?.mc_avg
+        ? parseFloat(result.mc_avg)
+        : null,
     };
   },
 
@@ -193,7 +215,9 @@ export const surveyRepository = {
   },
 
   // Check if surveys exist for market center
-  async hasCompletedSurveysForMarketCenter(marketCenterId: string): Promise<boolean> {
+  async hasCompletedSurveysForMarketCenter(
+    marketCenterId: string
+  ): Promise<boolean> {
     const result = await db.queryRow<{ exists: boolean }>`
       SELECT EXISTS(SELECT 1 FROM ticket_ratings WHERE market_center_id = ${marketCenterId} AND completed = true) as exists
     `;
@@ -224,9 +248,15 @@ export const surveyRepository = {
 
     return {
       totalSurveys: result?.total ?? 0,
-      marketCenterAverageRating: result?.mc_avg ? parseFloat(result.mc_avg) : null,
-      overallAverageRating: result?.overall_avg ? parseFloat(result.overall_avg) : null,
-      assigneeAverageRating: result?.assignee_avg ? parseFloat(result.assignee_avg) : null,
+      marketCenterAverageRating: result?.mc_avg
+        ? parseFloat(result.mc_avg)
+        : null,
+      overallAverageRating: result?.overall_avg
+        ? parseFloat(result.overall_avg)
+        : null,
+      assigneeAverageRating: result?.assignee_avg
+        ? parseFloat(result.assignee_avg)
+        : null,
     };
   },
 
@@ -290,28 +320,36 @@ export const surveyRepository = {
 
     // Fetch surveyor
     if (row.surveyor_id) {
-      const surveyor = await db.queryRow<{ id: string; name: string | null; email: string }>`
+      const surveyor = await db.queryRow<{
+        id: string;
+        name: string | null;
+        email: string;
+      }>`
         SELECT id, name, email FROM users WHERE id = ${row.surveyor_id}
       `;
       if (surveyor) {
         survey.surveyor = {
           id: surveyor.id,
-          name: surveyor.name ?? "",
-          email: surveyor.email,
+          name: surveyor?.name ?? "",
+          email: surveyor?.email ?? "",
         };
       }
     }
 
     // Fetch assignee
     if (row.assignee_id) {
-      const assignee = await db.queryRow<{ id: string; name: string | null; email: string }>`
+      const assignee = await db.queryRow<{
+        id: string;
+        name: string | null;
+        email: string;
+      }>`
         SELECT id, name, email FROM users WHERE id = ${row.assignee_id}
       `;
       if (assignee) {
         survey.assignee = {
           id: assignee.id,
-          name: assignee.name ?? "",
-          email: assignee.email,
+          name: assignee?.name ?? "",
+          email: assignee?.email ?? "",
         };
       }
     }

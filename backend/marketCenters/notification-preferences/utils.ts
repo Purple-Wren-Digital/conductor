@@ -2,24 +2,24 @@ import { NotificationCategory, NotificationFrequency } from "../../utils";
 
 export const defaultMarketCenterNotificationPreferences = [
   // ACTIVITY: SUMMARY
-  {
-    frequency: "DAILY" as NotificationFrequency,
-    category: "ACTIVITY" as NotificationCategory,
-    type: "Daily Summary",
-    email: true,
-    inApp: true,
-    push: false,
-    sms: false,
-  },
-  {
-    frequency: "WEEKLY" as NotificationFrequency,
-    category: "ACTIVITY" as NotificationCategory,
-    type: "Weekly Report",
-    email: true,
-    inApp: true,
-    push: false,
-    sms: false,
-  },
+  // {
+  //   frequency: "DAILY" as NotificationFrequency,
+  //   category: "ACTIVITY" as NotificationCategory,
+  //   type: "Daily Summary",
+  //   email: true,
+  //   inApp: true,
+  //   push: false,
+  //   sms: false,
+  // },
+  // {
+  //   frequency: "WEEKLY" as NotificationFrequency,
+  //   category: "ACTIVITY" as NotificationCategory,
+  //   type: "Weekly Report",
+  //   email: true,
+  //   inApp: true,
+  //   push: false,
+  //   sms: false,
+  // },
   // ACTIVITY: TICKETS
   {
     frequency: "INSTANT" as NotificationFrequency,
