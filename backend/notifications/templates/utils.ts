@@ -384,6 +384,8 @@ export const formatNotificationWithTemplate = (
       dueDate: content.data.createdTicket?.dueDate
         ? new Date(content.data.createdTicket?.dueDate).toISOString()
         : undefined,
+      assigneeId: content.data.createdTicket?.assigneeId,
+      assigneeName: content.data.createdTicket?.assigneeName,
     };
     const subject = renderTemplate({
       templateContent: template.subject,
