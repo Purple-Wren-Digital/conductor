@@ -19,6 +19,7 @@ import { defaultMarketCenterNotificationPreferences } from "../../marketCenters/
 import {
   formatNotificationWithoutTemplate,
   formatNotificationWithTemplate,
+  notificationTemplatesDefault,
 } from "./utils";
 
 export interface FormatNotificationRequest {
@@ -147,6 +148,7 @@ export const format = api<
         "Notifications of this type are disabled for the user or market center"
       );
     }
+    // First try to find a market-center-specific template in the database
     const notificationTemplateRow = await db.queryRow<NotificationTemplateRow>`
         SELECT * FROM notification_templates
         WHERE template_name = ${req.id}
@@ -154,11 +156,36 @@ export const format = api<
         AND market_center_id = ${userContext.marketCenterId}
       `;
 
-    if (!notificationTemplateRow) {
-      throw APIError.notFound("Notification Template not found");
+    let notificationTemplate: NotificationTemplate;
+
+    if (notificationTemplateRow) {
+      notificationTemplate = convertRowToNotificationTemplate(notificationTemplateRow);
+    } else {
+      // Fall back to default template from code
+      const defaultTemplate = notificationTemplatesDefault.find(
+        (t) => t.templateName === req.id
+      );
+
+      if (!defaultTemplate) {
+        throw APIError.notFound("Notification Template not found");
+      }
+
+      notificationTemplate = {
+        id: `default-${defaultTemplate.templateName}`,
+        templateName: defaultTemplate.templateName,
+        templateDescription: defaultTemplate.templateDescription,
+        subject: defaultTemplate.subject,
+        body: defaultTemplate.body,
+        category: defaultTemplate.category,
+        channel: defaultTemplate.channel,
+        isDefault: defaultTemplate.isDefault,
+        isActive: defaultTemplate.isActive,
+        variables: defaultTemplate.variables,
+        createdAt: new Date(),
+        marketCenterId: null,
+        marketCenterDefaultTemplates: [],
+      };
     }
-    const notificationTemplate: NotificationTemplate =
-      convertRowToNotificationTemplate(notificationTemplateRow);
 
     let formattedNotification: CreateNotificationPayload | null = null;
 
