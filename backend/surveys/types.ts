@@ -16,9 +16,26 @@ export interface Survey {
   createdAt: Date;
   updatedAt?: Date;
   ticket?: Ticket;
-  surveyor?: User;
-  assignee?: User;
-  marketCenter?: MarketCenter;
+  surveyor?:
+    | User
+    | {
+        id: string;
+        name: string;
+        email: string;
+      };
+  assignee?:
+    | User
+    | {
+        id: string;
+        name: string;
+        email: string;
+      };
+  marketCenter?:
+    | MarketCenter
+    | {
+        id: string;
+        name: string;
+      };
 }
 
 export interface SurveyResults {
