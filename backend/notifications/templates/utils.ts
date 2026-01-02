@@ -202,7 +202,7 @@ export const notificationTemplatesDefault = [
     channel: "IN_APP" as NotificationChannel,
     type: "New Comments",
     subject: "New Comment for {{ticket_title}}",
-    body: `{{commenter_name}} added a new comment to "{{ticket_title}}": {{comment}}`,
+    body: `{{commenter_name}} added a new comment to "{{ticket_title}}": "{{comment}}"`,
     variables: NotificationTemplateVariables.NewCommentNotificationProps,
     isDefault: true,
     isActive: true,
@@ -516,8 +516,8 @@ export const formatNotificationWithTemplate = (
     const context: NotificationContext = {
       ticketNumber: content.data.newComment?.ticketNumber,
       ticketTitle: content.data.newComment?.ticketTitle,
-      creatorName: content.data.newComment?.commenterName,
-      creatorId: content.data.newComment?.commenterId,
+      commenterName: content.data.newComment?.commenterName,
+      commenterId: content.data.newComment?.commenterId,
       createdOn: content.data.newComment?.createdOn
         ? new Date(content.data.newComment?.createdOn).toISOString()
         : undefined,

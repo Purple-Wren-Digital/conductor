@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog/base-dialog";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useStore } from "@/context/store-provider";
@@ -20,7 +21,6 @@ import type { Notification, NotificationData } from "@/lib/types";
 import { Bell, CheckCheck, Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UseMutationResult } from "@tanstack/react-query";
-import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function AllNotifications({
   allNotifications,
@@ -197,19 +197,22 @@ export default function AllNotifications({
                     <div
                       className={`max-w-3xs pl-1 ${url && "hover:underline"}`}
                     >
-                      <span className="text-sm font-medium">
-                        {notification?.title &&
-                          sanitizeHtml(notification.title)}
-                      </span>
+                      {notification?.title && (
+                        <SafeHtml
+                          content={notification.title}
+                          className="text-sm font-medium"
+                        />
+                      )}
                       {notification?.createdAt && (
                         <p className="text-xs text-muted-foreground">
                           {new Date(notification.createdAt).toLocaleString()}
                         </p>
                       )}
                       {notification?.body && (
-                        <span className="text-xs text-muted-foreground line-clamp-3 text-ellipsis">
-                          {sanitizeHtml(notification.body)}
-                        </span>
+                        <SafeHtml
+                          content={notification.body}
+                          className="text-xs text-muted-foreground line-clamp-2 text-ellipsis"
+                        />
                       )}
                     </div>
 
