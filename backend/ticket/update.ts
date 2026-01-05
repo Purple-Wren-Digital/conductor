@@ -9,7 +9,11 @@ import {
 } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canModifyTicket, canReassignTicket } from "../auth/permissions";
+import {
+  canDeleteTicket,
+  canModifyTicket,
+  canReassignTicket,
+} from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";
 import { UsersToNotify } from "../notifications/types";
 import { slaService } from "../sla/sla.service";
@@ -57,7 +61,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     const oldTicket = await ticketRepository.findByIdWithRelations(
       req.ticketId
     );
-    if (!oldTicket) {
+    if (!oldTicket || !oldTicket?.creatorId) {
       throw APIError.notFound("Ticket not found");
     }
 
@@ -89,6 +93,98 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       );
     }
 
+    const marketCenterId =
+      oldTicket.assignee?.marketCenterId ||
+      oldTicket.category?.marketCenterId ||
+      oldTicket.creator?.marketCenterId ||
+      null;
+
+    // CLOSE TICKET FIRST
+    if (req?.status && req.status === "RESOLVED") {
+      const canClose = await canDeleteTicket(userContext, req.ticketId);
+      if (!canClose) {
+        throw APIError.permissionDenied(
+          "You do not have permission to close this ticket"
+        );
+      }
+
+      let surveyId: string | null = null;
+
+      if (!marketCenterId) {
+        throw APIError.notFound("Market Center not found");
+      }
+
+      if (oldTicket?.creator?.role === "AGENT") {
+        const survey = await surveyRepository.findOrCreate({
+          ticketId: req.ticketId,
+          surveyorId: oldTicket.creatorId!,
+          assigneeId: oldTicket.assigneeId || null,
+          marketCenterId: marketCenterId,
+        });
+        if (!survey || !survey?.id) {
+          throw APIError.internal("Failed to find or create ticket survey");
+        }
+        surveyId = survey.id;
+      }
+
+      // Update ticket status to resolved
+      await ticketRepository.update(req.ticketId, {
+        status: "RESOLVED",
+        resolvedAt: new Date(),
+        surveyId: surveyId,
+      });
+
+      await slaService.recordResolution(req.ticketId);
+
+      const closedTicket = await ticketRepository.findByIdWithRelations(
+        req.ticketId
+      );
+      if (!closedTicket) {
+        throw APIError.notFound("Ticket not found after closing");
+      }
+
+      await ticketRepository.createHistory({
+        ticketId: req.ticketId,
+        action: "CLOSE",
+        field: "status",
+        previousValue: oldTicket.status,
+        newValue: "RESOLVED",
+        snapshot: oldTicket as any,
+        changedById: userContext.userId,
+      });
+
+      return {
+        ticket: closedTicket,
+        usersToNotify: [
+          {
+            id: closedTicket.creatorId,
+            name: closedTicket.creator?.name || "",
+            email: closedTicket.creator?.email || "",
+            updateType: surveyId ? "ticketSurvey" : "unchanged",
+          },
+          oldTicket?.assigneeId &&
+          oldTicket?.assignee &&
+          oldTicket.creatorId !== oldTicket?.assigneeId
+            ? {
+                id: oldTicket.assigneeId,
+                name: oldTicket.assignee?.name || "",
+                email: oldTicket.assignee?.email || "",
+                updateType: "unchanged",
+              }
+            : undefined,
+        ].filter(Boolean) as UsersToNotify[],
+        changedDetails: [
+          {
+            label: "status",
+            originalValue: oldTicket.status,
+            newValue: "RESOLVED",
+          },
+        ],
+      };
+    }
+
+    // UPDATE OTHER TICKET FIELDS IF NOT CLOSING
+
     const updateData: Partial<{
       title: string | null;
       description: string | null;
@@ -110,6 +206,23 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       changedById: string;
     }> = [];
     let usersToNotify: UsersToNotify[] = [];
+
+    if (
+      req?.status &&
+      req.status !== "RESOLVED" &&
+      req.status !== oldTicket.status
+    ) {
+      updateData.status = req.status;
+      ticketHistoryData.push({
+        ticketId: req.ticketId,
+        action: "UPDATE",
+        field: "status",
+        previousValue: oldTicket.status,
+        newValue: req.status,
+        snapshot: oldTicket,
+        changedById: userContext.userId,
+      });
+    }
 
     if (req?.title && req.title !== oldTicket.title) {
       updateData.title = req.title;
@@ -178,49 +291,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           snapshot: oldTicket,
           changedById: userContext.userId,
         });
-      }
-    }
-
-    if (
-      req?.status &&
-      req.status !== oldTicket.status &&
-      req.assigneeId !== "Unassigned"
-    ) {
-      updateData.status = req.status;
-      ticketHistoryData.push({
-        ticketId: req.ticketId,
-        action: "UPDATE",
-        field: "status",
-        previousValue: oldTicket.status,
-        newValue: req.status,
-        snapshot: oldTicket,
-        changedById: userContext.userId,
-      });
-      if (req.status === "RESOLVED") {
-        updateData.resolvedAt = new Date();
-        // Record resolution for SLA tracking
-        await slaService.recordResolution(req.ticketId);
-        const marketCenterId =
-          oldTicket.assignee?.marketCenterId ||
-          oldTicket.category?.marketCenterId ||
-          oldTicket.creator?.marketCenterId ||
-          null;
-
-        if (marketCenterId) {
-          const survey = await surveyRepository.create({
-            ticketId: req.ticketId,
-            surveyorId: oldTicket.creatorId!,
-            assigneeId: oldTicket.assigneeId || null,
-            marketCenterId: marketCenterId,
-          });
-          updateData.surveyId = survey.id;
-          usersToNotify.push({
-            id: oldTicket.creatorId ?? "N/a",
-            name: oldTicket.creator?.name ?? "",
-            email: oldTicket.creator?.email ?? "",
-            updateType: "ticketSurvey",
-          });
-        }
       }
     }
 
@@ -379,20 +449,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         });
       }
 
-      const formattedTicket: Ticket = {
-        ...ticket,
-        status: ticket?.status
-          ? ticket.status
-          : oldTicket?.status
-            ? oldTicket.status
-            : "UNASSIGNED",
-        urgency: ticket?.urgency
-          ? ticket.urgency
-          : oldTicket?.urgency
-            ? oldTicket.urgency
-            : "MEDIUM",
-      };
-
       const allChanges: ActivityUpdates[] = ticketHistoryData.map((history) => {
         return {
           label: history.field || "N/a",
@@ -401,8 +457,29 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         };
       });
 
+      if (!usersToNotify.length) {
+        usersToNotify.push({
+          id: ticket.creatorId!,
+          name: ticket.creator?.name || "",
+          email: ticket.creator?.email || "",
+          updateType: "unchanged",
+        });
+        if (
+          ticket?.assigneeId &&
+          ticket?.assignee &&
+          ticket.creatorId !== oldTicket?.assigneeId
+        ) {
+          usersToNotify.push({
+            id: ticket.assigneeId,
+            name: ticket.assignee?.name || "",
+            email: ticket.assignee?.email || "",
+            updateType: "unchanged",
+          });
+        }
+      }
+
       return {
-        ticket: formattedTicket,
+        ticket: ticket,
         usersToNotify: usersToNotify,
         changedDetails: allChanges,
       };

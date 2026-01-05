@@ -19,7 +19,10 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  LockIcon,
   Mailbox,
+  MessageSquare,
+  SquareCheckBig,
   SquarePen,
   Trash2,
   Undo2,
@@ -73,8 +76,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
 
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
-      case "CREATE":
-        return <Clipboard className="h-3 w-3" />;
+      case "COMMENT":
+        return <MessageSquare className="h-3 w-3" />;
       case "UPDATE":
         return <SquarePen className="h-3 w-3" />;
       case "DELETE":
@@ -87,8 +90,14 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPEN":
       case "REOPENED":
         return <Undo2 className="h-3 w-3" />;
+      case "CLOSE":
+      case "CLOSED":
+        return <LockIcon className="h-3 w-3" />;
+      case "CREATE":
+        return <SquareCheckBig className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -127,6 +136,13 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
             userHistoryLogs &&
             userHistoryLogs.length > 0 &&
             userHistoryLogs.map((log: UserHistory, index: number) => {
+              const action =
+                log?.newValue && log?.newValue === "RESOLVED"
+                  ? "CLOSE"
+                  : log?.field === "comment"
+                    ? "COMMENT"
+                    : log?.action;
+
               const isViewingUser = userId === log?.userId; //|| userId === log?.changedById;
               const isViewingChangedBy = userId === log?.changedById;
               const isViewing = isViewingUser || isViewingChangedBy;
@@ -162,8 +178,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                   </TableCell>
                   {/* ACTION */}
                   <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                    {getActionIcon(log.action)}
-                    {log.action.toLowerCase()}
+                    {getActionIcon(action.split("_").join(" "))}
+                    {action.split("_").join(" ").toLowerCase()}
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-medium capitalize">

@@ -1,5 +1,9 @@
 import { api, APIError } from "encore.dev/api";
-import { ticketRepository, surveyRepository } from "../ticket/db";
+import {
+  ticketRepository,
+  surveyRepository,
+  userRepository,
+} from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
 
@@ -34,18 +38,31 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
       throw APIError.notFound("Ticket not found");
     }
 
+    const surveyorId = req.surveyorId ?? ticket?.creator?.id; // should be the same id
+
+    const surveyor = await userRepository.findById(surveyorId);
+
+    if (!surveyor) {
+      throw APIError.notFound("Surveyor not found");
+    }
+
+    if (surveyor.role !== "AGENT") {
+      throw APIError.invalidArgument("Surveyor must be an agent");
+    }
+
     const marketCenterId =
       req?.marketCenterId ||
       ticket?.assignee?.marketCenterId ||
       ticket?.category?.marketCenterId ||
       ticket?.creator?.marketCenterId ||
+      surveyor?.marketCenterId ||
       null;
 
     if (!marketCenterId) {
       throw APIError.notFound("Market Center not found");
     }
 
-    await surveyRepository.create({
+    await surveyRepository.findOrCreate({
       ticketId: req.ticketId,
       surveyorId: req.surveyorId,
       assigneeId: ticket?.assigneeId ?? null,

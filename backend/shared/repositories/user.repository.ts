@@ -179,9 +179,10 @@ export const userRepository = {
   async findByMarketCenterIdAndRole(
     marketCenterId: string,
     role: UserRole,
-    options?: { activeOnly?: boolean }
+    options?: { activeOnly?: boolean; excludeUserId?: string }
   ): Promise<User[]> {
     const activeOnly = options?.activeOnly ?? true;
+    const excludeUserId = options?.excludeUserId;
 
     if (activeOnly) {
       const rows = await db.queryAll<UserRow>`
@@ -189,6 +190,7 @@ export const userRepository = {
         WHERE market_center_id = ${marketCenterId}
           AND role = ${role}
           AND is_active = true
+          ${excludeUserId ? `AND id != ${excludeUserId}` : ""}
         ORDER BY name ASC
       `;
       return rows.map(rowToUser);
@@ -197,6 +199,7 @@ export const userRepository = {
         SELECT * FROM users
         WHERE market_center_id = ${marketCenterId}
           AND role = ${role}
+          ${excludeUserId ? `AND id != ${excludeUserId}` : ""}
         ORDER BY name ASC
       `;
       return rows.map(rowToUser);
