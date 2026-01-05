@@ -87,6 +87,7 @@ export default function MarketCenterHistory({
       let newValueLink = "";
       let previousValueLink = "";
 
+      // New Value Parsing
       if (log?.field && log?.field?.includes("category") && log?.newValue) {
         try {
           const parsed = JSON.parse(log.newValue);
@@ -105,10 +106,21 @@ export default function MarketCenterHistory({
           newValue = log.newValue ?? "";
           newValueLink = "";
         }
+      } else if (
+        log?.field &&
+        log?.field?.includes("autoClose") &&
+        log?.newValue
+      ) {
+        const parsedNewValue: {
+          enabled: boolean;
+          awaitingResponseDays: number;
+        } = JSON.parse(log.newValue);
+        newValue = `${parsedNewValue?.enabled === true ? `${parsedNewValue.awaitingResponseDays} days` : "Disabled"}`;
       } else {
-        newValue = log.newValue ?? "";
+        newValue = log.newValue ?? "N/a";
       }
 
+      // Previous Value Parsing
       if (
         log?.field &&
         log?.field?.includes("category") &&
@@ -135,8 +147,18 @@ export default function MarketCenterHistory({
           previousValue = log.previousValue;
           previousValueLink = "";
         }
+      } else if (
+        log?.field &&
+        log?.field?.includes("autoClose") &&
+        log?.previousValue
+      ) {
+        const parsedPreviousValue: {
+          enabled: boolean;
+          awaitingResponseDays: number;
+        } = JSON.parse(log.previousValue);
+        previousValue = `${parsedPreviousValue?.enabled === true ? `${parsedPreviousValue.awaitingResponseDays} days` : "Disabled"}`;
       } else {
-        previousValue = log?.previousValue ?? "";
+        previousValue = log?.previousValue ?? "N/a";
       }
 
       return {
@@ -214,7 +236,7 @@ export default function MarketCenterHistory({
               processedLogs.map(
                 (log: FormattedMarketCenterHistory, index: number) => {
                   if (!log) return null;
-                  // if (log.field)
+
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
@@ -239,7 +261,7 @@ export default function MarketCenterHistory({
                           content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log.newValue}
+                              {log?.newValue}
                             </p>
                           }
                         />
@@ -256,7 +278,7 @@ export default function MarketCenterHistory({
                           content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log.previousValue}
+                              {log?.previousValue}
                             </p>
                           }
                         />

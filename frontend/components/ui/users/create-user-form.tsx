@@ -224,11 +224,11 @@ export default function CreateUser({
                 setFormData({ ...formData, name: e.target.value })
               }
               placeholder="Enter full name"
-              className={formErrors.name ? "border-destructive" : ""}
+              className={formErrors?.name ? "border-destructive" : ""}
             />
-            {formErrors.name && (
-              <p className="text-sm text-destructive">{formErrors.name}</p>
-            )}
+            <p className="text-sm text-destructive">
+              {formErrors?.name && formErrors.name}
+            </p>
           </div>
 
           {/* EMAIL */}
@@ -244,11 +244,11 @@ export default function CreateUser({
                 setFormData({ ...formData, email: e.target.value })
               }
               placeholder="Enter email address"
-              className={formErrors.email ? "border-destructive" : ""}
+              className={formErrors?.email ? "border-destructive" : ""}
             />
-            {formErrors.email && (
-              <p className="text-sm text-destructive">{formErrors.email}</p>
-            )}
+            <p className="text-sm text-destructive">
+              {formErrors?.email && formErrors.email}
+            </p>
           </div>
 
           {/* ROLE */}
@@ -281,12 +281,12 @@ export default function CreateUser({
                 ))}
               </SelectContent>
             </Select>
-            {formErrors.role && (
-              <p className="text-sm text-destructive">{formErrors.role}</p>
-            )}
+            <p className="text-sm text-destructive">
+              {formErrors?.role && formErrors.role}
+            </p>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+          <div className="flex items-center justify-end gap-3 mt-2 pt-4 border-t">
             <Button
               type="button"
               variant="outline"

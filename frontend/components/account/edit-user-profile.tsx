@@ -170,112 +170,113 @@ const EditUserProfile = ({
             Edit Details
           </p>
         </div>
-        <form
-          onSubmit={handleUpdateUser}
-          className="space-y-2 lg:flex lg:flex-row lg:flex-wrap lg:gap-4 lg:items-center"
-        >
-          {/* FIRST NAME */}
-          <div className="space-y-2">
-            <Label htmlFor="username">First Name</Label>
-            <div className="w-full">
-              <Input
-                id="firstName"
-                value={formData.firstName}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    firstName: e.target.value,
-                  })
-                }
-                onKeyDown={handleKeyDown}
-                placeholder={"Enter your first name"}
-                disabled={isSubmitting || !isCurrentUserProfile}
-                className={
-                  (formErrors?.firstName || formErrors?.general) &&
-                  "border-destructive"
-                }
-              />
-              <p className="text-sm text-destructive h-5 text-center mt-1">
-                {formErrors?.firstName}
-              </p>
+        <form onSubmit={handleUpdateUser} className="space-y-2 ">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* FIRST NAME */}
+            <div className="space-y-2">
+              <Label htmlFor="username">First Name</Label>
+              <div className="w-full">
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      firstName: e.target.value,
+                    })
+                  }
+                  onKeyDown={handleKeyDown}
+                  placeholder={"Enter your first name"}
+                  disabled={isSubmitting || !isCurrentUserProfile}
+                  className={
+                    (formErrors?.firstName || formErrors?.general) &&
+                    "border-destructive"
+                  }
+                />
+                <p className="text-sm text-destructive h-5 text-center mt-1">
+                  {formErrors?.firstName}
+                </p>
+              </div>
+            </div>
+            {/* LAST NAME */}
+            <div className="space-y-2">
+              <Label htmlFor="username">Last Name</Label>
+              <div className="w-full">
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      lastName: e.target.value,
+                    })
+                  }
+                  onKeyDown={handleKeyDown}
+                  placeholder={"Enter your last name"}
+                  disabled={isSubmitting || !isCurrentUserProfile}
+                  className={
+                    (formErrors.lastName || formErrors?.general) &&
+                    "border-destructive"
+                  }
+                />
+                <p className="text-sm text-destructive h-5 text-center mt-1">
+                  {formErrors?.lastName}
+                </p>
+              </div>
+            </div>
+            {/* EMAIL */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="w-full">
+                <Input
+                  id="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      email: e.target.value,
+                    })
+                  }
+                  onKeyDown={handleKeyDown}
+                  placeholder={"Enter your email"}
+                  disabled={isSubmitting || !isCurrentUserProfile}
+                  className={
+                    (formErrors?.email || formErrors?.general) &&
+                    "border-destructive"
+                  }
+                />
+                <p className="text-sm text-destructive h-5 text-center mt-1">
+                  {formErrors?.email}
+                </p>
+              </div>
             </div>
           </div>
-          {/* LAST NAME */}
-          <div className="space-y-2">
-            <Label htmlFor="username">Last Name</Label>
-            <div className="w-full">
-              <Input
-                id="lastName"
-                value={formData.lastName}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    lastName: e.target.value,
-                  })
-                }
-                onKeyDown={handleKeyDown}
-                placeholder={"Enter your last name"}
+          {/* BUTTONS */}
+          <div className="space-y-2 border-t flex flex-col gap-3 justify-end pt-4">
+            <div className="flex flex-wrap gap-3 w-full justify-center md:justify-end">
+              <Button
+                variant="secondary"
                 disabled={isSubmitting || !isCurrentUserProfile}
-                className={
-                  (formErrors.lastName || formErrors?.general) &&
-                  "border-destructive"
-                }
-              />
-              <p className="text-sm text-destructive h-5 text-center mt-1">
-                {formErrors?.lastName}
-              </p>
-            </div>
-          </div>
-          {/* EMAIL */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="w-full">
-              <Input
-                id="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    email: e.target.value,
-                  })
-                }
-                onKeyDown={handleKeyDown}
-                placeholder={"Enter your email"}
+                aria-label="Reset Profile Form"
+                className="w-full md:w-fit border"
+                onClick={() => handleResetForm(user)}
+              >
+                <RotateCcw className="size-4" />
+                Reset
+              </Button>
+              <Button
+                type="submit"
                 disabled={isSubmitting || !isCurrentUserProfile}
-                className={
-                  (formErrors?.email || formErrors?.general) &&
-                  "border-destructive"
-                }
-              />
-              <p className="text-sm text-destructive h-5 text-center mt-1">
-                {formErrors?.email}
-              </p>
+                aria-label="Submit updates for profile"
+                className="w-full md:w-fit mt-0 m-0"
+              >
+                <Save className="size-4" />
+                {isSubmitting ? "Saving..." : "Save Profile"}
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center justify-end gap-3 pt-4">
-            {formErrors?.general && (
-              <p className="text-sm text-destructive">{formErrors.general}</p>
-            )}
-
-            <Button
-              variant="secondary"
-              disabled={isSubmitting || !isCurrentUserProfile}
-              aria-label="Reset Profile Form"
-              className="w-full md:w-fit border"
-              onClick={() => handleResetForm(user)}
-            >
-              <RotateCcw className="size-4" />
-              Reset
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !isCurrentUserProfile}
-              aria-label="Submit updates for profile"
-              className="w-full md:w-fit"
-            >
-              <Save className="size-4" />
-              {isSubmitting ? "Saving..." : "Save Profile"}
-            </Button>
+            <p className="text-sm font-medium text-destructive h-5 text-center md:text-right w-full">
+              {formErrors?.general && formErrors.general}
+            </p>
           </div>
         </form>
       </section>
