@@ -47,7 +47,7 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
     }
 
     if (surveyor.role !== "AGENT") {
-      throw APIError.invalidArgument("Surveyor must be an agent");
+      throw APIError.invalidArgument("Surveys cannot be created for internal tickets");
     }
 
     const marketCenterId =

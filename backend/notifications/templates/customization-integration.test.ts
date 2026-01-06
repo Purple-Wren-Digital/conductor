@@ -189,6 +189,7 @@ import { getUserContext } from "../../auth/user-context";
 import {
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_IN_APP_TEMPLATES,
+  TEMPLATE_VARIABLES,
 } from "./customization-types";
 
 // =============================================================================
@@ -256,7 +257,7 @@ describe("Template Customization Integration Tests", () => {
       expect(preview.preview.subject).toBe(
         "Austin Office: New Ticket Login Issue"
       );
-      expect(preview.preview.greeting).toBe("Hey Alex Johnson!");
+      expect(preview.preview.greeting).toBe("Hey John Smith!");
       expect(preview.preview.mainMessage).toContain("John Smith");
       expect(preview.preview.visibleFieldsData).toHaveLength(3);
 
@@ -419,7 +420,16 @@ describe("Template Customization Integration Tests", () => {
         });
 
         // All should replace user_name with the example value
-        expect(result.preview.title).toBe("Test Alex Johnson");
+        // expect(result.preview.title).toBe("Test John Smith");
+        const supportsUserName = TEMPLATE_VARIABLES[templateType].some(
+          (v) => v.key === "user_name"
+        );
+
+        if (supportsUserName) {
+          expect(result.preview.title).toBe("Test John Smith");
+        } else {
+          expect(result.preview.title).toBe("Test {{user_name}}");
+        }
       }
     });
   });
@@ -539,16 +549,16 @@ describe("Template Customization Integration Tests", () => {
 
       expect(result.template.emailDefault).toEqual({
         subject: "How did we do? - {{ticket_title}}",
-        greeting: "Hi {{user_name}},",
+        greeting: "Hi {{surveyor_name}},",
         mainMessage:
           "Your ticket has been resolved. We'd love to hear your feedback!",
-        buttonText: "Take Survey",
-        visibleFields: ["ticket_number", "ticket_title"],
+        buttonText: "Complete Survey",
+        visibleFields: ["ticket_title", "ticket_number", "surveyor_name"],
       });
 
       expect(result.template.inAppDefault).toEqual({
-        title: "Survey: {{ticket_title}}",
-        body: "Please take a moment to provide feedback",
+        title: "New Survey for '{{ticket_title}}'",
+        body: "Please take a moment to provide feedback about your experience",
       });
     });
   });

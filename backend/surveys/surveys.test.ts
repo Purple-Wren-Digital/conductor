@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockSurveyRepository, mockTicketRepository, mockUserContext } = vi.hoisted(() => ({
+const {
+  mockSurveyRepository,
+  mockTicketRepository,
+  mockUserContext,
+  mockUserRepository,
+} = vi.hoisted(() => ({
   mockSurveyRepository: {
     findById: vi.fn(),
     findByIdWithRelations: vi.fn(),
     findByTicketId: vi.fn(),
-    create: vi.fn(),
+    findOrCreate: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
     deleteByTicketId: vi.fn(),
@@ -25,6 +30,9 @@ const { mockSurveyRepository, mockTicketRepository, mockUserContext } = vi.hoist
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+  },
+  mockUserRepository: {
+    findById: vi.fn(),
   },
 }));
 
@@ -54,6 +62,7 @@ vi.mock("encore.dev/api", () => ({
 vi.mock("../ticket/db", () => ({
   surveyRepository: mockSurveyRepository,
   ticketRepository: mockTicketRepository,
+  userRepository: mockUserRepository,
 }));
 
 // Mock user context
@@ -99,7 +108,9 @@ describe("Survey Service Tests", () => {
       const result = await get({ surveyId: "survey-123" });
 
       expect(result.survey).toEqual(mockSurvey);
-      expect(mockSurveyRepository.findByIdWithRelations).toHaveBeenCalledWith("survey-123");
+      expect(mockSurveyRepository.findByIdWithRelations).toHaveBeenCalledWith(
+        "survey-123"
+      );
     });
 
     it("should throw not found when survey does not exist", async () => {
@@ -118,17 +129,27 @@ describe("Survey Service Tests", () => {
   });
 
   describe("createSurvey", () => {
-    it("should create a survey successfully", async () => {
+    it("should create a survey successfully for external (agent-created) tickets", async () => {
       const mockTicket = {
         id: "ticket-123",
         assigneeId: "user-789",
         assignee: { marketCenterId: "mc-123" },
-        category: { marketCenterId: null },
-        creator: { marketCenterId: null },
+        category: { marketCenterId: "mc-123" },
+        creatorId: "agent-123",
+        creator: {
+          id: "agent-123",
+          role: "AGENT",
+          marketCenterId: "mc-123",
+        },
       };
 
       mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
-      mockSurveyRepository.create.mockResolvedValue({ id: "survey-new" });
+      mockUserRepository.findById.mockResolvedValue({
+        id: "agent-123",
+        role: "AGENT",
+      });
+
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-new" });
 
       const result = await createSurvey({
         ticketId: "ticket-123",
@@ -136,12 +157,42 @@ describe("Survey Service Tests", () => {
       });
 
       expect(result.success).toBe(true);
-      expect(mockSurveyRepository.create).toHaveBeenCalledWith({
+      expect(mockSurveyRepository.findOrCreate).toHaveBeenCalledWith({
         ticketId: "ticket-123",
         surveyorId: "user-456",
         assigneeId: "user-789",
         marketCenterId: "mc-123",
       });
+    });
+
+    it("should not create a survey for internal tickets", async () => {
+      const mockTicket = {
+        id: "ticket-123",
+        assigneeId: "user-789",
+        creatorId: "staff-123",
+        assignee: { marketCenterId: "mc-123" },
+        category: { marketCenterId: "mc-123" },
+        creator: {
+          id: "staff-123",
+          role: "STAFF_LEADER",
+          marketCenterId: "mc-123",
+        },
+      };
+
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
+      mockUserRepository.findById.mockResolvedValue({
+        id: "staff-123",
+        role: "STAFF_LEADER",
+        marketCenterId: "mc-123",
+      });
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-new" });
+
+      await expect(
+        createSurvey({
+          ticketId: "ticket-123",
+          surveyorId: "staff-123",
+        })
+      ).rejects.toThrow("Surveys cannot be created for internal tickets");
     });
 
     it("should use provided marketCenterId over derived ones", async () => {
@@ -150,19 +201,29 @@ describe("Survey Service Tests", () => {
         assigneeId: "user-789",
         assignee: { marketCenterId: "derived-mc" },
         category: null,
-        creator: null,
+        creatorId: "agent-123",
+        creator: {
+          id: "agent-123",
+          role: "AGENT",
+          marketCenterId: null,
+        },
       };
 
       mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
-      mockSurveyRepository.create.mockResolvedValue({ id: "survey-new" });
+      mockUserRepository.findById.mockResolvedValue({
+        id: "agent-123",
+        role: "AGENT",
+      });
+
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-new" });
 
       await createSurvey({
         ticketId: "ticket-123",
-        surveyorId: "user-456",
+        surveyorId: "agent-123",
         marketCenterId: "provided-mc",
       });
 
-      expect(mockSurveyRepository.create).toHaveBeenCalledWith(
+      expect(mockSurveyRepository.findOrCreate).toHaveBeenCalledWith(
         expect.objectContaining({ marketCenterId: "provided-mc" })
       );
     });
@@ -191,10 +252,18 @@ describe("Survey Service Tests", () => {
         assigneeId: null,
         assignee: null,
         category: null,
-        creator: null,
+        creatorId: "agent-123",
+        creator: {
+          marketCenterId: null,
+        },
       };
 
       mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
+
+      mockUserRepository.findById.mockResolvedValue({
+        id: "agent-123",
+        role: "AGENT",
+      });
 
       await expect(
         createSurvey({ ticketId: "ticket-123", surveyorId: "user-456" })
@@ -346,18 +415,26 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.4,
       };
 
-      mockSurveyRepository.hasCompletedSurveysForAssignee.mockResolvedValue(true);
+      mockSurveyRepository.hasCompletedSurveysForAssignee.mockResolvedValue(
+        true
+      );
       mockSurveyRepository.getAssigneeAverages.mockResolvedValue(mockAverages);
 
       const result = await getRatingsByAssignee({ assigneeId: "user-789" });
 
       expect(result).toEqual(mockAverages);
-      expect(mockSurveyRepository.hasCompletedSurveysForAssignee).toHaveBeenCalledWith("user-789");
-      expect(mockSurveyRepository.getAssigneeAverages).toHaveBeenCalledWith("user-789");
+      expect(
+        mockSurveyRepository.hasCompletedSurveysForAssignee
+      ).toHaveBeenCalledWith("user-789");
+      expect(mockSurveyRepository.getAssigneeAverages).toHaveBeenCalledWith(
+        "user-789"
+      );
     });
 
     it("should throw not found when no surveys exist for assignee", async () => {
-      mockSurveyRepository.hasCompletedSurveysForAssignee.mockResolvedValue(false);
+      mockSurveyRepository.hasCompletedSurveysForAssignee.mockResolvedValue(
+        false
+      );
 
       await expect(
         getRatingsByAssignee({ assigneeId: "user-no-surveys" })
@@ -380,12 +457,16 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.8,
       };
 
-      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(mockAverages);
+      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(
+        mockAverages
+      );
 
       const result = await getByMarketCenter({ marketCenterId: "mc-456" });
 
       expect(result).toEqual(mockAverages);
-      expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith("mc-456");
+      expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith(
+        "mc-456"
+      );
     });
 
     it("should use user's market center for non-admin users", async () => {
@@ -404,11 +485,15 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.2,
       };
 
-      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(mockAverages);
+      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(
+        mockAverages
+      );
 
       const result = await getByMarketCenter({ marketCenterId: "ignored" });
 
-      expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith("user-mc-123");
+      expect(mockSurveyRepository.getMarketCenterAverages).toHaveBeenCalledWith(
+        "user-mc-123"
+      );
     });
 
     it("should return zero values when no surveys exist for market center", async () => {
@@ -418,9 +503,13 @@ describe("Survey Service Tests", () => {
         assigneeAverageRating: null,
         marketCenterAverageRating: null,
       };
-      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(emptyAverages);
+      mockSurveyRepository.getMarketCenterAverages.mockResolvedValue(
+        emptyAverages
+      );
 
-      const result = await getByMarketCenter({ marketCenterId: "mc-no-surveys" });
+      const result = await getByMarketCenter({
+        marketCenterId: "mc-no-surveys",
+      });
 
       expect(result).toEqual({
         totalSurveys: 0,

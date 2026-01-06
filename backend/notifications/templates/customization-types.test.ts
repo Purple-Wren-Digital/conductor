@@ -167,8 +167,9 @@ describe("TEMPLATE_VARIABLES", () => {
       });
     });
 
-    it("all types should have user_name for recipient", () => {
+    it("all types except ticket_survey should have user_name for recipient", () => {
       Object.values(TEMPLATE_VARIABLES).forEach((vars) => {
+        if (vars === TEMPLATE_VARIABLES.ticket_survey) return;
         const hasUserName = vars.some((v) => v.key === "user_name");
         expect(hasUserName).toBe(true);
       });
