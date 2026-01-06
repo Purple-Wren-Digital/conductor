@@ -162,7 +162,7 @@ export default function EditMarketCenter({
           data.usersToNotify.map(
             async (user) =>
               await handleSendMarketCenterNotifications({
-                templateName: `Market Center User ${user.updateType === "added" ? "Added" : "Removed"}`,
+                templateName: "Market Center Assignment",
                 trigger: "Market Center Assignment",
                 receivingUser: {
                   id: user.id,

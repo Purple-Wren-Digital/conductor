@@ -156,7 +156,7 @@ export function EditTicketForm({
     userToNotify,
     changedDetails,
   }: {
-    ticket: Ticket;
+    ticket: Ticket & { previousAssignment: string | null };
     userToNotify: UsersToNotify;
     changedDetails: ActivityUpdates[] | null;
   }) => {
@@ -173,12 +173,9 @@ export function EditTicketForm({
       }
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName:
-          notifyAssigneeChanges && userToNotify.updateType === "added"
-            ? "Ticket Assignment - Added"
-            : notifyAssigneeChanges && userToNotify.updateType === "removed"
-              ? "Ticket Assignment - Removed"
-              : "Ticket Updated",
+        templateName: notifyAssigneeChanges
+          ? "Ticket Assignment"
+          : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
@@ -196,6 +193,7 @@ export function EditTicketForm({
                   editorName: currentUser?.name ?? "Unknown",
                   editorId: currentUser?.id ?? "",
                   changedDetails: changedDetails,
+                  userName: userToNotify?.name,
                 }
               : undefined,
           ticketAssignment: notifyAssigneeChanges
@@ -207,11 +205,9 @@ export function EditTicketForm({
                 editorName: currentUser?.name ?? "Unknown",
                 editorId: currentUser?.id ?? "",
                 updateType: userToNotify.updateType,
-                currentAssignment: {
-                  id: userToNotify?.id,
-                  name: userToNotify?.name,
-                },
-                previousAssignment: null,
+                currentAssignment: ticket?.assignee?.name ?? "Unassigned",
+                previousAssignment: ticket?.previousAssignment,
+                userName: userToNotify?.name,
               }
             : undefined,
         },
@@ -282,10 +278,31 @@ export function EditTicketForm({
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
+        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
+          (user: UsersToNotify) =>
+            user.updateType === "added" || user.updateType === "removed"
+        );
+
+        let previousAssignment = null;
+
+        if (assignmentChanges && assignmentChanges?.length > 0) {
+          const removedUser: UsersToNotify = data?.usersToNotify.find(
+            (user: UsersToNotify) => user.updateType === "removed"
+          );
+
+          if (removedUser && removedUser?.name) {
+            previousAssignment = removedUser.name;
+          } else if (!removedUser || !removedUser?.name) {
+            previousAssignment = "Unassigned";
+          }
+        }
+
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({
-              ticket: data.ticket as Ticket,
+              ticket: { ...data.ticket, previousAssignment } as Ticket & {
+                previousAssignment: string | null;
+              },
               userToNotify: user,
               changedDetails: data?.changedDetails ?? [],
             });

@@ -226,11 +226,11 @@ export default function MarketCenterUsers({
     onSuccess: async (user: PrismaUser) => {
       toast.success(`${user?.name} was removed`);
       await handleSendMarketCenterNotifications({
-        templateName: "Market Center User Removed",
+        templateName: "Market Center Assignment",
         trigger: "Market Center Assignment",
         receivingUser: {
           id: user?.id,
-          name: user?.name ?? "You",
+          name: user?.name ?? "",
           email: user?.email,
         },
         data: {

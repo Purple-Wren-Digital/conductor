@@ -241,6 +241,7 @@ export function useCreateComment() {
                   commenterId: newComment.userId,
                   commenterName: newComment.user?.name || "A team member",
                   comment: stripHtmlTags(newComment.content),
+                  userName: user.name,
                 },
               },
             });

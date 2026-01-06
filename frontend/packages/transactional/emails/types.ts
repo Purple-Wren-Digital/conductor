@@ -71,6 +71,7 @@ export type CreatedTicketNotificationProps = {
   dueDate?: Date | string;
   assigneeId?: string;
   assigneeName?: string;
+  userName: string;
 };
 
 export type UpdatedTicketProps = {
@@ -81,6 +82,7 @@ export type UpdatedTicketProps = {
   editorName: string;
   editorId: string;
   changedDetails: ActivityUpdates[] | string;
+  userName: string;
 };
 
 export type AssignedTicketNotificationProps = {
@@ -91,12 +93,12 @@ export type AssignedTicketNotificationProps = {
   editorName: string;
   editorId: string;
   updateType: AssignmentUpdateType;
-  currentAssignment: { name: string; id: string } | null;
-  previousAssignment: { name: string; id: string } | null;
+  currentAssignment: string;
+  previousAssignment: string | null;
+  userName: string;
 };
 
 // COMMENTS
-
 export type NewCommentNotificationProps = {
   ticketNumber: string;
   ticketTitle: string;
@@ -105,6 +107,7 @@ export type NewCommentNotificationProps = {
   commenterId: string;
   comment: string;
   isInternal: boolean;
+  userName: string;
 };
 
 // SURVEYS
@@ -119,5 +122,5 @@ export type SurveyResultsProps = {
   ticketNumber: string;
   ticketTitle: string;
   staffName: string;
+  userName: string;
 };
-

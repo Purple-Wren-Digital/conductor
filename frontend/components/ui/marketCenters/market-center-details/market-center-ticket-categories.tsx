@@ -220,7 +220,7 @@ export default function MarketCenterTicketCategories({
         await Promise.all(
           data.usersToNotify.map(async (user) => {
             await handleSendMarketCenterNotifications({
-              templateName: `Category Assignment - ${user.updateType === "added" ? "Added" : "Removed"}`,
+              templateName: "Category Assignment",
               trigger: "Category Assignment",
               receivingUser: {
                 id: user?.id,
@@ -303,7 +303,7 @@ export default function MarketCenterTicketCategories({
       toast.success(`${categoryFormData?.name} was created`);
       if (data?.defaultAssigneeId && data?.defaultAssignee) {
         await handleSendMarketCenterNotifications({
-          templateName: `Category Assignment - Added`,
+          templateName: "Category Assignment",
           trigger: "Category Assignment",
           receivingUser: {
             id: data?.defaultAssigneeId,
@@ -393,8 +393,7 @@ export default function MarketCenterTicketCategories({
         categoryToRemove?.defaultAssignee
       ) {
         await handleSendMarketCenterNotifications({
-          templateName: `Category Assignment - Removed`,
-
+          templateName: "Category Assignment",
           trigger: "Category Assignment",
           receivingUser: {
             id: categoryToRemove?.defaultAssigneeId,

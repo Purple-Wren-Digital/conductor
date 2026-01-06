@@ -155,9 +155,7 @@ export function CreateTicketForm({
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName: notifyAssignee
-          ? "Ticket Assignment - Added"
-          : "Ticket Created",
+        templateName: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
         trigger: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
         receivingUser: {
           id: userToNotify?.id,
@@ -178,6 +176,7 @@ export function CreateTicketForm({
                   ticket?.assignee && ticket?.assignee?.name
                     ? ticket.assignee.name
                     : undefined,
+                userName: userToNotify?.name,
               }
             : undefined,
           ticketAssignment: notifyAssignee
@@ -189,11 +188,9 @@ export function CreateTicketForm({
                 editorName: creator?.name ?? "Unknown",
                 editorId: creator?.id,
                 updateType: userToNotify.updateType,
-                currentAssignment: {
-                  id: userToNotify?.id,
-                  name: userToNotify?.name,
-                },
+                currentAssignment: userToNotify?.name,
                 previousAssignment: null,
+                userName: userToNotify?.name,
               }
             : undefined,
         },

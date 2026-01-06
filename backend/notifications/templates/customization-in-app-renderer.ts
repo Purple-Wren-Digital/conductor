@@ -39,88 +39,126 @@ function extractContextFromNotificationData(
 
   switch (templateType) {
     case "ticket_created":
-      if (data.createdTicket) {
+      if (data?.createdTicket) {
         context.ticket_number = data.createdTicket.ticketNumber || "";
         context.ticket_title = data.createdTicket.ticketTitle || "";
         context.creator_name = data.createdTicket.creatorName || "";
+        context.creator_id = data.createdTicket.creatorId || "";
         context.created_on = data.createdTicket.createdOn
           ? new Date(data.createdTicket.createdOn).toLocaleDateString()
           : "";
         context.due_date = data.createdTicket.dueDate
           ? new Date(data.createdTicket.dueDate).toLocaleDateString()
           : "";
+        context.assignee_id = data.createdTicket.assigneeId || "";
         context.assignee_name = data.createdTicket.assigneeName || "";
+        context.user_name = data.createdTicket.userName || "";
       }
       break;
 
     case "ticket_updated":
-      if (data.updatedTicket) {
+      if (data?.updatedTicket) {
         context.ticket_number = data.updatedTicket.ticketNumber || "";
         context.ticket_title = data.updatedTicket.ticketTitle || "";
-        context.editor_name = data.updatedTicket.editorName || "";
+        context.created_on = data.updatedTicket.createdOn
+          ? new Date(data.updatedTicket.createdOn).toLocaleDateString()
+          : "";
         context.updated_on = data.updatedTicket.updatedOn
           ? new Date(data.updatedTicket.updatedOn).toLocaleDateString()
           : "";
+        context.editor_name = data.updatedTicket.editorName || "";
+        context.editor_id = data.updatedTicket.editorId || "";
+        // Format changed details
         if (Array.isArray(data.updatedTicket.changedDetails)) {
           context.changed_details = data.updatedTicket.changedDetails
             .map((d: any) => d.label || d)
             .join(", ");
         }
+        context.user_name = data.updatedTicket.userName || "";
       }
       break;
 
     case "ticket_assignment":
-      if (data.ticketAssignment) {
-        context.ticket_number = data.ticketAssignment.ticketNumber || "";
-        context.ticket_title = data.ticketAssignment.ticketTitle || "";
-        context.editor_name = data.ticketAssignment.editorName || "";
+      if (data?.ticketAssignment) {
+        context.ticket_number = data.ticketAssignment?.ticketNumber || "";
+        context.ticket_title = data.ticketAssignment?.ticketTitle || "";
+        context.created_on = data.ticketAssignment?.createdOn
+          ? new Date(data.ticketAssignment.createdOn).toLocaleDateString()
+          : "";
+        context.updated_on = data.ticketAssignment?.updatedOn
+          ? new Date(data.ticketAssignment.updatedOn).toLocaleDateString()
+          : new Date().toLocaleDateString();
+        context.editor_name = data.ticketAssignment?.editorName || "";
+        context.editor_id = data.ticketAssignment?.editorId || "";
+        context.update_type = data.ticketAssignment?.updateType || "";
         context.current_assignment =
-          data.ticketAssignment.currentAssignment?.name || "";
+          data.ticketAssignment?.currentAssignment || "";
         context.previous_assignment =
-          data.ticketAssignment.previousAssignment?.name || "";
+          data.ticketAssignment?.previousAssignment || "";
+        context.user_name = data.ticketAssignment?.userName || "";
       }
       break;
 
     case "new_comments":
-      if (data.newComment) {
+      if (data?.newComment) {
         context.ticket_number = data.newComment.ticketNumber || "";
         context.ticket_title = data.newComment.ticketTitle || "";
-        context.commenter_name = data?.newComment?.commenterName || "";
+        context.created_on = data.newComment.createdOn
+          ? new Date(data.newComment.createdOn).toLocaleDateString()
+          : "";
+        context.commenter_name = data.newComment.commenterName || "";
+        context.commenter_id = data.newComment.commenterId || "";
         context.comment = data.newComment.comment || "";
+        context.is_internal = data.newComment.isInternal
+          ? "Internal"
+          : "External";
+        context.user_name = data.newComment.userName || "";
       }
       break;
 
     case "market_center_assignment":
-      if (data.marketCenterAssignment) {
+      if (data?.marketCenterAssignment) {
+        context.user_update = data?.marketCenterAssignment?.userUpdate || "";
         context.market_center_name =
           data.marketCenterAssignment.marketCenterName || "";
+        context.market_center_id =
+          data.marketCenterAssignment.marketCenterId || "";
+        context.user_name = data.marketCenterAssignment.userName || "";
         context.editor_name = data.marketCenterAssignment.editorName || "";
+        context.editor_email = data.marketCenterAssignment.editorEmail || "";
       }
       break;
 
     case "category_assignment":
-      if (data.categoryAssignment) {
+      if (data?.categoryAssignment) {
+        context.user_update = data?.categoryAssignment?.userUpdate || "";
         context.category_name = data.categoryAssignment.categoryName || "";
         context.category_description =
-          data.categoryAssignment.categoryDescription || "";
+          data.categoryAssignment?.categoryDescription || "";
         context.market_center_name =
-          data.categoryAssignment.marketCenterName || "";
-        context.editor_name = data.categoryAssignment.editorName || "";
+          data.categoryAssignment?.marketCenterName || "";
+        context.market_center_id =
+          data.categoryAssignment?.marketCenterId || "";
+        context.user_name = data.categoryAssignment?.userName || "";
+        context.editor_name = data.categoryAssignment?.editorName || "";
+        context.editor_email = data.categoryAssignment?.editorEmail || "";
       }
       break;
 
     case "ticket_survey":
-      if (data.ticketSurvey) {
+      if (data?.ticketSurvey) {
         context.ticket_number = data.ticketSurvey.ticketNumber || "";
         context.ticket_title = data.ticketSurvey.ticketTitle || "";
+        context.surveyor_name = data.ticketSurvey.surveyorName || "";
       }
       break;
 
     case "ticket_survey_results":
-      if (data.surveyResults) {
+      if (data?.surveyResults) {
         context.ticket_number = data.surveyResults.ticketNumber || "";
         context.ticket_title = data.surveyResults.ticketTitle || "";
         context.staff_name = data.surveyResults.staffName || "";
+        context.user_name = data.surveyResults.userName || "";
       }
       break;
   }

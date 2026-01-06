@@ -79,6 +79,7 @@ export default function TicketSurveyModal({
             ticketNumber: ticketId,
             ticketTitle: survey?.ticket?.title ?? "No title provided",
             staffName: userToNotify?.name ?? "No name provided",
+            userName: userToNotify?.name ?? "",
           },
         },
       });
