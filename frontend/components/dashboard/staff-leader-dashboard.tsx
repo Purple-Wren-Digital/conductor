@@ -142,7 +142,9 @@ export function StaffLeaderDashboard() {
   }, [selectedTeamMemberId, tickets]);
 
   const stats = useMemo(() => {
-    const totalTeamMembers = teamMembers.length;
+    const totalTeamMembers = teamMembers.filter(
+      (m: any) => m?.role && m.role !== "AGENT"
+    ).length;
     const totalTickets = filteredTickets.length;
     const activeTicketsCount = filteredTickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
@@ -154,7 +156,8 @@ export function StaffLeaderDashboard() {
       (t: Ticket) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
     const unassignedTickets = filteredTickets.filter(
-      (t: Ticket) => !t.assigneeId
+      (t: Ticket) =>
+        (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
     ).length;
 
     const overdueTickets = filteredTickets.filter((t: Ticket) => {

@@ -147,7 +147,8 @@ export function StaffDashboard() {
       (t: Ticket) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
     const unassignedTickets = filteredTickets.filter(
-      (t: Ticket) => !t.assigneeId
+      (t: Ticket) =>
+        (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
     ).length;
     const ticketsByStatus = filteredTickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
