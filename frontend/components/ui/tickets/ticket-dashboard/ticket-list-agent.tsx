@@ -136,7 +136,6 @@ export default function AgentTicketList() {
     localStorage.setItem(
       "ticket-filters",
       JSON.stringify({
-        viewDashboardHeader,
         searchQuery,
         selectedStatuses,
         selectedUrgencies,
@@ -153,7 +152,6 @@ export default function AgentTicketList() {
       })
     );
   }, [
-    viewDashboardHeader,
     hydrated,
     searchQuery,
     selectedStatuses,
@@ -174,7 +172,6 @@ export default function AgentTicketList() {
     const filtersString = localStorage.getItem("ticket-filters");
     if (filtersString) {
       const fetchedFilters = JSON.parse(filtersString);
-      setViewDashboardHeader(fetchedFilters.viewDashboardHeader || true);
       setSearchQuery(fetchedFilters.searchQuery || "");
       setSelectedStatuses(
         fetchedFilters.selectedStatuses || defaultActiveStatuses
