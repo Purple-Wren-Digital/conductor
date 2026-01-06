@@ -56,7 +56,7 @@ export const reopen = api<ReopenTicketRequest, ReopenTicketResponse>(
     await ticketRepository.createHistory({
       ticketId: ticket.id,
       action: "REOPEN",
-      field: "status",
+      field: "ticket",
       previousValue: "RESOLVED",
       newValue: "IN_PROGRESS",
       snapshot: ticket,

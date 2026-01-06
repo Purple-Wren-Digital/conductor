@@ -1152,10 +1152,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                       <div key={log?.id} className="border-b pb-4">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                           <Label>
-                            {log?.action && capitalizeEveryWord(log?.action)}{" "}
-                            {log?.field && log?.action !== "REOPENED"
-                              ? capitalizeEveryWord(log?.field)
-                              : "Ticket"}
+                            {log?.action && capitalizeEveryWord(log.action)}
+                            {log?.field && ` ${capitalizeEveryWord(log.field)}`}
                           </Label>
                           <p className="text-sm font-medium">
                             {new Date(log?.changedAt).toLocaleDateString()}

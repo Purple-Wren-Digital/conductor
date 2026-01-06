@@ -146,7 +146,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       await ticketRepository.createHistory({
         ticketId: req.ticketId,
         action: "CLOSE",
-        field: "status",
+        field: "ticket",
         previousValue: oldTicket.status,
         newValue: "RESOLVED",
         snapshot: oldTicket as any,

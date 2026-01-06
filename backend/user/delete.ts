@@ -58,10 +58,10 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
         ) VALUES (
           gen_random_uuid()::text,
           ${user.id},
-          ${'DELETE'},
-          ${'isActive'},
-          ${'true'},
-          ${'false'},
+          ${"DELETE"},
+          ${"user"},
+          ${"Activated"},
+          ${"Deactivated"},
           ${userContext.userId},
           NOW(),
           ${toJson(user)}::jsonb
