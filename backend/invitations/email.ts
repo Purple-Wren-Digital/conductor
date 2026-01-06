@@ -124,6 +124,6 @@ export async function sendInvitationEmail(
     });
   } catch (error) {
     console.error("Failed to send invitation email:", error);
-    throw error;
+    throw "Failed to send invitation email";
   }
 }

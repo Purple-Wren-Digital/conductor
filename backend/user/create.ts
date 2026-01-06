@@ -1,8 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import {
-  userRepository,
-  marketCenterRepository,
-} from "../ticket/db";
+import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
 import { defaultNotificationPreferences } from "../utils";
@@ -45,7 +42,9 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
 
     let marketCenterAssignment: MarketCenter | null = null;
     if (req?.marketCenterId) {
-      const marketCenter = await marketCenterRepository.findByIdWithUsers(req.marketCenterId);
+      const marketCenter = await marketCenterRepository.findByIdWithUsers(
+        req.marketCenterId
+      );
       if (!marketCenter) {
         APIError.notFound("Market Center not found");
       } else {
@@ -77,7 +76,7 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       userId: newUser.id,
       marketCenterId: newUser.marketCenterId,
       action: "CREATE",
-      field: "New User",
+      field: "user",
       previousValue: "",
       newValue: "Activated",
       changedById: userContext.userId,

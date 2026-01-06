@@ -2,7 +2,17 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Badge } from "../badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -69,34 +79,16 @@ const statusOptions: InvitationStatus[] = [
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "PENDING":
-      return <Clock className="h-4 w-4 text-yellow-500" />;
+      return <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500" />;
     case "ACCEPTED":
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />;
     case "EXPIRED":
-      return <XCircle className="h-4 w-4 text-gray-500" />;
+      return <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />;
     case "CANCELLED":
-      return <XCircle className="h-4 w-4 text-red-500" />;
+      return <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />;
     default:
-      return <Mail className="h-4 w-4" />;
+      return <Mail className="h-3 w-3 sm:h-4 sm:w-4" />;
   }
-};
-
-const getStatusBadge = (status: string) => {
-  const variants: Record<
-    string,
-    "default" | "secondary" | "destructive" | "outline"
-  > = {
-    PENDING: "secondary",
-    ACCEPTED: "default",
-    EXPIRED: "outline",
-    CANCELLED: "destructive",
-  };
-  return (
-    <Badge variant={variants[status] || "outline"} className="gap-1">
-      {getStatusIcon(status)}
-      {status}
-    </Badge>
-  );
 };
 
 export default function UserInvitationManagement() {
@@ -108,6 +100,9 @@ export default function UserInvitationManagement() {
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showCancellationAlert, setShowCancellationAlert] = useState(false);
+  const [invitationToCancel, setInvitationToCancel] =
+    useState<TeamInvitation | null>(null);
 
   const { permissions } = useUserRole();
   const fetchWithAuth = useFetchWithAuth();
@@ -171,12 +166,16 @@ export default function UserInvitationManagement() {
     }
   };
 
-  const handleCancelInvitation = async (token: string) => {
-    setActionLoading(token);
+  const handleCancelInvitation = async () => {
+    if (!invitationToCancel || !invitationToCancel?.token) return;
+    setActionLoading(invitationToCancel.token);
     try {
-      const response = await fetchWithAuth(`/invitations/${token}`, {
-        method: "DELETE",
-      });
+      const response = await fetchWithAuth(
+        `/invitations/${invitationToCancel.token}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -217,283 +216,338 @@ export default function UserInvitationManagement() {
   ).length;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Team Invitations ({invitations.length})
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {pendingCount} pending, {acceptedCount} accepted
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowCreateUserForm(true)}
-              className="gap-2"
-              disabled={!permissions?.canCreateUsers || loadingInvitations}
-            >
-              <UserPlus className="h-4 w-4" />
-              Invite User
-            </Button>
-          </div>
-
-          {/* FILTER BUTTON */}
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-end gap-4">
+    <>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Team Invitations ({invitations.length})
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {pendingCount} pending, {acceptedCount} accepted
+                </p>
+              </div>
               <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 bg-transparent"
-                onClick={() => setShowFilters(!showFilters)}
-                type="button"
-                disabled={loadingInvitations}
+                onClick={() => setShowCreateUserForm(true)}
+                disabled={!permissions?.canCreateUsers || loadingInvitations}
+                className="gap-2 w-full sm:w-fit"
+                size={"sm"}
               >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-1 h-2 w-2 rounded-full p-0"
-                  />
-                )}
+                <UserPlus className="h-4 w-4" />
+                Invite User
               </Button>
-              {hasActiveFilters && (
+            </div>
+
+            {/* FILTER BUTTON */}
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-center sm:justify-end gap-4">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={clearFilters}
-                  className="gap-2"
+                  className="gap-2 bg-transparent w-full sm:w-fit"
+                  onClick={() => setShowFilters(!showFilters)}
                   type="button"
+                  disabled={loadingInvitations}
                 >
-                  <X className="h-4 w-4" />
-                  Clear
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {hasActiveFilters && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-2 w-2 rounded-full p-0"
+                    />
+                  )}
                 </Button>
-              )}
-            </div>
-
-            {showFilters && (
-              <Card className="p-4 bg-muted/50">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <Select
-                      value={statusFilter}
-                      onValueChange={(value: InvitationStatus) => {
-                        setStatusFilter(value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Filter by status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            <div className="flex items-center gap-2">
-                              {status !== "All" && getStatusIcon(status)}
-                              {status === "All" ? "All Invitations" : status}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {loadingInvitations && invitations.length === 0 ? (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-muted rounded" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className={`space-y-3 transition-opacity duration-300 ${
-                loadingInvitations
-                  ? "opacity-50 pointer-events-none"
-                  : "opacity-100"
-              }`}
-            >
-              {paginatedInvitations.length > 0 ? (
-                paginatedInvitations.map((invitation: TeamInvitation) => (
-                  <div
-                    key={invitation.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="gap-2 w-full sm:w-fit"
+                    type="button"
+                    disabled={loadingInvitations}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        {invitation?.name && (
-                          <span className="text-sm text-muted-foreground">
-                            {invitation.name}
-                          </span>
-                        )}
-                        <p className="font-medium">{invitation.email}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="capitalize">
-                            {invitation.role.split("_").join(" ").toLowerCase()}
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Sent{" "}
-                            {new Date(
-                              invitation.createdAt
-                            ).toLocaleDateString()}
-                          </span>
-                          {invitation.status === "PENDING" && (
-                            <>
-                              <span>•</span>
-                              <span>
-                                Expires{" "}
-                                {new Date(
-                                  invitation.expiresAt
-                                ).toLocaleDateString()}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
 
-                    <div className="flex items-center gap-3">
-                      {getStatusBadge(invitation.status)}
-
-                      {invitation.status === "PENDING" && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleCopySignupUrl(invitation.token)
-                            }
-                            title="Copy signup URL"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleResendInvitation(invitation.token)
-                            }
-                            disabled={actionLoading === invitation.token}
-                            title="Resend invitation"
-                          >
-                            <RefreshCw
-                              className={`h-4 w-4 ${
-                                actionLoading === invitation.token
-                                  ? "animate-spin"
-                                  : ""
-                              }`}
-                            />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleCancelInvitation(invitation.token)
-                            }
-                            disabled={actionLoading === invitation.token}
-                            title="Cancel invitation"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-
-                      {invitation.status === "EXPIRED" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleResendInvitation(invitation.token)
-                          }
-                          disabled={actionLoading === invitation.token}
-                          className="gap-1"
-                        >
-                          <RefreshCw
-                            className={`h-3 w-3 ${
-                              actionLoading === invitation.token
-                                ? "animate-spin"
-                                : ""
-                            }`}
-                          />
-                          Resend
-                        </Button>
-                      )}
+              {showFilters && (
+                <Card className="p-4 bg-muted/50">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={statusFilter}
+                        onValueChange={(value: InvitationStatus) => {
+                          setStatusFilter(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              <div className="flex items-center gap-2">
+                                {status !== "All" && getStatusIcon(status)}
+                                {status === "All" ? "All Invitations" : status}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  {statusFilter === "All"
-                    ? "No invitations yet. Click 'Invite User' to get started."
-                    : `No ${statusFilter.toLowerCase()} invitations found.`}
-                </div>
+                </Card>
               )}
             </div>
-          )}
+          </CardHeader>
 
-          {/* Pagination */}
-          {filteredInvitations.length > itemsPerPage && (
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing{" "}
-                {formatPaginationText({
-                  totalItems: filteredInvitations.length,
-                  itemsPerPage,
-                  currentPage,
-                })}{" "}
-                of {filteredInvitations.length} invitations
+          <CardContent>
+            {loadingInvitations && invitations.length === 0 ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-muted rounded" />
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 1}
-                  type="button"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-                <span className="text-sm">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage === totalPages}
-                  type="button"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div
+                className={`space-y-3 transition-opacity duration-300 ${
+                  loadingInvitations
+                    ? "opacity-50 pointer-events-none"
+                    : "opacity-100"
+                }`}
+              >
+                {paginatedInvitations.length > 0 ? (
+                  paginatedInvitations.map((invitation: TeamInvitation) => (
+                    <div
+                      key={invitation.id}
+                      className="flex items-center justify-between flex-wrap p-4 border rounded-lg  hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="hidden sm:visible sm:h-10 sm:w-10 sm:rounded-full sm:bg-muted sm:flex sm:items-center sm:justify-center">
+                          <Mail className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-1 mb-2 sm:mb-0 sm:space-y-0">
+                          {invitation?.name && (
+                            <span className="text-xs sm:text-sm text-muted-foreground">
+                              {invitation.name}
+                            </span>
+                          )}
+                          <p className="font-medium text-xs sm:text-base">
+                            {invitation.email}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                            <span className="capitalize">
+                              {invitation.role
+                                .split("_")
+                                .join(" ")
+                                .toLowerCase()}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Sent{" "}
+                              {new Date(
+                                invitation.createdAt
+                              ).toLocaleDateString()}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {invitation.status === "ACCEPTED" &&
+                                `Accepted
+                                  ${
+                                    invitation.acceptedAt
+                                      ? new Date(
+                                          invitation.acceptedAt
+                                        ).toLocaleDateString()
+                                      : ""
+                                  }`}
+                              {invitation.status === "PENDING" &&
+                                `Expires
+                                  ${new Date(
+                                    invitation.expiresAt
+                                  ).toLocaleDateString()}`}
 
-      {/* CREATE/INVITE USER DIALOG */}
-      <CreateUser
-        showCreateUserForm={showCreateUserForm}
-        setShowCreateUserForm={setShowCreateUserForm}
-        queryInvalidation={fetchInvitations}
-        existingEmails={existingEmails}
-      />
-    </div>
+                              {invitation.status === "EXPIRED" &&
+                                `Expired
+                                  ${new Date(
+                                    invitation.expiresAt
+                                  ).toLocaleDateString()}`}
+
+                              {invitation.status === "CANCELLED" &&
+                                `Cancelled
+                                  ${new Date(
+                                    invitation.updatedAt
+                                  ).toLocaleDateString()}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={"secondary"}
+                          className="gap-2 text-[9px] sm:text-xs"
+                        >
+                          {getStatusIcon(invitation.status)}
+                          {invitation.status}
+                        </Badge>
+                        <div className="flex items-center gap-1">
+                          {invitation.status === "PENDING" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleCopySignupUrl(invitation.token)
+                              }
+                              title="Copy signup URL"
+                              disabled={actionLoading === invitation.token}
+                              className="disabled:text-muted-foreground"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {invitation.status === "PENDING" ||
+                            (invitation.status === "EXPIRED" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleResendInvitation(invitation.token)
+                                }
+                                disabled={actionLoading === invitation.token}
+                                title="Resend invitation"
+                                className="disabled:text-muted-foreground"
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 ${
+                                    actionLoading === invitation.token
+                                      ? "animate-spin"
+                                      : ""
+                                  }`}
+                                />
+                              </Button>
+                            ))}
+                          {invitation.status !== "CANCELLED" &&
+                            invitation.status !== "ACCEPTED" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setShowCancellationAlert(true);
+                                  setInvitationToCancel(invitation);
+                                }}
+                                disabled={actionLoading === invitation.token}
+                                title="Cancel invitation"
+                                className={
+                                  "text-red-800 hover:text-red-950 disabled:text-muted-foreground"
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {statusFilter === "All"
+                      ? "No invitations yet. Click 'Invite User' to get started."
+                      : `No ${statusFilter.toLowerCase()} invitations found.`}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredInvitations.length > itemsPerPage && (
+              <div className="flex items-center justify-between pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  {formatPaginationText({
+                    totalItems: filteredInvitations.length,
+                    itemsPerPage,
+                    currentPage,
+                  })}{" "}
+                  of {filteredInvitations.length} invitations
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    disabled={currentPage === 1}
+                    type="button"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Previous
+                  </Button>
+                  <span className="text-sm">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={currentPage === totalPages}
+                    type="button"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CREATE/INVITE USER DIALOG */}
+        <CreateUser
+          showCreateUserForm={showCreateUserForm}
+          setShowCreateUserForm={setShowCreateUserForm}
+          queryInvalidation={fetchInvitations}
+          existingEmails={existingEmails}
+        />
+      </div>
+
+      {/* Cancel Invitation Confirmation Dialog */}
+      <AlertDialog
+        open={showCancellationAlert}
+        onOpenChange={setShowCancellationAlert}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="font-medium space-y-1">
+                Please note, once {invitationToCancel?.name ?? "the invitee"}'s
+                invitation is cancelled, it cannot be reactivated. The following
+                will occur:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-3 mt-2">
+                <li>The signup link will become invalid</li>
+                <li>
+                  "{invitationToCancel?.email}" will not be able to be used
+                  again
+                </li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelInvitation}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

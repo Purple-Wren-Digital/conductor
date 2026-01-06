@@ -25,6 +25,7 @@ async function ensureNotificationPreferences(userId: string): Promise<void> {
 }
 
 export interface UserContext {
+  name: string;
   userId: string;
   email: string;
   role: UserRole;
@@ -67,7 +68,7 @@ export async function getUserContext(): Promise<UserContext> {
 
       if (userInvitation && !isInvalid) {
         user = await userRepository.create({
-          name: userInvitation?.name ? userInvitation.name : "User",
+          name: userInvitation?.name ? userInvitation.name : "Name Not Set",
           email: authData.emailAddress,
           clerkId: authData.userID,
           role: userInvitation.role ?? "AGENT",
@@ -75,6 +76,33 @@ export async function getUserContext(): Promise<UserContext> {
         });
         // Create notification preferences for new user
         await ensureNotificationPreferences(user.id);
+        await userRepository.createHistory({
+          userId: user.id,
+          marketCenterId: user.marketCenterId,
+          action: "CREATE",
+          field: "user",
+          previousValue: "",
+          newValue: "Activated via Invitation",
+          changedById: user.id,
+        });
+        if (userInvitation.id) {
+          await marketCenterRepository.updateInvitationStatus(
+            userInvitation.id,
+            "ACCEPTED"
+          );
+        }
+        if (user.marketCenterId) {
+          await marketCenterRepository.createHistory({
+            marketCenterId: user.marketCenterId,
+            action: "ACCEPT_INVITE",
+            field: "team_invitations",
+            newValue: JSON.stringify({
+              email: user.email,
+              userId: user.id,
+            }),
+            changedById: user.id,
+          });
+        }
       }
     }
   }
@@ -96,13 +124,24 @@ export async function getUserContext(): Promise<UserContext> {
       email: email,
       clerkId: authData.userID,
       role: "AGENT", // New users default to AGENT role
-      name: name,
+      name: name ?? "Name Not Set",
     });
     // Create notification preferences for new user
     await ensureNotificationPreferences(user.id);
+
+    await userRepository.createHistory({
+      userId: user.id,
+      marketCenterId: user.marketCenterId,
+      action: "CREATE",
+      field: "user",
+      previousValue: "",
+      newValue: "Activated",
+      changedById: user.id,
+    });
   }
 
   return {
+    name: user.name || "Name Not Set",
     userId: user.id,
     email: user.email,
     role: user.role as UserRole,
