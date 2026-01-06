@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,6 +33,16 @@ import { toast } from "sonner";
 import { useStore } from "@/context/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@clerk/nextjs";
+import { useIsEnterprise } from "@/hooks/useSubscription";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import type { MarketCenter } from "@/lib/types";
 
 const autoCloseFormSchema = z.object({
   enabled: z.boolean(),
@@ -45,17 +55,35 @@ const autoCloseFormSchema = z.object({
 type AutoCloseFormData = z.infer<typeof autoCloseFormSchema>;
 
 export default function AutoCloseSettings() {
+  const [selectedMarketCenterId, setSelectedMarketCenterId] =
+    useState<string>("");
+
   const { getToken } = useAuth();
   const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
   const { role } = useUserRole();
 
-  const marketCenterId = currentUser?.marketCenterId ?? "";
+  const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
+    useFetchAllMarketCenters(role);
+
+  const marketCenters: MarketCenter[] = useMemo(
+    () => marketCentersData?.marketCenters ?? [],
+    [marketCentersData]
+  );
+
+  useEffect(() => {
+    const prefillMarketCenter = (defaultMarketCenterId: string) => {
+      setSelectedMarketCenterId(defaultMarketCenterId);
+    };
+    if (isEnterprise || !currentUser?.marketCenterId) return;
+    prefillMarketCenter(currentUser.marketCenterId);
+  }, [isEnterprise, currentUser?.marketCenterId]);
 
   const {
     data: autoCloseData,
     isLoading,
     error,
-  } = useAutoCloseSettings(getToken, marketCenterId);
+  } = useAutoCloseSettings(getToken, selectedMarketCenterId);
 
   const updateAutoClose = useUpdateAutoCloseSettings(getToken);
 
@@ -78,14 +106,14 @@ export default function AutoCloseSettings() {
   }, [autoCloseData, form]);
 
   const onSubmit = async (data: AutoCloseFormData) => {
-    if (!marketCenterId) {
+    if (!selectedMarketCenterId) {
       toast.error("Market center not found");
       return;
     }
 
     try {
       await updateAutoClose.mutateAsync({
-        marketCenterId,
+        marketCenterId: selectedMarketCenterId,
         enabled: data.enabled,
         awaitingResponseDays: data.awaitingResponseDays,
       });
@@ -120,118 +148,138 @@ export default function AutoCloseSettings() {
     );
   }
 
-  if (!marketCenterId) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Auto-Close Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No market center found. Please contact support if this issue
-              persists.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Auto-Close Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Auto-Close Settings
-        </CardTitle>
-        <CardDescription>
-          Configure automatic closing of tickets in &quot;Awaiting Response&quot; status.
-          Tickets will be automatically closed after the specified number of
-          business days without a response from the requester.
-        </CardDescription>
+      <CardHeader className="flex flex-col gap-4 md:flex-row md:justify-between">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Auto-Close Settings
+          </CardTitle>
+          <CardDescription className="md:max-w-[75%]">
+            Configure automatic closing of tickets in &quot;Awaiting
+            Response&quot; status. Tickets will be automatically closed after
+            the specified number of business days without a response from the
+            requester.
+          </CardDescription>
+        </div>
+        {/* Market Center Selector */}
+        <div className="w-full sm:w-64">
+          <Select
+            value={selectedMarketCenterId}
+            onValueChange={setSelectedMarketCenterId}
+            disabled={isLoadingMarketCenters || isLoading}
+          >
+            <SelectTrigger role="combobox">
+              <SelectValue placeholder="Select Market Center" />
+            </SelectTrigger>
+            <SelectContent>
+              {marketCenters.map((mc) => (
+                <SelectItem key={mc.id} value={mc.id}>
+                  {mc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="enabled"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">
-                      Enable Auto-Close
-                    </FormLabel>
-                    <FormDescription>
-                      Automatically close tickets in &quot;Awaiting Response&quot; status
-                      after the configured number of business days.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            {!isLoading && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Enable Auto-Close
+                        </FormLabel>
+                        <FormDescription>
+                          Automatically close tickets in &quot;Awaiting
+                          Response&quot; status after the configured number of
+                          business days.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          aria-label="Enable or disable auto-close feature"
+                          disabled={
+                            updateAutoClose.isPending || !selectedMarketCenterId
+                          }
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="awaitingResponseDays"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Business Days Until Auto-Close</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={30}
-                        className="w-24"
-                        {...field}
-                        disabled={!form.watch("enabled")}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        business days
-                      </span>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Tickets will be closed after this many business days
-                    (excluding weekends) without a response. Default: 2 days.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="awaitingResponseDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Business Days Until Auto-Close</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            className="w-24"
+                            {...field}
+                            aria-label="Number of business days until ticket is auto-closed"
+                            disabled={
+                              !form.watch("enabled") ||
+                              updateAutoClose.isPending ||
+                              !selectedMarketCenterId
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            business days
+                          </span>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Tickets will be closed after this many business days
+                        (excluding weekends) without a response. Default: 2
+                        days.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                Loading auto-close settings...
+              </div>
+            )}
+
+            {error && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Failed to load auto-close settings. Please try again later.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={updateAutoClose.isPending || !form.formState.isDirty}
+                disabled={
+                  isLoading ||
+                  updateAutoClose.isPending ||
+                  !form.formState.isDirty ||
+                  !selectedMarketCenterId
+                }
+                aria-label="Save auto-close settings"
               >
                 {updateAutoClose.isPending ? (
                   <>
