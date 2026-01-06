@@ -19,7 +19,10 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  LockIcon,
   Mailbox,
+  MessageSquare,
+  SquareCheckBig,
   SquarePen,
   Trash2,
   Undo2,
@@ -87,6 +90,7 @@ export default function MarketCenterHistory({
       let newValueLink = "";
       let previousValueLink = "";
 
+      // New Value Parsing
       if (log?.field && log?.field?.includes("category") && log?.newValue) {
         try {
           const parsed = JSON.parse(log.newValue);
@@ -105,10 +109,21 @@ export default function MarketCenterHistory({
           newValue = log.newValue ?? "";
           newValueLink = "";
         }
+      } else if (
+        log?.field &&
+        log?.field?.includes("autoClose") &&
+        log?.newValue
+      ) {
+        const parsedNewValue: {
+          enabled: boolean;
+          awaitingResponseDays: number;
+        } = JSON.parse(log.newValue);
+        newValue = `${parsedNewValue?.enabled === true ? `${parsedNewValue.awaitingResponseDays} days` : "Disabled"}`;
       } else {
-        newValue = log.newValue ?? "";
+        newValue = log.newValue ?? "N/a";
       }
 
+      // Previous Value Parsing
       if (
         log?.field &&
         log?.field?.includes("category") &&
@@ -135,8 +150,18 @@ export default function MarketCenterHistory({
           previousValue = log.previousValue;
           previousValueLink = "";
         }
+      } else if (
+        log?.field &&
+        log?.field?.includes("autoClose") &&
+        log?.previousValue
+      ) {
+        const parsedPreviousValue: {
+          enabled: boolean;
+          awaitingResponseDays: number;
+        } = JSON.parse(log.previousValue);
+        previousValue = `${parsedPreviousValue?.enabled === true ? `${parsedPreviousValue.awaitingResponseDays} days` : "Disabled"}`;
       } else {
-        previousValue = log?.previousValue ?? "";
+        previousValue = log?.previousValue ?? "N/a";
       }
 
       return {
@@ -151,8 +176,8 @@ export default function MarketCenterHistory({
 
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
-      case "CREATE":
-        return <Clipboard className="h-3 w-3" />;
+      case "COMMENT":
+        return <MessageSquare className="h-3 w-3" />;
       case "UPDATE":
         return <SquarePen className="h-3 w-3" />;
       case "DELETE":
@@ -161,14 +186,18 @@ export default function MarketCenterHistory({
         return <Mailbox className="h-3 w-3" />;
       case "ADD":
         return <CirclePlus className="h-3 w-3" />;
-      case "CANCEL_INVITE":
-        return <Trash2 className="h-3 w-3" />;
       case "REMOVE":
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPEN":
       case "REOPENED":
         return <Undo2 className="h-3 w-3" />;
+      case "CLOSE":
+      case "CLOSED":
+        return <LockIcon className="h-3 w-3" />;
+      case "CREATE":
+        return <SquareCheckBig className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -213,14 +242,21 @@ export default function MarketCenterHistory({
               processedLogs.length > 0 &&
               processedLogs.map(
                 (log: FormattedMarketCenterHistory, index: number) => {
+                  const action =
+                    log?.newValue && log?.newValue === "RESOLVED"
+                      ? "CLOSE"
+                      : log?.field === "comment"
+                        ? "COMMENT"
+                        : log?.action;
+
                   if (!log) return null;
-                  // if (log.field)
+
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
                       <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                        {getActionIcon(log.action)}
-                        {log.action.split("_").join(" ").toLowerCase()}
+                        {getActionIcon(action.split("_").join(" "))}
+                        {action.split("_").join(" ").toLowerCase()}
                       </TableCell>
                       {/* FIELD */}
                       <TableCell className="font-semibold capitalize">
@@ -239,7 +275,7 @@ export default function MarketCenterHistory({
                           content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log.newValue}
+                              {log?.newValue}
                             </p>
                           }
                         />
@@ -256,7 +292,7 @@ export default function MarketCenterHistory({
                           content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log.previousValue}
+                              {log?.previousValue}
                             </p>
                           }
                         />

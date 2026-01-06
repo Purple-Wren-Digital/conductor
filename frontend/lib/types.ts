@@ -605,11 +605,7 @@ export type NotificationContent = {
 };
 
 export type MarketCenterNotificationCallback = {
-  templateName:
-    | "Market Center User Removed"
-    | "Market Center User Added"
-    | "Category Assignment - Added"
-    | "Category Assignment - Removed";
+  templateName: "Market Center Assignment" | "Category Assignment";
   trigger: "Market Center Assignment" | "Category Assignment";
   receivingUser: {
     id: string;

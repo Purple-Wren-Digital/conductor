@@ -29,6 +29,7 @@ import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import TicketSurveyModal from "@/components/ui/tickets/survey/ticket-survey-modal";
 import TicketHistoryTable from "@/components/history-tables/tickets/history-table-ticket";
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -41,9 +42,12 @@ import {
   Clock,
   Edit,
   History,
+  InfoIcon,
+  LockIcon,
   Mailbox,
   MessageSquare,
   Paperclip,
+  SquareCheckBig,
   SquarePen,
   Trash2,
   Undo2,
@@ -198,14 +202,21 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   );
 
   const canTakeSurvey =
-    ticket?.status === "RESOLVED" && surveyData?.surveyorId === currentUser?.id;
+    ticket?.status === "RESOLVED" &&
+    ticket?.creator?.role === "AGENT" &&
+    surveyData?.surveyorId === currentUser?.id &&
+    permissions?.canTakeTicketSurvey
+      ? true
+      : false;
+
+  const canSurveyBeGenerated = ticket?.creator?.role === "AGENT";
 
   const handleSendTicketNotifications = async ({
     ticket,
     userToNotify,
     changedDetails,
   }: {
-    ticket: Ticket;
+    ticket: Ticket & { previousAssignment: string | null };
     userToNotify: UsersToNotify;
     changedDetails: ActivityUpdates[] | null;
   }) => {
@@ -218,12 +229,9 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
     try {
       const response = await createAndSendNotification({
         getToken: getToken,
-        templateName:
-          notifyAssigneeChanges && userToNotify.updateType === "added"
-            ? "Ticket Assignment - Added"
-            : notifyAssigneeChanges && userToNotify.updateType === "removed"
-              ? "Ticket Assignment - Removed"
-              : "Ticket Updated",
+        templateName: notifyAssigneeChanges
+          ? "Ticket Assignment"
+          : "Ticket Updated",
         trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
         receivingUser: {
           id: userToNotify?.id,
@@ -241,6 +249,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                   editorName: currentUser?.name ?? "Unknown",
                   editorId: currentUser?.id ?? "",
                   changedDetails: changedDetails,
+                  userName: userToNotify?.name ?? "",
                 }
               : undefined,
           ticketAssignment: notifyAssigneeChanges
@@ -252,11 +261,9 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                 editorName: currentUser?.name ?? "Unknown",
                 editorId: currentUser?.id ?? "",
                 updateType: userToNotify.updateType,
-                currentAssignment: {
-                  id: userToNotify?.id,
-                  name: userToNotify?.name,
-                },
-                previousAssignment: null,
+                currentAssignment: ticket?.assignee?.name ?? "Unassigned",
+                previousAssignment: ticket.previousAssignment,
+                userName: userToNotify?.name ?? "",
               }
             : undefined,
         },
@@ -312,6 +319,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                       originalValue: "ASSIGNED",
                     },
                   ],
+                  userName: userToNotify?.name ?? "",
                 }
               : undefined,
         },
@@ -402,10 +410,30 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
+        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
+          (user: UsersToNotify) =>
+            user.updateType === "added" || user.updateType === "removed"
+        );
+
+        let previousAssignment = null;
+
+        if (assignmentChanges && assignmentChanges?.length > 0) {
+          const removedUser: UsersToNotify = data?.usersToNotify.find(
+            (user: UsersToNotify) => user.updateType === "removed"
+          );
+
+          if (removedUser && removedUser?.name) {
+            previousAssignment = removedUser.name;
+          } else if (!removedUser || !removedUser?.name) {
+            previousAssignment = "Unassigned";
+          }
+        }
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({
-              ticket: data.ticket as Ticket,
+              ticket: { ...data.ticket, previousAssignment } as Ticket & {
+                previousAssignment: string | null;
+              },
               userToNotify: user,
               changedDetails: data?.changedDetails ?? [],
             });
@@ -466,10 +494,30 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         data?.usersToNotify &&
         data?.usersToNotify?.length > 0
       ) {
+        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
+          (user: UsersToNotify) =>
+            user.updateType === "added" || user.updateType === "removed"
+        );
+
+        let previousAssignment = null;
+
+        if (assignmentChanges && assignmentChanges?.length > 0) {
+          const removedUser: UsersToNotify = data?.usersToNotify.find(
+            (user: UsersToNotify) => user.updateType === "removed"
+          );
+
+          if (removedUser && removedUser?.name) {
+            previousAssignment = removedUser.name;
+          } else if (!removedUser || !removedUser?.name) {
+            previousAssignment = "Unassigned";
+          }
+        }
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) => {
             await handleSendTicketNotifications({
-              ticket: data.ticket as Ticket,
+              ticket: { ...data.ticket, previousAssignment } as Ticket & {
+                previousAssignment: string | null;
+              },
               userToNotify: user,
               changedDetails: null,
             });
@@ -510,10 +558,30 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       }
       const data = await response.json();
       if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
+        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
+          (user: UsersToNotify) =>
+            user.updateType === "added" || user.updateType === "removed"
+        );
+
+        let previousAssignment = null;
+
+        if (assignmentChanges && assignmentChanges?.length > 0) {
+          const removedUser: UsersToNotify = data?.usersToNotify.find(
+            (user: UsersToNotify) => user.updateType === "removed"
+          );
+
+          if (removedUser && removedUser?.name) {
+            previousAssignment = removedUser.name;
+          } else if (!removedUser || !removedUser?.name) {
+            previousAssignment = "Unassigned";
+          }
+        }
         await Promise.all(
           data.usersToNotify.map(async (user: UsersToNotify) =>
             handleSendTicketNotifications({
-              ticket: ticket as Ticket,
+              ticket: { ...ticket, previousAssignment } as Ticket & {
+                previousAssignment: string | null;
+              },
               userToNotify: user,
               changedDetails: [
                 {
@@ -538,8 +606,8 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
-      case "CREATE":
-        return <Clipboard className="h-3 w-3" />;
+      case "COMMENT":
+        return <MessageSquare className="h-3 w-3" />;
       case "UPDATE":
         return <SquarePen className="h-3 w-3" />;
       case "DELETE":
@@ -552,8 +620,14 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPEN":
       case "REOPENED":
         return <Undo2 className="h-3 w-3" />;
+      case "CLOSE":
+      case "CLOSED":
+        return <LockIcon className="h-3 w-3" />;
+      case "CREATE":
+        return <SquareCheckBig className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -670,14 +744,24 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           <Card>
             <CardHeader>
               <div className="w-full space-y-2">
-                {/* TITLE, BADGES */}
-                <CardTitle className="text-xl">
-                  {isLoading
-                    ? "Loading ticket..."
-                    : ticket?.title
-                      ? ticket.title
-                      : "Ticket"}
-                </CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  {/* TITLE, BADGES */}
+                  <CardTitle className="text-xl">
+                    {isLoading
+                      ? "Loading ticket..."
+                      : ticket?.title
+                        ? ticket.title
+                        : "Ticket"}
+                  </CardTitle>
+                  {!canSurveyBeGenerated && (
+                    <ToolTip
+                      content="Note: Surveys are not generated for internal tickets (tickets created by brokerage staff members)"
+                      trigger={
+                        <InfoIcon className="h-5 w-5 text-muted-foreground" />
+                      }
+                    />
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardDescription className="text-sm text-muted-foreground font-md">
                     Ticket{" "}
@@ -808,25 +892,31 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           {ticket?.status === "RESOLVED" ? (
             <div className="space-y-6">
               <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <ClipboardListIcon className="size-4 text-muted-foreground" />
-                    <CardTitle>Survey Results</CardTitle>
-                  </div>
+                {canSurveyBeGenerated && (
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <ClipboardListIcon className="size-4 text-muted-foreground" />
+                      <CardTitle>Survey Results</CardTitle>
+                    </div>
 
-                  <CardDescription>
-                    {ticket?.surveyId &&
-                      surveyData &&
-                      surveyData.completed === true &&
-                      `Completed by ${surveyData?.surveyor?.name ?? "N/a"} on ${
-                        surveyData?.updatedAt
-                          ? format(new Date(surveyData.updatedAt), "PPP p")
-                          : ""
-                      }`}
-                  </CardDescription>
-                </CardHeader>
+                    <CardDescription>
+                      {ticket?.surveyId &&
+                        surveyData &&
+                        surveyData.completed === true &&
+                        `Completed by ${surveyData?.surveyor?.name ?? "N/a"} on ${
+                          surveyData?.updatedAt
+                            ? format(new Date(surveyData.updatedAt), "PPP p")
+                            : ""
+                        }`}
+                      {(!ticket?.surveyId ||
+                        !surveyData ||
+                        surveyData.completed === false) &&
+                        "Uncompleted"}
+                    </CardDescription>
+                  </CardHeader>
+                )}
                 <CardContent className="space-y-4">
-                  {ticket?.surveyId && surveyData && (
+                  {canSurveyBeGenerated && ticket?.surveyId && surveyData && (
                     <div className="space-y-2">
                       <div className="space-y-1">
                         <p className="font-medium">Overall:</p>
@@ -884,6 +974,12 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {!canSurveyBeGenerated && (
+                    <p className="text-muted-foreground text-sm">
+                      Surveys are not generated for internal tickets
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -1046,14 +1142,18 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                   ticketHistory &&
                   ticketHistory.length > 0 &&
                   ticketHistory.map((log: TicketHistory) => {
+                    const action =
+                      log?.newValue && log?.newValue === "RESOLVED"
+                        ? "CLOSE"
+                        : log?.field === "comment"
+                          ? "COMMENT"
+                          : log?.action;
                     return (
                       <div key={log?.id} className="border-b pb-4">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                           <Label>
-                            {log?.action && capitalizeEveryWord(log?.action)}{" "}
-                            {log?.field && log?.action !== "REOPENED"
-                              ? capitalizeEveryWord(log?.field)
-                              : "Ticket"}
+                            {log?.action && capitalizeEveryWord(log.action)}
+                            {log?.field && ` ${capitalizeEveryWord(log.field)}`}
                           </Label>
                           <p className="text-sm font-medium">
                             {new Date(log?.changedAt).toLocaleDateString()}
@@ -1061,11 +1161,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                         </div>
                         <div className="flex flex-col justify-between gap-2 mb-1">
                           <div className="flex gap-1.5 flex-wrap items-center text-muted-foreground">
-                            {log?.field === "comment" ? (
-                              <MessageSquare className="h-3 w-3" />
-                            ) : (
-                              getActionIcon(log?.action)
-                            )}
+                            {getActionIcon(action.split("_").join(" "))}
                             <span
                               className={`text-sm font-medium ${
                                 log?.field === "comment" &&

@@ -64,8 +64,7 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
       // Find staff leaders in the market center (excluding the assignee)
       const staffLeaders = await userRepository.findByMarketCenterIdAndRole(
         survey.marketCenterId,
-        "STAFF_LEADER",
-        { excludeUserId: survey.assigneeId || undefined }
+        "STAFF_LEADER"
       );
 
       staffLeaders.forEach((leader) => {

@@ -21,8 +21,10 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  LockIcon,
   Mailbox,
   MessageSquare,
+  SquareCheckBig,
   SquarePen,
   Trash2,
   Undo2,
@@ -75,8 +77,8 @@ export default function TicketHistoryTable({
   });
   const getActionIcon = (action: string) => {
     switch (action.toUpperCase()) {
-      case "CREATE":
-        return <Clipboard className="h-3 w-3" />;
+      case "COMMENT":
+        return <MessageSquare className="h-3 w-3" />;
       case "UPDATE":
         return <SquarePen className="h-3 w-3" />;
       case "DELETE":
@@ -89,8 +91,14 @@ export default function TicketHistoryTable({
         return <CircleMinus className="h-3 w-3" />;
       case "ROLE CHANGE":
         return <ArrowRightLeft className="h-4 w-4" />;
+      case "REOPEN":
       case "REOPENED":
         return <Undo2 className="h-3 w-3" />;
+      case "CLOSE":
+      case "CLOSED":
+        return <LockIcon className="h-3 w-3" />;
+      case "CREATE":
+        return <SquareCheckBig className="h-3 w-3" />;
       default:
         return <Clipboard className="h-3 w-3" />;
     }
@@ -129,6 +137,13 @@ export default function TicketHistoryTable({
             ticketHistoryLogs &&
             ticketHistoryLogs.length > 0 &&
             ticketHistoryLogs.map((log: TicketHistory, index: number) => {
+              const action =
+                log?.newValue && log?.newValue === "RESOLVED"
+                  ? "CLOSE"
+                  : log?.field === "comment"
+                    ? "COMMENT"
+                    : log?.action;
+
               const field =
                 log?.field && log?.field === "dueDate"
                   ? "due date"
@@ -155,12 +170,8 @@ export default function TicketHistoryTable({
                   {/* ACTION */}
                   <TableCell>
                     <p className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                      {log?.field === "comment" ? (
-                        <MessageSquare className="h-3 w-3" />
-                      ) : (
-                        getActionIcon(log?.action)
-                      )}
-                      {log.action.toLowerCase()}
+                      {getActionIcon(action.split("_").join(" "))}
+                      {action.split("_").join(" ").toLowerCase()}
                     </p>
                   </TableCell>
                   {/* FIELD */}

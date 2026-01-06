@@ -55,6 +55,7 @@ export const NotificationTemplateVariables = {
     dueDate: "{{due_date}}",
     assigneeId: "{{assignee_id}}",
     assigneeName: "{{assignee_name}}",
+    userName: "{{user_name}}",
   } satisfies VariablePlaceholders<CreatedTicketNotificationProps>,
   AssignedTicketNotificationProps: {
     ticketNumber: "{{ticket_number}}",
@@ -66,6 +67,7 @@ export const NotificationTemplateVariables = {
     updateType: "{{update_type}}",
     currentAssignment: "{{current_assignment}}", // rendered as list
     previousAssignment: "{{previous_assignment}}", // rendered as list
+    userName: "{{user_name}}",
   } satisfies VariablePlaceholders<AssignedTicketNotificationProps>,
   UpdatedTicketProps: {
     ticketNumber: "{{ticket_number}}",
@@ -75,6 +77,7 @@ export const NotificationTemplateVariables = {
     editorName: "{{editor_name}}",
     editorId: "{{editor_id}}",
     changedDetails: "{{changed_details}}", // rendered as list
+    userName: "{{user_name}}",
   } satisfies VariablePlaceholders<UpdatedTicketProps>,
   NewCommentNotificationProps: {
     ticketNumber: "{{ticket_number}}",
@@ -84,8 +87,8 @@ export const NotificationTemplateVariables = {
     commenterId: "{{commenter_id}}",
     comment: "{{comment}}",
     isInternal: "{{is_internal}}",
+    userName: "{{user_name}}",
   } satisfies VariablePlaceholders<NewCommentNotificationProps>,
-
   TicketSurveyProps: {
     ticketNumber: "{{ticket_number}}",
     ticketTitle: "{{ticket_title}}",
@@ -95,90 +98,56 @@ export const NotificationTemplateVariables = {
     ticketNumber: "{{ticket_number}}",
     ticketTitle: "{{ticket_title}}",
     staffName: "{{staff_name}}",
+    userName: "{{user_name}}",
   } satisfies VariablePlaceholders<SurveyResultsProps>,
 } as const;
 
 export const notificationTemplatesDefault = [
   {
-    templateName: "Market Center User Added",
-    templateDescription: "Sent when a user is added to a Market Center",
+    templateName: "Market Center Assignment",
+    templateDescription: "Sent when a user is added to a market center",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Market Center Assignment",
-    subject: "Market Center Assignment",
-    body: `{{editor_name}} added you to {{market_center_name}}`,
+    subject: "Market Center Assignment Update",
+    body: `{{editor_name}} {{user_update}} you to/from {{market_center_name}}`,
     variables: NotificationTemplateVariables.MarketCenterAssignmentProps,
     isDefault: true,
     isActive: true,
   },
   {
-    templateName: "Market Center User Removed",
-    templateDescription: "Sent when a user is removed from a Market Center",
-    category: "ACTIVITY" as NotificationCategory,
-    channel: "IN_APP" as NotificationChannel,
-    type: "Market Center Assignment",
-    subject: "Market Center Assignment",
-    body: `{{editor_name}} removed you from {{market_center_name}}`,
-    variables: NotificationTemplateVariables.MarketCenterAssignmentProps,
-    isDefault: true,
-    isActive: true,
-  },
-  {
-    templateName: "Category Assignment - Added",
+    templateName: "Category Assignment",
     templateDescription: "Sent when a user is added to a Ticket Category",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Category Assignment",
-    subject: "Category Assignment",
-    body: `You will now be automatically assigned to tickets created with {{category_name}}`,
-    variables: NotificationTemplateVariables.CategoryAssignmentProps,
-    isDefault: true,
-    isActive: true,
-  },
-  {
-    templateName: "Category Assignment - Removed",
-    templateDescription: "Sent when a user is removed from a Ticket Category",
-    category: "ACTIVITY" as NotificationCategory,
-    channel: "IN_APP" as NotificationChannel,
-    type: "Category Assignment",
-    subject: "Category Assignment",
-    body: `You will no longer be automatically assigned to tickets created with {{category_name}}`,
+    subject: "Category Assignment Update",
+    body: `"{{category_name}}" has been {{user_update}} to/from your assigned ticket categories`,
     variables: NotificationTemplateVariables.CategoryAssignmentProps,
     isDefault: true,
     isActive: true,
   },
   {
     templateName: "Ticket Created",
-    templateDescription: "Sent when a user creates a Ticket",
+    templateDescription: "Sent when a user creates a ticket",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Created",
-    subject: "Ticket Created",
-    body: `{{ticket_title}} was created by {{creator_name}}`,
+    subject: "New Ticket Created",
+    body: `'{{ticket_title}}' was created by {{creator_name}}`,
     variables: NotificationTemplateVariables.CreatedTicketNotificationProps,
     isDefault: true,
     isActive: true,
   },
   {
-    templateName: "Ticket Assignment - Added",
-    templateDescription: "Sent when a user is assigned to a Ticket",
+    templateName: "Ticket Assignment",
+    templateDescription:
+      "Sent when a user is assigned to or unassigned from a Ticket",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Assignment",
-    subject: "Ticket Assignment",
-    body: `{{ticket_title}} is now in your queue`,
-    variables: NotificationTemplateVariables.AssignedTicketNotificationProps,
-    isDefault: true,
-    isActive: true,
-  },
-  {
-    templateName: "Ticket Assignment - Removed",
-    templateDescription: "Sent when a user is removed from a Ticket",
-    category: "ACTIVITY" as NotificationCategory,
-    channel: "IN_APP" as NotificationChannel,
-    type: "Ticket Assignment",
-    subject: "Ticket Assignment",
-    body: `{{ticket_title}} is no longer in your queue`,
+    subject: "Ticket Assignment Update",
+    body: `"{{ticket_title}}" has been {{user_update}} to/from your queue`,
     variables: NotificationTemplateVariables.AssignedTicketNotificationProps,
     isDefault: true,
     isActive: true,
@@ -196,12 +165,12 @@ export const notificationTemplatesDefault = [
     isActive: true,
   },
   {
-    templateName: "New Comments on Ticket",
-    templateDescription: "Sent when a new comment is added to a Ticket",
+    templateName: "New Comments",
+    templateDescription: "Sent when a new comment is added to a ticket",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "New Comments",
-    subject: "New Comment for {{ticket_title}}",
+    subject: "New Comment for '{{ticket_title}}'",
     body: `{{commenter_name}} added a new comment to "{{ticket_title}}": "{{comment}}"`,
     variables: NotificationTemplateVariables.NewCommentNotificationProps,
     isDefault: true,
@@ -209,11 +178,12 @@ export const notificationTemplatesDefault = [
   },
   {
     templateName: "Ticket Survey",
-    templateDescription: "Sent to the ticket's creator when marked as resolved",
+    templateDescription:
+      "Sent to the ticket's creator when marked as resolved. Surveys are not generated for internal tickets.",
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Survey",
-    subject: "Survey for {{ticket_title}}",
+    subject: `New Survey for "{{ticket_title}}"`,
     body: "Please take a moment to provide feedback about your experience",
     variables: NotificationTemplateVariables.TicketSurveyProps,
     isDefault: true,
@@ -226,8 +196,8 @@ export const notificationTemplatesDefault = [
     category: "ACTIVITY" as NotificationCategory,
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Survey Results",
-    subject: "Survey Completed for {{ticket_title}}",
-    body: "You may now view the ratings and comments provided by the ticket's creator",
+    subject: "Survey Results: {{ticket_title}}",
+    body: "New feedback is available",
     variables: NotificationTemplateVariables.SurveyResultsProps,
     isDefault: true,
     isActive: true,
@@ -429,10 +399,10 @@ export const formatNotificationWithTemplate = (
       editorId: content.data.ticketAssignment?.editorId,
       updateType: content.data.ticketAssignment?.updateType,
       currentAssignment: content.data.ticketAssignment?.currentAssignment
-        ? content.data.ticketAssignment?.currentAssignment?.name
+        ? content.data.ticketAssignment?.currentAssignment
         : undefined,
       previousAssignment: content.data.ticketAssignment?.previousAssignment
-        ? content.data.ticketAssignment?.previousAssignment?.name
+        ? content.data.ticketAssignment?.previousAssignment
         : undefined,
     };
     const subject = renderTemplate({

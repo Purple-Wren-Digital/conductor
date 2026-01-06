@@ -10,7 +10,8 @@ import {
 } from "@react-email/components";
 import { AssignedTicketNotificationProps } from "./types";
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 
 const TicketAssignment = ({
   ticketNumber,
@@ -23,8 +24,8 @@ const TicketAssignment = ({
   previousAssignment,
   updateType,
 }: AssignedTicketNotificationProps) => {
-  const currentUserName = currentAssignment?.name ?? "Hello";
-  const previousUserName = previousAssignment?.name ?? "Hello";
+  const currentUserName = currentAssignment ?? "Hello";
+  const previousUserName = previousAssignment ?? "Hello";
   return (
     <Html>
       <Head />
@@ -71,21 +72,10 @@ const TicketAssignment = ({
             <div style={{ marginLeft: 10 }}>
               <ul>
                 <li>
-                  <Text style={text}>
-                    Current: {currentAssignment?.name}{" "}
-                    {currentAssignment?.id &&
-                      `(#${currentAssignment.id.slice(0, 8)})`}
-                  </Text>
+                  <Text style={text}>Current: {currentAssignment}</Text>
                 </li>
                 <li>
-                  <Text style={text}>
-                    Previous:{" "}
-                    {previousAssignment?.name
-                      ? previousAssignment.name
-                      : "Unassigned"}{" "}
-                    {previousAssignment?.id &&
-                      `(#${previousAssignment.id.slice(0, 8)})`}
-                  </Text>
+                  <Text style={text}>Previous: {previousAssignment}</Text>
                 </li>
               </ul>
             </div>

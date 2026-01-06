@@ -225,39 +225,39 @@ export const ticketRepository = {
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (data.title !== undefined) {
+    if (data.title && data.title !== undefined) {
       updates.push(`title = $${paramIndex++}`);
       values.push(data.title);
     }
-    if (data.description !== undefined) {
+    if (data.description && data.description !== undefined) {
       updates.push(`description = $${paramIndex++}`);
       values.push(data.description);
     }
-    if (data.status !== undefined) {
+    if (data.status && data.status !== undefined) {
       updates.push(`status = $${paramIndex++}`);
       values.push(data.status);
     }
-    if (data.urgency !== undefined) {
+    if (data.urgency && data.urgency !== undefined) {
       updates.push(`urgency = $${paramIndex++}`);
       values.push(data.urgency);
     }
-    if (data.assigneeId !== undefined) {
+    if (data.assigneeId && data.assigneeId !== undefined) {
       updates.push(`assignee_id = $${paramIndex++}`);
       values.push(data.assigneeId);
     }
-    if (data.categoryId !== undefined) {
+    if (data.categoryId && data.categoryId !== undefined) {
       updates.push(`category_id = $${paramIndex++}`);
       values.push(data.categoryId);
     }
-    if (data.dueDate !== undefined) {
+    if (data.dueDate && data.dueDate !== undefined) {
       updates.push(`due_date = $${paramIndex++}`);
       values.push(data.dueDate);
     }
-    if (data.resolvedAt !== undefined) {
+    if (data?.resolvedAt && data.resolvedAt !== undefined) {
       updates.push(`resolved_at = $${paramIndex++}`);
       values.push(data.resolvedAt);
     }
-    if (data.surveyId !== undefined) {
+    if (data?.surveyId && data.surveyId !== undefined) {
       updates.push(`survey_id = $${paramIndex++}`);
       values.push(data.surveyId);
     }

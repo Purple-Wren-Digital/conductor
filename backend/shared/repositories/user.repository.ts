@@ -179,7 +179,7 @@ export const userRepository = {
   async findByMarketCenterIdAndRole(
     marketCenterId: string,
     role: UserRole,
-    options?: { activeOnly?: boolean }
+    options?: { activeOnly?: boolean; excludeUserId?: string }
   ): Promise<User[]> {
     const activeOnly = options?.activeOnly ?? true;
 

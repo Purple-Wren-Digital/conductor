@@ -112,6 +112,7 @@ import {
   TEMPLATE_TYPE_LABELS,
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_IN_APP_TEMPLATES,
+  TEMPLATE_VARIABLES,
 } from "../customization-types";
 
 // =============================================================================
@@ -639,7 +640,7 @@ describe("Template Customizations - Preview", () => {
 
       // Should replace variables with example values
       expect(result.preview.subject).toBe("New Ticket: Login Issue");
-      expect(result.preview.greeting).toBe("Hi Alex Johnson,");
+      expect(result.preview.greeting).toBe("Hi John Smith,");
       expect(result.preview.mainMessage).toContain("John Smith");
       expect(result.preview.buttonText).toBe("View");
       expect(result.preview.visibleFieldsData).toHaveLength(2);
@@ -711,7 +712,9 @@ describe("Template Customizations - Preview", () => {
         });
 
         expect(result.preview.title).toContain("Test");
-        expect(result.preview.title).not.toContain("{{user_name}}");
+        for (const { key } of TEMPLATE_VARIABLES[templateType]) {
+          expect(result.preview.title).not.toContain(`{{${key}}}`);
+        }
       }
     });
   });

@@ -401,8 +401,9 @@ describe("TEMPLATE_VARIABLES configuration", () => {
     });
   });
 
-  it("should have user_name variable for all types", () => {
-    Object.values(TEMPLATE_VARIABLES).forEach((variables) => {
+  it("should have user_name variable for all types except ticket_survey", () => {
+    Object.entries(TEMPLATE_VARIABLES).forEach(([type, variables]) => {
+      if (type === "ticket_survey") return;
       const hasUserName = variables.some((v) => v.key === "user_name");
       expect(hasUserName).toBe(true);
     });

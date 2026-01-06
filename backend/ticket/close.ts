@@ -4,6 +4,7 @@ import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
 import type { TicketStatus } from "./types";
 import { canDeleteTicket } from "../auth/permissions";
+import { slaService } from "../sla/sla.service";
 
 export interface CloseTicketRequest {
   ticketId: string;
@@ -50,7 +51,7 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
     if (!marketCenterId) {
       throw APIError.notFound("Market Center not found");
     }
-    let canClose = await canDeleteTicket(userContext, req.ticketId);
+    const canClose = await canDeleteTicket(userContext, req.ticketId);
     if (!canClose) {
       throw APIError.permissionDenied(
         "You do not have permission to close this ticket"
@@ -61,30 +62,37 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       throw APIError.invalidArgument("Ticket creator is required");
     }
 
+    let surveyId: string | undefined = undefined;
     // Create survey using repository
-    const survey = await surveyRepository.findOrCreate({
-      ticketId: req.ticketId,
-      surveyorId: oldTicket.creatorId,
-      assigneeId: oldTicket.assigneeId || null,
-      marketCenterId: marketCenterId,
-    });
+    if (oldTicket?.creator?.role === "AGENT") {
+      const survey = await surveyRepository.findOrCreate({
+        ticketId: req.ticketId,
+        surveyorId: oldTicket.creatorId,
+        assigneeId: oldTicket.assigneeId || null,
+        marketCenterId: marketCenterId,
+      });
 
-    if (!survey) {
-      throw APIError.internal("Failed to create survey");
+      if (!survey || !survey?.id) {
+        throw APIError.internal("Failed to find or create ticket survey");
+      }
+
+      surveyId = survey.id;
     }
 
     // Update ticket status to resolved
     await ticketRepository.update(req.ticketId, {
       status: "RESOLVED",
       resolvedAt: new Date(),
-      surveyId: survey.id,
+      surveyId: surveyId,
     });
+
+    await slaService.recordResolution(req.ticketId);
 
     // Create ticket history
     await ticketRepository.createHistory({
       ticketId: req.ticketId,
-      action: "UPDATE",
-      field: "status",
+      action: "CLOSE",
+      field: "ticket",
       previousValue: oldTicket.status,
       newValue: "RESOLVED",
       snapshot: oldTicket as any,
@@ -98,28 +106,25 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       throw APIError.internal("Failed to retrieve updated ticket");
     }
 
-    const usersToNotify: UsersToNotify[] = [
-      {
-        id: ticket.creatorId,
-        name: ticket.creator?.name || "",
-        email: ticket.creator?.email || "",
-        updateType: "ticketSurvey",
-      },
-    ];
-
-    if (
-      ticket?.assigneeId &&
-      ticket.creatorId !== ticket?.assigneeId &&
-      ticket?.assignee
-    ) {
-      usersToNotify.push({
-        id: ticket.assigneeId,
-        name: ticket.assignee?.name || "",
-        email: ticket.assignee?.email || "",
-        updateType: "unchanged",
-      });
-    }
-
-    return { usersToNotify: usersToNotify };
+    return {
+      usersToNotify: [
+        {
+          id: ticket.creatorId,
+          name: ticket.creator?.name || "",
+          email: ticket.creator?.email || "",
+          updateType: surveyId ? "ticketSurvey" : "unchanged",
+        },
+        ticket?.assigneeId &&
+        ticket?.assignee &&
+        ticket.creatorId !== ticket?.assigneeId
+          ? {
+              id: ticket.assigneeId,
+              name: ticket.assignee?.name || "",
+              email: ticket.assignee?.email || "",
+              updateType: "unchanged",
+            }
+          : undefined,
+      ].filter(Boolean) as UsersToNotify[],
+    };
   }
 );

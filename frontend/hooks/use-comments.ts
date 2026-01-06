@@ -241,6 +241,7 @@ export function useCreateComment() {
                   commenterId: newComment.userId,
                   commenterName: newComment.user?.name || "A team member",
                   comment: stripHtmlTags(newComment.content),
+                  userName: user.name,
                 },
               },
             });
@@ -381,7 +382,7 @@ export function useDeleteComment() {
           context.previousComments
         );
       }
-      console.log("Failed to delete comment", error);
+      console.error("Failed to delete comment", error);
       toast.error("Error: Failed to delete comment");
     },
     onSuccess: (result, { ticketId, commentId }) => {

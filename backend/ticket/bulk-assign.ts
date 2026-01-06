@@ -55,7 +55,7 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
     const { tickets } = await ticketRepository.search({
       userId: userContext.userId,
       userRole: userContext.role,
-      userMarketCenterId: userContext.marketCenterId,
+      marketCenterIds: userContext?.marketCenterId ? [userContext.marketCenterId] : [],
       status: [], // Empty to include all statuses
       limit: req.ticketIds.length,
     });

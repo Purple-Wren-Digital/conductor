@@ -159,11 +159,13 @@ export const format = api<
     let notificationTemplate: NotificationTemplate;
 
     if (notificationTemplateRow) {
-      notificationTemplate = convertRowToNotificationTemplate(notificationTemplateRow);
+      notificationTemplate = convertRowToNotificationTemplate(
+        notificationTemplateRow
+      );
     } else {
       // Fall back to default template from code
       const defaultTemplate = notificationTemplatesDefault.find(
-        (t) => t.templateName === req.id
+        (t) => t.templateName === req.id || t.type === req.id
       );
 
       if (!defaultTemplate) {

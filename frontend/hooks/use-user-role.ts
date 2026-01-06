@@ -28,8 +28,8 @@ export interface UserPermissions {
   canManageMarketCenterCategories: boolean;
   canManageNotificationTemplateSettings: boolean;
   canManageTicketTemplateSettings: boolean;
-
   canManageMCNotificationSettings: boolean;
+  canTakeTicketSurvey: boolean;
 }
 
 export function getUserPermissions(role: UserRole): UserPermissions {
@@ -60,6 +60,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageNotificationTemplateSettings: true,
         canManageTicketTemplateSettings: true,
         canManageMCNotificationSettings: true,
+        canTakeTicketSurvey: false,
       };
     case "STAFF_LEADER":
       return {
@@ -87,6 +88,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageNotificationTemplateSettings: false,
         canManageTicketTemplateSettings: true,
         canManageMCNotificationSettings: false,
+        canTakeTicketSurvey: false,
       };
     case "STAFF":
       return {
@@ -114,6 +116,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageNotificationTemplateSettings: false,
         canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
+        canTakeTicketSurvey: false,
       };
     case "AGENT":
       return {
@@ -141,6 +144,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageNotificationTemplateSettings: false,
         canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
+        canTakeTicketSurvey: true,
       };
     default:
       return {
@@ -168,6 +172,7 @@ export function getUserPermissions(role: UserRole): UserPermissions {
         canManageNotificationTemplateSettings: false,
         canManageTicketTemplateSettings: false,
         canManageMCNotificationSettings: false,
+        canTakeTicketSurvey: false,
       };
   }
 }

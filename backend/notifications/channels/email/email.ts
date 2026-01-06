@@ -1,8 +1,11 @@
 import * as React from "react";
 import { Resend } from "resend";
 import { secret } from "encore.dev/config";
-import { formatEmailNotification } from "./utils";
-import { renderCustomizedEmailTemplate } from "./customization-renderer";
+// import { formatEmailNotification } from "./utils";
+import {
+  renderCustomizedEmailTemplate,
+  renderDefaultEmailTemplate,
+} from "./customization-renderer";
 import type { CreateEmailResponse } from "resend";
 import type { Notification } from "../../types";
 
@@ -49,7 +52,7 @@ export async function sendEmailNotification({
 
     // If no customization found, fall back to default templates
     if (!emailContent) {
-      emailContent = formatEmailNotification(notification);
+      emailContent = renderDefaultEmailTemplate(notification, recipientName);
     }
 
     if (!emailContent) {
