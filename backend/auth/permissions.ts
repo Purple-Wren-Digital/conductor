@@ -127,10 +127,21 @@ export async function canViewInternalComments(
   );
 }
 
-export async function canBeNotifiedAboutComments(
-  role: UserRole,
-  isInternal: boolean
-): Promise<boolean> {
+export async function canBeNotifiedAboutComments({
+  userId,
+  role,
+  isInternal,
+  currentUserId,
+}: {
+  userId: string;
+  role: UserRole;
+  isInternal: boolean;
+  currentUserId: string;
+}): Promise<boolean> {
+  if (userId === currentUserId) {
+    return false;
+  }
+
   if (!isInternal) {
     return true;
   }

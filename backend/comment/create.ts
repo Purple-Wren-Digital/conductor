@@ -1,9 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import {
-  ticketRepository,
-  commentRepository,
-  notificationRepository,
-} from "../ticket/db";
+import { ticketRepository, commentRepository } from "../ticket/db";
 import type { Comment } from "../ticket/types";
 import { commentRateLimiter } from "./rate-limiter";
 import { processCommentContent } from "./sanitize";
@@ -66,64 +62,10 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       throw APIError.notFound("ticket not found");
     }
 
-    const usersToNotify: UsersToNotify[] = [];
-
-    if (
-      ticket?.assigneeId &&
-      ticket?.assignee &&
-      (await canBeNotifiedAboutComments(
-        ticket.assignee.role,
-        req.internal || false
-      ))
-    ) {
-      usersToNotify.push({
-        id: ticket.assigneeId,
-        name: ticket.assignee?.name || "The assigned staff member",
-        email: ticket.assignee?.email || "",
-        updateType: "created",
-      });
-    }
-
-    if (
-      !ticket?.assigneeId &&
-      ticket.creatorId &&
-      ticket?.creator &&
-      (await canBeNotifiedAboutComments(
-        ticket.creator.role,
-        req.internal || false
-      ))
-    ) {
-      usersToNotify.push({
-        id: ticket.creatorId,
-        name: ticket.creator?.name || "The ticket creator",
-        email: ticket.creator?.email || "",
-        updateType: "created",
-      });
-    }
-
     // Get previous comments to notify other commenters
     const previousComments = await commentRepository.findByTicketIdWithUsers(
       req.ticketId
     );
-
-    const notifiedUserIds = new Set(usersToNotify.map((user) => user.id));
-
-    for (const comment of previousComments) {
-      const commenter = comment.user;
-      if (!commenter) continue;
-
-      const alreadyNotified = notifiedUserIds.has(commenter.id);
-      const canAccess = await canAccessTicket(userContext, req.ticketId);
-      if (!alreadyNotified && canAccess) {
-        usersToNotify.push({
-          id: commenter.id,
-          name: commenter.name || "A team member",
-          email: commenter.email || "",
-          updateType: "created",
-        });
-        notifiedUserIds.add(commenter.id);
-      }
-    }
 
     // Create comment
     const comment = await commentRepository.createWithUser({
@@ -149,7 +91,10 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     // Only update if ticket is not resolved or draft
     const nonUpdatableStatuses = ["RESOLVED", "DRAFT"];
     if (!nonUpdatableStatuses.includes(ticket.status)) {
-      const isStaffComment = userContext.role === "STAFF" || userContext.role === "STAFF_LEADER" || userContext.role === "ADMIN";
+      const isStaffComment =
+        userContext.role === "STAFF" ||
+        userContext.role === "STAFF_LEADER" ||
+        userContext.role === "ADMIN";
       const newStatus = isStaffComment ? "AWAITING_RESPONSE" : "IN_PROGRESS";
 
       // Only update if status is actually changing
@@ -179,35 +124,6 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       snapshot: ticket,
     });
 
-    // Create notifications
-    const notificationUserIds: string[] =
-      userContext?.userId && ticket?.creatorId && ticket?.assigneeId
-        ? [userContext?.userId, ticket?.creatorId, ticket?.assigneeId]
-        : userContext?.userId && ticket?.creatorId
-          ? [userContext?.userId, ticket?.creatorId]
-          : [];
-
-    if (notificationUserIds.length > 0) {
-      const notificationsData = notificationUserIds.map((userId) => ({
-        userId,
-        channel: "IN_APP" as const,
-        category: "ACTIVITY" as const,
-        type: "Ticket New Comment",
-        title: `${
-          comment?.user?.name
-            ? `${comment.user.name} commented on`
-            : "New comment on"
-        } ticket: "${ticket?.title}"`,
-        body: comment?.content,
-        data: {
-          ticketId: ticket?.id,
-          commentId: comment?.id,
-        },
-      }));
-
-      await notificationRepository.createMany(notificationsData);
-    }
-
     const safeComment = {
       ...comment,
       user: {
@@ -218,6 +134,74 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
 
     // Publish comment created event for real-time updates
     await CommentEventPublisher.publishCommentCreated(safeComment);
+
+    const usersToNotify: UsersToNotify[] = [];
+
+    if (
+      ticket?.assigneeId &&
+      ticket?.assignee &&
+      (await canBeNotifiedAboutComments({
+        userId: ticket.assigneeId,
+        role: ticket.assignee.role,
+        isInternal: req.internal || false,
+        currentUserId: userContext.userId,
+      }))
+    ) {
+      usersToNotify.push({
+        id: ticket.assigneeId,
+        name: ticket.assignee?.name || "The assigned staff member",
+        email: ticket.assignee?.email || "",
+        updateType: "created",
+      });
+    }
+
+    if (
+      (!ticket?.assigneeId || ticket?.assigneeId !== ticket?.creatorId) &&
+      ticket?.creatorId &&
+      ticket?.creator &&
+      (await canBeNotifiedAboutComments({
+        userId: ticket.creatorId,
+        role: ticket.creator.role,
+        isInternal: req.internal || false,
+        currentUserId: userContext.userId,
+      }))
+    ) {
+      usersToNotify.push({
+        id: ticket.creatorId,
+        name: ticket.creator?.name || "The ticket creator",
+        email: ticket.creator?.email || "",
+        updateType: "created",
+      });
+    }
+
+    for (const comment of previousComments) {
+      const commenter = comment?.user;
+      if (!commenter) continue;
+
+      const alreadyNotified = usersToNotify.find(
+        (user) => user.id === commenter.id
+      );
+      if (alreadyNotified !== undefined) continue;
+
+      const canAccess = await canAccessTicket(userContext, req.ticketId);
+      const canBeNotified = await canBeNotifiedAboutComments({
+        userId: commenter.id,
+        role: commenter.role,
+        isInternal: req.internal || false,
+        currentUserId: userContext.userId,
+      });
+
+      if (canAccess && canBeNotified && !alreadyNotified) {
+        usersToNotify.push({
+          id: commenter.id,
+          name: commenter.name || "A team member",
+          email: commenter.email || "",
+          updateType: "created",
+        });
+      } else {
+        continue;
+      }
+    }
 
     return {
       comment: safeComment,
