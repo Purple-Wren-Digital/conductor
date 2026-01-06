@@ -28,6 +28,15 @@ interface TicketRow {
   resolved_at: Date | null;
 }
 
+const normalizeGranularity = (
+  value: Query<Granularity> | undefined
+): Granularity => {
+  if (value === "daily" || value === "weekly" || value === "monthly") {
+    return value;
+  }
+  return "monthly";
+};
+
 export const resolvedByMonth = api<
   ResolvedVolumeRequest,
   ResolvedVolumeResponse
@@ -42,10 +51,16 @@ export const resolvedByMonth = api<
     const userContext = await getUserContext();
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
-    const assigneeIds = req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
-    const creatorIds = req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const assigneeIds =
+      req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
+    const creatorIds =
+      req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
+    const marketCenterIds =
+      req.marketCenterIds && req.marketCenterIds.length > 0
+        ? req.marketCenterIds
+        : null;
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -152,10 +167,12 @@ export const resolvedByMonth = api<
     }
 
     // Determine granularity - auto-detect if not provided
-    let granularity: Granularity = req.granularity || "monthly";
+    let granularity: Granularity = normalizeGranularity(req?.granularity);
 
     if (!req.granularity && dateFrom && dateTo) {
-      const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil(
+        (dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysDiff <= 31) {
         granularity = "daily";
       } else if (daysDiff <= 90) {
@@ -164,7 +181,9 @@ export const resolvedByMonth = api<
         granularity = "monthly";
       }
     } else if (!req.granularity && dateFrom && !dateTo) {
-      const daysDiff = Math.ceil((new Date().getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil(
+        (new Date().getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysDiff <= 31) {
         granularity = "daily";
       } else if (daysDiff <= 90) {
@@ -230,11 +249,19 @@ export const resolvedByMonth = api<
       const parseDate = (period: string): Date => {
         if (period.startsWith("Week of ")) {
           const parts = period.replace("Week of ", "").split("/");
-          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+          return new Date(
+            parseInt(parts[2]),
+            parseInt(parts[0]) - 1,
+            parseInt(parts[1])
+          );
         } else if (period.split("/").length === 3) {
           // Daily: MM/DD/YYYY
           const parts = period.split("/");
-          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+          return new Date(
+            parseInt(parts[2]),
+            parseInt(parts[0]) - 1,
+            parseInt(parts[1])
+          );
         } else {
           // Monthly: MM/YYYY
           const parts = period.split("/");
