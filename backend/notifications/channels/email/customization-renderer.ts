@@ -238,8 +238,6 @@ export async function renderCustomizedEmailTemplate(
       templateType
     );
 
-  console.log(" !!! Customization Found !!! ", customization);
-
   // If no customization or not active, fall back to default
   if (!customization || !customization.isActive) {
     return null;

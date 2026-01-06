@@ -81,8 +81,6 @@ export const ticketTemplateRepository = {
     input: Omit<TicketTemplate, "id" | "createdAt" | "updatedAt">,
     userId: string
   ): Promise<TicketTemplate | null> {
-    console.log("Creating ticket template with input:", input);
-
     const id = await generateId();
 
     const row = await db.queryRow<TicketTemplateRow>`
@@ -121,8 +119,6 @@ export const ticketTemplateRepository = {
       RETURNING *
     `;
 
-    console.log("Created ticket template row:", row);
-
     return row ? mapTicketTemplateRow(row) : null;
   },
 
@@ -131,9 +127,6 @@ export const ticketTemplateRepository = {
     input: Partial<TicketTemplate>,
     userId: string
   ): Promise<TicketTemplate | null> {
-    console.log("Updating ticket template ID:", id);
-    console.log("Updating ticket template with input:", input);
-
     const row = await db.queryRow<TicketTemplateRow>`
       UPDATE ticket_templates
       SET
@@ -151,7 +144,6 @@ export const ticketTemplateRepository = {
       WHERE id = ${id}
       RETURNING *
     `;
-    console.log("!!!! Updated ticket template row:", row);
     return row ? mapTicketTemplateRow(row) : null;
   },
 
