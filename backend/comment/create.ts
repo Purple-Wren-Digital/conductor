@@ -104,8 +104,8 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         // Record status change in ticket history
         await ticketRepository.createHistory({
           ticketId: ticket.id,
-          action: "UPDATE",
-          field: "status",
+          action: ticket.status === "RESOLVED" ? "CLOSE" : "UPDATE",
+          field: ticket.status === "RESOLVED" ? "ticket" : "status",
           previousValue: ticket.status,
           newValue: newStatus,
           changedById: userContext.userId,

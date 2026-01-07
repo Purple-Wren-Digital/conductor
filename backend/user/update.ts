@@ -74,9 +74,9 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
         userHistoryData.push({
           userId: req.id,
           action: "UPDATE",
-          field: "marketCenterId",
+          field: "market center",
           previousValue: existingUser?.marketCenterId ?? "Unassigned",
-          newValue: req.marketCenterId,
+          newValue: req?.marketCenterId ?? "Unassigned",
           snapshot: existingUser,
           changedById: userContext.userId,
         });

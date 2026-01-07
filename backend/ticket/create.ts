@@ -79,6 +79,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         ticketId: ticket.id,
         action: "CREATE",
         field: "ticket",
+        newValue: `"${ticket.title}"`,
         changedById: userContext.userId,
       });
 
