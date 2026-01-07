@@ -23,6 +23,7 @@ const {
     createNotificationPreferences: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    createHistory: vi.fn(),
   },
   mockMarketCenterRepository: {
     findById: vi.fn(),
@@ -112,6 +113,7 @@ import {
 // Helper functions
 function createUserContext(overrides: any = {}) {
   return {
+    name: "Test User",
     userId: "user-123",
     email: "admin@test.com",
     role: "ADMIN",
@@ -226,9 +228,7 @@ describe("Invitation System", () => {
           role: "AGENT",
           name: "New User",
         })
-      ).rejects.toThrow(
-        "You must belong to a market center to invite team members"
-      );
+      ).rejects.toThrow("You do not have permission to invite team members");
     });
 
     it("should throw error if seat limit is reached", async () => {
@@ -265,7 +265,7 @@ describe("Invitation System", () => {
           role: "AGENT",
           name: "New User",
         })
-      ).rejects.toThrow("User is already a team member");
+      ).rejects.toThrow("A user already exists with this email");
     });
 
     it("should throw error if pending invitation already exists", async () => {
@@ -329,7 +329,7 @@ describe("Invitation System", () => {
       const result = await getInvitation({ token: "test-token" });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toBe("Invitation has already been accepted");
+      expect(result.message).toBe("Invitation has been accepted");
     });
 
     it("should return invalid for expired invitation", async () => {
@@ -549,7 +549,7 @@ describe("Invitation System", () => {
       );
 
       await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
-        "Invitation has already been accepted"
+        "Invitation has been accepted"
       );
     });
 

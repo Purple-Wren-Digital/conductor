@@ -27,6 +27,7 @@ const {
       exec: vi.fn(),
     },
     mockUserContext: {
+      name: "Admin User",
       userId: "admin-user-123",
       email: "admin@marketcenter.com",
       role: "ADMIN" as const,
@@ -252,14 +253,21 @@ describe("Template Customization Integration Tests", () => {
         mainMessage:
           "<p>A shiny new ticket just came in from <strong>{{creator_name}}</strong>!</p>",
         buttonText: "Check it out",
-        visibleFields: ["ticket_number", "creator_name", "due_date"],
+        visibleFields: [
+          "ticket_title",
+          "due_date",
+          "created_on",
+          "assignee_name",
+          "creator_name",
+          "user_name",
+        ],
       });
       expect(preview.preview.subject).toBe(
         "Austin Office: New Ticket Login Issue"
       );
       expect(preview.preview.greeting).toBe("Hey John Smith!");
       expect(preview.preview.mainMessage).toContain("John Smith");
-      expect(preview.preview.visibleFieldsData).toHaveLength(3);
+      expect(preview.preview.visibleFieldsData).toHaveLength(6);
 
       // Step 4: Save email customization
       const savedEmail = await saveEmailTemplate({
@@ -442,12 +450,23 @@ describe("Template Customization Integration Tests", () => {
         subject: "Test",
         greeting: "Hi",
         mainMessage: "Test",
-        visibleFields: ["ticket_number", "creator_name"], // Only 2 fields
+        visibleFields: [
+          "ticket_title",
+          "due_date",
+          "created_on",
+          "assignee_name",
+          "creator_name",
+          "user_name",
+        ], // Only 6 fields
       });
 
-      expect(result.preview.visibleFieldsData).toHaveLength(2);
-      expect(result.preview.visibleFieldsData[0].label).toBe("Ticket Number");
-      expect(result.preview.visibleFieldsData[1].label).toBe("Creator Name");
+      expect(result.preview.visibleFieldsData).toHaveLength(6);
+      expect(result.preview.visibleFieldsData[0].label).toBe("Ticket Title");
+      expect(result.preview.visibleFieldsData[1].label).toBe("Due Date");
+      expect(result.preview.visibleFieldsData[2].label).toBe("Created Date");
+      expect(result.preview.visibleFieldsData[3].label).toBe("Assignee Name");
+      expect(result.preview.visibleFieldsData[4].label).toBe("Creator Name");
+      expect(result.preview.visibleFieldsData[5].label).toBe("Recipient Name");
     });
 
     it("should handle empty visible fields", async () => {
@@ -553,7 +572,7 @@ describe("Template Customization Integration Tests", () => {
         mainMessage:
           "Your ticket has been resolved. We'd love to hear your feedback!",
         buttonText: "Complete Survey",
-        visibleFields: ["ticket_title", "ticket_number", "surveyor_name"],
+        visibleFields: ["ticket_title", "surveyor_name"],
       });
 
       expect(result.template.inAppDefault).toEqual({

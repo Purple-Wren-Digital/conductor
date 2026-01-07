@@ -32,15 +32,15 @@ const NewUserInvitation = ({
             <Text style={headerText}>Join Conductor Ticketing</Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
-            <div style={{ marginBottom: "40px" }}>
+            <Section style={{ marginBottom: "40px" }}>
               <Text style={subheaderText}>{newUserName},</Text>
               <Text style={subheaderText}>
                 {inviterName} sent you an invite to join Conductor Ticketing!
               </Text>
-            </div>
+            </Section>
 
             <Text style={subheaderText}>
               <b>Invitation Details</b>

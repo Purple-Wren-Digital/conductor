@@ -17,6 +17,15 @@ import {
 } from "../types";
 import { ActivityUpdates, NewUserInvitationProps } from "@/emails/types";
 
+const capitalizeEveryWord = (words: string | undefined) => {
+  if (!words) return "";
+  const wordArray = words.split(" ");
+  const capitalizedArray = wordArray.map(
+    (word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  );
+  return capitalizedArray.join(" ");
+};
+
 // type VariablePlaceholders<T> = {
 //   [K in keyof T]: T[K] extends object
 //     ? VariablePlaceholders<T[K]> // recursive for nested structures
@@ -446,7 +455,8 @@ export const formatNotificationWithTemplate = (
       "label" in rawChangedDetails[0]
     ) {
       rawChangedDetails.map((update: ActivityUpdates) => {
-        updates.push(update.label);
+        const formattedLabel = capitalizeEveryWord(update.label);
+        updates.push(formattedLabel);
       });
     }
 

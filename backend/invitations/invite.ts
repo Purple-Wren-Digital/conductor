@@ -93,16 +93,9 @@ export const inviteTeamMember = api<
 
     // Check if user can manage team
     const canManage = await canManageTeam(userContext);
-    if (!canManage) {
+    if (!canManage || !userContext.marketCenterId) {
       throw APIError.permissionDenied(
         "You do not have permission to invite team members"
-      );
-    }
-
-    // User must have a market center
-    if (!userContext.marketCenterId) {
-      throw APIError.failedPrecondition(
-        "You must belong to a market center to invite team members"
       );
     }
 
@@ -131,9 +124,7 @@ export const inviteTeamMember = api<
       existingUser &&
       existingUser.marketCenterId === userContext.marketCenterId
     ) {
-      throw APIError.alreadyExists(
-        "User is already a team member in this market center"
-      );
+      throw APIError.alreadyExists("A user already exists with this email");
     }
 
     // Check for existing pending invitation
@@ -143,10 +134,23 @@ export const inviteTeamMember = api<
         req.email
       );
 
-    if (existingInvitation && existingInvitation.status === "PENDING") {
-      throw APIError.alreadyExists(
-        "A pending invitation already exists for this email"
-      );
+    if (existingInvitation) {
+      switch (existingInvitation.status) {
+        case "ACCEPTED":
+          throw APIError.alreadyExists("A user already exists with this email");
+        case "PENDING":
+          throw APIError.alreadyExists(
+            "A pending invitation already exists for this email"
+          );
+        case "CANCELLED":
+          throw APIError.alreadyExists(
+            "A cancelled invitation already exists for this email"
+          );
+        case "EXPIRED":
+          throw APIError.alreadyExists(
+            "An expired invitation already exists for this email"
+          );
+      }
     }
 
     // Generate secure token
@@ -163,6 +167,10 @@ export const inviteTeamMember = api<
       token,
       expiresAt,
     });
+
+    if (!invitation) {
+      throw APIError.internal("Failed to create invitation");
+    }
 
     // Send invitation email
     await sendInvitationEmail({
@@ -221,14 +229,6 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
       };
     }
 
-    if (invitation.status !== "PENDING") {
-      return {
-        invitation: null,
-        valid: false,
-        message: `Invitation has already been ${invitation.status.toLowerCase()}`,
-      };
-    }
-
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired) {
       // Mark as expired in database
@@ -240,6 +240,13 @@ export const getInvitation = api<{ token: string }, GetInvitationResponse>(
         invitation: null,
         valid: false,
         message: "Invitation has expired",
+      };
+    }
+    if (invitation.status !== "PENDING") {
+      return {
+        invitation: null,
+        valid: false,
+        message: `Invitation has been ${invitation.status.toLowerCase()}`,
       };
     }
 
@@ -292,6 +299,8 @@ export const acceptInvitation = api<
       throw APIError.unauthenticated("User not authenticated");
     }
 
+    const userContext = await getUserContext();
+
     const clerkId = authData.userID;
     const clerkEmail = authData.emailAddress;
 
@@ -315,12 +324,6 @@ export const acceptInvitation = api<
       );
     }
 
-    if (invitation.status !== "PENDING") {
-      throw APIError.failedPrecondition(
-        `Invitation has already been ${invitation.status.toLowerCase()}`
-      );
-    }
-
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired) {
       await marketCenterRepository.updateInvitationStatus(
@@ -328,6 +331,12 @@ export const acceptInvitation = api<
         "EXPIRED"
       );
       throw APIError.failedPrecondition("Invitation has expired");
+    }
+
+    if (invitation.status !== "PENDING") {
+      throw APIError.failedPrecondition(
+        `Invitation has been ${invitation.status.toLowerCase()}`
+      );
     }
 
     if (!invitation.marketCenterId) {
@@ -396,6 +405,16 @@ export const acceptInvitation = api<
       field: "team_invitations",
       newValue: JSON.stringify({ email: invitation.email, userId: user.id }),
       changedById: user.id,
+    });
+
+    await userRepository.createHistory({
+      userId: user.id,
+      marketCenterId: invitation.marketCenterId,
+      action: "CREATE",
+      field: "user",
+      previousValue: "",
+      newValue: "Activated via Invitation",
+      changedById: userContext.userId,
     });
 
     return {

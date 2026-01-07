@@ -10,7 +10,8 @@ import {
 } from "@react-email/components";
 import { NewCommentNotificationProps } from "./types";
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 
 const NewCommentNotification = ({
   ticketNumber,
@@ -36,7 +37,7 @@ const NewCommentNotification = ({
             </Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
             <Text style={subheaderText}>Ticket Title: {ticketTitle}</Text>

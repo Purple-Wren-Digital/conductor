@@ -29,7 +29,7 @@ const TicketSurvey = ({
             <Text style={headerText}>How did we do?</Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
             <Text style={text}>Hello {surveyorName},</Text>

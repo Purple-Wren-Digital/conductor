@@ -151,11 +151,18 @@ export function AdminDashboard() {
   const { data: slaMetricsData } = useSlaMetrics(slaDateFilters);
 
   const stats = useMemo(() => {
+    const totalTeamMembers = teamMembers.filter(
+      (m: any) => m?.role && m.role !== "AGENT"
+    ).length;
     const totalTickets = tickets.length;
     const openTickets = tickets.filter((t: any) => t.status !== "RESOLVED");
     const openTicketsCount = openTickets.length;
     const highPriority = tickets.filter(
       (t: any) => t.urgency === "HIGH" && t.status !== "RESOLVED"
+    ).length;
+    const unassignedTickets = openTickets.filter(
+      (t: Ticket) =>
+        (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
     ).length;
     const overdueTickets = tickets.filter((t: Ticket) => {
       if (t.status !== "RESOLVED" && t?.dueDate) {
@@ -218,7 +225,6 @@ export function AdminDashboard() {
       },
       {}
     );
-    const totalUsers = teamMembers.length;
 
     const now = new Date();
     const oneWeekAgo = new Date();
@@ -245,9 +251,10 @@ export function AdminDashboard() {
       openTickets,
       openTicketsCount,
       highPriority,
+      unassignedTickets,
       overdueTickets,
       ticketsByStatus,
-      totalUsers,
+      totalTeamMembers,
       ticketsByUser: Object.values(ticketsByUser),
       createdThisWeek,
       resolvedThisWeek,
@@ -418,7 +425,8 @@ export function AdminDashboard() {
                 {stats.openTicketsCount}
               </p>
               <p className="text-center text-xs text-muted-foreground">
-                {stats.highPriority} high priority
+                {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+                unassigned
               </p>
             </CardContent>
           </Card>
@@ -488,8 +496,8 @@ export function AdminDashboard() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Staff Breakdown</CardTitle>
                 <CardDescription>
-                  {stats.totalUsers} total team{" "}
-                  {stats.totalUsers === 1 ? "member" : "members"}
+                  {stats.totalTeamMembers} total team{" "}
+                  {stats.totalTeamMembers === 1 ? "member" : "members"}
                 </CardDescription>
               </div>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -518,12 +526,11 @@ export function AdminDashboard() {
                     Loading...
                   </p>
                 )}
-                {!isUsersLoading &&
-                  Object.keys(staffStats).length === 0 && (
-                    <p className="space-y-4 text-sm text-muted-foreground font-medium">
-                      No staff members found
-                    </p>
-                  )}
+                {!isUsersLoading && Object.keys(staffStats).length === 0 && (
+                  <p className="space-y-4 text-sm text-muted-foreground font-medium">
+                    No staff members found
+                  </p>
+                )}
 
                 {Object.entries(staffStats).map(
                   ([memberId, stats]: [string, any], index: number) => {

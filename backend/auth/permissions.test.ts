@@ -62,6 +62,7 @@ import type { UserContext } from "./user-context";
 // Helper to create UserContext
 function createUserContext(overrides: Partial<UserContext> = {}): UserContext {
   return {
+    name: "Test User",
     userId: "user-123",
     email: "user@test.com",
     role: "AGENT",
@@ -496,28 +497,28 @@ describe("Permissions", () => {
 
   describe("canBeNotifiedAboutComments", () => {
     it("should return true for non-internal comments for any role", async () => {
-      expect(await canBeNotifiedAboutComments("AGENT", false)).toBe(true);
-      expect(await canBeNotifiedAboutComments("STAFF", false)).toBe(true);
-      expect(await canBeNotifiedAboutComments("ADMIN", false)).toBe(true);
+      expect(await canBeNotifiedAboutComments({userId: "agent-123", role: "AGENT", isInternal: false, currentUserId: "current-user"})).toBe(true);
+      expect(await canBeNotifiedAboutComments({userId: "staff-123", role: "STAFF", isInternal: false, currentUserId: "current-user"})).toBe(true);
+      expect(await canBeNotifiedAboutComments({userId: "admin-123", role: "ADMIN", isInternal: false, currentUserId: "current-user"})).toBe(true);
     });
 
     it("should return true for internal comments for ADMIN", async () => {
-      const result = await canBeNotifiedAboutComments("ADMIN", true);
+      const result = await canBeNotifiedAboutComments({userId: "admin-123", role: "ADMIN", isInternal: true, currentUserId: "current-user"});
       expect(result).toBe(true);
     });
 
     it("should return true for internal comments for STAFF", async () => {
-      const result = await canBeNotifiedAboutComments("STAFF", true);
+      const result = await canBeNotifiedAboutComments({userId: "staff-123", role: "STAFF", isInternal: true, currentUserId: "current-user"});
       expect(result).toBe(true);
     });
 
     it("should return true for internal comments for STAFF_LEADER", async () => {
-      const result = await canBeNotifiedAboutComments("STAFF_LEADER", true);
+      const result = await canBeNotifiedAboutComments({userId: "staff-leader-123", role: "STAFF_LEADER", isInternal: true, currentUserId: "current-user"});
       expect(result).toBe(true);
     });
 
     it("should return false for internal comments for AGENT", async () => {
-      const result = await canBeNotifiedAboutComments("AGENT", true);
+      const result = await canBeNotifiedAboutComments({userId: "agent-123", role: "AGENT", isInternal: true, currentUserId: "current-user"});
       expect(result).toBe(false);
     });
   });

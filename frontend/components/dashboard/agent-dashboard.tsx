@@ -58,8 +58,8 @@ export function AgentDashboard() {
       (t: Ticket) => t.urgency === "HIGH"
     ).length;
 
-    const activeTickets = tickets.filter((t: Ticket) =>
-      ["ASSIGNED", "IN_PROGRESS", "AWAITING_RESPONSE"].includes(t.status)
+    const activeTickets = tickets.filter(
+      (t: Ticket) => t.status !== "RESOLVED"
     ).length;
 
     const overdueTickets = tickets.filter((t: Ticket) => {

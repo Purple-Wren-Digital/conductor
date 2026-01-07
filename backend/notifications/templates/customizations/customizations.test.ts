@@ -18,6 +18,7 @@ const {
     exec: vi.fn(),
   },
   mockUserContext: {
+    name: "Admin User",
     userId: "user-123",
     email: "admin@test.com",
     role: "ADMIN" as const,
@@ -635,7 +636,14 @@ describe("Template Customizations - Preview", () => {
         greeting: "Hi {{user_name}},",
         mainMessage: "A ticket was created by {{creator_name}}",
         buttonText: "View",
-        visibleFields: ["ticket_number", "creator_name"],
+        visibleFields: [
+          "ticket_title",
+          "created_on",
+          "due_date",
+          "assignee_name",
+          "creator_name",
+          "user_name",
+        ],
       });
 
       // Should replace variables with example values
@@ -643,9 +651,9 @@ describe("Template Customizations - Preview", () => {
       expect(result.preview.greeting).toBe("Hi John Smith,");
       expect(result.preview.mainMessage).toContain("John Smith");
       expect(result.preview.buttonText).toBe("View");
-      expect(result.preview.visibleFieldsData).toHaveLength(2);
-      expect(result.preview.visibleFieldsData[0].label).toBe("Ticket Number");
-      expect(result.preview.visibleFieldsData[0].value).toBe("1234");
+      expect(result.preview.visibleFieldsData).toHaveLength(6);
+      expect(result.preview.visibleFieldsData[0].label).toBe("Ticket Title");
+      expect(result.preview.visibleFieldsData[0].value).toBe("Login Issue");
     });
 
     it("should handle missing visible fields gracefully", async () => {
@@ -745,10 +753,10 @@ describe("Template Customizations - Preview", () => {
       const ticketKeys = ticketResult.variables.map((v) => v.key);
       const mcKeys = mcResult.variables.map((v) => v.key);
 
-      expect(ticketKeys).toContain("ticket_number");
       expect(ticketKeys).toContain("ticket_title");
+      expect(ticketKeys).toContain("created_on");
       expect(mcKeys).toContain("market_center_name");
-      expect(mcKeys).not.toContain("ticket_number");
+      expect(mcKeys).not.toContain("created_on");
     });
   });
 

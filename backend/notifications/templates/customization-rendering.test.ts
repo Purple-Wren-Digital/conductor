@@ -413,10 +413,12 @@ describe("TEMPLATE_VARIABLES configuration", () => {
     const vars = TEMPLATE_VARIABLES.ticket_created;
     const keys = vars.map((v) => v.key);
 
-    expect(keys).toContain("ticket_number");
     expect(keys).toContain("ticket_title");
+    expect(keys).toContain("due_date");
     expect(keys).toContain("creator_name");
-    expect(keys).toContain("created_on");
+    expect(keys).toContain("assignee_name");
+        expect(keys).toContain("user_name");
+
   });
 
   it("market_center_assignment should have MC-specific variables", () => {

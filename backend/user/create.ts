@@ -42,7 +42,9 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
 
     let marketCenterAssignment: MarketCenter | null = null;
     if (req?.marketCenterId) {
-      const marketCenter = await marketCenterRepository.findByIdWithUsers(req.marketCenterId);
+      const marketCenter = await marketCenterRepository.findByIdWithUsers(
+        req.marketCenterId
+      );
       if (!marketCenter) {
         APIError.notFound("Market Center not found");
       } else {

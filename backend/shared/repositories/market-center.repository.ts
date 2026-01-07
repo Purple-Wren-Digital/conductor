@@ -399,8 +399,6 @@ export const marketCenterRepository = {
     id: string,
     status: InvitationStatus
   ): Promise<TeamInvitation | null> {
-    const acceptedAt = status === "ACCEPTED" ? "NOW()" : "null";
-
     const row = await db.queryRow<TeamInvitationRow>`
       UPDATE team_invitations
       SET status = ${status}, accepted_at = ${status === "ACCEPTED" ? new Date() : null}, updated_at = NOW()

@@ -70,22 +70,16 @@ export const TEMPLATE_VARIABLES: Record<
 > = {
   ticket_created: [
     {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
-    {
       key: "ticket_title",
       label: "Ticket Title",
       description: "The title of the ticket",
       example: "Login Issue",
     },
     {
-      key: "creator_name",
-      label: "Creator Name",
-      description: "Name of who created the ticket",
-      example: "John Smith",
+      key: "due_date",
+      label: "Due Date",
+      description: "When the ticket is due",
+      example: "Mar 26, 2024",
     },
     {
       key: "created_on",
@@ -94,10 +88,10 @@ export const TEMPLATE_VARIABLES: Record<
       example: "Mar 15, 2024",
     },
     {
-      key: "due_date",
-      label: "Due Date",
-      description: "When the ticket is due",
-      example: "Mar 26, 2024",
+      key: "creator_name",
+      label: "Creator Name",
+      description: "Name of who created the ticket",
+      example: "John Smith",
     },
     {
       key: "assignee_name",
@@ -114,22 +108,10 @@ export const TEMPLATE_VARIABLES: Record<
   ],
   ticket_updated: [
     {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
-    {
       key: "ticket_title",
       label: "Ticket Title",
       description: "The title of the ticket",
       example: "Login Issue",
-    },
-    {
-      key: "editor_name",
-      label: "Editor Name",
-      description: "Name of who made the update",
-      example: "Jane Doe",
     },
     {
       key: "changed_details",
@@ -144,6 +126,12 @@ export const TEMPLATE_VARIABLES: Record<
       example: "Mar 19, 2024",
     },
     {
+      key: "editor_name",
+      label: "Editor Name",
+      description: "Name of who made the update",
+      example: "Jane Doe",
+    },
+    {
       key: "user_name",
       label: "Recipient Name",
       description: "Name of the person receiving this notification",
@@ -151,12 +139,6 @@ export const TEMPLATE_VARIABLES: Record<
     },
   ],
   ticket_assignment: [
-    {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
     {
       key: "ticket_title",
       label: "Ticket Title",
@@ -168,12 +150,6 @@ export const TEMPLATE_VARIABLES: Record<
       label: "Added or Removed",
       description: "Whether the ticket was assigned or unassigned",
       example: "removed",
-    },
-    {
-      key: "editor_name",
-      label: "Assigned By",
-      description: "Name of who changed the assignment",
-      example: "Jane Doe",
     },
     {
       key: "current_assignment",
@@ -188,6 +164,12 @@ export const TEMPLATE_VARIABLES: Record<
       example: "John Smith",
     },
     {
+      key: "editor_name",
+      label: "Assigned By",
+      description: "Name of who changed the assignment",
+      example: "Jane Doe",
+    },
+    {
       key: "user_name",
       label: "Recipient Name",
       description: "Name of the person receiving this notification",
@@ -196,22 +178,22 @@ export const TEMPLATE_VARIABLES: Record<
   ],
   new_comments: [
     {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
-    {
       key: "ticket_title",
       label: "Ticket Title",
       description: "The title of the ticket",
       example: "Login Issue",
     },
     {
-      key: "created_on",
-      label: "Ticket Created Date",
-      description: "When the ticket was created",
-      example: "Mar 15, 2024",
+      key: "comment",
+      label: "Comment Content",
+      description: "The content of the comment",
+      example: "Please update the ticket by tomorrow.",
+    },
+    {
+      key: "is_internal",
+      label: "Internal/External",
+      description: "Whether the comment is marked as internal",
+      example: "Internal",
     },
     {
       key: "commenter_name",
@@ -220,22 +202,10 @@ export const TEMPLATE_VARIABLES: Record<
       example: "Jane Doe",
     },
     {
-      key: "is_internal",
-      label: "Internal Comment",
-      description: "Whether the comment is marked as internal",
-      example: "true",
-    },
-    {
       key: "user_name",
       label: "Recipient Name",
       description: "Name of the person receiving this notification",
       example: "John Smith",
-    },
-    {
-      key: "comment",
-      label: "Comment Text",
-      description: "The content of the comment",
-      example: "Please update the ticket by tomorrow...",
     },
   ],
   market_center_assignment: [
@@ -246,10 +216,11 @@ export const TEMPLATE_VARIABLES: Record<
       example: "Austin Downtown",
     },
     {
-      key: "market_center_id",
-      label: "Market Center ID",
-      description: "The market center's ID",
-      example: "mc-12345",
+      key: "user_update",
+      label: "Added or Removed",
+      description:
+        "Whether the user was added to or removed from the market center",
+      example: "added",
     },
     {
       key: "editor_name",
@@ -263,21 +234,14 @@ export const TEMPLATE_VARIABLES: Record<
       description: "Name of the person receiving this notification",
       example: "John Smith",
     },
-    {
-      key: "user_update",
-      label: "Added or Removed",
-      description:
-        "Whether the user was added to or removed from the market center",
-      example: "added",
-    },
-    {
-      key: "user_email",
-      label: "Recipient Email",
-      description: "Email of the recipient",
-      example: "john.smith@example.com",
-    },
   ],
   category_assignment: [
+    {
+      key: "market_center_name",
+      label: "Market Center Name",
+      description: "Name of the market center",
+      example: "Austin Downtown",
+    },
     {
       key: "category_name",
       label: "Category Name",
@@ -297,18 +261,6 @@ export const TEMPLATE_VARIABLES: Record<
       example: "added",
     },
     {
-      key: "market_center_name",
-      label: "Market Center Name",
-      description: "Name of the market center",
-      example: "Austin Downtown",
-    },
-    {
-      key: "market_center_id",
-      label: "Market Center ID",
-      description: "The market center's ID",
-      example: "mc-12345",
-    },
-    {
       key: "editor_name",
       label: "Changed By",
       description: "Name of who made the change",
@@ -323,12 +275,6 @@ export const TEMPLATE_VARIABLES: Record<
   ],
   ticket_survey: [
     {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
-    {
       key: "ticket_title",
       label: "Ticket Title",
       description: "The title of the ticket",
@@ -342,12 +288,6 @@ export const TEMPLATE_VARIABLES: Record<
     },
   ],
   ticket_survey_results: [
-    {
-      key: "ticket_number",
-      label: "Ticket Number",
-      description: "The unique ticket identifier",
-      example: "1234",
-    },
     {
       key: "ticket_title",
       label: "Ticket Title",
@@ -388,27 +328,23 @@ export const EMAIL_VISIBLE_FIELDS: Record<
   EmailVisibleField[]
 > = {
   ticket_created: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
-    { key: "creator_name", label: "Created By", defaultVisible: true },
-    { key: "created_on", label: "Created Date", defaultVisible: true },
     { key: "due_date", label: "Due Date", defaultVisible: true },
+    { key: "created_on", label: "Created Date", defaultVisible: false },
     { key: "assignee_name", label: "Assigned To", defaultVisible: false },
+    { key: "creator_name", label: "Created By", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   ticket_updated: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
-    { key: "editor_name", label: "Updated By", defaultVisible: true },
     { key: "changed_details", label: "Changes Made", defaultVisible: true },
     { key: "updated_on", label: "Updated Date", defaultVisible: true },
+    { key: "editor_name", label: "Updated By", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   ticket_assignment: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
     { key: "update_type", label: "Added or Removed", defaultVisible: true },
-    { key: "editor_name", label: "Assigned By", defaultVisible: true },
     {
       key: "current_assignment",
       label: "Now Assigned To",
@@ -419,30 +355,24 @@ export const EMAIL_VISIBLE_FIELDS: Record<
       label: "Previously Assigned To",
       defaultVisible: false,
     },
+    { key: "editor_name", label: "Assigned By", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   new_comments: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: false },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
-    { key: "created_on", label: "Ticket Created Date", defaultVisible: false },
-    { key: "commenter_name", label: "Comment By", defaultVisible: true },
-    { key: "is_internal", label: "Internal Comment", defaultVisible: true },
     { key: "comment", label: "Comment Text", defaultVisible: true },
+    { key: "is_internal", label: "Internal Comment", defaultVisible: true },
+    { key: "commenter_name", label: "Comment By", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   market_center_assignment: [
     { key: "market_center_name", label: "Market Center", defaultVisible: true },
-    { key: "editor_name", label: "Changed By", defaultVisible: true },
-    { key: "user_name", label: "Recipient Name", defaultVisible: true },
-    { key: "user_email", label: "Recipient Email", defaultVisible: true },
     { key: "user_update", label: "Added or Removed", defaultVisible: true },
-    {
-      key: "market_center_id",
-      label: "Market Center ID",
-      defaultVisible: false,
-    },
+    { key: "editor_name", label: "Changed By", defaultVisible: true },
+    { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   category_assignment: [
+    { key: "market_center_name", label: "Market Center", defaultVisible: true },
     { key: "category_name", label: "Category", defaultVisible: true },
     {
       key: "category_description",
@@ -454,25 +384,17 @@ export const EMAIL_VISIBLE_FIELDS: Record<
       label: "Added or Removed",
       defaultVisible: true,
     },
-    { key: "user_name", label: "Recipient Name", defaultVisible: true },
     { key: "editor_name", label: "Changed By", defaultVisible: true },
-    { key: "market_center_name", label: "Market Center", defaultVisible: true },
-    {
-      key: "market_center_id",
-      label: "Market Center ID",
-      defaultVisible: false,
-    },
+    { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   ticket_survey: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
     { key: "surveyor_name", label: "Surveyor Name", defaultVisible: true },
   ],
   ticket_survey_results: [
-    { key: "ticket_number", label: "Ticket Number", defaultVisible: true },
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
-    { key: "staff_name", label: "Handled By", defaultVisible: true },
-    { key: "user_name", label: "Recipient Name", defaultVisible: true },
+    { key: "staff_name", label: "Ticket Assignee", defaultVisible: true },
+    { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
 };
 
@@ -584,12 +506,11 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     mainMessage: "A new ticket has been created and needs your attention.",
     buttonText: "View Ticket",
     visibleFields: [
-      "ticket_number",
       "ticket_title",
-      "creator_name",
       "created_on",
       "due_date",
       "assignee_name",
+      "creator_name",
       "user_name",
     ],
   },
@@ -600,11 +521,10 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
       "A ticket you're associated with has been updated. See below for details.",
     buttonText: "View Ticket",
     visibleFields: [
-      "ticket_number",
       "ticket_title",
-      "editor_name",
-      "updated_on",
       "changed_details",
+      "updated_on",
+      "editor_name",
       "user_name",
     ],
   },
@@ -614,12 +534,11 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     mainMessage: "A ticket was {{update_type}} to/from your queue.",
     buttonText: "View Ticket",
     visibleFields: [
-      "ticket_number",
       "ticket_title",
-      "editor_name",
       "update_type",
       "current_assignment",
       "previous_assignment",
+      "editor_name",
       "user_name",
     ],
   },
@@ -628,14 +547,12 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     greeting: "Hi {{user_name}},",
     mainMessage:
       "{{commenter_name}} left a new comment on a ticket you're following.",
-    buttonText: "View Comment",
+    buttonText: "View Ticket",
     visibleFields: [
-      "ticket_number",
       "ticket_title",
-      "created_on",
       "comment",
-      "commenter_name",
       "is_internal",
+      "commenter_name",
       "user_name",
     ],
   },
@@ -646,11 +563,9 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     buttonText: "View Details",
     visibleFields: [
       "market_center_name",
-      "market_center_id",
+      "user_update",
       "editor_name",
       "user_name",
-      "user_email",
-      "user_update",
     ],
   },
   category_assignment: {
@@ -660,11 +575,10 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
       "You have been {{user_update}} to/from the following ticket category:",
     buttonText: "View All Categories",
     visibleFields: [
+      "market_center_name",
       "category_name",
       "category_description",
       "user_update",
-      "market_center_name",
-      "market_center_id",
       "editor_name",
       "user_name",
     ],
@@ -675,14 +589,14 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     mainMessage:
       "Your ticket has been resolved. We'd love to hear your feedback!",
     buttonText: "Complete Survey",
-    visibleFields: ["ticket_title", "ticket_number", "surveyor_name"],
+    visibleFields: ["ticket_title", "surveyor_name"],
   },
   ticket_survey_results: {
     subject: "Survey Results: {{ticket_title}}",
     greeting: "Hi {{user_name}},",
     mainMessage: "A survey was completed for the following ticket:",
     buttonText: "View Survey Results",
-    visibleFields: ["ticket_title", "ticket_number", "staff_name", "user_name"],
+    visibleFields: ["ticket_title", "staff_name", "user_name"],
   },
 };
 
