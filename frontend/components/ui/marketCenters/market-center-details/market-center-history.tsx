@@ -94,7 +94,7 @@ export default function MarketCenterHistory({
       if (log?.field && log?.field?.includes("category") && log?.newValue) {
         try {
           const parsed = JSON.parse(log.newValue);
-          newValue = parsed?.name ?? "N/a";
+          newValue = parsed?.name ?? "-";
           newValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           newValue = log.newValue ?? "";
@@ -103,7 +103,7 @@ export default function MarketCenterHistory({
       } else if (log?.field && log?.field?.includes("team") && log?.newValue) {
         try {
           const parsed = JSON.parse(log.newValue);
-          newValue = parsed?.name ?? "N/a";
+          newValue = parsed?.name ?? "-";
           newValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           newValue = log.newValue ?? "";
@@ -119,8 +119,20 @@ export default function MarketCenterHistory({
           awaitingResponseDays: number;
         } = JSON.parse(log.newValue);
         newValue = `${parsedNewValue?.enabled === true ? `${parsedNewValue.awaitingResponseDays} days` : "Disabled"}`;
+      } else if (
+        log?.action &&
+        log?.action?.includes("INVITE") &&
+        log?.newValue
+      ) {
+        const parsedNewValue: {
+          status: string;
+          email: string;
+          userId: string | null;
+        } = JSON.parse(log.newValue);
+        newValue = `${parsedNewValue.status}`;
+        newValueLink = "/dashboard/users/?tab=invitations";
       } else {
-        newValue = log.newValue ?? "N/a";
+        newValue = log?.newValue ?? "-";
       }
 
       // Previous Value Parsing
@@ -131,7 +143,7 @@ export default function MarketCenterHistory({
       ) {
         try {
           const parsed = JSON.parse(log.previousValue);
-          previousValue = parsed?.name ?? "N/a";
+          previousValue = parsed?.name ?? "-";
           previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           previousValue = log.previousValue;
@@ -144,7 +156,7 @@ export default function MarketCenterHistory({
       ) {
         try {
           const parsed = JSON.parse(log.previousValue);
-          previousValue = parsed?.name ?? "N/a";
+          previousValue = parsed?.name ?? "-";
           previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           previousValue = log.previousValue;
@@ -160,8 +172,20 @@ export default function MarketCenterHistory({
           awaitingResponseDays: number;
         } = JSON.parse(log.previousValue);
         previousValue = `${parsedPreviousValue?.enabled === true ? `${parsedPreviousValue.awaitingResponseDays} days` : "Disabled"}`;
+      } else if (
+        log?.action &&
+        log?.action?.includes("INVITE") &&
+        log?.previousValue
+      ) {
+        const parsedPreviousValue: {
+          status: string;
+          email: string;
+          userId: string | null;
+        } = JSON.parse(log.previousValue);
+        previousValue = `${parsedPreviousValue.status}`;
+        previousValueLink = "/dashboard/users/?tab=invitations";
       } else {
-        previousValue = log?.previousValue ?? "N/a";
+        previousValue = log?.previousValue ?? "-";
       }
 
       return {
@@ -262,17 +286,17 @@ export default function MarketCenterHistory({
                       <TableCell className="font-semibold capitalize">
                         {log?.field
                           ? log.field.split("_").join(" ").toLowerCase()
-                          : "N/a"}
+                          : "Not found"}
                       </TableCell>
                       {/* NEW VALUE */}
                       <TableCell
-                        className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer"
+                        className="font-semibold max-w-[50px] cursor-pointer"
                         onClick={() => {
                           if (log?.newValueLink) router.push(log.newValueLink);
                         }}
                       >
                         <ToolTip
-                          content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue}`}
+                          content={`Updated${log?.field ? `${capitalizeEveryWord(log?.field.split("_").join(" ").toLowerCase())}` : ""}: ${log?.newValue}`}
                           trigger={
                             <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
                               {log?.newValue}
@@ -282,7 +306,7 @@ export default function MarketCenterHistory({
                       </TableCell>
                       {/* PREVIOUS VALUE */}
                       <TableCell
-                        className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer"
+                        className="text-muted-foreground max-w-[50px] cursor-pointer"
                         onClick={() => {
                           if (log?.previousValueLink)
                             router.push(log.previousValueLink);
@@ -331,7 +355,7 @@ export default function MarketCenterHistory({
                       <TableCell className="font-medium">
                         {log?.changedAt
                           ? new Date(log.changedAt).toLocaleDateString()
-                          : "N/a"}
+                          : "-"}
                       </TableCell>
                     </TableRow>
                   );

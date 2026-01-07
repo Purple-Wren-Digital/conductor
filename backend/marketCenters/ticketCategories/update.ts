@@ -91,8 +91,8 @@ export const updateCategory = api<
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
         action: "UPDATE",
-        field: "category description",
-        previousValue: oldTicketCategory?.description ?? "",
+        field: `${req?.name ? req.name : oldTicketCategory?.name} category description`,
+        previousValue: oldTicketCategory?.description ?? null,
         newValue: req.description,
         snapshot: oldTicketCategory,
       });
@@ -107,7 +107,7 @@ export const updateCategory = api<
       if (req.defaultAssigneeId !== "none") {
         const user = await userRepository.findById(req.defaultAssigneeId);
         if (user) {
-          newDefaultAssignee.name = user?.name ?? "N/a";
+          newDefaultAssignee.name = user?.name ?? "Name not found";
           newDefaultAssignee.id = user.id;
           newDefaultAssignee.email = user?.email ?? "";
         } else {
@@ -121,7 +121,7 @@ export const updateCategory = api<
       await marketCenterRepository.createHistory({
         marketCenterId: oldTicketCategory.marketCenterId,
         changedById: userContext.userId,
-        action: "UPDATE",
+        action: req.defaultAssigneeId === "none" ? "REMOVE" : "ADD",
         field: `${req?.name ? req.name : oldTicketCategory?.name} category default assignee`,
         previousValue:
           oldTicketCategory &&
@@ -138,7 +138,7 @@ export const updateCategory = api<
           newDefaultAssignee?.name &&
           newDefaultAssignee?.id
             ? JSON.stringify(newDefaultAssignee)
-            : null,
+            : "Unassigned",
         snapshot: oldTicketCategory,
       });
 

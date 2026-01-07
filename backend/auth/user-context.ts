@@ -81,7 +81,6 @@ export async function getUserContext(): Promise<UserContext> {
           marketCenterId: user.marketCenterId,
           action: "CREATE",
           field: "user",
-          previousValue: "",
           newValue: "Activated via Invitation",
           changedById: user.id,
         });
@@ -94,11 +93,15 @@ export async function getUserContext(): Promise<UserContext> {
         if (user.marketCenterId) {
           await marketCenterRepository.createHistory({
             marketCenterId: user.marketCenterId,
-            action: "ACCEPT_INVITE",
-            field: "team_invitations",
+            action: "INVITE",
+            field: `accepted ${userInvitation.email}`,
             newValue: JSON.stringify({
-              email: user.email,
-              userId: user.id,
+              status: "ACCEPTED",
+              email: userInvitation.email,
+            }),
+            previousValue: JSON.stringify({
+              status: userInvitation.status,
+              email: userInvitation.email,
             }),
             changedById: user.id,
           });
@@ -134,7 +137,6 @@ export async function getUserContext(): Promise<UserContext> {
       marketCenterId: user.marketCenterId,
       action: "CREATE",
       field: "user",
-      previousValue: "",
       newValue: "Activated",
       changedById: user.id,
     });

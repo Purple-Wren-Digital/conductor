@@ -33,7 +33,8 @@ export const deleteCategory = api<
       throw APIError.invalidArgument("Missing ticket category id");
     }
 
-    const ticketCategoryToDelete = await marketCenterRepository.findCategoryById(req.id);
+    const ticketCategoryToDelete =
+      await marketCenterRepository.findCategoryById(req.id);
 
     if (!ticketCategoryToDelete) {
       throw APIError.notFound("Ticket Category not found");
@@ -42,16 +43,17 @@ export const deleteCategory = api<
     // Get default assignee if exists
     let defaultAssignee = null;
     if (ticketCategoryToDelete.defaultAssigneeId) {
-      defaultAssignee = await userRepository.findById(ticketCategoryToDelete.defaultAssigneeId);
+      defaultAssignee = await userRepository.findById(
+        ticketCategoryToDelete.defaultAssigneeId
+      );
     }
 
     // Create history record before deletion
     await marketCenterRepository.createHistory({
       marketCenterId: ticketCategoryToDelete.marketCenterId,
       action: "DELETE",
-      field: "category",
-      previousValue: ticketCategoryToDelete?.name,
-      newValue: "-",
+      field: `${ticketCategoryToDelete?.name} category`,
+      previousValue: "Active",
       snapshot: {
         ...ticketCategoryToDelete,
         defaultAssignee: defaultAssignee ?? undefined,
