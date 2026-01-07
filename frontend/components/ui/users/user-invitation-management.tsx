@@ -461,7 +461,7 @@ export default function UserInvitationManagement() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     {statusFilter === "All"
-                      ? "No invitations yet. Click 'Invite User' to get started."
+                      ? `No invitations yet. Click "Invite User" to get started.`
                       : `No ${statusFilter.toLowerCase()} invitations found.`}
                   </div>
                 )}
@@ -527,15 +527,15 @@ export default function UserInvitationManagement() {
             <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
             <AlertDialogDescription>
               <p className="font-medium space-y-1">
-                Please note, once {invitationToCancel?.name ?? "the invitee"}'s
-                invitation is cancelled, it cannot be reactivated. The following
-                will occur:
+                Please note, once {invitationToCancel?.name ?? "the invitee"}
+                &apos;s invitation is cancelled, it cannot be reactivated. The
+                following will occur:
               </p>
               <ul className="list-disc list-inside space-y-1 ml-3 mt-2">
                 <li>The signup link will become invalid</li>
                 <li>
-                  "{invitationToCancel?.email}" will not be able to be used
-                  again
+                  &quot;{invitationToCancel?.email}&quot; will not be able to be
+                  used again
                 </li>
               </ul>
             </AlertDialogDescription>
