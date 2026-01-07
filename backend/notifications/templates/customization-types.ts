@@ -330,6 +330,7 @@ export const EMAIL_VISIBLE_FIELDS: Record<
   ticket_created: [
     { key: "ticket_title", label: "Ticket Title", defaultVisible: true },
     { key: "due_date", label: "Due Date", defaultVisible: true },
+    { key: "created_on", label: "Created Date", defaultVisible: false },
     { key: "assignee_name", label: "Assigned To", defaultVisible: false },
     { key: "creator_name", label: "Created By", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
@@ -506,6 +507,7 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
     buttonText: "View Ticket",
     visibleFields: [
       "ticket_title",
+      "created_on",
       "due_date",
       "assignee_name",
       "creator_name",

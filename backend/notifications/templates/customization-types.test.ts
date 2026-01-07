@@ -152,7 +152,7 @@ describe("TEMPLATE_VARIABLES", () => {
   });
 
   describe("common variables", () => {
-    it("all ticket-related types should have ticket_number", () => {
+    it("all ticket-related types should have ticket_title", () => {
       const ticketTypes = [
         "ticket_created",
         "ticket_updated",
@@ -162,8 +162,8 @@ describe("TEMPLATE_VARIABLES", () => {
       ticketTypes.forEach((type) => {
         const vars =
           TEMPLATE_VARIABLES[type as keyof typeof TEMPLATE_VARIABLES];
-        const hasTicketNumber = vars.some((v) => v.key === "ticket_number");
-        expect(hasTicketNumber).toBe(true);
+        const hasTicketTitle = vars.some((v) => v.key === "ticket_title");
+        expect(hasTicketTitle).toBe(true);
       });
     });
 
