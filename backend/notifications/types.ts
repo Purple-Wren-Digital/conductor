@@ -91,7 +91,15 @@ export interface NotificationData {
   surveyResults?: SurveyResultsProps;
 
   // SLA
-  slaEventType?: "WARNING_50" | "WARNING_75" | "BREACHED" | "MET";
+  slaEventType?:
+    | "WARNING_50"
+    | "WARNING_75"
+    | "BREACHED"
+    | "MET"
+    | "RESOLUTION_WARNING_50"
+    | "RESOLUTION_WARNING_75"
+    | "RESOLUTION_BREACHED";
+  slaType?: "response" | "resolution";
   urgency?: Urgency;
   assigneeId?: string | null;
 }

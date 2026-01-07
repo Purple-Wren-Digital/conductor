@@ -131,7 +131,8 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
         autoCloseConfig = {
           enabled: settings?.autoClose?.enabled ?? true,
           days:
-            settings?.autoClose?.awaitingResponseDays ?? DEFAULT_AUTO_CLOSE_DAYS,
+            settings?.autoClose?.awaitingResponseDays ??
+            DEFAULT_AUTO_CLOSE_DAYS,
         };
 
         marketCenterSettingsCache.set(ticket.market_center_id, autoCloseConfig);
@@ -169,8 +170,8 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
         // Create history entry for auto-close
         await ticketRepository.createHistory({
           ticketId: ticket.id,
-          action: "AUTO_CLOSE",
-          field: "status",
+          action: "AUTOCLOSE",
+          field: "ticket",
           previousValue: "AWAITING_RESPONSE",
           newValue: "RESOLVED",
           changedById: SYSTEM_USER_ID,
@@ -182,7 +183,7 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
             userId: ticket.creator_id,
             channel: "IN_APP",
             category: "ACTIVITY",
-            type: "Ticket Auto-Closed",
+            type: "Ticket Updated",
             title: `Ticket "${ticket.title || "Untitled"}" has been auto-closed`,
             body: `This ticket was automatically closed after ${autoCloseConfig.days} business days without a response.`,
             data: {
@@ -197,7 +198,7 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
             userId: ticket.assignee_id,
             channel: "IN_APP",
             category: "ACTIVITY",
-            type: "Ticket Auto-Closed",
+            type: "Ticket Updated",
             title: `Ticket "${ticket.title || "Untitled"}" has been auto-closed`,
             body: `This ticket was automatically closed after ${autoCloseConfig.days} business days without a response.`,
             data: {
@@ -209,7 +210,10 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
         result.ticketsClosed++;
       }
     } catch (error) {
-      console.error(`Error processing ticket ${ticket.id} for auto-close:`, error);
+      console.error(
+        `Error processing ticket ${ticket.id} for auto-close:`,
+        error
+      );
       result.errors++;
     }
   }

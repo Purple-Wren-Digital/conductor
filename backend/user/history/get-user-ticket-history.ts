@@ -20,12 +20,12 @@ export interface GetUserTicketHistoryResponse {
 interface TicketHistoryRow {
   id: string;
   ticket_id: string;
-  changed_by_id: string | null;
+  changed_by_id: string;
   action: string;
   field: string | null;
   previous_value: string | null;
   new_value: string | null;
-  snapshot: any;
+  snapshot?: {} | null; // Ticket as it was in this moment
   changed_at: Date;
 }
 
@@ -72,7 +72,7 @@ export const getUserTicketHistory = api<
       field: row.field,
       previousValue: row.previous_value,
       newValue: row.new_value,
-      snapshot: row.snapshot ? fromJson(row.snapshot) : undefined,
+      snapshot: row?.snapshot ? fromJson(row.snapshot) : undefined,
       changedAt: fromTimestamp(row.changed_at)!,
     }));
 

@@ -96,6 +96,7 @@ export default function TicketHistoryTable({
         return <Undo2 className="h-3 w-3" />;
       case "CLOSE":
       case "CLOSED":
+      case "AUTOCLOSE":
         return <LockIcon className="h-3 w-3" />;
       case "CREATE":
         return <SquareCheckBig className="h-3 w-3" />;
@@ -138,7 +139,9 @@ export default function TicketHistoryTable({
             ticketHistoryLogs.length > 0 &&
             ticketHistoryLogs.map((log: TicketHistory, index: number) => {
               const action =
-                log?.newValue && log?.newValue === "RESOLVED"
+                log?.action !== "AUTOCLOSE" &&
+                log?.newValue &&
+                log?.newValue === "RESOLVED"
                   ? "CLOSE"
                   : log?.field === "comment"
                     ? "COMMENT"
@@ -148,20 +151,20 @@ export default function TicketHistoryTable({
                 log?.field && log?.field === "dueDate"
                   ? "due date"
                   : log?.field
-                    ? log.field
-                    : "N/a";
+                    ? log.field.split("_").join(" ")
+                    : "Not Found";
 
               const newValueFormatted =
-                log?.field === "dueDate" && log?.newValue
+                field === "dueDate" && log?.newValue
                   ? new Date(log.newValue).toLocaleDateString()
-                  : log?.field === "status" && log?.newValue
+                  : field === "status" && log?.newValue
                     ? log.newValue.split("_").join(" ")
                     : log?.newValue;
 
               const previousValueFormatted =
-                log?.field === "dueDate" && log?.previousValue
+                field === "dueDate" && log?.previousValue
                   ? new Date(log.previousValue).toLocaleDateString()
-                  : log?.field === "status" && log?.previousValue
+                  : field === "status" && log?.previousValue
                     ? log.previousValue.split("_").join(" ")
                     : log?.previousValue;
 
@@ -176,15 +179,15 @@ export default function TicketHistoryTable({
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
-                    {field}
+                    {field.toLowerCase()}
                   </TableCell>
                   {/* NEW VALUE */}
-                  <TableCell className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    {log?.field === "comment" ||
-                    log?.field === "description" ? (
+                  <TableCell className="font-semibold max-w-[50px] cursor-pointer">
+                    {field === "comment" ||
+                    field === "description" ? (
                       <SafeHtml
                         content={newValueFormatted ? newValueFormatted : "-"}
-                        className="font-normal leading-relaxed text-muted-foreground line-spacing-10 break-words rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
+                        className="font-medium leading-relaxed  text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
                       />
                     ) : (
                       <ToolTip
@@ -198,14 +201,14 @@ export default function TicketHistoryTable({
                     )}
                   </TableCell>
                   {/* PREVIOUS VALUE */}
-                  <TableCell className="text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    {log?.field === "comment" ||
-                    log?.field === "description" ? (
+                  <TableCell className="text-muted-foreground max-w-[50px] cursor-pointer">
+                    {field === "comment" ||
+                    field === "description" ? (
                       <SafeHtml
                         content={
                           previousValueFormatted ? previousValueFormatted : "-"
                         }
-                        className="leading-relaxed text-muted-foreground line-spacing-10 break-words rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
+                        className="leading-relaxed text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
                       />
                     ) : (
                       <ToolTip
@@ -224,6 +227,7 @@ export default function TicketHistoryTable({
                   <TableCell
                     className="font-medium"
                     onClick={() => {
+                      if (log?.changedById === "SYSTEM") return;
                       if (log?.changedById) {
                         router.push(`/dashboard/users/${log.changedById}`);
                       } else {
@@ -231,24 +235,28 @@ export default function TicketHistoryTable({
                       }
                     }}
                   >
-                    <ToolTip
-                      content={`Changed By: ${
-                        log?.changedBy && log?.changedBy?.name
-                          ? log?.changedBy?.name
-                          : log?.changedById
-                            ? log?.changedById.slice(0, 8)
-                            : "N/a"
-                      }`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.changedBy && log?.changedBy?.name
+                    {log?.changedById === "SYSTEM" ? (
+                      "System"
+                    ) : (
+                      <ToolTip
+                        content={`Changed By: ${
+                          log?.changedBy && log?.changedBy?.name
                             ? log?.changedBy?.name
                             : log?.changedById
                               ? log?.changedById.slice(0, 8)
-                              : "N/a"}
-                        </p>
-                      }
-                    />
+                              : "N/a"
+                        }`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                            {log?.changedBy && log?.changedBy?.name
+                              ? log?.changedBy?.name
+                              : log?.changedById
+                                ? log?.changedById.slice(0, 8)
+                                : "N/a"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* DATE CHANGED ON */}
                   <TableCell className="font-medium">

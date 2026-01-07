@@ -163,7 +163,7 @@ export interface TicketHistory {
   field: string | null;
   previousValue: string | null;
   newValue: string | null;
-  snapshot?: {}; // Ticket as it was in this moment
+  snapshot?: {} | null; // Ticket as it was in this moment
   changedAt: Date;
   changedById: string;
   changedBy?: User;

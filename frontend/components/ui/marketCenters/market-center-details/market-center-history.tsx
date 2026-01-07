@@ -219,6 +219,7 @@ export default function MarketCenterHistory({
         return <Undo2 className="h-3 w-3" />;
       case "CLOSE":
       case "CLOSED":
+      case "AUTOCLOSE":
         return <LockIcon className="h-3 w-3" />;
       case "CREATE":
         return <SquareCheckBig className="h-3 w-3" />;
@@ -267,7 +268,9 @@ export default function MarketCenterHistory({
               processedLogs.map(
                 (log: FormattedMarketCenterHistory, index: number) => {
                   const action =
-                    log?.newValue && log?.newValue === "RESOLVED"
+                    log?.action !== "AUTOCLOSE" &&
+                    log?.newValue &&
+                    log?.newValue === "RESOLVED"
                       ? "CLOSE"
                       : log?.field === "comment"
                         ? "COMMENT"
@@ -325,6 +328,7 @@ export default function MarketCenterHistory({
                       <TableCell
                         className="font-medium"
                         onClick={() => {
+                          if (log?.changedById === "SYSTEM") return;
                           if (log?.changedById) {
                             router.push(`/dashboard/users/${log.changedById}`);
                           } else {
@@ -332,24 +336,28 @@ export default function MarketCenterHistory({
                           }
                         }}
                       >
-                        <ToolTip
-                          content={`Changed By: ${
-                            log?.changedBy && log?.changedBy?.name
-                              ? log?.changedBy?.name
-                              : log?.changedById
-                                ? log?.changedById.slice(0, 8)
-                                : "N/a"
-                          }`}
-                          trigger={
-                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log?.changedBy && log?.changedBy?.name
+                        {log?.changedById === "SYSTEM" ? (
+                          "System"
+                        ) : (
+                          <ToolTip
+                            content={`Changed By: ${
+                              log?.changedBy && log?.changedBy?.name
                                 ? log?.changedBy?.name
                                 : log?.changedById
                                   ? log?.changedById.slice(0, 8)
-                                  : "N/a"}
-                            </p>
-                          }
-                        />
+                                  : "-"
+                            }`}
+                            trigger={
+                              <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                                {log?.changedBy && log?.changedBy?.name
+                                  ? log?.changedBy?.name
+                                  : log?.changedById
+                                    ? log?.changedById.slice(0, 8)
+                                    : "Not found"}
+                              </p>
+                            }
+                          />
+                        )}
                       </TableCell>
                       {/* DATE CHANGED ON */}
                       <TableCell className="font-medium">
