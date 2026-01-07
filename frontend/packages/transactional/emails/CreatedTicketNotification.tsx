@@ -10,7 +10,8 @@ import {
 } from "@react-email/components";
 import { CreatedTicketNotificationProps } from "./types";
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 
 const CreatedTicketNotification = ({
   ticketTitle,
@@ -33,7 +34,7 @@ const CreatedTicketNotification = ({
             <Text style={headerText}>Ticket Created Successfully</Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
             <Text style={subheaderText}>Details</Text>

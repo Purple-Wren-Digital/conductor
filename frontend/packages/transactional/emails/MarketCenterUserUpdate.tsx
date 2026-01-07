@@ -9,7 +9,8 @@ import {
 } from "@react-email/components";
 import { MarketCenterAssignmentProps } from "./types";
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 
 const MarketCenterAssignment = ({
   userUpdate,
@@ -47,9 +48,7 @@ const MarketCenterAssignment = ({
               </Text>
             </div>
 
-            <Text style={subheaderText}>
-              <b>Market Center Details</b>
-            </Text>
+            <Text style={subheaderText}>Market Center Details</Text>
 
             <Text style={labelText}>
               Market Center: {marketCenterName ? marketCenterName : "N/A"}

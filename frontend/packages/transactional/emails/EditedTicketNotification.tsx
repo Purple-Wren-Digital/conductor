@@ -10,7 +10,8 @@ import {
 } from "@react-email/components";
 import { ActivityUpdates, UpdatedTicketProps } from "./types";
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.FRONTEND_URL;
 
 const UpdatedTicket = ({
   ticketNumber,
@@ -23,6 +24,17 @@ const UpdatedTicket = ({
 }: UpdatedTicketProps) => {
   const changes: ActivityUpdates[] =
     (changedDetails as ActivityUpdates[]) || [];
+
+  const capitalizeEveryWord = (words: string | undefined) => {
+    if (!words) return "";
+    const wordArray = words.split(" ");
+    const capitalizedArray = wordArray.map(
+      (word: string) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    );
+    return capitalizedArray.join(" ");
+  };
+
   return (
     <Html>
       <Head />
@@ -43,10 +55,9 @@ const UpdatedTicket = ({
             </Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
-            <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
               Edited by: {editorName ?? "N/A"}
               {editorId && ` (#${editorId.slice(0, 8)})`}
@@ -61,27 +72,28 @@ const UpdatedTicket = ({
               changes.length &&
               changes.map((detail, index) => {
                 return (
-                  <div key={index} style={{ marginLeft: 10 }}>
+                  <Section key={index} style={{ marginLeft: 10 }}>
                     <Text style={labelText}>
-                      ({index + 1}) {detail?.label}
+                      ({index + 1}){" "}
+                      {detail?.label
+                        ? capitalizeEveryWord(detail.label)
+                        : "Misc"}
                     </Text>
-                    <ul>
-                      <li>
-                        <Text style={text}>
-                          Current:{" "}
-                          {detail?.newValue ? `'${detail.newValue}'` : "N/A"}
-                        </Text>
-                      </li>
-                      <li>
-                        <Text style={text}>
-                          Previous:{" "}
-                          {detail?.originalValue
-                            ? `'${detail.originalValue}'`
-                            : "N/A"}
-                        </Text>
-                      </li>
-                    </ul>
-                  </div>
+
+                    <Text style={text}>
+                      • Current:{" "}
+                      {detail?.newValue
+                        ? `'${detail.newValue.split("_").join(" ")}'`
+                        : "N/A"}
+                    </Text>
+
+                    <Text style={text}>
+                      • Previous:{" "}
+                      {detail?.originalValue
+                        ? `'${detail.originalValue.split("_").join(" ")}'`
+                        : "N/A"}
+                    </Text>
+                  </Section>
                 );
               })}
             <Button

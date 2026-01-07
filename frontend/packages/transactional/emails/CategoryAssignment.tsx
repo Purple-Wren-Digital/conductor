@@ -39,20 +39,18 @@ const CategoryAssignment = ({
             </Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
-            <div style={{ marginBottom: "40px" }}>
+            <Section style={{ marginBottom: "40px" }}>
               <Text style={subheaderText}>{userName},</Text>
               <Text style={subheaderText}>
                 You will {userUpdate === "added" ? "now" : "no longer"} be
                 automatically assigned to tickets created under {categoryName}.
               </Text>
-            </div>
+            </Section>
 
-            <Text style={subheaderText}>
-              <b>Category Details</b>
-            </Text>
+            <Text style={subheaderText}>Category Details</Text>
             <Text style={labelText}>
               Name: {marketCenterName ? marketCenterName : "N/A"}
             </Text>

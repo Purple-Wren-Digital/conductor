@@ -46,10 +46,10 @@ const TicketAssignment = ({
             </Text>
           </Section>
 
-          <div style={divider} />
+          <Section style={divider} />
 
           <Section>
-            <div style={{ marginBottom: "40px" }}>
+            <Section style={{ marginBottom: "40px" }}>
               <Text style={subheaderText}>
                 {updateType === "added" ? currentUserName : previousUserName},
               </Text>
@@ -57,7 +57,7 @@ const TicketAssignment = ({
                 The following ticket is{" "}
                 {updateType === "added" ? "now" : "no longer"} in your queue
               </Text>
-            </div>
+            </Section>
             <Text style={subheaderText}>Title: {ticketTitle}</Text>
             <Text style={subheaderText}>Id: {ticketNumber}</Text>
             <Text style={subheaderText}>
@@ -69,16 +69,10 @@ const TicketAssignment = ({
           <Section>
             <Text style={subheaderText}>Details</Text>
 
-            <div style={{ marginLeft: 10 }}>
-              <ul>
-                <li>
-                  <Text style={text}>Current: {currentAssignment}</Text>
-                </li>
-                <li>
-                  <Text style={text}>Previous: {previousAssignment}</Text>
-                </li>
-              </ul>
-            </div>
+            <Section style={{ marginLeft: 10 }}>
+              <Text style={text}>Current: {currentAssignment}</Text>
+              <Text style={text}>Previous: {previousAssignment}</Text>
+            </Section>
             <Button
               href={`${APP_BASE_URL}/dashboard/tickets/${ticketNumber}`} // TODO: Production url
               style={button}
