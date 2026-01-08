@@ -374,7 +374,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           ticketId: oldTicket.id,
           action: "UPDATE",
           field: "status",
-          previousValue: oldTicket?.status ?? "CREATED",
+          previousValue: oldTicket?.status ?? "UNASSIGNED",
           newValue: "ASSIGNED",
           snapshot: oldTicket,
           changedById: userContext.userId,

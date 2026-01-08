@@ -94,7 +94,7 @@ function rowToTicket(row: TicketRow): Ticket {
     id: row.id,
     title: row.title,
     description: row.description,
-    status: row.status ?? "CREATED",
+    status: row.status ?? "UNASSIGNED",
     urgency: row.urgency ?? "MEDIUM",
     creatorId: row.creator_id,
     assigneeId: row.assignee_id,
@@ -192,7 +192,7 @@ export const ticketRepository = {
       ) VALUES (
         ${data.title ?? null},
         ${data.description ?? null},
-        ${data.status ?? "CREATED"},
+        ${data.status ?? "UNASSIGNED"},
         ${data.urgency ?? "MEDIUM"},
         ${data.creatorId},
         ${data.assigneeId ?? null},
@@ -415,9 +415,9 @@ export const ticketRepository = {
 
     // Filter conditions
     if (params.status && params.status.length > 0) {
-      const placeholders = params.status
-        .map((_, i) => `$${paramIndex + i}`)
-        .join(", ");
+      const placeholders =
+        params.status.map((_, i) => `$${paramIndex + i}`).join(", ") +
+        ", 'CREATED'";
       conditions.push(`t.status IN (${placeholders})`);
       values.push(...params.status);
       paramIndex += params.status.length;

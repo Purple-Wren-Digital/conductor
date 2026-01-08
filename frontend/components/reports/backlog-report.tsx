@@ -62,7 +62,7 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
     if (!reportData) return [];
     return [
       {
-        label: "Stale",
+        label: "Unchanged",
         value: reportData?.created ?? 0,
       },
       {
@@ -94,7 +94,7 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
             Ticket Backlog Report
           </h2>
           <p className="text-muted-foreground">
-            Current backlog of stale and unassigned tickets
+            Backlog of tickets without updates and without an assignee
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -103,7 +103,9 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
           </Badge>
           <ToolTip
             trigger={<InfoIcon className="size-4.5" />}
-            content={`Stale Tickets = Created, but never updated | Unassigned Tickets = No staff assigned`}
+            content={
+              "Unchanged: Tickets assigned but never updated\nUnassigned: Tickets with no staff member assigned"
+            }
           />
         </div>
       </div>
@@ -123,14 +125,14 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
       </div>
       <ChartContainer
         config={ticketsBacklogChartConfig}
-        className="w-[99%] md:w-full "
+        className="w-[99%] md:w-full"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={ticketsByStatus}
             margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
             barSize={75}
-            aria-label="Bar chart showing the amount of tickets by their backlog status (Stale vs unassigned)"
+            aria-label="Bar chart showing the amount of tickets that are unchanged and unassigned"
           >
             <CartesianGrid strokeDasharray="7 7" />
             <XAxis

@@ -24,6 +24,13 @@ interface TicketRow {
   updated_at: Date | null;
 }
 
+// created_at and updated_at should be added together at ticket creation
+// getTime() compares the exact timestamp (date + time + milliseconds)
+export const isUnchangedSinceCreation = (t: TicketRow) => {
+  if (!t.updated_at) return true;
+  return t.updated_at && t.created_at.getTime() === t.updated_at.getTime();
+};
+
 export const backlog = api<BacklogRequest, BacklogResponse>(
   {
     expose: true,
@@ -52,13 +59,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       const to = new Date(req.dateTo);
       if (!isNaN(to.getTime())) dateTo = to;
     }
-    const statuses = [
-      "CREATED",
-      "ASSIGNED",
-      "UNASSIGNED",
-      "IN_PROGRESS",
-      "AWAITING_RESPONSE",
-    ];
+    const statuses = ["CREATED", "ASSIGNED", "UNASSIGNED"];
 
     switch (userContext.role) {
       case "STAFF":
@@ -135,16 +136,19 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         );
     }
 
+    const unchangedCount = ticketsFound.filter(
+      (t) =>
+        (t.status === "ASSIGNED" || t.status === "CREATED") &&
+        isUnchangedSinceCreation(t)
+    ).length;
+    const unassignedCount = ticketsFound.filter(
+      (t) => t.status === "UNASSIGNED"
+    ).length;
+
     return {
-      created: ticketsFound.filter(
-        (t) =>
-          t.status !== "UNASSIGNED" &&
-          (t.created_at === t.updated_at ||
-            !t.updated_at === null ||
-            t.status === "CREATED")
-      ).length,
-      unassigned: ticketsFound.filter((t) => t.status === "UNASSIGNED").length,
-      total: ticketsFound.length,
+      created: unchangedCount,
+      unassigned: unassignedCount,
+      total: unchangedCount + unassignedCount,
     };
   }
 );
