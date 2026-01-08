@@ -178,13 +178,14 @@ export default function TicketHistoryTable({
                     </p>
                   </TableCell>
                   {/* FIELD */}
-                  <TableCell className="font-semibold capitalize">
+                  <TableCell
+                    className={`font-semibold ${action.includes("INVITE") ? "" : "capitalize"}`}
+                  >
                     {field.toLowerCase()}
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-semibold max-w-[50px] cursor-pointer">
-                    {field === "comment" ||
-                    field === "description" ? (
+                    {field === "comment" || field === "description" ? (
                       <SafeHtml
                         content={newValueFormatted ? newValueFormatted : "-"}
                         className="font-medium leading-relaxed  text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
@@ -202,8 +203,7 @@ export default function TicketHistoryTable({
                   </TableCell>
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground max-w-[50px] cursor-pointer">
-                    {field === "comment" ||
-                    field === "description" ? (
+                    {field === "comment" || field === "description" ? (
                       <SafeHtml
                         content={
                           previousValueFormatted ? previousValueFormatted : "-"

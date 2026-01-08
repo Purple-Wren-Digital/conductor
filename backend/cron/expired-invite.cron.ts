@@ -21,7 +21,7 @@ export const markInvitationExpired = api({}, async (): Promise<void> => {
       await marketCenterRepository.createHistory({
         marketCenterId: invitation.marketCenterId,
         action: "INVITE",
-        field: `expired: ${invitation.email}`,
+        field: `Expired: ${invitation.email}`,
         newValue: JSON.stringify({
           status: "EXPIRED",
           email: invitation.email,

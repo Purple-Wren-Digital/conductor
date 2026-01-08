@@ -286,9 +286,11 @@ export default function MarketCenterHistory({
                         {action.split("_").join(" ").toLowerCase()}
                       </TableCell>
                       {/* FIELD */}
-                      <TableCell className="font-semibold capitalize">
+                      <TableCell
+                        className={`font-semibold ${action.includes("INVITE") ? "" : "capitalize"}`}
+                      >
                         {log?.field
-                          ? log.field.split("_").join(" ").toLowerCase()
+                          ? log.field.split("_").join(" ")
                           : "Not found"}
                       </TableCell>
                       {/* NEW VALUE */}

@@ -189,7 +189,7 @@ export const inviteTeamMember = api<
     await marketCenterRepository.createHistory({
       marketCenterId: userContext.marketCenterId,
       action: "INVITE",
-      field: `sent: ${req.email}`,
+      field: `Sent: ${req.email}`,
       newValue: JSON.stringify({
         status: "PENDING",
         email: req.email,
@@ -405,7 +405,7 @@ export const acceptInvitation = api<
     await marketCenterRepository.createHistory({
       marketCenterId: invitation.marketCenterId,
       action: "INVITE",
-      field: `accepted: ${invitation.email}`,
+      field: `Accepted: ${invitation.email}`,
       newValue: JSON.stringify({
         status: "ACCEPTED",
         email: invitation.email,
@@ -506,7 +506,7 @@ export const resendInvitation = api<
     await marketCenterRepository.createHistory({
       marketCenterId: userContext.marketCenterId,
       action: "INVITE",
-      field: `resent: ${invitation.email}`,
+      field: `Resent: ${invitation.email}`,
       newValue: JSON.stringify({
         status: "PENDING",
         email: invitation.email,
@@ -571,7 +571,7 @@ export const cancelInvitation = api<
     await marketCenterRepository.createHistory({
       marketCenterId: invitation.marketCenterId!,
       action: "INVITE",
-      field: `cancelled: ${invitation.email}`,
+      field: `Cancelled: ${invitation.email}`,
       newValue: JSON.stringify({
         status: "CANCELLED",
         email: invitation.email,

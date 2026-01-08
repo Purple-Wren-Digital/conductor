@@ -94,7 +94,7 @@ export async function getUserContext(): Promise<UserContext> {
           await marketCenterRepository.createHistory({
             marketCenterId: user.marketCenterId,
             action: "INVITE",
-            field: `accepted ${userInvitation.email}`,
+            field: `Accepted: ${userInvitation.email}`,
             newValue: JSON.stringify({
               status: "ACCEPTED",
               email: userInvitation.email,
