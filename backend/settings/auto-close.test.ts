@@ -8,6 +8,7 @@ const { mockMarketCenterRepository, mockUserContext } = vi.hoisted(() => ({
     createHistory: vi.fn(),
   },
   mockUserContext: {
+    name: "Staff Leader",
     userId: "user-123",
     email: "staffleader@test.com",
     role: "STAFF_LEADER" as const,

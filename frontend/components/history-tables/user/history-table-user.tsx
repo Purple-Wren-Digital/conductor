@@ -95,6 +95,7 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
         return <Undo2 className="h-3 w-3" />;
       case "CLOSE":
       case "CLOSED":
+      case "AUTOCLOSE":
         return <LockIcon className="h-3 w-3" />;
       case "CREATE":
         return <SquareCheckBig className="h-3 w-3" />;
@@ -137,7 +138,9 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
             userHistoryLogs.length > 0 &&
             userHistoryLogs.map((log: UserHistory, index: number) => {
               const action =
-                log?.newValue && log?.newValue === "RESOLVED"
+                log?.action !== "AUTOCLOSE" &&
+                log?.newValue &&
+                log?.newValue === "RESOLVED"
                   ? "CLOSE"
                   : log?.field === "comment"
                     ? "COMMENT"
@@ -182,20 +185,22 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                     {action.split("_").join(" ").toLowerCase()}
                   </TableCell>
                   {/* FIELD */}
-                  <TableCell className="font-medium capitalize">
-                    {log?.field ? log.field : "N/a"}
+                  <TableCell className="font-semibold capitalize">
+                    {log?.field
+                      ? log.field.split("_").join(" ").toLowerCase()
+                      : "Not found"}
                   </TableCell>
                   {/* NEW VALUE */}
                   <TableCell className="font-medium">
                     <ToolTip
-                      content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.newValue ? log?.newValue : "N/a"}`}
+                      content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field.split("_").join(" "))}` : ""}: ${log?.newValue ? log?.newValue : "-"}`}
                       trigger={
-                        <p className="font-medium ">
+                        <p className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
                           {log?.newValue && log?.field === "role"
                             ? log.newValue.split("_").join(" ")
                             : log?.newValue
                               ? log.newValue
-                              : "N/a"}
+                              : "-"}
                         </p>
                       }
                     />
@@ -203,14 +208,14 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                   {/* PREVIOUS VALUE */}
                   <TableCell className="text-muted-foreground truncate overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
                     <ToolTip
-                      content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "N/a"}`}
+                      content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "-"}`}
                       trigger={
                         <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
                           {log?.previousValue && log?.field === "role"
                             ? log.previousValue.split("_").join(" ")
                             : log?.previousValue
                               ? log.previousValue
-                              : "N/a"}
+                              : "-"}
                         </p>
                       }
                     />
@@ -219,6 +224,7 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                   <TableCell
                     className="font-medium"
                     onClick={() => {
+                      if (log?.changedById === "SYSTEM") return;
                       if (!isViewingChangedBy && log?.changedById) {
                         router.push(`/dashboard/users/${log.changedById}`);
                       } else if (!isViewingChangedBy && !log?.changedById) {
@@ -230,30 +236,34 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                       }
                     }}
                   >
-                    <ToolTip
-                      content={
-                        log?.changedBy && log?.changedBy?.name
-                          ? log?.changedBy?.name
-                          : log?.changedById
-                            ? log?.changedById.slice(0, 8)
-                            : "N/a"
-                      }
-                      trigger={
-                        <p className="underline decoration-dotted cursor-pointer">
-                          {log?.changedBy && log?.changedBy?.name
+                    {log?.changedById === "SYSTEM" ? (
+                      "System"
+                    ) : (
+                      <ToolTip
+                        content={`Changed By: ${
+                          log?.changedBy && log?.changedBy?.name
                             ? log?.changedBy?.name
                             : log?.changedById
                               ? log?.changedById.slice(0, 8)
-                              : "N/a"}
-                        </p>
-                      }
-                    />
+                              : "Not found"
+                        }`}
+                        trigger={
+                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                            {log?.changedBy && log?.changedBy?.name
+                              ? log?.changedBy?.name
+                              : log?.changedById
+                                ? log?.changedById.slice(0, 8)
+                                : "Not found"}
+                          </p>
+                        }
+                      />
+                    )}
                   </TableCell>
                   {/* DATE CHANGED ON */}
                   <TableCell className="font-medium">
                     {log?.changedAt
                       ? new Date(log.changedAt).toLocaleDateString()
-                      : "N/a"}
+                      : "Not found"}
                   </TableCell>
                 </TableRow>
               );

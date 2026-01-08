@@ -355,6 +355,16 @@ export const marketCenterRepository = {
     return rows.map(rowToInvitation);
   },
 
+  async findExpiredInvitations(): Promise<TeamInvitation[]> {
+    const now = new Date();
+    const rows = await db.queryAll<TeamInvitationRow>`
+      SELECT * FROM team_invitations
+      WHERE status = 'PENDING' AND expires_at <= ${now}
+      ORDER BY created_at DESC
+    `;
+    return rows.map(rowToInvitation);
+  },
+
   async findInvitationsByMarketCenterId(
     marketCenterId: string
   ): Promise<TeamInvitation[]> {

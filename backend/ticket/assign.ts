@@ -133,9 +133,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
           ticketId: req.id,
           action: unassignTicket ? "REMOVE" : "ADD",
           field: "assignment",
-          previousValue: unassignTicket
-            ? previousAssigneeName
-            : "Unassigned",
+          previousValue: unassignTicket ? previousAssigneeName : "Unassigned",
           newValue: unassignTicket ? "Unassigned" : newAssigneeName,
           snapshot: {
             ...oldTicket,
@@ -150,7 +148,7 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
           ticketId: oldTicket.id,
           action: "UPDATE",
           field: "status",
-          previousValue: oldTicket?.status ?? "CREATED",
+          previousValue: oldTicket?.status ?? "UNASSIGNED",
           newValue: unassignTicket ? "UNASSIGNED" : "ASSIGNED",
           snapshot: {
             ...oldTicket,

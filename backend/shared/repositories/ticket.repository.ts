@@ -94,7 +94,7 @@ function rowToTicket(row: TicketRow): Ticket {
     id: row.id,
     title: row.title,
     description: row.description,
-    status: row.status ?? "CREATED",
+    status: row.status ?? "UNASSIGNED",
     urgency: row.urgency ?? "MEDIUM",
     creatorId: row.creator_id,
     assigneeId: row.assignee_id,
@@ -192,7 +192,7 @@ export const ticketRepository = {
       ) VALUES (
         ${data.title ?? null},
         ${data.description ?? null},
-        ${data.status ?? "CREATED"},
+        ${data.status ?? "UNASSIGNED"},
         ${data.urgency ?? "MEDIUM"},
         ${data.creatorId},
         ${data.assigneeId ?? null},

@@ -128,7 +128,6 @@ export const update = api<
             changedById: userContext.userId,
             action: "ADD",
             field: "team",
-            previousValue: undefined,
             newValue: JSON.stringify({
               id: userAdded.id,
               name: userAdded.name,
@@ -149,7 +148,6 @@ export const update = api<
               id: userRemoved.id,
               name: userRemoved.name,
             }),
-            newValue: undefined,
           }))
         );
       }

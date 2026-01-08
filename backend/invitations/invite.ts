@@ -189,8 +189,11 @@ export const inviteTeamMember = api<
     await marketCenterRepository.createHistory({
       marketCenterId: userContext.marketCenterId,
       action: "INVITE",
-      field: "team_invitations",
-      newValue: JSON.stringify({ email: req.email, role: req.role }),
+      field: `Sent: ${req.email}`,
+      newValue: JSON.stringify({
+        status: "PENDING",
+        email: req.email,
+      }),
       changedById: userContext.userId,
     });
 
@@ -401,10 +404,17 @@ export const acceptInvitation = api<
     // Log the acceptance in history
     await marketCenterRepository.createHistory({
       marketCenterId: invitation.marketCenterId,
-      action: "ACCEPT_INVITE",
-      field: "team_invitations",
-      newValue: JSON.stringify({ email: invitation.email, userId: user.id }),
-      changedById: user.id,
+      action: "INVITE",
+      field: `Accepted: ${invitation.email}`,
+      newValue: JSON.stringify({
+        status: "ACCEPTED",
+        email: invitation.email,
+      }),
+      previousValue: JSON.stringify({
+        status: invitation.status,
+        email: invitation.email,
+      }),
+      changedById: userContext.userId,
     });
 
     await userRepository.createHistory({
@@ -412,7 +422,6 @@ export const acceptInvitation = api<
       marketCenterId: invitation.marketCenterId,
       action: "CREATE",
       field: "user",
-      previousValue: "",
       newValue: "Activated via Invitation",
       changedById: userContext.userId,
     });
@@ -494,6 +503,21 @@ export const resendInvitation = api<
       expiresAt: newExpiresAt,
     });
 
+    await marketCenterRepository.createHistory({
+      marketCenterId: userContext.marketCenterId,
+      action: "INVITE",
+      field: `Resent: ${invitation.email}`,
+      newValue: JSON.stringify({
+        status: "PENDING",
+        email: invitation.email,
+      }),
+      previousValue: JSON.stringify({
+        status: invitation.status,
+        email: invitation.email,
+      }),
+      changedById: userContext.userId,
+    });
+
     return {
       success: true,
       newExpiresAt,
@@ -546,9 +570,16 @@ export const cancelInvitation = api<
     // Log the cancellation
     await marketCenterRepository.createHistory({
       marketCenterId: invitation.marketCenterId!,
-      action: "CANCEL_INVITE",
-      field: "team_invitations",
-      newValue: JSON.stringify({ email: invitation.email }),
+      action: "INVITE",
+      field: `Cancelled: ${invitation.email}`,
+      newValue: JSON.stringify({
+        status: "CANCELLED",
+        email: invitation.email,
+      }),
+      previousValue: JSON.stringify({
+        status: invitation.status,
+        email: invitation.email,
+      }),
       changedById: userContext.userId,
     });
 

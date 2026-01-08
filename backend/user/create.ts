@@ -77,7 +77,6 @@ export const create = api<CreateUserRequest, CreateUserResponse>(
       marketCenterId: newUser.marketCenterId,
       action: "CREATE",
       field: "user",
-      previousValue: "",
       newValue: "Activated",
       changedById: userContext.userId,
       snapshot: newUser,

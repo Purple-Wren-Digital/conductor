@@ -2,11 +2,10 @@ import { api, APIError } from "encore.dev/api";
 import { db } from "./db";
 import type { TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canModifyTicket, getTicketScopeFilter } from "../auth/permissions";
+import { canModifyTicket } from "../auth/permissions";
+import { slaService } from "../sla/sla.service";
 
 export interface BulkUpdateRequest {
-  // currentUserId: string;
-  // currentUserRole: UserRole;
   ticketIds: string[];
   status?: TicketStatus;
   urgency?: Urgency;
@@ -101,52 +100,84 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
 
       // Build update query
       const updates: string[] = [];
-      const fields: { field: string; oldValue: string; newValue: string }[] = [];
+      const fields: {
+        action: string;
+        field: string;
+        oldValue: string | null;
+        newValue: string | null;
+      }[] = [];
 
-      if (updateData.status !== undefined) {
+      if (
+        updateData.status !== undefined &&
+        updateData.status !== oldTicket.status &&
+        updateData.status !== "RESOLVED"
+      ) {
         updates.push(`status = '${updateData.status}'`);
         fields.push({
+          action: "UPDATE",
           field: "status",
-          oldValue: oldTicket.status?.toString() ?? "null",
+          oldValue: oldTicket.status?.toString() ?? null,
           newValue: updateData.status,
         });
       }
       if (updateData.urgency !== undefined) {
         updates.push(`urgency = '${updateData.urgency}'`);
         fields.push({
+          action: "UPDATE",
           field: "urgency",
-          oldValue: oldTicket.urgency?.toString() ?? "null",
+          oldValue: oldTicket.urgency?.toString() ?? null,
           newValue: updateData.urgency,
         });
       }
       if (updateData.category !== undefined) {
         updates.push(`category_id = '${updateData.category}'`);
         fields.push({
+          action: "UPDATE",
           field: "category",
-          oldValue: oldTicket.category?.toString() ?? "null",
+          oldValue: oldTicket.category?.toString() ?? null,
           newValue: updateData.category,
         });
       }
       if (updateData.dueDate !== undefined) {
         fields.push({
-          field: "dueDate",
-          oldValue: oldTicket.dueDate?.toString() ?? "null",
-          newValue: updateData.dueDate.toString(),
+          action: "UPDATE",
+          field: "due_date",
+          oldValue: oldTicket.dueDate?.toUTCString() ?? null,
+          newValue: updateData.dueDate.toUTCString(),
         });
       }
-      if (updateData.resolvedAt !== undefined) {
-        // Added by status change logic
+      if (
+        updateData.status === "RESOLVED" ||
+        updateData.resolvedAt !== undefined
+      ) {
+        fields.push({
+          action: "CLOSE",
+          field: "ticket",
+          oldValue: oldTicket.status,
+          newValue: "RESOLVED",
+        });
       }
 
       // Execute update - build dynamic SQL
-      if (updates.length > 0 || updateData.dueDate !== undefined || updateData.resolvedAt !== undefined) {
+      if (
+        updates.length > 0 ||
+        updateData.dueDate !== undefined ||
+        updateData.resolvedAt !== undefined
+      ) {
         // Build complete SET clause
         const allUpdates = [...updates];
         if (updateData.dueDate !== undefined) {
           allUpdates.push(`due_date = '${updateData.dueDate.toISOString()}'`);
         }
-        if (updateData.resolvedAt !== undefined && updateData.resolvedAt !== null) {
-          allUpdates.push(`resolved_at = '${updateData.resolvedAt.toISOString()}'`);
+        if (
+          updateData.resolvedAt !== undefined &&
+          updateData.resolvedAt !== null
+        ) {
+          allUpdates.push(
+            `resolved_at = '${updateData.resolvedAt.toISOString()}'`,
+            `status = 'RESOLVED'`
+          );
+          await slaService.recordResolution(ticketId);
         } else if (updateData.resolvedAt === null) {
           allUpdates.push(`resolved_at = NULL`);
         }
@@ -161,11 +192,12 @@ export const bulkUpdate = api<BulkUpdateRequest, BulkUpdateResponse>(
         for (const field of fields) {
           await db.exec`
             INSERT INTO ticket_history (
-              id, ticket_id, field, previous_value, new_value,
+              id, ticket_id, action, field, previous_value, new_value,
               changed_at, changed_by_id
             )
             VALUES (
-              gen_random_uuid()::text, ${ticketId}, ${field.field},
+              gen_random_uuid()::text, ${ticketId}, ${field.action},
+              ${field.field},
               ${field.oldValue}, ${field.newValue},
               NOW(), ${userContext.userId}
             )

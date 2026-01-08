@@ -42,7 +42,6 @@ export const deleteTask = api<DeleteTodoRequest, DeleteTodoResponse>(
       ticketId: req.ticketId,
       action: "DELETE",
       field: "todos",
-      newValue: `N/a`,
       previousValue: `"${todo.title}"`,
       changedById: userContext.userId,
     });

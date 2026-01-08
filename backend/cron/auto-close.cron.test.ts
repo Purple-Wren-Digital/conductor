@@ -116,8 +116,8 @@ describe("Auto-Close Cron Job Tests", () => {
 
       expect(mockTicketRepository.createHistory).toHaveBeenCalledWith({
         ticketId: "ticket-1",
-        action: "AUTO_CLOSE",
-        field: "status",
+        action: "AUTOCLOSE",
+        field: "ticket",
         previousValue: "AWAITING_RESPONSE",
         newValue: "RESOLVED",
         changedById: "SYSTEM",
@@ -283,7 +283,7 @@ describe("Auto-Close Cron Job Tests", () => {
         userId: "user-1",
         channel: "IN_APP",
         category: "ACTIVITY",
-        type: "Ticket Auto-Closed",
+        type: "Ticket Updated",
         title: 'Ticket "Test Ticket" has been auto-closed',
         body: "This ticket was automatically closed after 2 business days without a response.",
         data: {

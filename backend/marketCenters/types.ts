@@ -27,8 +27,8 @@ export interface MarketCenterHistory {
   marketCenterId: string;
   action: string; // create, add, remove, update, delete
   field: string; // users, name, ticketCategories
-  previousValue: string;
-  newValue: string;
+  previousValue: string | null;
+  newValue: string | null;
   changedAt: Date;
   changedById: string;
   marketCenter?: MarketCenter;

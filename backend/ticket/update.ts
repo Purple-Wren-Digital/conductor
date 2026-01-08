@@ -18,6 +18,23 @@ import { ActivityUpdates } from "@/emails/types";
 import { UsersToNotify } from "../notifications/types";
 import { slaService } from "../sla/sla.service";
 
+export function arrayToCommaSeparatedListWithConjunction(
+  conjunction: "and" | "or",
+  array: any[]
+) {
+  if (array.length === 0) {
+    return "";
+  } else if (array.length === 1) {
+    return array[0];
+  } else if (array.length === 2) {
+    return array.join(` ${conjunction} `);
+  } else {
+    const allButLast = array.slice(0, -1).join(", ");
+    const lastElement = array.slice(-1)[0];
+    return `${allButLast}, ${conjunction} ${lastElement}`;
+  }
+}
+
 export interface UpdateTicketRequest {
   ticketId: string;
   title?: string;
@@ -283,7 +300,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         ticketHistoryData.push({
           ticketId: req.ticketId,
           action: "UPDATE",
-          field: "dueDate",
+          field: "due_date",
           previousValue: oldTicket.dueDate
             ? oldTicket.dueDate.toISOString()
             : null,
@@ -374,7 +391,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           ticketId: oldTicket.id,
           action: "UPDATE",
           field: "status",
-          previousValue: oldTicket?.status ?? "CREATED",
+          previousValue: oldTicket?.status ?? "UNASSIGNED",
           newValue: "ASSIGNED",
           snapshot: oldTicket,
           changedById: userContext.userId,
@@ -430,20 +447,14 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           }))
         );
 
-        const newValue = req.todos
-          .map((todo) => {
-            return `• ${todo}`;
-          })
-          .join("  ");
-
         ticketHistoryData.push({
           ticketId: req.ticketId,
           action: "ADD",
           field: "todos",
           previousValue: oldTicket.todos
-            ? oldTicket.todos.length.toString()
-            : "0",
-          newValue: `${req.todos.length}:${newValue}`,
+            ? `${oldTicket.todos.length} todos`
+            : "0 todos",
+          newValue: `${req.todos.length} todos: ${arrayToCommaSeparatedListWithConjunction("and", req.todos)}`,
           snapshot: oldTicket,
           changedById: userContext.userId,
         });

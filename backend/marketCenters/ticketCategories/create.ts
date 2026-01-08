@@ -110,17 +110,34 @@ export const createCategory = api<
       await userRepository.createHistory({
         userId: defaultAssigneeId,
         marketCenterId: marketCenter.id,
-        action: "ASSIGNMENT",
-        field: "category",
-        newValue: req.name,
+        action: "ADD",
+        field: `${req?.name} category default assignee`,
+        newValue: JSON.stringify({
+          name: defaultAssignee?.name ?? "Name not found",
+          id: defaultAssignee?.id,
+          email: defaultAssignee?.email ?? "",
+        }),
         changedById: userContext.userId,
       });
 
       await marketCenterRepository.createHistory({
         marketCenterId: marketCenter.id,
-        action: "ASSIGNMENT",
-        field: "category",
-        newValue: req.name,
+        action: "ADD",
+        field: `${req?.name} category default assignee`,
+        newValue: JSON.stringify({
+          name: defaultAssignee?.name ?? "Name not found",
+          id: defaultAssignee?.id,
+          email: defaultAssignee?.email ?? "",
+        }),
+        snapshot: ticketCategory,
+        changedById: userContext.userId,
+      });
+    } else {
+      await marketCenterRepository.createHistory({
+        marketCenterId: marketCenter.id,
+        action: "ADD",
+        field: `${req?.name} category default assignee`,
+        newValue: "Unassigned",
         snapshot: ticketCategory,
         changedById: userContext.userId,
       });
