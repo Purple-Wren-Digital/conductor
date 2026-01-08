@@ -165,17 +165,19 @@ export function BaseTicketForm({
             ))}
           </SelectContent>
         </Select>
-        <p className="ml-1 text-xs text-muted-foreground">
-          Create ticket templates in{" "}
-          <Link
-            href="/dashboard/settings/ticket-templates"
-            rel="noopener noreferrer"
-            target="_blank"
-            className="underline underline-offset-2"
-          >
-            Settings &gt; Ticket Templates
-          </Link>
-        </p>
+        {permissions?.canManageTicketTemplateSettings && (
+          <p className="ml-1 text-xs text-muted-foreground">
+            Create ticket templates in{" "}
+            <Link
+              href="/dashboard/settings/ticket-templates"
+              rel="noopener noreferrer"
+              target="_blank"
+              className="underline underline-offset-2"
+            >
+              Settings &gt; Ticket Templates
+            </Link>
+          </p>
+        )}
       </div>
     );
   }, [
@@ -184,6 +186,7 @@ export function BaseTicketForm({
     onChangeTemplateId,
     templates,
     disabled,
+    permissions?.canManageTicketTemplateSettings,
   ]);
 
   return (
