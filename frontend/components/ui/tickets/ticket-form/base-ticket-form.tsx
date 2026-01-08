@@ -46,6 +46,7 @@ import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/context/store-provider";
 import { BasicEditorWithToolbar } from "@/components/ui/tiptap/basic-editor-and-toolbar";
+import Link from "next/link";
 
 export type TicketFormValues = {
   title: string;
@@ -164,6 +165,17 @@ export function BaseTicketForm({
             ))}
           </SelectContent>
         </Select>
+        <p className="ml-1 text-xs text-muted-foreground">
+          Create ticket templates in{" "}
+          <Link
+            href="/dashboard/settings/ticket-templates"
+            rel="noopener noreferrer"
+            target="_blank"
+            className="underline underline-offset-2"
+          >
+            Settings &gt; Ticket Templates
+          </Link>
+        </p>
       </div>
     );
   }, [
