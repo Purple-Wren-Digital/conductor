@@ -44,7 +44,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog/base-dialog";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
+import {
+  useFetchAllMarketCenters,
+  useFetchMarketCenterCategories,
+} from "@/hooks/use-market-center";
 import { useFetchAdminTickets } from "@/hooks/use-tickets";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
@@ -53,8 +56,8 @@ import {
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
-  getResolvedInBusinessDays,
   orderByOptions,
+  sortByRoleThenName,
   sortByTicketOptions,
   statusOptions,
   urgencyOptions,
@@ -69,8 +72,8 @@ import {
   Search,
   X,
   Eye,
-  EyeOff,
   EyeClosed,
+  Users,
 } from "lucide-react";
 import type {
   Ticket,
@@ -83,6 +86,7 @@ import type {
   TicketWithUpdatedAt,
   TicketCategory,
   UsersToNotify,
+  MarketCenter,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAndSendNotification } from "@/lib/utils/notifications";
@@ -107,6 +111,14 @@ export default function AdminTicketList() {
   const { role } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
   const { currentUser } = useStore();
+
+  const defaultSelectedMarketCenterId = useMemo(() => {
+    if (isEnterprise) {
+      return "all";
+    } else {
+      return currentUser?.marketCenterId || "all";
+    }
+  }, [isEnterprise, currentUser]);
 
   const defaultSelectedCategory: CategoryOption = useMemo(
     () => ({ label: "all", ids: [] }),
@@ -138,13 +150,8 @@ export default function AdminTicketList() {
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string>(
-    isEnterprise
-      ? "all"
-      : currentUser?.marketCenterId || "No Market Center Found"
+    defaultSelectedMarketCenterId
   );
-  const [marketCenters, setMarketCenters] = useState<
-    { name: string; id: string }[]
-  >([]);
 
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
@@ -364,29 +371,63 @@ export default function AdminTicketList() {
     });
   }, [tickets, filterOverdue]);
 
-  const totalTickets: number = filterOverdue
-    ? displayedTickets.length
-    : (ticketsData?.total ?? 0);
-  const totalPages = calculateTotalPages({
-    totalItems: totalTickets,
-    itemsPerPage,
-  });
+  const totalTickets: number = useMemo(
+    () => (filterOverdue ? displayedTickets.length : (ticketsData?.total ?? 0)),
+    [filterOverdue, displayedTickets, ticketsData]
+  );
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: totalTickets,
+        itemsPerPage,
+      }),
+    [totalTickets, itemsPerPage]
+  );
 
-  const { data: usersData, isLoading: usersLoading } = useFetchAllUsers({
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    refetch: refetchUsers,
+  } = useFetchAllUsers({
     usersQueryKey: [
       "admin-users-ticket-list",
       { marketCenterId: selectedMarketCenterId },
     ],
     role: role,
   });
+
   const users: PrismaUser[] = useMemo(
-    () => usersData?.users ?? [],
+    () => usersData?.users.sort(sortByRoleThenName) ?? [],
     [usersData]
   );
 
-  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
-    selectedMarketCenterId
-  );
+  const staffTeamMembers: PrismaUser[] = useMemo(() => {
+    return users
+      .filter((user) => user?.role && user.role !== "AGENT")
+      .sort(sortByRoleThenName);
+  }, [users]);
+
+  const {
+    data: marketCentersData,
+    isLoading: marketCentersLoading,
+    refetch: refetchMarketCenters,
+  } = useFetchAllMarketCenters(role);
+
+  const marketCenters: { name: string; id: string }[] = useMemo(() => {
+    return marketCentersData?.marketCenters &&
+      marketCentersData?.marketCenters.length > 0
+      ? marketCentersData.marketCenters.map((mc: MarketCenter) => ({
+          name: mc.name,
+          id: mc.id,
+        }))
+      : [];
+  }, [marketCentersData]);
+
+  const {
+    data: ticketCategoryData,
+    isLoading: categoriesLoading,
+    refetch: refetchCategories,
+  } = useFetchMarketCenterCategories(selectedMarketCenterId);
   const categories: TicketCategory[] = useMemo(
     () => ticketCategoryData?.categories ?? [],
     [ticketCategoryData]
@@ -415,11 +456,25 @@ export default function AdminTicketList() {
     () => queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey }),
     [queryClient, adminTicketsQueryKey]
   );
+
+  const refetchAllData = useCallback(async () => {
+    await adminTicketsQueryInvalidator();
+    await refetchMarketCenters();
+    await refetchCategories();
+    await refetchUsers();
+  }, [
+    adminTicketsQueryInvalidator,
+    refetchMarketCenters,
+    refetchCategories,
+    refetchUsers,
+  ]);
+
   const bulkAssignMutation = useMutation({
     mutationFn: async (payload: {
       ticketIds: string[];
       assigneeId: string;
     }) => {
+      setIsLoading(true);
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
@@ -438,7 +493,8 @@ export default function AdminTicketList() {
     onSuccess: async () => {
       setSelectedTickets([]);
       setIsAssignModalOpen(false);
-      await adminTicketsQueryInvalidator();
+      await refetchAllData();
+      setIsLoading(false);
     },
   });
 
@@ -447,6 +503,8 @@ export default function AdminTicketList() {
       ticketIds: string[];
       status: TicketStatus;
     }) => {
+      setIsLoading(true);
+
       const token = await getToken();
       if (!token) {
         throw new Error("Failed to get authentication token");
@@ -472,7 +530,10 @@ export default function AdminTicketList() {
     onSuccess: async () => {
       setSelectedTickets([]);
       setIsUpdateStatusModalOpen(false);
-      await adminTicketsQueryInvalidator();
+    },
+    onSettled: async () => {
+      await refetchAllData();
+      setIsLoading(false);
     },
   });
 
@@ -604,7 +665,7 @@ export default function AdminTicketList() {
       toast.error("Error: Failed to close ticket. Please try again.");
     },
     onSettled: async () => {
-      await adminTicketsQueryInvalidator();
+      await refetchAllData();
       setIsLoading(false);
     },
   });
@@ -753,14 +814,14 @@ export default function AdminTicketList() {
         toast.error("Error: Failed to reopen ticket");
         console.error("Reopen ticket error:", error);
       } finally {
-        await adminTicketsQueryInvalidator();
+        await refetchAllData();
         setIsLoading(false);
       }
     },
-    [adminTicketsQueryInvalidator, getToken, handleSendTicketNotifications]
+    [refetchAllData, getToken, handleSendTicketNotifications]
   );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
@@ -776,7 +837,7 @@ export default function AdminTicketList() {
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
-  };
+  }, [defaultSelectedCategory]);
 
   const hasActiveFilters = useMemo(() => {
     return (
@@ -833,12 +894,16 @@ export default function AdminTicketList() {
     };
   }, [tickets]);
 
-  const findMarketCenterName = (id: string | null, role?: string) => {
-    if (role === "ADMIN") return "Global";
-    if (!id) return "No Market Center";
-    const mc = marketCenters && marketCenters.find((mc) => mc.id === id);
-    return mc && mc?.name ? mc.name : `#${id.slice(0, 8)}`;
-  };
+  const findMarketCenterName = useCallback(
+    (id: string | null, role?: string) => {
+      if (role === "ADMIN") return "Global";
+      if (!id) return "No Market Center";
+      const mc = marketCenters && marketCenters.find((mc) => mc.id === id);
+      console.log("findMarketCenterName", id, mc);
+      return mc && mc?.name ? mc.name : `#${id.slice(0, 8)}`;
+    },
+    [marketCenters]
+  );
 
   return (
     <>
@@ -886,7 +951,6 @@ export default function AdminTicketList() {
                   setSelectedCategory(defaultSelectedCategory);
                   setCurrentPage(1);
                 }}
-                setMarketCenters={setMarketCenters}
               />
             )}
             <Button
@@ -953,18 +1017,23 @@ export default function AdminTicketList() {
                         setSelectedAssignee(v);
                         setCurrentPage(1);
                       }}
-                      disabled={usersLoading}
+                      disabled={usersLoading || ticketsLoading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">
-                          {usersLoading ? "Loading..." : "All assignees"}
+                        <SelectItem
+                          value="all"
+                          className="flex items-center gap-2"
+                        >
+                          <Users className="h-4 w-4" />
+                          {usersLoading ? "Loading..." : "All Staff"}
                         </SelectItem>
                         <SelectItem value="Unassigned">Unassigned</SelectItem>
                         {!usersLoading &&
-                          users.map((user: PrismaUser) => {
+                          staffTeamMembers.length > 0 &&
+                          staffTeamMembers.map((user: PrismaUser) => {
                             return (
                               <SelectItem key={user.id} value={user.id}>
                                 <span className="font-medium">
@@ -976,12 +1045,14 @@ export default function AdminTicketList() {
                                         .split("_")
                                         .join(" ")
                                         .toLowerCase()
-                                    : "No role"}{" "}
-                                  •{" "}
-                                  {findMarketCenterName(
-                                    user?.marketCenterId,
-                                    user?.role
-                                  )}
+                                    : "No role"}
+                                  {isEnterprise &&
+                                    marketCenters &&
+                                    marketCenters.length > 0 &&
+                                    ` • ${findMarketCenterName(
+                                      user?.marketCenterId,
+                                      user?.role
+                                    )}`}
                                 </span>
                               </SelectItem>
                             );
@@ -998,14 +1069,18 @@ export default function AdminTicketList() {
                         setSelectedCreator(v);
                         setCurrentPage(1);
                       }}
-                      disabled={usersLoading}
+                      disabled={usersLoading || ticketsLoading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select creator" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">
-                          {usersLoading ? "Loading..." : "All creators"}
+                        <SelectItem
+                          value="all"
+                          className="flex items-center gap-2"
+                        >
+                          <Users className="h-4 w-4" />
+                          {usersLoading ? "Loading..." : "All Team Members"}
                         </SelectItem>
                         {!usersLoading &&
                           users.map((user: PrismaUser) => {
@@ -1021,11 +1096,13 @@ export default function AdminTicketList() {
                                         .join(" ")
                                         .toLowerCase()
                                     : "No role"}{" "}
-                                  •{" "}
-                                  {findMarketCenterName(
-                                    user?.marketCenterId,
-                                    user?.role
-                                  )}
+                                  {isEnterprise &&
+                                    marketCenters &&
+                                    marketCenters.length > 0 &&
+                                    ` • ${findMarketCenterName(
+                                      user?.marketCenterId,
+                                      user?.role
+                                    )}`}
                                 </span>
                               </SelectItem>
                             );
@@ -1148,6 +1225,7 @@ export default function AdminTicketList() {
                         }
                       }}
                       aria-label="Filter by ticket categories"
+                      disabled={ticketsLoading || categoriesLoading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a Category" />
@@ -1408,11 +1486,14 @@ export default function AdminTicketList() {
                 <SelectValue placeholder="Select a user..." />
               </SelectTrigger>
               <SelectContent>
-                {users.map((user: PrismaUser) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {staffTeamMembers &&
+                  staffTeamMembers.length > 0 &&
+                  staffTeamMembers.map((user: PrismaUser) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -1505,7 +1586,7 @@ export default function AdminTicketList() {
 
       {/* Quick Edit Modal */}
       <EditTicketForm
-        disabled={isLoading}
+        disabled={isLoading || ticketsLoading}
         ticket={editingTicket}
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
@@ -1528,7 +1609,7 @@ export default function AdminTicketList() {
           }
           setIsEditOpen(false);
           setEditingTicket(null);
-          await adminTicketsQueryInvalidator();
+          await refetchAllData();
         }}
       />
 
@@ -1538,7 +1619,7 @@ export default function AdminTicketList() {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={async (created) => {
           setIsCreateOpen(false);
-          await adminTicketsQueryInvalidator();
+          await refetchAllData();
         }}
       />
     </>

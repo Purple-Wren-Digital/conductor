@@ -56,6 +56,7 @@ import {
   formatTicketOptions,
   getResolvedInBusinessDays,
   orderByOptions,
+  sortByRoleThenName,
   sortByTicketOptions,
   statusOptions,
   urgencyOptions,
@@ -70,6 +71,7 @@ import {
   Filter,
   Plus,
   Search,
+  Users,
   X,
 } from "lucide-react";
 import type {
@@ -268,13 +270,25 @@ export default function TicketListStaff() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const { data: marketCenter, isLoading: marketCenterLoading } =
-    useFetchMarketCenter(currentUser?.role, marketCenterId);
+  const {
+    data: marketCenter,
+    isLoading: marketCenterLoading,
+    refetch: refetchMarketCenter,
+  } = useFetchMarketCenter(currentUser?.role, marketCenterId);
 
-  const teamMembers: PrismaUser[] =
-    marketCenter?.users && marketCenter?.users.length > 0
-      ? marketCenter?.users
-      : [];
+  const teamMembers: PrismaUser[] = useMemo(
+    () =>
+      marketCenter?.users && marketCenter?.users.length > 0
+        ? marketCenter?.users.sort(sortByRoleThenName)
+        : [],
+    [marketCenter?.users]
+  );
+
+  const staffTeamMembers: PrismaUser[] = useMemo(() => {
+    return teamMembers
+      .filter((user) => user?.role && user.role !== "AGENT")
+      .sort(sortByRoleThenName);
+  }, [teamMembers]);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -340,13 +354,18 @@ export default function TicketListStaff() {
     });
   }, [tickets, filterOverdue]);
 
-  const totalTickets: number = filterOverdue
-    ? displayedTickets.length
-    : (ticketsData?.total ?? 0);
-  const totalPages = calculateTotalPages({
-    totalItems: totalTickets,
-    itemsPerPage,
-  });
+  const totalTickets: number = useMemo(
+    () => (filterOverdue ? displayedTickets.length : (ticketsData?.total ?? 0)),
+    [filterOverdue, displayedTickets.length, ticketsData?.total]
+  );
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: totalTickets,
+        itemsPerPage,
+      }),
+    [totalTickets, itemsPerPage]
+  );
 
   const staffTicketsQueryInvalidator = useCallback(
     () =>
@@ -355,6 +374,11 @@ export default function TicketListStaff() {
       }),
     [queryClient, staffTicketsQueryKey]
   );
+
+  const refetchAllData = useCallback(async () => {
+    await refetchMarketCenter();
+    await staffTicketsQueryInvalidator();
+  }, [refetchMarketCenter, staffTicketsQueryInvalidator]);
 
   const bulkAssignMutation = useMutation({
     mutationFn: async (payload: {
@@ -379,7 +403,7 @@ export default function TicketListStaff() {
     onSuccess: async () => {
       setSelectedTickets([]);
       setIsAssignModalOpen(false);
-      await staffTicketsQueryInvalidator();
+      await refetchAllData();
     },
   });
 
@@ -413,7 +437,7 @@ export default function TicketListStaff() {
     onSuccess: async () => {
       setSelectedTickets([]);
       setIsUpdateStatusModalOpen(false);
-      await staffTicketsQueryInvalidator();
+      await refetchAllData();
     },
   });
 
@@ -551,7 +575,7 @@ export default function TicketListStaff() {
       toast.error("Error: Failed to close ticket. Please try again.");
     },
     onSettled: async () => {
-      await staffTicketsQueryInvalidator();
+      await refetchAllData();
       setIsLoading(false);
     },
   });
@@ -697,11 +721,11 @@ export default function TicketListStaff() {
         toast.error("Error: Failed to reopen ticket");
         console.error("Reopen ticket error:", error);
       } finally {
-        await staffTicketsQueryInvalidator();
+        await refetchAllData();
         setIsLoading(false);
       }
     },
-    [getToken, handleSendTicketNotifications, staffTicketsQueryInvalidator]
+    [getToken, handleSendTicketNotifications, refetchAllData]
   );
 
   const clearFilters = () => {
@@ -723,18 +747,33 @@ export default function TicketListStaff() {
     setFilterOverdue(false);
   };
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedStatuses.length !== defaultActiveStatuses.length ||
-    selectedUrgencies.length > 0 ||
-    selectedCategory !== "all" ||
-    selectedAssignee !== "all" ||
-    selectedCreator !== "all" ||
-    !!dateFrom ||
-    !!dateTo ||
-    sortDir !== "desc" ||
-    sortBy !== "updatedAt" ||
-    filterOverdue;
+  const hasActiveFilters = useMemo(
+    () =>
+      !!searchQuery ||
+      selectedStatuses.length !== defaultActiveStatuses.length ||
+      selectedUrgencies.length > 0 ||
+      selectedCategory !== "all" ||
+      selectedAssignee !== "all" ||
+      selectedCreator !== "all" ||
+      !!dateFrom ||
+      !!dateTo ||
+      sortDir !== "desc" ||
+      sortBy !== "updatedAt" ||
+      filterOverdue,
+    [
+      searchQuery,
+      selectedStatuses,
+      selectedUrgencies,
+      selectedCategory,
+      selectedAssignee,
+      selectedCreator,
+      dateFrom,
+      dateTo,
+      sortDir,
+      sortBy,
+      filterOverdue,
+    ]
+  );
 
   const handleQuickEdit = useCallback((e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();
@@ -879,15 +918,19 @@ export default function TicketListStaff() {
                         <SelectContent>
                           {marketCenterId && (
                             <>
-                              <SelectItem value="all">
-                                All Team Members
+                              <SelectItem
+                                value="all"
+                                className="flex items-center gap-2"
+                              >
+                                <Users className="h-4 w-4" />
+                                All Staff
                               </SelectItem>
                               <SelectItem value="Unassigned">
                                 Unassigned
                               </SelectItem>
-                              {teamMembers &&
-                                teamMembers.length > 0 &&
-                                teamMembers.map((user: PrismaUser) => (
+                              {staffTeamMembers &&
+                                staffTeamMembers.length > 0 &&
+                                staffTeamMembers.map((user: PrismaUser) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     <span className="font-medium">
                                       {user.name}:
@@ -898,7 +941,7 @@ export default function TicketListStaff() {
                                             .split("_")
                                             .join(" ")
                                             .toLowerCase()
-                                        : "No role"}{" "}
+                                        : "No role"}
                                     </span>
                                   </SelectItem>
                                 ))}
@@ -906,8 +949,8 @@ export default function TicketListStaff() {
                           )}
 
                           {!marketCenterId && (
-                            <SelectItem value={`${currentUser?.name} You`}>
-                              {currentUser?.name} (You)
+                            <SelectItem value={currentUser?.name ?? ""}>
+                              {currentUser?.name}
                             </SelectItem>
                           )}
                         </SelectContent>
@@ -930,7 +973,11 @@ export default function TicketListStaff() {
                         <SelectContent>
                           {marketCenterId && (
                             <>
-                              <SelectItem value="all">
+                              <SelectItem
+                                value="all"
+                                className="flex items-center gap-2"
+                              >
+                                <Users className="h-4 w-4" />
                                 All Team Members
                               </SelectItem>
                               {teamMembers &&
@@ -1356,13 +1403,18 @@ export default function TicketListStaff() {
               <SelectTrigger>
                 <SelectValue placeholder="Select a user..." />
               </SelectTrigger>
+              <SelectItem value="Unassigned">Unassigned</SelectItem>
               <SelectContent>
-                {teamMembers &&
-                  teamMembers.length &&
-                  teamMembers.map((user: PrismaUser) => (
+                {staffTeamMembers &&
+                  staffTeamMembers.length &&
+                  staffTeamMembers.map((user: PrismaUser) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                      {user?.role === "STAFF_LEADER" ? " (Staff Leader)" : ""}
+                      <span className="font-medium">{user.name}:</span>
+                      <span className="hidden md:flex text-muted-foreground capitalize">
+                        {user?.role
+                          ? user.role.split("_").join(" ").toLowerCase()
+                          : "No role"}
+                      </span>
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -1475,7 +1527,7 @@ export default function TicketListStaff() {
               }
             );
           }
-          await staffTicketsQueryInvalidator();
+          await refetchAllData();
         }}
       />
 
@@ -1485,7 +1537,7 @@ export default function TicketListStaff() {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={async () => {
           setIsCreateOpen(false);
-          await staffTicketsQueryInvalidator();
+          await refetchAllData();
         }}
       />
     </>

@@ -48,6 +48,7 @@ import {
   chartColors,
   defaultActiveStatuses,
   getResolvedInBusinessDays,
+  sortByRoleThenName,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
@@ -109,9 +110,10 @@ export function StaffLeaderDashboard() {
 
   const teamMembers: PrismaUser[] = useMemo(() => {
     return marketCenter?.users && marketCenter?.users.length > 0
-      ? marketCenter?.users
+      ? marketCenter?.users.sort(sortByRoleThenName)
       : [];
   }, [marketCenter]);
+
   const queryParams = useMemo(() => {
     const queryParams = new URLSearchParams();
     statusOptions.forEach((option) => {
@@ -353,8 +355,12 @@ export function StaffLeaderDashboard() {
                     teamMembers?.map((member: any) => {
                       return (
                         <SelectItem key={member.id} value={member.id}>
-                          <User className={`w-4 h-4`} />
-                          {member.name}
+                          <span className="font-medium">{member.name}:</span>
+                          <span className="hidden md:block text-muted-foreground capitalize">
+                            {member.role
+                              ? member.role.split("_").join(" ").toLowerCase()
+                              : "No role"}
+                          </span>
                         </SelectItem>
                       );
                     })}
@@ -575,7 +581,7 @@ export function StaffLeaderDashboard() {
             <CardContent className="space-y-2 h-[250px] md:h-[220px]">
               <ChartContainer
                 config={ticketByStatusChartConfig}
-                className="h-4/5  w-[99%] md:w-full mx-auto"
+                className="w-[99%] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -621,12 +627,6 @@ export function StaffLeaderDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
-              <p className="text-[12px] text-center md:text-md mt-5 text-muted-foreground ">
-                Viewing{" "}
-                {selectedTeamMemberId === "All"
-                  ? "all users"
-                  : `User #${selectedTeamMemberId.slice(0, 8)}`}
-              </p>
             </CardContent>
           </Card>
 

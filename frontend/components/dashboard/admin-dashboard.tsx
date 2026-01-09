@@ -18,7 +18,6 @@ import {
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
-// import { TeamSwitcher } from "@/components//ui/team-switcher";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
@@ -69,7 +68,6 @@ export function AdminDashboard() {
   const { getToken } = useAuth();
   const { role } = useUserRole();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  // const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<string>("all");
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -346,14 +344,6 @@ export function AdminDashboard() {
               </p>
             </div>
             <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-              {/* <div className="space-y-2 w-fit">
-                {marketCenters.length > 1 && (
-                  <TeamSwitcher
-                    selectedMarketCenterId={selectedMarketCenterId}
-                    setSelectedMarketCenterId={setSelectedMarketCenterId}
-                  />
-                )}
-              </div> */}
               <Button asChild className="w-full sm:w-fit">
                 <Link href="/dashboard/reports">
                   <BarChartIcon className="mr-2 h-4 w-4" /> View Reports
@@ -652,9 +642,6 @@ export function AdminDashboard() {
                 <CardTitle>Tickets by Status</CardTitle>
                 <CardDescription>
                   {stats.totalTickets} total tickets
-                  {/* {selectedMarketCenterId === "all"
-                    ? " across all teams"
-                    : ""}{" "} */}
                 </CardDescription>
               </div>
               <TrendingUp className="h-4 w-4 text-muted-foreground hidden sm:visible" />
@@ -708,12 +695,6 @@ export function AdminDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
-              <CardDescription className="text-[12px] text-center md:text-md">
-                Viewing{" "}
-                {/* {selectedMarketCenterId === "all"
-                  ? "all market centers"
-                  : `Market Center #${selectedMarketCenterId.slice(0, 8)}`} */}
-              </CardDescription>
             </CardContent>
           </Card>
 
@@ -723,9 +704,6 @@ export function AdminDashboard() {
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
                 {stats.totalTickets} total tickets
-                {/* {selectedMarketCenterId === "all"
-                  ? " across all teams"
-                  : ""}{" "}  */}
               </CardDescription>
             </CardHeader>
             <CardContent>

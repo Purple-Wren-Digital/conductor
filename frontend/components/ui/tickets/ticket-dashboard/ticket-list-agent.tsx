@@ -47,6 +47,7 @@ import {
   formatOrderBy,
   formatTicketOptions,
   orderByOptions,
+  sortByRoleThenName,
   sortByTicketOptions,
   statusOptions,
   urgencyOptions,
@@ -76,6 +77,7 @@ import type {
   TicketWithUpdatedAt,
   TicketCategory,
   UsersToNotify,
+  UserRole,
 } from "@/lib/types";
 import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
@@ -296,6 +298,7 @@ export default function AgentTicketList() {
 
   const { data: ticketsData, isFetching: ticketsLoading } =
     useFetchAgentTickets({ queryParams, agentTicketsQueryKey, hydrated });
+
   const tickets: TicketWithUpdatedAt[] = useMemo(() => {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);
@@ -310,37 +313,56 @@ export default function AgentTicketList() {
     });
   }, [tickets, filterOverdue]);
 
-  const totalTickets = filterOverdue
-    ? displayedTickets.length
-    : (tickets?.length ?? 0);
-  const totalPages = calculateTotalPages({
-    totalItems: totalTickets,
-    itemsPerPage,
-  });
+  const totalTickets = useMemo(
+    () => (filterOverdue ? displayedTickets.length : (tickets?.length ?? 0)),
+    [filterOverdue, displayedTickets, tickets]
+  );
 
-  const teamMembersAssignedToTickets = useMemo(() => {
-    const members = tickets.map((ticket) => {
-      if (ticket?.assigneeId && ticket.assignee?.name) {
-        return {
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: totalTickets,
+        itemsPerPage,
+      }),
+    [totalTickets, itemsPerPage]
+  );
+
+  const teamMembersAssignedToTickets: {
+    id: string;
+    name: string;
+    role: UserRole | undefined;
+  }[] = useMemo(() => {
+    let teamMembers: {
+      id: string;
+      name: string;
+      role: UserRole | undefined;
+    }[] = [];
+
+    tickets.forEach((ticket) => {
+      const alreadyExists = teamMembers.find(
+        (member) => member?.id === ticket?.assigneeId
+      );
+      if (ticket?.assigneeId && ticket?.assignee && !alreadyExists) {
+        teamMembers.push({
           id: ticket.assigneeId,
-          name: ticket.assignee.name,
-          role: ticket?.assignee?.role ?? null,
-        };
+          name: ticket?.assignee?.name ?? `#${ticket.assigneeId.slice(0, 8)}`,
+          role: ticket?.assignee?.role ?? "AGENT",
+        });
       }
-      return { id: "Unassigned", name: "Unassigned", role: null };
     });
 
-    // Dedupe by id
-    const unique = new Map(members.map((m) => [m.id, m]));
-    return [...unique.values()];
+    return teamMembers.sort(sortByRoleThenName);
   }, [tickets]);
 
   const { data: ticketCategoryData } = useFetchMarketCenterCategories(
     currentUser?.marketCenterId ?? ""
   );
-  const categories: TicketCategory[] = ticketCategoryData?.categories ?? [];
+  const categories: TicketCategory[] = useMemo(
+    () => ticketCategoryData?.categories ?? [],
+    [ticketCategoryData]
+  );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
@@ -354,19 +376,33 @@ export default function AgentTicketList() {
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
-  };
+  }, []);
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedStatuses.length !== defaultActiveStatuses.length ||
-    selectedUrgencies.length > 0 ||
-    selectedCategory !== "all" ||
-    selectedAssignee !== "all" ||
-    !!dateFrom ||
-    !!dateTo ||
-    sortDir !== "desc" ||
-    sortBy !== "updatedAt" ||
-    filterOverdue;
+  const hasActiveFilters = useMemo(
+    () =>
+      !!searchQuery ||
+      selectedStatuses.length !== defaultActiveStatuses.length ||
+      selectedUrgencies.length > 0 ||
+      selectedCategory !== "all" ||
+      selectedAssignee !== "all" ||
+      !!dateFrom ||
+      !!dateTo ||
+      sortDir !== "desc" ||
+      sortBy !== "updatedAt" ||
+      filterOverdue,
+    [
+      dateFrom,
+      dateTo,
+      filterOverdue,
+      searchQuery,
+      selectedAssignee,
+      selectedCategory,
+      selectedStatuses.length,
+      selectedUrgencies.length,
+      sortBy,
+      sortDir,
+    ]
+  );
 
   const handleTicketClick = (ticket: Ticket) => {
     queryClient.setQueryData(["ticket", ticket.id], { ticket });
@@ -776,8 +812,10 @@ export default function AgentTicketList() {
                             className="flex items-center gap-2"
                           >
                             <Users className="h-4 w-4" />
-                            All Team Members
+                            All Staff
                           </SelectItem>
+
+                          <SelectItem value="Unassigned">Unassigned</SelectItem>
                           {teamMembersAssignedToTickets &&
                             teamMembersAssignedToTickets.length > 0 &&
                             teamMembersAssignedToTickets.map((user) => (
@@ -785,7 +823,7 @@ export default function AgentTicketList() {
                                 <span className="font-medium">
                                   {user.name}:
                                 </span>
-                                <span className="hidden md:block text-muted-foreground capitalize">
+                                <span className="hidden md:flex text-muted-foreground capitalize">
                                   {user?.role
                                     ? user.role
                                         .split("_")

@@ -10,6 +10,7 @@ import {
 import {
   MarketCenter,
   OrderBy,
+  PrismaUser,
   TicketSortBy,
   TicketStatus,
   Urgency,
@@ -67,6 +68,25 @@ export const ROLE_DESCRIPTIONS: {
 export const getRoleDescription = (userRole: UserRole) => {
   const description = ROLE_DESCRIPTIONS[userRole as keyof typeof ROLE_ICONS];
   return description;
+};
+
+// Creator/Assignee selection hierarchy
+export const ROLE_ORDER: Record<UserRole, number> = {
+  AGENT: 0,
+  STAFF: 1,
+  STAFF_LEADER: 2,
+  ADMIN: 3,
+};
+
+export const sortByRoleThenName = (
+  a: Partial<PrismaUser>,
+  b: Partial<PrismaUser>
+) => {
+  const roleA = a.role ?? "AGENT";
+  const roleB = b.role ?? "AGENT";
+  const roleDiff = ROLE_ORDER[roleA] - ROLE_ORDER[roleB];
+  if (roleDiff !== 0) return roleDiff;
+  return (a.name ?? "").localeCompare(b.name ?? "");
 };
 
 // TICKETS
