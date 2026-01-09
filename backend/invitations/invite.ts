@@ -4,7 +4,12 @@ import crypto from "crypto";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 import { checkCanAddUser } from "../auth/subscription-check";
-import { db, userRepository, marketCenterRepository } from "../ticket/db";
+import {
+  db,
+  userRepository,
+  marketCenterRepository,
+  subscriptionRepository,
+} from "../ticket/db";
 import { sendInvitationEmail } from "./email";
 import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
@@ -68,6 +73,13 @@ export interface ResendInvitationResponse {
 
 export interface CancelInvitationResponse {
   success: boolean;
+}
+
+export interface ListInvitationsRequest {
+  inviteStatus?: InvitationStatus;
+  marketCenterIds?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface ListInvitationsResponse {
@@ -588,27 +600,58 @@ export const cancelInvitation = api<
 );
 
 // ============================================================================
-// List Invitations for Market Center
+// List Invitations for Market Center(s)
 // ============================================================================
 
-export const listInvitations = api<void, ListInvitationsResponse>(
+export const listInvitations = api<
+  ListInvitationsRequest,
+  ListInvitationsResponse
+>(
   {
     expose: true,
     method: "GET",
-    path: "/invitations",
+    path: "/invitations/list",
     auth: true,
   },
-  async () => {
+  async (req) => {
     const userContext = await getUserContext();
+    const limit = req?.limit ?? 25;
+    const offset = req?.offset ?? 0;
 
-    if (!userContext.marketCenterId) {
+    const accessibleMarketCenterIds =
+      userContext.role === "ADMIN"
+        ? await subscriptionRepository.getAccessibleMarketCenterIds(
+            userContext?.marketCenterId
+          )
+        : userContext.marketCenterId
+          ? [userContext.marketCenterId]
+          : [];
+
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
       return { invitations: [] };
     }
 
+    let marketCenterIds: string[] | null = null;
+
+    if (req.marketCenterIds) {
+      marketCenterIds = req.marketCenterIds
+        .split(",")
+        .filter((id) => accessibleMarketCenterIds.includes(id));
+      if (marketCenterIds.length === 0) {
+        return { invitations: [] };
+      }
+    } else {
+      marketCenterIds = accessibleMarketCenterIds;
+    }
+
     const invitations =
-      await marketCenterRepository.findInvitationsByMarketCenterId(
-        userContext.marketCenterId
-      );
+      await marketCenterRepository.findInvitationsByMultipleMarketCenterIds({
+        marketCenterIds,
+        inviteStatus:
+          req?.inviteStatus !== undefined ? req.inviteStatus : undefined,
+        limit,
+        offset,
+      });
 
     return { invitations };
   }
