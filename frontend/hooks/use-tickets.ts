@@ -255,13 +255,16 @@ export function useListAllRatings(
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(`${API_BASE}/surveys/ratings/all`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `${API_BASE}/surveys/ratings/all`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch survey data");
         }

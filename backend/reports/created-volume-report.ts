@@ -41,8 +41,6 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
       userContext?.marketCenterId
     );
     const isActive = subscription && subscription?.status === "ACTIVE";
-    const isEnterprise =
-      subscription && subscription?.planType === "ENTERPRISE";
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
@@ -51,10 +49,26 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
       req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
     const creatorIds =
       req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
-    const marketCenterIds =
-      req.marketCenterIds && req.marketCenterIds.length > 0
-        ? req.marketCenterIds
-        : null;
+
+    let marketCenterIds: string[] = [];
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
+        const filteredMCIds = req.marketCenterIds.filter((id) =>
+          accessibleMarketCenterIds.includes(id)
+        );
+        marketCenterIds = filteredMCIds;
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -116,7 +130,7 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
         }
         break;
       case "ADMIN":
-        if (isActive && isEnterprise) {
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           tickets = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.created_at
             FROM tickets t
@@ -127,24 +141,6 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
               tc.market_center_id = ANY(${marketCenterIds})
               OR creator.market_center_id = ANY(${marketCenterIds})
               OR assignee.market_center_id = ANY(${marketCenterIds})
-            )
-            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
-            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
-            AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
-            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
-            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
-          `;
-        } else if (isActive && userContext?.marketCenterId) {
-          tickets = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.created_at
-            FROM tickets t
-            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
-            LEFT JOIN users creator ON t.creator_id = creator.id
-            LEFT JOIN users assignee ON t.assignee_id = assignee.id
-            WHERE (
-              tc.market_center_id = ${userContext.marketCenterId}
-              OR creator.market_center_id = ${userContext.marketCenterId}
-              OR assignee.market_center_id = ${userContext.marketCenterId}
             )
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))

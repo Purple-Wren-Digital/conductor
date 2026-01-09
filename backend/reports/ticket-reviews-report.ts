@@ -148,7 +148,12 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
         }
         break;
       case "ADMIN":
-        if (isActive && isEnterprise) {
+        if (
+          isActive &&
+          isEnterprise &&
+          marketCenterIds &&
+          marketCenterIds.length > 0
+        ) {
           reviewsFound = await db.queryAll<ReviewRow>`
             SELECT
               tr.id,
