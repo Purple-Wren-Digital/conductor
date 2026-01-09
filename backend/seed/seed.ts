@@ -495,7 +495,7 @@ export const seedData = api<void, SeedResponse>(
       {
         title: "Inspection results review",
         description: "Review inspection report with client for 101 Maple St",
-        status: "CREATED",
+        status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Inspections",
         marketCenterId: mc[0]?.id,
@@ -513,7 +513,7 @@ export const seedData = api<void, SeedResponse>(
       {
         title: "Annual compliance training reminder",
         description: "Ensure all agents complete compliance training",
-        status: "CREATED",
+        status: "ASSIGNED",
         urgency: "MEDIUM",
         categoryName: "Compliance",
         marketCenterId: mc[1]?.id,
@@ -544,10 +544,17 @@ export const seedData = api<void, SeedResponse>(
       );
       const creatorId = rand(agentIdsInMC)?.id;
 
-      const assigneeId =
-        t?.status === "CREATED" || t?.status === "UNASSIGNED"
-          ? null
-          : category?.default_assignee_id || null;
+      let assigneeId = null;
+      if (t.status !== "UNASSIGNED" && category.default_assignee_id) {
+        assigneeId = category.default_assignee_id;
+      } else if (t.status !== "UNASSIGNED" && !category.default_assignee_id) {
+        const staffInMC = staff.filter(
+          (s) => s.market_center_id === marketCenterId
+        );
+        assigneeId = rand(staffInMC)?.id;
+      } else {
+        assigneeId = null;
+      }
 
       const ticket = await db.queryRow<{
         id: string;

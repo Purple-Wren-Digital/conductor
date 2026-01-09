@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   AlertDialog,
@@ -43,6 +43,7 @@ import {
   PenIcon,
   TrashIcon,
   PlusIcon,
+  FolderSymlink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -73,8 +74,11 @@ export default function TicketTemplateCustomizationList() {
   const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
 
   // Fetch market centers
-  const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
-    useFetchAllMarketCenters(role);
+  const {
+    data: marketCentersData,
+    isLoading: isLoadingMarketCenters,
+    refetch: refetchMarketCenters,
+  } = useFetchAllMarketCenters(role);
 
   const ticketTemplateListQueryKey = [
     "ticket-templates-list",
@@ -88,7 +92,7 @@ export default function TicketTemplateCustomizationList() {
     isLoading: isLoadingTemplates,
     isError,
     error,
-    refetch,
+    refetch: refetchTemplates,
   } = useFetchTicketTemplates({
     marketCenterId: selectedMarketCenterId,
     role,
@@ -100,7 +104,22 @@ export default function TicketTemplateCustomizationList() {
     [marketCentersData]
   );
 
-  const handleDeleteTemplate = async () => {
+  const refreshTemplatesList = useCallback(async () => {
+    await refetchTemplates();
+    await refetchMarketCenters();
+  }, [refetchTemplates, refetchMarketCenters]);
+
+  const navigateToCreateTemplate = () => {
+    router.push(
+      `/dashboard/ticket-templates/create${
+        selectedMarketCenterId
+          ? `?marketCenterId=${selectedMarketCenterId}`
+          : ""
+      }`
+    );
+  };
+
+  const handleDeleteTemplate = useCallback(async () => {
     setIsLoading(true);
     if (!templateToDelete) {
       throw new Error("No template selected for deletion");
@@ -129,14 +148,51 @@ export default function TicketTemplateCustomizationList() {
       toast.success("Template deleted successfully");
       setTemplateDeleteModalOpen(false);
       setTemplateToDelete(null);
-      await refetch();
+      await refreshTemplatesList();
     } catch (error) {
       console.error("Error deleting template:", error);
       toast.error("Failed to delete template. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getToken, templateToDelete, refreshTemplatesList]);
+
+  const handleGenerateTemplates = useCallback(
+    async (marketCenterId: string) => {
+      setIsLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+        const response = await fetch(
+          `${API_BASE}/ticket-templates/generate/${marketCenterId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.message ||
+              "Failed to generate templates. Please try again."
+          );
+        }
+        toast.success("Templates generated successfully");
+        await refreshTemplatesList();
+      } catch (error) {
+        console.error("Error generating templates:", error);
+        toast.error("Failed to generate templates. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [getToken, refreshTemplatesList]
+  );
 
   // Permission denied view
   if (!canAccess) {
@@ -217,11 +273,7 @@ export default function TicketTemplateCustomizationList() {
               </Select>
             </div>
             <Button
-              onClick={() =>
-                router.push(
-                  `/dashboard/ticket-templates/create${selectedMarketCenterId ? `?marketCenterId=${selectedMarketCenterId}` : ""}`
-                )
-              }
+              onClick={navigateToCreateTemplate}
               className="w-full md:w-fit"
               disabled={isLoadingTemplates || isLoading}
             >
@@ -263,14 +315,14 @@ export default function TicketTemplateCustomizationList() {
             <p className="text-muted-foreground mb-4">
               {error?.message || "An error occurred while loading templates."}
             </p>
-            <Button onClick={() => refetch()} variant="outline">
+            <Button onClick={refreshTemplatesList} variant="outline">
               Retry
             </Button>
           </div>
         )}
 
         {/* Template list */}
-        {selectedMarketCenterId && templates && !isError && (
+        {selectedMarketCenterId && !isError && (
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
@@ -282,60 +334,108 @@ export default function TicketTemplateCustomizationList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates.map((template) => {
-                  // console.log("Rendering template:", template);
-                  return (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium">
-                        {template.name}
-                      </TableCell>
-                      <TableCell>
-                        {template?.description ?? "No description available"}
-                      </TableCell>
-                      <TableCell>
-                        {template.isActive ? (
-                          <Badge variant="default" className="bg-primary">
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Inactive</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              router.push(
-                                `/dashboard/ticket-templates/${template.id}`
-                              )
-                            }
-                            aria-label={`Edit ticket template for ${template.name}`}
-                            disabled={isLoadingTemplates || isLoading}
-                          >
-                            <PenIcon className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
+                {templates &&
+                  templates?.length > 0 &&
+                  templates.map((template) => {
+                    return (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium">
+                          {template.name}
+                        </TableCell>
+                        <TableCell>
+                          {template?.description ?? "No description available"}
+                        </TableCell>
+                        <TableCell>
+                          {template.isActive ? (
+                            <Badge variant="default" className="bg-primary">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Inactive</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                router.push(
+                                  `/dashboard/ticket-templates/${template.id}`
+                                )
+                              }
+                              aria-label={`Edit ticket template for ${template.name}`}
+                              disabled={isLoadingTemplates || isLoading}
+                            >
+                              <PenIcon className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
 
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setTemplateToDelete(template);
+                                setTemplateDeleteModalOpen(true);
+                              }}
+                              aria-label={`Remove ticket template for ${template.name}`}
+                              disabled={isLoadingTemplates || isLoading}
+                            >
+                              <TrashIcon className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="items-center py-8 text-muted-foreground"
+                  >
+                    <span className="flex flex-col gap-2 items-center">
+                      {(!templates || !templates.length) &&
+                        "No ticket templates found for this market center."}
+                      <span>
+                        Generate system templates or create one of your own.
+                        Either way, they can be customized at any time.
+                      </span>
+                      <span className="flex items-center gap-4">
+                        {(!templates || !templates.length) && (
                           <Button
-                            size="sm"
-                            variant="outline"
                             onClick={() => {
-                              setTemplateToDelete(template);
-                              setTemplateDeleteModalOpen(true);
+                              if (!selectedMarketCenterId) {
+                                toast.error("Please select a market center");
+                                return;
+                              }
+                              handleGenerateTemplates(selectedMarketCenterId);
                             }}
-                            aria-label={`Remove ticket template for ${template.name}`}
                             disabled={isLoadingTemplates || isLoading}
+                            aria-label="Generate ticket templates for selected market center"
+                            variant={"secondary"}
+                            size={"sm"}
+                            className="border-sm"
                           >
-                            <TrashIcon className="h-4 w-4 mr-1" />
-                            Remove
+                            <FolderSymlink className="h-4 w-4 mr-2" />
+                            Generate Templates
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        )}
+                        <Button
+                          onClick={navigateToCreateTemplate}
+                          disabled={isLoadingTemplates || isLoading}
+                          aria-label="Create new ticket template"
+                          variant={"secondary"}
+                          size={"sm"}
+                          className="border-sm"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-2" />
+                          New Template
+                        </Button>
+                      </span>
+                    </span>
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </div>

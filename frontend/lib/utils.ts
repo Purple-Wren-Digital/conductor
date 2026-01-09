@@ -111,14 +111,12 @@ export const capitalizeEachWord = (text: string) => {};
 
 // FILTERS
 export const defaultActiveStatuses: TicketStatus[] = [
-  "CREATED",
   "ASSIGNED",
   "UNASSIGNED",
   "AWAITING_RESPONSE",
   "IN_PROGRESS",
 ];
 export const statusOptions: TicketStatus[] = [
-  "CREATED",
   "ASSIGNED",
   "UNASSIGNED",
   "IN_PROGRESS",
@@ -365,7 +363,6 @@ export const chartColors = {
 };
 
 export const STATUS_ORDER = [
-  "CREATED",
   "UNASSIGNED",
   "ASSIGNED",
   "AWAITING_RESPONSE",
@@ -374,7 +371,6 @@ export const STATUS_ORDER = [
 ] as const;
 export type StatusKey = (typeof STATUS_ORDER)[number];
 export const STATUS_LABELS: Record<StatusKey, string> = {
-  CREATED: "Created",
   UNASSIGNED: "Unassigned",
   ASSIGNED: "Assigned",
   AWAITING_RESPONSE: "Awaiting Response",
@@ -382,7 +378,6 @@ export const STATUS_LABELS: Record<StatusKey, string> = {
   RESOLVED: "Resolved",
 };
 export const STATUS_COLORS: Record<StatusKey, string> = {
-  CREATED: "#B42318",
   UNASSIGNED: "#C4320A",
   ASSIGNED: "#C18900",
   AWAITING_RESPONSE: "#6B21A8",
@@ -390,7 +385,6 @@ export const STATUS_COLORS: Record<StatusKey, string> = {
   RESOLVED: "#027A48",
 };
 export const ticketByStatusChartConfig = {
-  CREATED: { label: STATUS_LABELS.CREATED, color: STATUS_COLORS.CREATED },
   UNASSIGNED: {
     label: STATUS_LABELS.UNASSIGNED,
     color: STATUS_COLORS.UNASSIGNED,

@@ -68,6 +68,7 @@ const {
     createHistory: vi.fn(),
   },
   mockUserContext: {
+    name: "Test User",
     userId: "user-123",
     email: "admin@test.com",
     role: "ADMIN" as const,
@@ -127,6 +128,7 @@ import { getPolicies, updatePolicy } from "./policies";
 import { getMetrics, getReport, exportReport } from "./reports";
 import { checkSlaStatus } from "../cron/sla-check.cron";
 import { getUserContext } from "../auth/user-context";
+import { SlaMetrics } from "./types";
 
 describe("SLA System Tests", () => {
   beforeEach(() => {
@@ -174,7 +176,10 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findPolicyByUrgency.mockResolvedValue(mockPolicy);
 
         const createdAt = new Date("2024-01-15T10:00:00Z");
-        const result = await slaService.calculateSlaDueDate("MEDIUM", createdAt);
+        const result = await slaService.calculateSlaDueDate(
+          "MEDIUM",
+          createdAt
+        );
 
         expect(result).not.toBeNull();
         expect(result!.slaDueAt.getTime()).toBe(
@@ -324,7 +329,10 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findPolicyByUrgency.mockResolvedValue(mockPolicy);
 
         const createdAt = new Date("2024-01-15T10:00:00Z");
-        const result = await slaService.calculateResolutionSlaDueDate("HIGH", createdAt);
+        const result = await slaService.calculateResolutionSlaDueDate(
+          "HIGH",
+          createdAt
+        );
 
         expect(result).not.toBeNull();
         expect(result!.slaResolutionDueAt.getTime()).toBe(
@@ -346,7 +354,10 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findPolicyByUrgency.mockResolvedValue(mockPolicy);
 
         const createdAt = new Date("2024-01-15T10:00:00Z");
-        const result = await slaService.calculateResolutionSlaDueDate("MEDIUM", createdAt);
+        const result = await slaService.calculateResolutionSlaDueDate(
+          "MEDIUM",
+          createdAt
+        );
 
         expect(result).not.toBeNull();
         expect(result!.slaResolutionDueAt.getTime()).toBe(
@@ -368,7 +379,10 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findPolicyByUrgency.mockResolvedValue(mockPolicy);
 
         const createdAt = new Date("2024-01-15T10:00:00Z");
-        const result = await slaService.calculateResolutionSlaDueDate("LOW", createdAt);
+        const result = await slaService.calculateResolutionSlaDueDate(
+          "LOW",
+          createdAt
+        );
 
         expect(result).not.toBeNull();
         expect(result!.slaResolutionDueAt.getTime()).toBe(
@@ -404,8 +418,12 @@ describe("SLA System Tests", () => {
         expect(result).not.toBeNull();
         const expectedMin = before + 240 * 60 * 1000;
         const expectedMax = after + 240 * 60 * 1000;
-        expect(result!.slaResolutionDueAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
-        expect(result!.slaResolutionDueAt.getTime()).toBeLessThanOrEqual(expectedMax);
+        expect(result!.slaResolutionDueAt.getTime()).toBeGreaterThanOrEqual(
+          expectedMin
+        );
+        expect(result!.slaResolutionDueAt.getTime()).toBeLessThanOrEqual(
+          expectedMax
+        );
       });
     });
 
@@ -427,7 +445,10 @@ describe("SLA System Tests", () => {
         const slaResolutionDueAt = new Date("2024-01-15T14:00:00Z");
         const resolvedAt = new Date("2024-01-15T12:00:00Z"); // 2 hours early
 
-        const result = await slaService.checkResolutionSlaMet(slaResolutionDueAt, resolvedAt);
+        const result = await slaService.checkResolutionSlaMet(
+          slaResolutionDueAt,
+          resolvedAt
+        );
 
         expect(result).toBe(true);
       });
@@ -436,7 +457,10 @@ describe("SLA System Tests", () => {
         const slaResolutionDueAt = new Date("2024-01-15T14:00:00Z");
         const resolvedAt = new Date("2024-01-15T14:00:00Z"); // Exactly on time
 
-        const result = await slaService.checkResolutionSlaMet(slaResolutionDueAt, resolvedAt);
+        const result = await slaService.checkResolutionSlaMet(
+          slaResolutionDueAt,
+          resolvedAt
+        );
 
         expect(result).toBe(true);
       });
@@ -445,7 +469,10 @@ describe("SLA System Tests", () => {
         const slaResolutionDueAt = new Date("2024-01-15T14:00:00Z");
         const resolvedAt = new Date("2024-01-15T15:00:00Z"); // 1 hour late
 
-        const result = await slaService.checkResolutionSlaMet(slaResolutionDueAt, resolvedAt);
+        const result = await slaService.checkResolutionSlaMet(
+          slaResolutionDueAt,
+          resolvedAt
+        );
 
         expect(result).toBe(false);
       });
@@ -615,7 +642,11 @@ describe("SLA System Tests", () => {
         expect(result.policy.resolutionTimeMinutes).toBe(180);
         expect(mockSlaRepository.updatePolicy).toHaveBeenCalledWith(
           "policy-high",
-          { responseTimeMinutes: undefined, resolutionTimeMinutes: 180, isActive: undefined }
+          {
+            responseTimeMinutes: undefined,
+            resolutionTimeMinutes: 180,
+            isActive: undefined,
+          }
         );
       });
 
@@ -806,13 +837,23 @@ describe("SLA System Tests", () => {
 
         // Response SLA
         mockSlaRepository.getSlaMetrics.mockResolvedValue(mockMetrics);
-        mockSlaRepository.getSlaMetricsByUrgency.mockResolvedValue(mockByUrgency);
-        mockSlaRepository.getSlaMetricsByAssignee.mockResolvedValue(mockByAssignee);
+        mockSlaRepository.getSlaMetricsByUrgency.mockResolvedValue(
+          mockByUrgency
+        );
+        mockSlaRepository.getSlaMetricsByAssignee.mockResolvedValue(
+          mockByAssignee
+        );
         mockSlaRepository.getSlaTrends.mockResolvedValue(mockTrends);
         // Resolution SLA
-        mockSlaRepository.getResolutionSlaMetrics.mockResolvedValue(mockResolutionMetrics);
-        mockSlaRepository.getResolutionSlaMetricsByUrgency.mockResolvedValue(mockResolutionByUrgency);
-        mockSlaRepository.getResolutionSlaTrends.mockResolvedValue(mockResolutionTrends);
+        mockSlaRepository.getResolutionSlaMetrics.mockResolvedValue(
+          mockResolutionMetrics
+        );
+        mockSlaRepository.getResolutionSlaMetricsByUrgency.mockResolvedValue(
+          mockResolutionByUrgency
+        );
+        mockSlaRepository.getResolutionSlaTrends.mockResolvedValue(
+          mockResolutionTrends
+        );
 
         const result = await getReport({});
 
@@ -933,8 +974,12 @@ describe("SLA System Tests", () => {
   describe("SLA Cron Job", () => {
     // Helper to mock empty Resolution SLA results
     const mockEmptyResolutionSla = () => {
-      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
+      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+        []
+      );
+      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+        []
+      );
       mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
     };
 
@@ -1094,7 +1139,7 @@ describe("SLA System Tests", () => {
             id: "ticket-unassigned",
             title: "Unassigned Ticket",
             urgency: "LOW" as const,
-            status: "CREATED",
+            status: "UNASSIGNED",
             creator_id: "user-creator",
             assignee_id: null,
             sla_response_due_at: new Date(),
@@ -1187,9 +1232,15 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
           ticketsNeedingResolutionWarning
         );
-        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
-        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
-        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(undefined);
+        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
         mockNotificationRepository.create.mockResolvedValue({});
 
@@ -1199,9 +1250,9 @@ describe("SLA System Tests", () => {
         expect(result.resolutionWarnings75Sent).toBe(0);
         expect(result.resolutionBreachesMarked).toBe(0);
 
-        expect(mockSlaRepository.markResolutionWarning50Sent).toHaveBeenCalledWith(
-          "ticket-res-1"
-        );
+        expect(
+          mockSlaRepository.markResolutionWarning50Sent
+        ).toHaveBeenCalledWith("ticket-res-1");
         expect(mockSlaRepository.createEvent).toHaveBeenCalledWith({
           ticketId: "ticket-res-1",
           eventType: "RESOLUTION_WARNING_50",
@@ -1235,12 +1286,18 @@ describe("SLA System Tests", () => {
         ];
 
         mockEmptyResponseSla();
-        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
+        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+          []
+        );
         mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
           ticketsNeedingResolutionWarning
         );
-        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
-        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(undefined);
+        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
         mockNotificationRepository.create.mockResolvedValue({});
 
@@ -1250,9 +1307,9 @@ describe("SLA System Tests", () => {
         expect(result.resolutionWarnings75Sent).toBe(1);
         expect(result.resolutionBreachesMarked).toBe(0);
 
-        expect(mockSlaRepository.markResolutionWarning75Sent).toHaveBeenCalledWith(
-          "ticket-res-2"
-        );
+        expect(
+          mockSlaRepository.markResolutionWarning75Sent
+        ).toHaveBeenCalledWith("ticket-res-2");
         expect(mockSlaRepository.createEvent).toHaveBeenCalledWith({
           ticketId: "ticket-res-2",
           eventType: "RESOLUTION_WARNING_75",
@@ -1283,12 +1340,18 @@ describe("SLA System Tests", () => {
         ];
 
         mockEmptyResponseSla();
-        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
+        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+          []
+        );
         mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
           ticketsBreachingResolution
         );
-        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(undefined);
+        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
         mockNotificationRepository.create.mockResolvedValue({});
         mockUserRepository.findByRole.mockResolvedValue(mockAdmins);
@@ -1299,9 +1362,9 @@ describe("SLA System Tests", () => {
         expect(result.resolutionWarnings75Sent).toBe(0);
         expect(result.resolutionBreachesMarked).toBe(1);
 
-        expect(mockSlaRepository.markResolutionSlaBreached).toHaveBeenCalledWith(
-          "ticket-res-3"
-        );
+        expect(
+          mockSlaRepository.markResolutionSlaBreached
+        ).toHaveBeenCalledWith("ticket-res-3");
         expect(mockSlaRepository.createEvent).toHaveBeenCalledWith({
           ticketId: "ticket-res-3",
           eventType: "RESOLUTION_BREACHED",
@@ -1318,7 +1381,7 @@ describe("SLA System Tests", () => {
             id: "ticket-res-unassigned",
             title: "Unassigned Resolution Ticket",
             urgency: "LOW" as const,
-            status: "CREATED",
+            status: "UNASSIGNED",
             creator_id: "user-creator",
             assignee_id: null,
             sla_resolution_due_at: new Date(),
@@ -1334,9 +1397,15 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
           ticketsNeedingResolutionWarning
         );
-        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
-        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
-        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(undefined);
+        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
 
         const result = await checkSlaStatus();
@@ -1349,7 +1418,12 @@ describe("SLA System Tests", () => {
       it("should process multiple Resolution SLA tickets in single run", async () => {
         const ticketsResWarning50 = [
           { id: "res-t1", title: "Res T1", urgency: "HIGH", assignee_id: "u1" },
-          { id: "res-t2", title: "Res T2", urgency: "MEDIUM", assignee_id: "u2" },
+          {
+            id: "res-t2",
+            title: "Res T2",
+            urgency: "MEDIUM",
+            assignee_id: "u2",
+          },
         ];
 
         const ticketsResWarning75 = [
@@ -1370,9 +1444,15 @@ describe("SLA System Tests", () => {
         mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
           ticketsResBreaching
         );
-        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(undefined);
-        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(undefined);
-        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(undefined);
+        mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(
+          undefined
+        );
+        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(
+          undefined
+        );
+        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
         mockNotificationRepository.create.mockResolvedValue({});
         mockUserRepository.findByRole.mockResolvedValue([]);
@@ -1389,35 +1469,69 @@ describe("SLA System Tests", () => {
       it("should process both Response and Resolution SLA in a single run", async () => {
         // Response SLA tickets
         const responseWarning50 = [
-          { id: "resp-t1", title: "Response T1", urgency: "HIGH", assignee_id: "u1" },
+          {
+            id: "resp-t1",
+            title: "Response T1",
+            urgency: "HIGH",
+            assignee_id: "u1",
+          },
         ];
         const responseBreaching = [
-          { id: "resp-t2", title: "Response T2", urgency: "MEDIUM", assignee_id: "u2" },
+          {
+            id: "resp-t2",
+            title: "Response T2",
+            urgency: "MEDIUM",
+            assignee_id: "u2",
+          },
         ];
 
         // Resolution SLA tickets
         const resolutionWarning75 = [
-          { id: "res-t1", title: "Resolution T1", urgency: "HIGH", assignee_id: "u3" },
+          {
+            id: "res-t1",
+            title: "Resolution T1",
+            urgency: "HIGH",
+            assignee_id: "u3",
+          },
         ];
         const resolutionBreaching = [
-          { id: "res-t2", title: "Resolution T2", urgency: "LOW", assignee_id: "u4" },
+          {
+            id: "res-t2",
+            title: "Resolution T2",
+            urgency: "LOW",
+            assignee_id: "u4",
+          },
         ];
 
         // Response SLA mocks
-        mockSlaRepository.findTicketsNeedingWarning50.mockResolvedValue(responseWarning50);
+        mockSlaRepository.findTicketsNeedingWarning50.mockResolvedValue(
+          responseWarning50
+        );
         mockSlaRepository.findTicketsNeedingWarning75.mockResolvedValue([]);
-        mockSlaRepository.findTicketsBreachingSla.mockResolvedValue(responseBreaching);
+        mockSlaRepository.findTicketsBreachingSla.mockResolvedValue(
+          responseBreaching
+        );
 
         // Resolution SLA mocks
-        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(resolutionWarning75);
-        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(resolutionBreaching);
+        mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+          []
+        );
+        mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+          resolutionWarning75
+        );
+        mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
+          resolutionBreaching
+        );
 
         // Common mocks
         mockSlaRepository.markWarning50Sent.mockResolvedValue(undefined);
         mockSlaRepository.markSlaBreached.mockResolvedValue(undefined);
-        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(undefined);
-        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(undefined);
+        mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(
+          undefined
+        );
+        mockSlaRepository.markResolutionSlaBreached.mockResolvedValue(
+          undefined
+        );
         mockSlaRepository.createEvent.mockResolvedValue({});
         mockNotificationRepository.create.mockResolvedValue({});
         mockUserRepository.findByRole.mockResolvedValue([]);
@@ -1461,7 +1575,9 @@ describe("SLA Repository Unit Tests", () => {
 
       const result = await mockSlaRepository.findPolicyByUrgency("HIGH");
 
-      expect(mockSlaRepository.findPolicyByUrgency).toHaveBeenCalledWith("HIGH");
+      expect(mockSlaRepository.findPolicyByUrgency).toHaveBeenCalledWith(
+        "HIGH"
+      );
       expect(result?.urgency).toBe("HIGH");
     });
 
@@ -1543,23 +1659,48 @@ describe("SLA Repository Unit Tests", () => {
 
     it("getSlaMetricsByUrgency should group by urgency", async () => {
       mockSlaRepository.getSlaMetricsByUrgency.mockResolvedValue([
-        { urgency: "HIGH", totalTickets: 30, ticketsMet: 25, complianceRate: 83.33 },
-        { urgency: "MEDIUM", totalTickets: 50, ticketsMet: 48, complianceRate: 96 },
-        { urgency: "LOW", totalTickets: 20, ticketsMet: 20, complianceRate: 100 },
+        {
+          urgency: "HIGH",
+          totalTickets: 30,
+          ticketsMet: 25,
+          complianceRate: 83.33,
+        },
+        {
+          urgency: "MEDIUM",
+          totalTickets: 50,
+          ticketsMet: 48,
+          complianceRate: 96,
+        },
+        {
+          urgency: "LOW",
+          totalTickets: 20,
+          ticketsMet: 20,
+          complianceRate: 100,
+        },
       ]);
 
       const result = await mockSlaRepository.getSlaMetricsByUrgency({});
 
       expect(result).toHaveLength(3);
-      expect(result.find((r) => r.urgency === "HIGH")?.complianceRate).toBe(
-        83.33
-      );
+      expect(
+        result.find((r: any) => r.urgency === "HIGH")?.complianceRate
+      ).toBe(83.33);
     });
 
     it("getSlaTrends should return time-series data", async () => {
       mockSlaRepository.getSlaTrends.mockResolvedValue([
-        { period: "2024-01", totalTickets: 100, ticketsMet: 90, complianceRate: 90 },
-        { period: "2024-02", totalTickets: 120, ticketsMet: 115, complianceRate: 95.83 },
+        {
+          period: "2024-01",
+          totalTickets: 100,
+          ticketsMet: 90,
+          complianceRate: 90,
+        },
+        {
+          period: "2024-02",
+          totalTickets: 120,
+          ticketsMet: 115,
+          complianceRate: 95.83,
+        },
       ]);
 
       const result = await mockSlaRepository.getSlaTrends({
@@ -1569,7 +1710,9 @@ describe("SLA Repository Unit Tests", () => {
       });
 
       expect(result).toHaveLength(2);
-      expect(result[1].complianceRate).toBeGreaterThan(result[0].complianceRate);
+      expect(result[1].complianceRate).toBeGreaterThan(
+        result[0].complianceRate
+      );
     });
   });
 
@@ -1587,7 +1730,8 @@ describe("SLA Repository Unit Tests", () => {
         mockTickets
       );
 
-      const result = await mockSlaRepository.findTicketsNeedingResolutionWarning50();
+      const result =
+        await mockSlaRepository.findTicketsNeedingResolutionWarning50();
 
       expect(result).toHaveLength(2);
       expect(result[0].sla_resolution_warning_50_sent).toBe(false);
@@ -1595,14 +1739,20 @@ describe("SLA Repository Unit Tests", () => {
 
     it("findTicketsNeedingResolutionWarning75 should return unresolved tickets at 75%", async () => {
       const mockTickets = [
-        { id: "t1", sla_resolution_warning_50_sent: true, sla_resolution_warning_75_sent: false, resolved_at: null },
+        {
+          id: "t1",
+          sla_resolution_warning_50_sent: true,
+          sla_resolution_warning_75_sent: false,
+          resolved_at: null,
+        },
       ];
 
       mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
         mockTickets
       );
 
-      const result = await mockSlaRepository.findTicketsNeedingResolutionWarning75();
+      const result =
+        await mockSlaRepository.findTicketsNeedingResolutionWarning75();
 
       expect(result).toHaveLength(1);
       expect(result[0].sla_resolution_warning_75_sent).toBe(false);
@@ -1618,9 +1768,12 @@ describe("SLA Repository Unit Tests", () => {
         },
       ];
 
-      mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(mockTickets);
+      mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue(
+        mockTickets
+      );
 
-      const result = await mockSlaRepository.findTicketsBreachingResolutionSla();
+      const result =
+        await mockSlaRepository.findTicketsBreachingResolutionSla();
 
       expect(result).toHaveLength(1);
     });
@@ -1631,7 +1784,10 @@ describe("SLA Repository Unit Tests", () => {
       const resolvedAt = new Date();
       await mockSlaRepository.recordResolution("ticket-1", resolvedAt);
 
-      expect(mockSlaRepository.recordResolution).toHaveBeenCalledWith("ticket-1", resolvedAt);
+      expect(mockSlaRepository.recordResolution).toHaveBeenCalledWith(
+        "ticket-1",
+        resolvedAt
+      );
     });
 
     it("markResolutionSlaBreached should mark ticket as breached", async () => {
@@ -1639,7 +1795,9 @@ describe("SLA Repository Unit Tests", () => {
 
       await mockSlaRepository.markResolutionSlaBreached("ticket-1");
 
-      expect(mockSlaRepository.markResolutionSlaBreached).toHaveBeenCalledWith("ticket-1");
+      expect(mockSlaRepository.markResolutionSlaBreached).toHaveBeenCalledWith(
+        "ticket-1"
+      );
     });
   });
 
@@ -1668,22 +1826,56 @@ describe("SLA Repository Unit Tests", () => {
 
     it("getResolutionSlaMetricsByUrgency should group by urgency", async () => {
       mockSlaRepository.getResolutionSlaMetricsByUrgency.mockResolvedValue([
-        { urgency: "HIGH", totalTickets: 25, ticketsMet: 20, ticketsBreached: 5, complianceRate: 80 },
-        { urgency: "MEDIUM", totalTickets: 40, ticketsMet: 38, ticketsBreached: 2, complianceRate: 95 },
-        { urgency: "LOW", totalTickets: 15, ticketsMet: 12, ticketsBreached: 0, complianceRate: 100 },
+        {
+          urgency: "HIGH",
+          totalTickets: 25,
+          ticketsMet: 20,
+          ticketsBreached: 5,
+          complianceRate: 80,
+        },
+        {
+          urgency: "MEDIUM",
+          totalTickets: 40,
+          ticketsMet: 38,
+          ticketsBreached: 2,
+          complianceRate: 95,
+        },
+        {
+          urgency: "LOW",
+          totalTickets: 15,
+          ticketsMet: 12,
+          ticketsBreached: 0,
+          complianceRate: 100,
+        },
       ]);
 
-      const result = await mockSlaRepository.getResolutionSlaMetricsByUrgency({});
+      const result = await mockSlaRepository.getResolutionSlaMetricsByUrgency(
+        {}
+      );
 
       expect(result).toHaveLength(3);
-      expect(result.find((r) => r.urgency === "HIGH")?.complianceRate).toBe(80);
-      expect(result.find((r) => r.urgency === "LOW")?.complianceRate).toBe(100);
+      expect(
+        result.find((r: any) => r.urgency === "HIGH")?.complianceRate
+      ).toBe(80);
+      expect(result.find((r: any) => r.urgency === "LOW")?.complianceRate).toBe(
+        100
+      );
     });
 
     it("getResolutionSlaTrends should return time-series data", async () => {
       mockSlaRepository.getResolutionSlaTrends.mockResolvedValue([
-        { period: "2024-01", totalTickets: 80, ticketsMet: 65, complianceRate: 81.25 },
-        { period: "2024-02", totalTickets: 100, ticketsMet: 90, complianceRate: 90 },
+        {
+          period: "2024-01",
+          totalTickets: 80,
+          ticketsMet: 65,
+          complianceRate: 81.25,
+        },
+        {
+          period: "2024-02",
+          totalTickets: 100,
+          ticketsMet: 90,
+          complianceRate: 90,
+        },
       ]);
 
       const result = await mockSlaRepository.getResolutionSlaTrends({
@@ -1693,7 +1885,9 @@ describe("SLA Repository Unit Tests", () => {
       });
 
       expect(result).toHaveLength(2);
-      expect(result[1].complianceRate).toBeGreaterThan(result[0].complianceRate);
+      expect(result[1].complianceRate).toBeGreaterThan(
+        result[0].complianceRate
+      );
     });
   });
 });
@@ -1704,8 +1898,12 @@ describe("SLA Repository Unit Tests", () => {
 describe("SLA Integration Scenarios", () => {
   // Helper to mock empty Resolution SLA results
   const mockEmptyResolutionSla = () => {
-    mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-    mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
+    mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+      []
+    );
+    mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+      []
+    );
     mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
   };
 
@@ -1851,7 +2049,8 @@ describe("SLA Integration Scenarios", () => {
       mockSlaRepository.findPolicyByUrgency.mockResolvedValue(policy);
 
       const createdAt = new Date("2024-01-15T10:00:00Z");
-      const resolutionSlaResult = await slaService.calculateResolutionSlaDueDate("HIGH", createdAt);
+      const resolutionSlaResult =
+        await slaService.calculateResolutionSlaDueDate("HIGH", createdAt);
 
       expect(resolutionSlaResult).not.toBeNull();
       expect(resolutionSlaResult!.slaResolutionDueAt.getTime()).toBe(
@@ -1860,17 +2059,23 @@ describe("SLA Integration Scenarios", () => {
 
       // 2. 50% resolution warning check
       mockEmptyResponseSla();
-      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([
-        {
-          id: "ticket-resolution-lifecycle",
-          title: "Resolution Lifecycle Test",
-          urgency: "HIGH",
-          assignee_id: "user-1",
-        },
-      ]);
-      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
+      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+        [
+          {
+            id: "ticket-resolution-lifecycle",
+            title: "Resolution Lifecycle Test",
+            urgency: "HIGH",
+            assignee_id: "user-1",
+          },
+        ]
+      );
+      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+        []
+      );
       mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
-      mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(undefined);
+      mockSlaRepository.markResolutionWarning50Sent.mockResolvedValue(
+        undefined
+      );
       mockSlaRepository.createEvent.mockResolvedValue({});
       mockNotificationRepository.create.mockResolvedValue({});
 
@@ -1880,17 +2085,23 @@ describe("SLA Integration Scenarios", () => {
       // 3. 75% resolution warning check
       vi.clearAllMocks();
       mockEmptyResponseSla();
-      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([
-        {
-          id: "ticket-resolution-lifecycle",
-          title: "Resolution Lifecycle Test",
-          urgency: "HIGH",
-          assignee_id: "user-1",
-        },
-      ]);
+      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+        []
+      );
+      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+        [
+          {
+            id: "ticket-resolution-lifecycle",
+            title: "Resolution Lifecycle Test",
+            urgency: "HIGH",
+            assignee_id: "user-1",
+          },
+        ]
+      );
       mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
-      mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(undefined);
+      mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(
+        undefined
+      );
       mockSlaRepository.createEvent.mockResolvedValue({});
       mockNotificationRepository.create.mockResolvedValue({});
 
@@ -1910,8 +2121,12 @@ describe("SLA Integration Scenarios", () => {
       // Scenario: Ticket breaches Resolution SLA without being resolved
 
       mockEmptyResponseSla();
-      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([]);
+      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+        []
+      );
+      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+        []
+      );
       mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([
         {
           id: "ticket-resolution-breached",
@@ -1945,7 +2160,10 @@ describe("SLA Integration Scenarios", () => {
       const slaResolutionDueAt = new Date("2024-01-15T14:00:00Z");
       const resolvedAt = new Date("2024-01-15T13:30:00Z"); // 30 minutes early
 
-      const result = await slaService.checkResolutionSlaMet(slaResolutionDueAt, resolvedAt);
+      const result = await slaService.checkResolutionSlaMet(
+        slaResolutionDueAt,
+        resolvedAt
+      );
 
       expect(result).toBe(true);
     });
@@ -1954,7 +2172,10 @@ describe("SLA Integration Scenarios", () => {
       const slaResolutionDueAt = new Date("2024-01-15T14:00:00Z");
       const resolvedAt = new Date("2024-01-15T16:00:00Z"); // 2 hours late
 
-      const result = await slaService.checkResolutionSlaMet(slaResolutionDueAt, resolvedAt);
+      const result = await slaService.checkResolutionSlaMet(
+        slaResolutionDueAt,
+        resolvedAt
+      );
 
       expect(result).toBe(false);
     });
@@ -1977,20 +2198,26 @@ describe("SLA Integration Scenarios", () => {
       mockSlaRepository.findTicketsBreachingSla.mockResolvedValue([]);
 
       // Resolution SLA at 75%
-      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue([]);
-      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue([
-        {
-          id: "ticket-combined-2",
-          title: "Combined SLA Test 2",
-          urgency: "MEDIUM",
-          assignee_id: "user-2",
-        },
-      ]);
+      mockSlaRepository.findTicketsNeedingResolutionWarning50.mockResolvedValue(
+        []
+      );
+      mockSlaRepository.findTicketsNeedingResolutionWarning75.mockResolvedValue(
+        [
+          {
+            id: "ticket-combined-2",
+            title: "Combined SLA Test 2",
+            urgency: "MEDIUM",
+            assignee_id: "user-2",
+          },
+        ]
+      );
       mockSlaRepository.findTicketsBreachingResolutionSla.mockResolvedValue([]);
 
       // Setup mock handlers
       mockSlaRepository.markWarning50Sent.mockResolvedValue(undefined);
-      mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(undefined);
+      mockSlaRepository.markResolutionWarning75Sent.mockResolvedValue(
+        undefined
+      );
       mockSlaRepository.createEvent.mockResolvedValue({});
       mockNotificationRepository.create.mockResolvedValue({});
 
@@ -2072,7 +2299,10 @@ describe("SLA Integration Scenarios", () => {
       });
 
       const createdAt = new Date("2024-01-15T10:00:00Z");
-      const slaResult = await slaService.calculateResolutionSlaDueDate("HIGH", createdAt);
+      const slaResult = await slaService.calculateResolutionSlaDueDate(
+        "HIGH",
+        createdAt
+      );
 
       expect(slaResult!.slaResolutionDueAt.getTime()).toBe(
         new Date("2024-01-15T12:00:00Z").getTime() // 2 hours later
@@ -2083,8 +2313,12 @@ describe("SLA Integration Scenarios", () => {
       // Disable HIGH urgency policy
       mockSlaRepository.findPolicyByUrgency.mockResolvedValue(null);
 
-      const responseResult = await slaService.setTicketSla("ticket-no-sla", "HIGH");
-      const resolutionResult = await slaService.calculateResolutionSlaDueDate("HIGH");
+      const responseResult = await slaService.setTicketSla(
+        "ticket-no-sla",
+        "HIGH"
+      );
+      const resolutionResult =
+        await slaService.calculateResolutionSlaDueDate("HIGH");
 
       expect(responseResult).toBe(false);
       expect(resolutionResult).toBeNull();

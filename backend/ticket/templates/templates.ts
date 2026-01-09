@@ -1,6 +1,5 @@
 import { api, APIError } from "encore.dev/api";
 import type { TicketTemplate } from "./types";
-import { TICKET_TEMPLATES } from "./utils";
 import { getUserContext } from "../../auth/user-context";
 import { marketCenterRepository } from "../db";
 import { ticketTemplateRepository } from "../../shared/repositories/ticket.template.repository";
@@ -32,37 +31,9 @@ export const getTemplates = api<GetTemplatesRequest, GetTemplatesResponse>(
     if (!marketCenter) {
       throw APIError.notFound("Market center not found");
     }
-    // console.log("Market center found:", marketCenter);
 
     const ticketTemplates =
       await ticketTemplateRepository.findAllByMarketCenter(req.marketCenterId);
-
-    if (!ticketTemplates || !ticketTemplates.length) {
-      for (const template of TICKET_TEMPLATES) {
-        const created = await ticketTemplateRepository.create(
-          {
-            name: template.name ?? "Untitled Template",
-            description: template.description ?? undefined,
-            isActive: template.isActive ?? true,
-            title: template.title ?? "No Title",
-            ticketDescription: template.ticketDescription ?? "No Description",
-            tags: template.tags ?? [],
-            todos: template.todos ?? [],
-            urgency: template.urgency ?? undefined,
-            categoryId: template.categoryId ?? undefined,
-            marketCenterId: req.marketCenterId,
-            createdById: userContext.userId,
-            updatedById: userContext.userId,
-          },
-          userContext.userId
-        );
-      }
-      const createdTemplates =
-        await ticketTemplateRepository.findAllByMarketCenter(
-          req.marketCenterId
-        );
-      return { templates: createdTemplates };
-    }
 
     return { templates: ticketTemplates };
   }

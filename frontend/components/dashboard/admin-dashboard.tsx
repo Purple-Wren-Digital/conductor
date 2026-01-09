@@ -50,6 +50,7 @@ import {
   ticketByStatusChartConfig,
 } from "@/lib/utils";
 import type { MarketCenter, Ticket } from "@/lib/types";
+import { calculateStaffStats } from "@/lib/utils/staff-stats";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import {
   Bar,
@@ -172,8 +173,14 @@ export function AdminDashboard() {
     }).length;
 
     const ticketsByStatus = tickets.reduce(
-      (acc: Record<string, number>, ticket: any) => {
-        acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+      (acc: Record<string, number>, ticket: Ticket) => {
+        const statusKey =
+          ticket.status === "CREATED" && !!ticket?.assigneeId
+            ? "ASSIGNED"
+            : ticket.status === "UNASSIGNED" || !ticket?.assigneeId
+              ? "UNASSIGNED"
+              : ticket.status;
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
         return acc;
       },
       {}
@@ -260,32 +267,7 @@ export function AdminDashboard() {
   }, [tickets, teamMembers]);
 
   const staffStats = useMemo(() => {
-    return teamMembers
-      .filter((m: any) => m.role !== "AGENT")
-      .reduce((acc: any, member: any) => {
-        const memberTickets = tickets.filter(
-          (t: any) => t.assigneeId === member.id
-        );
-
-        acc[member.id] = {
-          name: member.name,
-          role: member.role,
-          assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
-            .length,
-          active: memberTickets.length,
-          resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
-            .length,
-          overdue: memberTickets.filter((t: Ticket) => {
-            if (t.status !== "RESOLVED" && t?.dueDate) {
-              const dueDate = new Date(t.dueDate);
-              const now = new Date();
-              return dueDate < now;
-            }
-            return false;
-          }).length,
-        };
-        return acc;
-      }, {});
+    return calculateStaffStats(teamMembers, tickets);
   }, [teamMembers, tickets]);
 
   const statusChartData = useMemo(() => {

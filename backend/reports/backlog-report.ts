@@ -20,7 +20,16 @@ export interface BacklogResponse {
 interface TicketRow {
   id: string;
   status: string;
+  created_at: Date;
+  updated_at: Date | null;
 }
+
+// created_at and updated_at should be added together at ticket creation
+// getTime() compares the exact timestamp (date + time + milliseconds)
+export const isUnchangedSinceCreation = (t: TicketRow) => {
+  if (!t.updated_at) return true;
+  return t.updated_at && t.created_at.getTime() === t.updated_at.getTime();
+};
 
 export const backlog = api<BacklogRequest, BacklogResponse>(
   {
@@ -74,6 +83,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       const to = new Date(req.dateTo);
       if (!isNaN(to.getTime())) dateTo = to;
     }
+    const statuses = ["CREATED", "ASSIGNED", "UNASSIGNED"];
 
     switch (userContext.role) {
       case "STAFF":
@@ -81,9 +91,9 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         if (!userContext?.marketCenterId) {
           // User without market center - see tickets they're assigned to, created, or unassigned
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.status
+            SELECT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
-            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+            WHERE (t.status = ANY(${statuses}))
               AND (
                 t.assignee_id = ${userContext.userId}
                 OR t.assignee_id IS NULL
@@ -96,12 +106,12 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         } else {
           // User with market center - see tickets in their market center scope
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.status
+            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
             LEFT JOIN ticket_categories tc ON t.category_id = tc.id
             LEFT JOIN users creator ON t.creator_id = creator.id
             LEFT JOIN users assignee ON t.assignee_id = assignee.id
-            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+            WHERE (t.status = ANY(${statuses}))
               AND (
                 tc.market_center_id = ${userContext.marketCenterId}
                 OR creator.market_center_id = ${userContext.marketCenterId}
@@ -117,12 +127,12 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       case "ADMIN":
         if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.status
+            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
             LEFT JOIN ticket_categories tc ON t.category_id = tc.id
             LEFT JOIN users creator ON t.creator_id = creator.id
             LEFT JOIN users assignee ON t.assignee_id = assignee.id
-            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+            WHERE (t.status = ANY(${statuses}))
               AND (
                 tc.market_center_id = ANY(${marketCenterIds})
                 OR creator.market_center_id = ANY(${marketCenterIds})
@@ -136,9 +146,9 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         } else {
           // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.status
+            SELECT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
-            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+            WHERE (t.status = ANY(${statuses}))
               AND (
                 t.assignee_id = ${userContext.userId}
                 OR t.assignee_id IS NULL
@@ -156,10 +166,19 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         );
     }
 
+    const unchangedCount = ticketsFound.filter(
+      (t) =>
+        (t.status === "ASSIGNED" || t.status === "CREATED") &&
+        isUnchangedSinceCreation(t)
+    ).length;
+    const unassignedCount = ticketsFound.filter(
+      (t) => t.status === "UNASSIGNED"
+    ).length;
+
     return {
-      created: ticketsFound.filter((t) => t.status === "CREATED").length,
-      unassigned: ticketsFound.filter((t) => t.status === "UNASSIGNED").length,
-      total: ticketsFound.length,
+      created: unchangedCount,
+      unassigned: unassignedCount,
+      total: unchangedCount + unassignedCount,
     };
   }
 );
