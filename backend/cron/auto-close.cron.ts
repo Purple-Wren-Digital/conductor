@@ -79,7 +79,6 @@ async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
     FROM tickets t
     LEFT JOIN ticket_categories tc ON t.category_id = tc.id
     WHERE t.status = 'AWAITING_RESPONSE'
-      AND t.is_active IS NOT FALSE
   `
   );
 
