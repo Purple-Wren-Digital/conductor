@@ -12,6 +12,7 @@ const { mockDb, mockUserContext, mockFromTimestamp } = vi.hoisted(() => ({
     exec: vi.fn(),
   },
   mockUserContext: {
+    name: "Admin User",
     userId: "user-123",
     email: "admin@test.com",
     role: "ADMIN" as const,
@@ -74,7 +75,7 @@ describe("Reports", () => {
     it("should return backlog counts for ADMIN", async () => {
       mockDb.queryAll.mockResolvedValueOnce([
         { id: "ticket-1", status: "CREATED" },
-        { id: "ticket-2", status: "CREATED" },
+        { id: "ticket-2", status: "ASSIGNED" },
         { id: "ticket-3", status: "UNASSIGNED" },
       ]);
 
@@ -114,6 +115,7 @@ describe("Reports", () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "staff-123",
         email: "staff@test.com",
+        name: "Staff User",
         role: "STAFF" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-staff",
@@ -130,6 +132,7 @@ describe("Reports", () => {
 
     it("should work for STAFF role without market center", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Staff User",
         userId: "staff-123",
         email: "staff@test.com",
         role: "STAFF" as const,
@@ -148,6 +151,7 @@ describe("Reports", () => {
 
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Agent User",
         userId: "agent-123",
         email: "agent@test.com",
         role: "AGENT" as const,
@@ -209,6 +213,7 @@ describe("Reports", () => {
 
     it("should work for STAFF_LEADER role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Staff Leader User",
         userId: "leader-123",
         email: "leader@test.com",
         role: "STAFF_LEADER" as const,
@@ -227,6 +232,7 @@ describe("Reports", () => {
 
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Agent User",
         userId: "agent-123",
         email: "agent@test.com",
         role: "AGENT" as const,
@@ -287,6 +293,7 @@ describe("Reports", () => {
 
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Agent User",
         userId: "agent-123",
         email: "agent@test.com",
         role: "AGENT" as const,
@@ -308,9 +315,19 @@ describe("Reports", () => {
 
       mockDb.queryAll.mockResolvedValueOnce([
         // Compliant - resolved before due
-        { id: "ticket-1", created_at: pastDue, resolved_at: pastDue, due_date: now },
+        {
+          id: "ticket-1",
+          created_at: pastDue,
+          resolved_at: pastDue,
+          due_date: now,
+        },
         // On track - created recently, no due date issues
-        { id: "ticket-2", created_at: recent, resolved_at: null, due_date: new Date(now.getTime() + 100 * 60 * 60 * 1000) },
+        {
+          id: "ticket-2",
+          created_at: recent,
+          resolved_at: null,
+          due_date: new Date(now.getTime() + 100 * 60 * 60 * 1000),
+        },
       ]);
 
       const result = await slaCompliance({});
@@ -319,7 +336,9 @@ describe("Reports", () => {
       expect(result).toHaveProperty("onTrack");
       expect(result).toHaveProperty("atRisk");
       expect(result).toHaveProperty("overdue");
-      expect(result.compliant + result.onTrack + result.atRisk + result.overdue).toBe(2);
+      expect(
+        result.compliant + result.onTrack + result.atRisk + result.overdue
+      ).toBe(2);
     });
 
     it("should return zeros when no tickets", async () => {
@@ -337,7 +356,12 @@ describe("Reports", () => {
 
     it("should filter by status", async () => {
       mockDb.queryAll.mockResolvedValueOnce([
-        { id: "ticket-1", created_at: new Date(), resolved_at: null, due_date: null },
+        {
+          id: "ticket-1",
+          created_at: new Date(),
+          resolved_at: null,
+          due_date: null,
+        },
       ]);
 
       const result = await slaCompliance({ status: ["IN_PROGRESS"] });
@@ -348,6 +372,7 @@ describe("Reports", () => {
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
         userId: "agent-123",
+        name: "Agent User",
         email: "agent@test.com",
         role: "AGENT" as const,
         marketCenterId: "mc-123",
@@ -435,6 +460,7 @@ describe("Reports", () => {
 
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Agent User",
         userId: "agent-123",
         email: "agent@test.com",
         role: "AGENT" as const,
@@ -552,6 +578,7 @@ describe("Reports", () => {
 
     it("should work for STAFF role with market center", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Staff User",
         userId: "staff-123",
         email: "staff@test.com",
         role: "STAFF" as const,
@@ -583,6 +610,7 @@ describe("Reports", () => {
 
     it("should work for STAFF role without market center (sees only their assigned tickets)", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Staff User",
         userId: "staff-123",
         email: "staff@test.com",
         role: "STAFF" as const,
@@ -599,6 +627,7 @@ describe("Reports", () => {
 
     it("should work for STAFF_LEADER role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Staff Leader User",
         userId: "leader-123",
         email: "leader@test.com",
         role: "STAFF_LEADER" as const,
@@ -629,6 +658,7 @@ describe("Reports", () => {
 
     it("should throw permission denied for AGENT role", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Agent User",
         userId: "agent-123",
         email: "agent@test.com",
         role: "AGENT" as const,
@@ -707,7 +737,6 @@ describe("Reports", () => {
 
 describe("Report Utils", () => {
   describe("getTicketSlaStatus", () => {
-
     it("should return compliant for resolved ticket before due date", () => {
       const createdAt = new Date("2024-01-01T10:00:00Z");
       const dueDate = new Date("2024-01-05T10:00:00Z");

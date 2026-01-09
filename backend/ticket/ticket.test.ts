@@ -40,6 +40,7 @@ const {
     count: vi.fn(),
   },
   mockUserContext: {
+    name: "Test Admin",
     userId: "user-123",
     email: "user@test.com",
     role: "ADMIN" as const,
@@ -132,7 +133,7 @@ describe("Ticket Service Tests", () => {
         urgency: "MEDIUM",
         creatorId: "user-123",
         assigneeId: null,
-        status: "CREATED",
+        status: "UNASSIGNED",
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -213,7 +214,7 @@ describe("Ticket Service Tests", () => {
         urgency: "LOW",
         creatorId: "user-123",
         assigneeId: null,
-        status: "CREATED",
+        status: "UNASSIGNED",
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -271,8 +272,17 @@ describe("Ticket Service Tests", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         creator: { id: "user-123", name: "Creator", email: "creator@test.com" },
-        assignee: { id: "user-456", name: "Assignee", email: "assignee@test.com" },
-        category: { id: "cat-123", name: "Support", description: "Support category", defaultAssigneeId: null },
+        assignee: {
+          id: "user-456",
+          name: "Assignee",
+          email: "assignee@test.com",
+        },
+        category: {
+          id: "cat-123",
+          name: "Support",
+          description: "Support category",
+          defaultAssigneeId: null,
+        },
       };
 
       mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
@@ -302,7 +312,7 @@ describe("Ticket Service Tests", () => {
         description: "Test Description",
         categoryId: null,
         urgency: "LOW",
-        status: "CREATED",
+        status: "UNASSIGNED",
         creatorId: "user-123",
         assigneeId: null,
         createdAt: new Date(),
@@ -329,7 +339,11 @@ describe("Ticket Service Tests", () => {
       mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockTicket);
       mockDb.queryAll.mockResolvedValue(mockAttachments);
       mockDb.queryRow
-        .mockResolvedValueOnce({ id: "user-123", name: "Uploader", email: "uploader@test.com" })
+        .mockResolvedValueOnce({
+          id: "user-123",
+          name: "Uploader",
+          email: "uploader@test.com",
+        })
         .mockResolvedValueOnce({ comments: 0, attachments: 1 });
 
       const result = await get({ ticketId: "ticket-123" });
@@ -345,7 +359,7 @@ describe("Ticket Service Tests", () => {
       const mockOldTicket = {
         id: "ticket-123",
         title: "Test Ticket",
-        status: "CREATED",
+        status: "UNASSIGNED",
         assigneeId: null,
         assignee: null,
       };
@@ -384,7 +398,11 @@ describe("Ticket Service Tests", () => {
         title: "Test Ticket",
         status: "ASSIGNED",
         assigneeId: "user-old",
-        assignee: { id: "user-old", name: "Old Assignee", email: "old@test.com" },
+        assignee: {
+          id: "user-old",
+          name: "Old Assignee",
+          email: "old@test.com",
+        },
       };
 
       const mockNewAssignee = {
@@ -420,7 +438,11 @@ describe("Ticket Service Tests", () => {
         title: "Test Ticket",
         status: "ASSIGNED",
         assigneeId: "user-456",
-        assignee: { id: "user-456", name: "Assignee", email: "assignee@test.com" },
+        assignee: {
+          id: "user-456",
+          name: "Assignee",
+          email: "assignee@test.com",
+        },
       };
 
       const mockUpdatedTicket = {
@@ -437,7 +459,10 @@ describe("Ticket Service Tests", () => {
       mockTicketRepository.createManyHistory.mockResolvedValue([]);
       mockCommentRepository.findByTicketId.mockResolvedValue([]);
 
-      const result = await assign({ id: "ticket-123", assigneeId: "Unassigned" });
+      const result = await assign({
+        id: "ticket-123",
+        assigneeId: "Unassigned",
+      });
 
       expect(result.usersToNotify).toHaveLength(1);
       expect(result.usersToNotify[0].updateType).toBe("removed");
@@ -459,7 +484,9 @@ describe("Ticket Service Tests", () => {
         assigneeId: "user-456",
       };
 
-      mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockResolvedTicket);
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockResolvedTicket
+      );
 
       await expect(
         assign({ id: "ticket-123", assigneeId: "user-789" })
@@ -478,11 +505,13 @@ describe("Ticket Service Tests", () => {
       const mockOldTicket = {
         id: "ticket-123",
         title: "Test Ticket",
-        status: "CREATED",
+        status: "UNASSIGNED",
         assigneeId: null,
       };
 
-      mockTicketRepository.findByIdWithRelations.mockResolvedValue(mockOldTicket);
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockOldTicket
+      );
       mockUserRepository.findById.mockResolvedValue(null);
 
       await expect(

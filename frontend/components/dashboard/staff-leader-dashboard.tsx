@@ -170,8 +170,14 @@ export function StaffLeaderDashboard() {
     }).length;
 
     const ticketsByStatus = filteredTickets.reduce(
-      (acc: Record<string, number>, ticket: any) => {
-        acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+      (acc: Record<string, number>, ticket: Ticket) => {
+        const statusKey =
+          ticket.status === "CREATED" && !!ticket?.assigneeId
+            ? "ASSIGNED"
+            : ticket.status === "UNASSIGNED" || !ticket?.assigneeId
+              ? "UNASSIGNED"
+              : ticket.status;
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
         return acc;
       },
       {}

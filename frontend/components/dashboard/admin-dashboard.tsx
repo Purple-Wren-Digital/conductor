@@ -174,8 +174,14 @@ export function AdminDashboard() {
     }).length;
 
     const ticketsByStatus = tickets.reduce(
-      (acc: Record<string, number>, ticket: any) => {
-        acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+      (acc: Record<string, number>, ticket: Ticket) => {
+        const statusKey =
+          ticket.status === "CREATED" && !!ticket?.assigneeId
+            ? "ASSIGNED"
+            : ticket.status === "UNASSIGNED" || !ticket?.assigneeId
+              ? "UNASSIGNED"
+              : ticket.status;
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
         return acc;
       },
       {}
@@ -652,9 +658,6 @@ export function AdminDashboard() {
                 <CardTitle>Tickets by Status</CardTitle>
                 <CardDescription>
                   {stats.totalTickets} total tickets
-                  {/* {selectedMarketCenterId === "all"
-                    ? " across all teams"
-                    : ""}{" "} */}
                 </CardDescription>
               </div>
               <TrendingUp className="h-4 w-4 text-muted-foreground hidden sm:visible" />

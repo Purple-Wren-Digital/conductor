@@ -415,9 +415,9 @@ export const ticketRepository = {
 
     // Filter conditions
     if (params.status && params.status.length > 0) {
-      const placeholders = params.status
-        .map((_, i) => `$${paramIndex + i}`)
-        .join(", ");
+      const placeholders =
+        params.status.map((_, i) => `$${paramIndex + i}`).join(", ") +
+        ", 'CREATED'";
       conditions.push(`t.status IN (${placeholders})`);
       values.push(...params.status);
       paramIndex += params.status.length;

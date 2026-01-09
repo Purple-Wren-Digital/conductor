@@ -69,6 +69,8 @@ export default function TicketTemplateEditor({
   const [todos, setTodos] = useState<string[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState<string>("");
   const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
+  const [editSubtaskInput, setEditSubtaskInput] = useState<string | null>(null);
+
   const [isActive, setIsActive] = useState<boolean>(true);
 
   const [errors, setErrors] = useState<{
@@ -166,6 +168,7 @@ export default function TicketTemplateEditor({
         templateDescription,
         newSubtaskTitle,
         editingSubtask,
+        editSubtaskInput,
         todos,
         categoryId,
         urgency,
@@ -179,6 +182,7 @@ export default function TicketTemplateEditor({
     templateDescription,
     newSubtaskTitle,
     editingSubtask,
+    editSubtaskInput,
     todos,
     categoryId,
     urgency,
@@ -200,6 +204,7 @@ export default function TicketTemplateEditor({
       setUrgency(fetchedInputs?.urgency);
       setNewSubtaskTitle(fetchedInputs?.newSubtaskTitle);
       setEditingSubtask(fetchedInputs?.editingSubtask);
+      setEditSubtaskInput(fetchedInputs?.editSubtaskInput);
       setTodos(fetchedInputs?.todos);
     }
 
@@ -258,6 +263,7 @@ export default function TicketTemplateEditor({
       updatedTodos[existingTodoIndex] = editingSubtask;
       setTodos(updatedTodos);
       setEditingSubtask(null);
+      setEditSubtaskInput(null);
     } else {
       toast.error("Failed to update subtask");
     }
@@ -785,7 +791,6 @@ export default function TicketTemplateEditor({
                 aria-label="Create a new default subtask"
                 aria-invalid={!!errors.newSubtaskTitle}
                 disabled={isLoading || isLoadingTemplate}
-                onBlur={closeNewSubtaskTitle}
                 onKeyDown={async (e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -818,7 +823,6 @@ export default function TicketTemplateEditor({
                 disabled={!newSubtaskTitle || newSubtaskTitle.trim() === ""}
                 aria-label="Reset new subtask input"
                 className="bg-muted"
-                onBlur={closeNewSubtaskTitle}
                 onKeyDown={async (e) => {
                   e.preventDefault();
                   if (e.key === "Escape" || e.key === "Tab")
@@ -828,6 +832,9 @@ export default function TicketTemplateEditor({
                 Reset
               </Button>
             </div>
+            <p className="text-sm text-destructive">
+              {errors.newSubtaskTitle && errors.newSubtaskTitle}
+            </p>
           </fieldset>
 
           {/* Created Subtasks List */}
@@ -850,6 +857,7 @@ export default function TicketTemplateEditor({
                     <div
                       onClick={() => {
                         setEditingSubtask(todo);
+                        setEditSubtaskInput(todo);
                       }}
                       className={`flex-1 space-y-2 ${
                         isLoading || isLoadingTemplate
@@ -876,23 +884,9 @@ export default function TicketTemplateEditor({
                               variant="outline"
                               size={"sm"}
                               disabled
-                              aria-label="Save edited subtask title"
+                              aria-label="Edit subtask"
                             >
-                              Save
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size={"sm"}
-                              onClick={() => {
-                                const updatedTodos = todos.filter(
-                                  (todo) => todo !== editingSubtask
-                                );
-                                setTodos(updatedTodos);
-                              }}
-                              className="bg-muted"
-                              aria-label="Delete subtask from list"
-                            >
-                              Remove
+                              Edit
                             </Button>
                           </div>
                         </div>
@@ -908,12 +902,12 @@ export default function TicketTemplateEditor({
                             <Input
                               type="text"
                               className={`h-8 ${errors?.editingSubtask ? "border-destructive" : ""}`}
-                              value={editingSubtask}
+                              value={editSubtaskInput || ""}
                               onChange={(e) =>
-                                setEditingSubtask(e.target.value)
+                                setEditSubtaskInput(e.target.value)
                               }
                               disabled={isLoading || isLoadingTemplate}
-                              aria-label="Default subtask title editor"
+                              aria-label="Default subtask editor"
                               aria-invalid={!!errors.editingSubtask}
                               onKeyDown={async (e) => {
                                 if (e.key === "Enter") {
@@ -947,12 +941,13 @@ export default function TicketTemplateEditor({
                                       editingSubtask;
                                     setTodos(updatedTodos);
                                     setEditingSubtask(null);
+                                    setEditSubtaskInput(null);
                                   } else {
                                     toast.error("Failed to update subtask");
                                   }
                                 }}
                                 disabled={isLoading || isLoadingTemplate}
-                                aria-label="Save edited subtask title"
+                                aria-label="Save subtask"
                               >
                                 Save
                               </Button>
@@ -973,6 +968,9 @@ export default function TicketTemplateEditor({
                               </Button>
                             </div>
                           </div>
+                          <p className="text-destructive text-sm">
+                            {errors?.editingSubtask && errors.editingSubtask}
+                          </p>
                         </fieldset>
                       )}
                     </div>

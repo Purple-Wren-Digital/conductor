@@ -55,13 +55,17 @@ export const bulkAssign = api<BulkAssignRequest, BulkAssignResponse>(
     const { tickets } = await ticketRepository.search({
       userId: userContext.userId,
       userRole: userContext.role,
-      marketCenterIds: userContext?.marketCenterId ? [userContext.marketCenterId] : [],
+      marketCenterIds: userContext?.marketCenterId
+        ? [userContext.marketCenterId]
+        : [],
       status: [], // Empty to include all statuses
       limit: req.ticketIds.length,
     });
 
     // Filter to only requested ticket IDs that user has access to
-    const accessibleTickets = tickets.filter((t) => req.ticketIds.includes(t.id));
+    const accessibleTickets = tickets.filter((t) =>
+      req.ticketIds.includes(t.id)
+    );
     const existingIds = accessibleTickets.map((t) => t.id);
     const failed = req.ticketIds.filter((id) => !existingIds.includes(id));
 
