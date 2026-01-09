@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { PrismaUser, SurveyResults, Ticket } from "@/lib/types";
+import { calculateStaffStats } from "@/lib/utils/staff-stats";
 import {
   chartColors,
   defaultActiveStatuses,
@@ -263,32 +264,7 @@ export function StaffLeaderDashboard() {
   }, [filteredTickets, teamMembers]);
 
   const staffStats = useMemo(() => {
-    return teamMembers
-      .filter((m: any) => m.role !== "AGENT")
-      .reduce((acc: any, member: any) => {
-        const memberTickets = tickets.filter(
-          (t: any) => t.assigneeId === member.id
-        );
-
-        acc[member.id] = {
-          name: member.name,
-          role: member.role,
-          assigned: memberTickets.filter((t: Ticket) => t.status !== "RESOLVED")
-            .length,
-          active: memberTickets.length,
-          resolved: memberTickets.filter((t: Ticket) => t.status === "RESOLVED")
-            .length,
-          overdue: memberTickets.filter((t: Ticket) => {
-            if (t.status !== "RESOLVED" && t?.dueDate) {
-              const dueDate = new Date(t.dueDate);
-              const now = new Date();
-              return dueDate < now;
-            }
-            return false;
-          }).length,
-        };
-        return acc;
-      }, {});
+    return calculateStaffStats(teamMembers, tickets);
   }, [teamMembers, tickets]);
 
   const statusChartData = useMemo(() => {
