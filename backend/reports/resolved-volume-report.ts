@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export type Granularity = "daily" | "weekly" | "monthly";
@@ -49,6 +49,12 @@ export const resolvedByMonth = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
+    const isEnterprise =
+      subscription && subscription?.planType === "ENTERPRISE";
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
@@ -126,7 +132,7 @@ export const resolvedByMonth = api<
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && isEnterprise) {
           tickets = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.resolved_at
             FROM tickets t
@@ -146,12 +152,37 @@ export const resolvedByMonth = api<
               AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
               AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
           `;
+        } else if (isActive && userContext?.marketCenterId) {
+          tickets = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.resolved_at
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status = 'RESOLVED'
+              AND t.resolved_at IS NOT NULL
+              AND (
+                tc.market_center_id = ${userContext.marketCenterId}
+                OR creator.market_center_id = ${userContext.marketCenterId}
+                OR assignee.market_center_id = ${userContext.marketCenterId}
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.resolved_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
+          `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           tickets = await db.queryAll<TicketRow>`
             SELECT t.id, t.resolved_at
             FROM tickets t
             WHERE t.status = 'RESOLVED'
               AND t.resolved_at IS NOT NULL
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.creator_id = ${userContext.userId}
+              )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
               AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))

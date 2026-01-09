@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { getTicketSlaStatus } from "./utils";
@@ -35,6 +35,12 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
+    const isEnterprise =
+      subscription && subscription?.planType === "ENTERPRISE";
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
@@ -98,7 +104,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && isEnterprise) {
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date
             FROM tickets t
@@ -116,11 +122,35 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
+        } else if (isActive && userContext?.marketCenterId) {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE (
+              tc.market_center_id = ${userContext.marketCenterId}
+              OR creator.market_center_id = ${userContext.marketCenterId}
+              OR assignee.market_center_id = ${userContext.marketCenterId}
+              OR t.assignee_id IS NULL
+            )
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+          `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.created_at, t.resolved_at, t.due_date
             FROM tickets t
-            WHERE (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            WHERE (
+              t.assignee_id = ${userContext.userId}
+              OR t.creator_id = ${userContext.userId}
+              OR t.assignee_id IS NULL
+            )
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})

@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export type Granularity = "daily" | "weekly" | "monthly";
@@ -37,12 +37,24 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
+    const isEnterprise =
+      subscription && subscription?.planType === "ENTERPRISE";
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
-    const assigneeIds = req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
-    const creatorIds = req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const assigneeIds =
+      req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
+    const creatorIds =
+      req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
+    const marketCenterIds =
+      req.marketCenterIds && req.marketCenterIds.length > 0
+        ? req.marketCenterIds
+        : null;
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -104,7 +116,7 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && isEnterprise) {
           tickets = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.created_at
             FROM tickets t
@@ -122,11 +134,34 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
+        } else if (isActive && userContext?.marketCenterId) {
+          tickets = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.created_at
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE (
+              tc.market_center_id = ${userContext.marketCenterId}
+              OR creator.market_center_id = ${userContext.marketCenterId}
+              OR assignee.market_center_id = ${userContext.marketCenterId}
+            )
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+            AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+          `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           tickets = await db.queryAll<TicketRow>`
             SELECT t.id, t.created_at
             FROM tickets t
-            WHERE (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            WHERE (
+              t.assignee_id = ${userContext.userId}
+              OR t.creator_id = ${userContext.userId}
+            )
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
@@ -141,10 +176,14 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
     }
 
     // Determine granularity - auto-detect if not provided
-    let granularity: Granularity = req.granularity || "monthly";
+    let granularity: Granularity = req?.granularity
+      ? (req.granularity as Granularity)
+      : ("monthly" as Granularity);
 
     if (!req.granularity && dateFrom && dateTo) {
-      const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil(
+        (dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysDiff <= 31) {
         granularity = "daily";
       } else if (daysDiff <= 90) {
@@ -153,7 +192,9 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
         granularity = "monthly";
       }
     } else if (!req.granularity && dateFrom && !dateTo) {
-      const daysDiff = Math.ceil((new Date().getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil(
+        (new Date().getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysDiff <= 31) {
         granularity = "daily";
       } else if (daysDiff <= 90) {
@@ -217,11 +258,19 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
       const parseDate = (period: string): Date => {
         if (period.startsWith("Week of ")) {
           const parts = period.replace("Week of ", "").split("/");
-          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+          return new Date(
+            parseInt(parts[2]),
+            parseInt(parts[0]) - 1,
+            parseInt(parts[1])
+          );
         } else if (period.split("/").length === 3) {
           // Daily: MM/DD/YYYY
           const parts = period.split("/");
-          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+          return new Date(
+            parseInt(parts[2]),
+            parseInt(parts[0]) - 1,
+            parseInt(parts[1])
+          );
         } else {
           // Monthly: MM/YYYY
           const parts = period.split("/");

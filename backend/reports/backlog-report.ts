@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 
@@ -31,12 +31,22 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
+    const isEnterprise =
+      subscription && subscription?.planType === "ENTERPRISE";
 
     let ticketsFound: TicketRow[] = [];
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const marketCenterIds =
+      req.marketCenterIds && req.marketCenterIds.length > 0
+        ? req.marketCenterIds
+        : null;
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -54,7 +64,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
-        if (!userContext.marketCenterId) {
+        if (!userContext?.marketCenterId) {
           // User without market center - see tickets they're assigned to, created, or unassigned
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.status
@@ -91,7 +101,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && isEnterprise) {
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.status
             FROM tickets t
@@ -109,11 +119,35 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
               AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
               AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
+        } else if (isActive && userContext?.marketCenterId) {
+          ticketsFound = await db.queryAll<TicketRow>`
+            SELECT DISTINCT t.id, t.status
+            FROM tickets t
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (
+                tc.market_center_id = ${userContext.marketCenterId}
+                OR creator.market_center_id = ${userContext.marketCenterId}
+                OR assignee.market_center_id = ${userContext.marketCenterId}
+                OR t.assignee_id IS NULL
+              )
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+          `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.status
             FROM tickets t
             WHERE t.status IN ('CREATED', 'UNASSIGNED')
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.assignee_id IS NULL
+                OR t.creator_id = ${userContext.userId}
+              )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
               AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
