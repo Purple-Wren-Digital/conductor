@@ -2,11 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
 const {
+  mockDb,
+  mockGetUserContext,
   mockSurveyRepository,
   mockTicketRepository,
   mockUserContext,
   mockUserRepository,
+  subscriptionRepository,
 } = vi.hoisted(() => ({
+  mockDb: {
+    queryAll: vi.fn(),
+    queryRow: vi.fn(),
+    exec: vi.fn(),
+  },
+  mockGetUserContext: vi.fn(),
   mockSurveyRepository: {
     findById: vi.fn(),
     findByIdWithRelations: vi.fn(),
@@ -25,6 +34,7 @@ const {
     findByIdWithRelations: vi.fn(),
   },
   mockUserContext: {
+    name: "Test Admin",
     userId: "user-123",
     email: "admin@test.com",
     role: "ADMIN" as const,
@@ -33,6 +43,11 @@ const {
   },
   mockUserRepository: {
     findById: vi.fn(),
+  },
+  subscriptionRepository: {
+    getSubscriptionById: vi.fn(),
+    findByMarketCenterId: vi.fn(),
+    getAccessibleMarketCenterIds: vi.fn(),
   },
 }));
 
@@ -60,9 +75,11 @@ vi.mock("encore.dev/api", () => ({
 
 // Mock the ticket/db module that exports repositories
 vi.mock("../ticket/db", () => ({
+  db: mockDb,
   surveyRepository: mockSurveyRepository,
   ticketRepository: mockTicketRepository,
   userRepository: mockUserRepository,
+  subscriptionRepository: subscriptionRepository,
 }));
 
 // Mock user context
@@ -383,16 +400,39 @@ describe("Survey Service Tests", () => {
         marketCenterAverageRating: 4.7,
       };
 
-      mockSurveyRepository.getAllAverages.mockResolvedValue(mockAverages);
+      mockGetUserContext.mockResolvedValue({
+        name: "Test Admin",
+        userId: "user-123",
+        email: "admin@test.com",
+        role: "ADMIN",
+        marketCenterId: "mc-123",
+        clerkId: "clerk-123",
+      });
+
+      subscriptionRepository.findByMarketCenterId.mockResolvedValue({
+        status: "ACTIVE",
+      });
+
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+      ]);
+
+      mockDb.queryRow.mockResolvedValue({
+        total: 100,
+        overall_avg: "4.5",
+        assignee_avg: "4.3",
+        mc_avg: "4.7",
+      });
 
       const result = await getAllRatings({});
 
       expect(result).toEqual(mockAverages);
-      expect(mockSurveyRepository.getAllAverages).toHaveBeenCalled();
+      expect(mockDb.queryRow).toHaveBeenCalled();
     });
 
     it("should throw permission denied for non-admin users", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Test Staff",
         userId: "user-123",
         email: "staff@test.com",
         role: "STAFF" as const,
@@ -471,6 +511,7 @@ describe("Survey Service Tests", () => {
 
     it("should use user's market center for non-admin users", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Test Staff",
         userId: "user-123",
         email: "staff@test.com",
         role: "STAFF" as const,
@@ -521,6 +562,7 @@ describe("Survey Service Tests", () => {
 
     it("should throw permission denied when non-admin has no market center", async () => {
       vi.mocked(getUserContext).mockResolvedValue({
+        name: "Test Staff",
         userId: "user-123",
         email: "staff@test.com",
         role: "STAFF" as const,

@@ -9,6 +9,7 @@ const {
   mockUserRepository,
   mockMarketCenterRepository,
   mockSendInvitationEmail,
+  subscriptionRepository,
 } = vi.hoisted(() => ({
   mockGetUserContext: vi.fn(),
   mockGetAuthData: vi.fn(),
@@ -30,11 +31,18 @@ const {
     findInvitationByToken: vi.fn(),
     findInvitationByEmailAndMarketCenterID: vi.fn(),
     findInvitationsByMarketCenterId: vi.fn(),
+    findInvitationsByMultipleMarketCenterIds: vi.fn(),
     createInvitation: vi.fn(),
     updateInvitationStatus: vi.fn(),
     createHistory: vi.fn(),
+    listInvitations: vi.fn(),
   },
   mockSendInvitationEmail: vi.fn(),
+  subscriptionRepository: {
+    getSubscriptionById: vi.fn(),
+    findByMarketCenterId: vi.fn(),
+    getAccessibleMarketCenterIds: vi.fn(),
+  },
 }));
 
 // Mock modules
@@ -58,6 +66,7 @@ vi.mock("../ticket/db", () => ({
   db: { exec: vi.fn() },
   userRepository: mockUserRepository,
   marketCenterRepository: mockMarketCenterRepository,
+  subscriptionRepository: subscriptionRepository,
 }));
 
 vi.mock("./email", () => ({
@@ -620,30 +629,52 @@ describe("Invitation System", () => {
   describe("listInvitations", () => {
     it("should return all invitations for user's market center", async () => {
       const userContext = createUserContext();
+
       const invitations = [
-        createInvitation({ id: "inv-1" }),
-        createInvitation({ id: "inv-2", email: "another@test.com" }),
+        createInvitation({
+          id: "inv-1",
+          email: "invite@test.com",
+          marketCenterId: "mc-123",
+        }),
+        createInvitation({
+          id: "inv-2",
+          email: "another@test.com",
+          marketCenterId: "mc-123",
+        }),
       ];
 
       mockGetUserContext.mockResolvedValue(userContext);
-      mockMarketCenterRepository.findInvitationsByMarketCenterId.mockResolvedValue(
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+      ]);
+      mockMarketCenterRepository.findInvitationsByMultipleMarketCenterIds.mockResolvedValue(
         invitations
       );
 
-      const result = await listInvitations();
+      const result = await listInvitations({ marketCenterIds: "mc-123" });
 
       expect(result.invitations).toHaveLength(2);
       expect(
-        mockMarketCenterRepository.findInvitationsByMarketCenterId
-      ).toHaveBeenCalledWith("mc-123");
+        mockMarketCenterRepository.findInvitationsByMultipleMarketCenterIds
+      ).toHaveBeenCalledWith({
+        marketCenterIds: ["mc-123"],
+        inviteStatus: undefined,
+        limit: 25,
+        offset: 0,
+      });
     });
 
     it("should return empty array if user has no market center", async () => {
       mockGetUserContext.mockResolvedValue(
-        createUserContext({ marketCenterId: null })
+        createUserContext({ marketCenterId: undefined })
       );
 
-      const result = await listInvitations();
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([]);
+      mockMarketCenterRepository.findInvitationsByMultipleMarketCenterIds.mockResolvedValue(
+        []
+      );
+
+      const result = await listInvitations({});
 
       expect(result.invitations).toHaveLength(0);
     });
