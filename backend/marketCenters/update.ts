@@ -93,7 +93,7 @@ export const update = api<
     let hasUpdates = false;
 
     // Check for name change
-    if (req?.name && req.name !== marketCenterRow.name) {
+    if (req?.name !== undefined && req.name !== marketCenterRow.name) {
       hasUpdates = true;
       marketCenterHistory.push({
         marketCenterId: marketCenterRow.id,
@@ -106,15 +106,19 @@ export const update = api<
     }
 
     // Check for user changes
-    if (req?.users) {
+    if (req?.users !== undefined) {
       const oldUserIds = existingUsers.map((u) => u.id);
       const newUserIds = req.users.map((u) => u.id);
 
       const addedUserIds = newUserIds.filter((id) => !oldUserIds.includes(id));
-      const removedUserIds = oldUserIds.filter((id) => !newUserIds.includes(id));
+      const removedUserIds = oldUserIds.filter(
+        (id) => !newUserIds.includes(id)
+      );
 
       addedUsers = req.users.filter((u) => addedUserIds.includes(u.id));
-      removedUsers = existingUsers.filter((u) => removedUserIds.includes(u.id)) as User[];
+      removedUsers = existingUsers.filter((u) =>
+        removedUserIds.includes(u.id)
+      ) as User[];
 
       if (addedUsers.length > 0 || removedUsers.length > 0) {
         hasUpdates = true;

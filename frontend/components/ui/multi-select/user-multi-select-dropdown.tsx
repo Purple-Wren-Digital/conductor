@@ -111,9 +111,7 @@ export default function UserMultiSelectDropdown({
                       }
                     >
                       {option?.role.toLowerCase()} •{" "}
-                      {option?.marketCenterId
-                        ? `#${option?.marketCenterId.slice(0, 8)}`
-                        : "Unassigned"}
+                      {option.isActive ? "Active" : "Inactive"}
                     </p>
                   </div>
                 </label>

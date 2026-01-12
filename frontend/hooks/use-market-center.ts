@@ -153,7 +153,7 @@ export function useFetchMarketCenterUsers({
         if (!token) throw new Error("Failed to get authentication token");
 
         const response = await fetch(
-          `${API_BASE}/users/search?marketCenterId=${marketCenterId}${queryKeyParams ? `&${new URLSearchParams(queryKeyParams).toString()}` : ""}`,
+          `${API_BASE}/users/search${queryKeyParams ? `?${new URLSearchParams(queryKeyParams).toString()}` : ""}`,
           {
             method: "GET",
             headers: {

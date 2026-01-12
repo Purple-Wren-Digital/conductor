@@ -1,6 +1,5 @@
 import { api, APIError } from "encore.dev/api";
 import { canCreateMarketCenters } from "../auth/permissions";
-import { checkCanCreateMarketCenter } from "../auth/subscription-check";
 import { getUserContext } from "../auth/user-context";
 import {
   db,
@@ -9,10 +8,11 @@ import {
   fromTimestamp,
   toJson,
 } from "../ticket/db";
-import { MarketCenter, TicketCategory } from "./types";
-import { User } from "../user/types";
+import type { MarketCenter } from "./types";
+import type { User } from "../user/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
+// TODO: AUTO-CLOSE TICKETS CREATED
 
 export const defaultTicketCategories = [
   { name: "General", description: "General inquiries and support" },
@@ -51,19 +51,19 @@ export const create = api<
   {
     expose: true,
     method: "POST",
-    path: "/marketCenters",
+    path: "/marketCenters/create",
     auth: true,
   },
   async (req) => {
     const userContext = await getUserContext();
 
     const canCreate = await canCreateMarketCenters(userContext);
-    if (!canCreate) {
-      throw APIError.permissionDenied("Only Admin can create market centers");
-    }
 
-    // Check if user can create additional market centers (Enterprise only)
-    await checkCanCreateMarketCenter(userContext.marketCenterId);
+    if (!canCreate) {
+      throw APIError.permissionDenied(
+        "Only Admin users under the Enterprise subscription can create market centers"
+      );
+    }
 
     const result = await withTransaction(async (tx) => {
       // Create market center
@@ -84,7 +84,7 @@ export const create = api<
       }
 
       // Associate users with market center
-      if (req.users && req.users.length > 0) {
+      if (req?.users !== undefined && req?.users.length > 0) {
         for (const user of req.users) {
           await tx.exec`
             UPDATE users
@@ -151,7 +151,7 @@ export const create = api<
 
       // Default InApp Notification Templates
       for (const template of notificationTemplatesDefault) {
-        await db.exec`
+        await tx.exec`
           INSERT INTO notification_templates (
             id,
             template_name,
@@ -180,12 +180,13 @@ export const create = api<
             NOW(),
             ${template.variables ?? null}::jsonb,
             ${template.isActive ?? true},
-            ${marketCenter.id}
+            ${marketCenterRow.id}
           )
-      `;
+        `;
       }
+
       let staffId: string | null = null;
-      if (req.users && req.users.length > 0) {
+      if (req?.users && req.users.length > 0) {
         const staffLeader = req.users.find((u) => u.role === "STAFF_LEADER");
         if (staffLeader && staffLeader?.id) {
           staffId = staffLeader.id;
@@ -199,8 +200,8 @@ export const create = api<
       }
 
       const ticketCategoriesToCreate =
-        req.ticketCategories && req.ticketCategories.length > 0
-          ? [...req.ticketCategories, ...defaultTicketCategories].flat()
+        req?.ticketCategories && req?.ticketCategories.length > 0
+          ? [...req.ticketCategories].flat()
           : defaultTicketCategories;
 
       for (const category of ticketCategoriesToCreate) {

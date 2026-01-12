@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Badge } from "../badge";
 import { Button } from "@/components/ui/button";
@@ -19,17 +19,16 @@ import type {
   PrismaUser,
 } from "@/lib/types";
 import { toast } from "sonner";
-import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
+import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
 import { useStore } from "@/context/store-provider";
+import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
 
 type CreateMarketCenterProps = {
   showCreateMCForm: boolean;
   setShowCreateMCForm: React.Dispatch<React.SetStateAction<boolean>>;
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
-  unassignedUsers: PrismaUser[];
-  refreshMarketCenters: () => void;
-  refreshUsers: () => void;
+  refreshMarketCenters: () => Promise<void>;
   handleSendMarketCenterNotifications: ({
     trigger,
     receivingUser,
@@ -42,9 +41,7 @@ export default function CreateMarketCenter({
   setShowCreateMCForm,
   formData,
   setFormData,
-  unassignedUsers,
   refreshMarketCenters,
-  refreshUsers,
   handleSendMarketCenterNotifications,
 }: CreateMarketCenterProps) {
   const { getToken } = useAuth();
@@ -52,14 +49,28 @@ export default function CreateMarketCenter({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentUser } = useStore();
 
-  const resetAndCloseForm = () => {
+  const {
+    data: unassignedUsersData,
+    isLoading: usersLoading,
+    refetch: refetchUnassignedUsers,
+  } = useFetchMarketCenterUsers({
+    queryKey: ["create-market-center-users-unassigned", "Unassigned"],
+    queryKeyParams: {},
+    marketCenterId: "Unassigned",
+  });
+
+  const unassignedUsers: PrismaUser[] = useMemo(() => {
+    return unassignedUsersData?.users ?? [];
+  }, [unassignedUsersData]);
+
+  const resetAndCloseForm = useCallback(() => {
     setFormData({
       name: "",
       selectedUsers: [],
     });
     setFormErrors({});
     setShowCreateMCForm(false);
-  };
+  }, [setFormData, setShowCreateMCForm]);
 
   const handleSetSelectedUserOptions = (newSelected: PrismaUser[]) => {
     setFormData((prev) => ({
@@ -71,9 +82,6 @@ export default function CreateMarketCenter({
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = "Name is required";
-    if (!formData.selectedUsers || !formData.selectedUsers.length) {
-      errors.users = "Select at least one user";
-    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -82,7 +90,8 @@ export default function CreateMarketCenter({
   const handleCreateMarketCenter = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
+    setFormErrors({});
+    
     if (!validateForm()) {
       toast.error("Invalid form input(s)");
       setIsSubmitting(false);
@@ -93,58 +102,60 @@ export default function CreateMarketCenter({
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
 
-      const response = await fetch(`${API_BASE}/marketCenters`, {
+      const response = await fetch(`${API_BASE}/marketCenters/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          users: formData.selectedUsers,
+          name: formData?.name,
+          users: formData?.selectedUsers ?? undefined,
         }),
       });
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`${response.status} RESPONSE:`, errorData);
         throw new Error(
-          response?.statusText
-            ? response.statusText
+          errorData?.message
+            ? errorData.message
             : "Failed to create market center"
         );
       }
       const data = await response.json();
-      if (
-        data &&
-        data?.marketCenter &&
-        data?.marketCenter?.users &&
-        data?.marketCenter?.users.length > 0
-      ) {
-        await Promise.all(
-          data?.marketCenter?.users.map(async (user: PrismaUser) => {
-            await handleSendMarketCenterNotifications({
-              templateName: "Market Center Assignment",
-              trigger: "Market Center Assignment",
-              receivingUser: {
-                id: user?.id,
-                name: user?.name ?? "You",
-                email: user?.email,
-              },
-              data: {
-                marketCenterAssignment: {
-                  userUpdate: "added",
-                  marketCenterId: data?.marketCenter?.id,
-                  marketCenterName: data?.marketCenter?.name,
-                  userName: user?.name ?? user?.email,
-                  editorEmail: currentUser?.email ?? "N/A",
-                  editorName: currentUser?.name ?? "Another user",
-                },
-              },
-            });
-          })
-        );
-
+      if (data && data?.marketCenter) {
         toast.success(
-          `${data?.marketCenter?.name ?? "Market center"} was created!`
+          `${data.marketCenter.name} Market Center created successfully!`
         );
+        if (data?.marketCenter?.users && data?.marketCenter?.users.length > 0) {
+          await Promise.all(
+            data?.marketCenter?.users.map(async (user: PrismaUser) => {
+              await handleSendMarketCenterNotifications({
+                templateName: "Market Center Assignment",
+                trigger: "Market Center Assignment",
+                receivingUser: {
+                  id: user?.id,
+                  name: user?.name ?? "You",
+                  email: user?.email,
+                },
+                data: {
+                  marketCenterAssignment: {
+                    userUpdate: "added",
+                    marketCenterId: data?.marketCenter?.id,
+                    marketCenterName: data?.marketCenter?.name,
+                    userName: user?.name ?? user?.email,
+                    editorEmail: currentUser?.email ?? "N/A",
+                    editorName: currentUser?.name ?? "Another user",
+                  },
+                },
+              });
+            })
+          );
+
+          toast.success(
+            `${data?.marketCenter?.name ?? "Market center"} was created!`
+          );
+        }
       }
 
       resetAndCloseForm();
@@ -152,8 +163,8 @@ export default function CreateMarketCenter({
       console.error("Failed to create new market center", error);
       toast.error(`Error: Unable to create market center`);
     } finally {
-      refreshMarketCenters();
-      refreshUsers();
+      await refetchUnassignedUsers();
+      await refreshMarketCenters();
       setIsSubmitting(false);
     }
   };
@@ -188,7 +199,7 @@ export default function CreateMarketCenter({
             </p>
           </div>
           <div className="space-y-2 space-x-2 w-full">
-            <label className="text-md font-medium">Team Assignments *</label>
+            <label className="text-md font-medium">Team Assignments</label>
             <div className="space-y-2 space-x-2 w-full">
               {formData &&
                 formData.selectedUsers.length > 0 &&
@@ -204,14 +215,18 @@ export default function CreateMarketCenter({
             <UserMultiSelectDropdown
               type="editing"
               filter={true}
-              disabled={!unassignedUsers || !unassignedUsers.length}
+              disabled={
+                usersLoading || !unassignedUsers || !unassignedUsers.length
+              }
               marketCenterId={null}
               placeholder={
-                formData.selectedUsers && formData.selectedUsers.length
-                  ? `${formData.selectedUsers.length} users selected`
-                  : unassignedUsers && unassignedUsers.length > 0
-                    ? "Select users"
-                    : "No available users found"
+                usersLoading
+                  ? "Loading users..."
+                  : formData.selectedUsers && formData.selectedUsers.length
+                    ? `${formData.selectedUsers.length} users selected`
+                    : unassignedUsers && unassignedUsers.length > 0
+                      ? "Select users"
+                      : "No available users found"
               }
               formFieldName="Users"
               options={[...unassignedUsers]}
