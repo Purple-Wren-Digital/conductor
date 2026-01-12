@@ -36,7 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
-import CreateUser from "./create-user-form";
+import CreateUser from "@/components/ui/users/create-user-form";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import { useFetchAllUsers } from "@/hooks/use-users";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
@@ -74,15 +75,18 @@ export default function UserManagement() {
   const queryClient = useQueryClient();
 
   const { role, permissions } = useUserRole();
-
+  const { isEnterprise } = useIsEnterprise();
   const { currentUser, setCurrentUser } = useStore();
 
-  const marketCenterId = currentUser?.marketCenterId
-    ? currentUser.marketCenterId
-    : "null";
+  const marketCenterId =
+    ((role !== "ADMIN" && !isEnterprise) ||
+      role === "STAFF" ||
+      role === "STAFF_LEADER") &&
+    currentUser?.marketCenterId
+      ? currentUser.marketCenterId
+      : null;
 
-  const defaultMarketCenterId =
-    role === "STAFF" || role === "STAFF_LEADER" ? marketCenterId : "all";
+  const defaultMarketCenterId = marketCenterId ? marketCenterId : "all";
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -93,7 +97,7 @@ export default function UserManagement() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
-    string | "all"
+    string | "all" | "Unassigned"
   >(defaultMarketCenterId);
   const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
   const [selectedUserStatus, setSelectedUserStatus] = useState<
@@ -134,6 +138,8 @@ export default function UserManagement() {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     if (selectedRole !== "all") params.append("role", selectedRole);
+
+    // User Status
     if (selectedUserStatus !== "all" && selectedUserStatus === "Active") {
       params.append("isActive", "true");
     }
@@ -141,22 +147,14 @@ export default function UserManagement() {
       params.append("isActive", "false");
     }
 
-    if (role === "ADMIN" && selectedMarketCenterId !== "all")
+    // Market Center Assignment
+    if (selectedMarketCenterId !== "all") {
       params.append("marketCenterId", selectedMarketCenterId);
-    if (
-      (role === "STAFF" || role === "STAFF_LEADER") &&
-      selectedMarketCenterId !== "all" &&
-      currentUser?.marketCenterId
-    )
-      params.append("marketCenterId", currentUser?.marketCenterId);
-
-    if (
-      selectedMarketCenterId !== "all" &&
-      (role === "STAFF" || role === "STAFF_LEADER") &&
-      currentUser?.marketCenterId
-    ) {
-      params.append("marketCenterId", currentUser?.marketCenterId);
     }
+    if (selectedMarketCenterId === "Unassigned") {
+      params.append("marketCenterId", "Unassigned");
+    }
+
     params.append("sortDir", orderDir);
     params.append("limit", String(itemsPerPage));
     params.append("offset", String((currentPage - 1) * itemsPerPage));
@@ -219,12 +217,16 @@ export default function UserManagement() {
     setOrderDir("desc");
   };
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedRole !== "all" ||
-    selectedMarketCenterId !== "all" ||
-    orderDir !== "desc" ||
-    sortBy !== "updatedAt";
+  const hasActiveFilters = useMemo(() => {
+    return (
+      (!!searchQuery && !!searchQuery.trim()) ||
+      selectedRole !== "all" ||
+      searchQuery !== "" ||
+      selectedMarketCenterId !== "all" ||
+      orderDir !== "desc" ||
+      sortBy !== "updatedAt"
+    );
+  }, [searchQuery, selectedRole, selectedMarketCenterId, orderDir, sortBy]);
 
   // DELETE MODAL ACTIONS
   const handleEditUser = (user: UserWithStats) => {
@@ -614,35 +616,8 @@ export default function UserManagement() {
                       selectedMarketCenterId={selectedMarketCenterId}
                       setSelectedMarketCenterId={setSelectedMarketCenterId}
                       handleMarketCenterSelected={() => setCurrentPage(1)}
+                      unassigned="Unassigned"
                     />
-                  </div>
-
-                  {/* ROLES */}
-                  <div className="space-y-2">
-                    <Label>User Roles</Label>
-                    <Select
-                      value={selectedRole}
-                      onValueChange={(value: UserRole | "all") => {
-                        setSelectedRole(value);
-                        setCurrentPage(1);
-                      }}
-                      disabled={!allUsers || !allUsers.length}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        {roleOptions.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(role)}
-                              {role.split("_").join(" ")}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   {/* ACTIVE / INACTIVE */}
@@ -654,7 +629,7 @@ export default function UserManagement() {
                         setSelectedUserStatus(value);
                         setCurrentPage(1);
                       }}
-                      disabled={!allUsers || !allUsers.length}
+                      disabled={usersLoading}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -666,6 +641,34 @@ export default function UserManagement() {
                             <div className="flex items-center gap-2">
                               {getUserStatusIcons(status)}
                               {status} Users
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* ROLES */}
+                  <div className="space-y-2">
+                    <Label>User Roles</Label>
+                    <Select
+                      value={selectedRole}
+                      onValueChange={(value: UserRole | "all") => {
+                        setSelectedRole(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={usersLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(role)}
+                              {role.split("_").join(" ")}
                             </div>
                           </SelectItem>
                         ))}

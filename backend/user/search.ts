@@ -1,4 +1,4 @@
-import { api, Query } from "encore.dev/api";
+import { api, APIError, Query } from "encore.dev/api";
 import { subscriptionRepository, userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -7,7 +7,7 @@ export interface SearchUsersRequest {
   query?: string;
   role?: UserRole[];
   isActive?: boolean;
-  marketCenterId?: string;
+  marketCenterId?: string | "Unassigned";
 
   hasTickets?: boolean;
   createdAt?: string;
@@ -36,11 +36,17 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+    if (!userContext?.role) {
+      throw APIError.permissionDenied("Unauthorized");
+    }
+    const isStaff =
+      userContext.role === "STAFF" || userContext.role === "STAFF_LEADER";
+    const isAdmin = userContext.role === "ADMIN";
+
     // Agents and staff without market center can only see themselves
     if (
       userContext.role === "AGENT" ||
-      ((userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-        !userContext?.marketCenterId)
+      (isStaff && !userContext?.marketCenterId)
     ) {
       const user = await userRepository.findById(userContext.userId);
 
@@ -68,30 +74,36 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         total: 1,
       };
     }
+    const isUnassigned =
+      req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
+
     // Determine market center filter based on subscription and role
-    let marketCenterIds: string[] | undefined;
+    let marketCenterIds: string[] = [];
 
-    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext.marketCenterId
+      );
+    const marketCenterId =
+      isAdmin && req?.marketCenterId !== undefined
+        ? req.marketCenterId
+        : isStaff && userContext?.marketCenterId
+          ? userContext.marketCenterId
+          : null;
 
-      if (req?.marketCenterId) {
-        const found = accessibleMarketCenterIds.find(
-          (id) => id === req.marketCenterId
-        );
-        marketCenterIds = found ? [req.marketCenterId] : undefined;
-      } else {
-        marketCenterIds = accessibleMarketCenterIds;
+    if (isAdmin && marketCenterId) {
+      const foundId = accessibleMarketCenterIds.find(
+        (id) => id === marketCenterId
+      );
+      if (foundId) {
+        marketCenterIds.push(foundId);
       }
     }
-
-    if (
-      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-      userContext?.marketCenterId
-    ) {
-      marketCenterIds = [userContext.marketCenterId];
+    if (isStaff && marketCenterId) {
+      marketCenterIds.push(marketCenterId);
+    }
+    if (isUnassigned) {
+      marketCenterIds.push("Unassigned");
     }
 
     const { users, total } = await userRepository.search({

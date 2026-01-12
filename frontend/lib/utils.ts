@@ -264,7 +264,7 @@ export const findMarketCenter = (
 };
 
 export function arraysEqualById(a: { id: string }[], b: { id: string }[]) {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) return true;
 
   const aIds = a.map((u) => u.id).sort();
   const bIds = b.map((u) => u.id).sort();
