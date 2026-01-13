@@ -9,6 +9,8 @@ const { mockTicketRepository, mockSubscriptionRepository } = vi.hoisted(() => ({
   mockSubscriptionRepository: {
     canAccessMarketCenter: vi.fn(),
     getAccessibleMarketCenterIds: vi.fn(),
+    findByMarketCenterId: vi.fn(),
+    getSubscriptionById: vi.fn(),
   },
 }));
 
@@ -23,15 +25,40 @@ vi.mock("../shared/repositories", () => ({
 }));
 
 // Mock encore.dev/api
-vi.mock("encore.dev/api", () => ({
-  APIError: {
-    permissionDenied: vi.fn((msg) => {
-      const err = new Error(msg);
-      (err as any).code = "permission_denied";
-      return err;
-    }),
-  },
-}));
+vi.mock("encore.dev/api", async () => {
+  return {
+    api: Object.assign(
+      // callable api(config, handler)
+      vi.fn((config, handler) => handler),
+      {
+        // api.raw(...)
+        raw: vi.fn((config, handler) => handler),
+      }
+    ),
+    APIError: {
+      notFound: vi.fn((msg) => {
+        const err = new Error(msg);
+        (err as any).code = "not_found";
+        return err;
+      }),
+      invalidArgument: vi.fn((msg) => {
+        const err = new Error(msg);
+        (err as any).code = "invalid_argument";
+        return err;
+      }),
+      permissionDenied: vi.fn((msg) => {
+        const err = new Error(msg);
+        (err as any).code = "permission_denied";
+        return err;
+      }),
+      failedPrecondition: vi.fn((msg) => {
+        const err = new Error(msg);
+        (err as any).code = "failed_precondition";
+        return err;
+      }),
+    },
+  };
+});
 
 import {
   requireRole,
@@ -58,6 +85,7 @@ import {
   getAccessibleMarketCenterIds,
 } from "./permissions";
 import type { UserContext } from "./user-context";
+import { fail } from "assert";
 
 // Helper to create UserContext
 function createUserContext(overrides: Partial<UserContext> = {}): UserContext {
@@ -97,6 +125,13 @@ function createTicketWithRelations(overrides: any = {}) {
 describe("Permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue({
+      id: "sub-123",
+      marketCenterId: "mc-123",
+      status: "ACTIVE",
+      planType: "ENTERPRISE",
+    });
   });
 
   describe("requireRole", () => {
@@ -133,7 +168,9 @@ describe("Permissions", () => {
         const userContext = createUserContext({ role: "ADMIN" });
         const result = await canAccessTicket(userContext, "ticket-123");
         expect(result).toBe(true);
-        expect(mockTicketRepository.findByIdWithRelations).not.toHaveBeenCalled();
+        expect(
+          mockTicketRepository.findByIdWithRelations
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -142,7 +179,9 @@ describe("Permissions", () => {
         const userContext = createUserContext({ role: "STAFF_LEADER" });
         const result = await canAccessTicket(userContext, "ticket-123");
         expect(result).toBe(true);
-        expect(mockTicketRepository.findByIdWithRelations).not.toHaveBeenCalled();
+        expect(
+          mockTicketRepository.findByIdWithRelations
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -497,28 +536,69 @@ describe("Permissions", () => {
 
   describe("canBeNotifiedAboutComments", () => {
     it("should return true for non-internal comments for any role", async () => {
-      expect(await canBeNotifiedAboutComments({userId: "agent-123", role: "AGENT", isInternal: false, currentUserId: "current-user"})).toBe(true);
-      expect(await canBeNotifiedAboutComments({userId: "staff-123", role: "STAFF", isInternal: false, currentUserId: "current-user"})).toBe(true);
-      expect(await canBeNotifiedAboutComments({userId: "admin-123", role: "ADMIN", isInternal: false, currentUserId: "current-user"})).toBe(true);
+      expect(
+        await canBeNotifiedAboutComments({
+          userId: "agent-123",
+          role: "AGENT",
+          isInternal: false,
+          currentUserId: "current-user",
+        })
+      ).toBe(true);
+      expect(
+        await canBeNotifiedAboutComments({
+          userId: "staff-123",
+          role: "STAFF",
+          isInternal: false,
+          currentUserId: "current-user",
+        })
+      ).toBe(true);
+      expect(
+        await canBeNotifiedAboutComments({
+          userId: "admin-123",
+          role: "ADMIN",
+          isInternal: false,
+          currentUserId: "current-user",
+        })
+      ).toBe(true);
     });
 
     it("should return true for internal comments for ADMIN", async () => {
-      const result = await canBeNotifiedAboutComments({userId: "admin-123", role: "ADMIN", isInternal: true, currentUserId: "current-user"});
+      const result = await canBeNotifiedAboutComments({
+        userId: "admin-123",
+        role: "ADMIN",
+        isInternal: true,
+        currentUserId: "current-user",
+      });
       expect(result).toBe(true);
     });
 
     it("should return true for internal comments for STAFF", async () => {
-      const result = await canBeNotifiedAboutComments({userId: "staff-123", role: "STAFF", isInternal: true, currentUserId: "current-user"});
+      const result = await canBeNotifiedAboutComments({
+        userId: "staff-123",
+        role: "STAFF",
+        isInternal: true,
+        currentUserId: "current-user",
+      });
       expect(result).toBe(true);
     });
 
     it("should return true for internal comments for STAFF_LEADER", async () => {
-      const result = await canBeNotifiedAboutComments({userId: "staff-leader-123", role: "STAFF_LEADER", isInternal: true, currentUserId: "current-user"});
+      const result = await canBeNotifiedAboutComments({
+        userId: "staff-leader-123",
+        role: "STAFF_LEADER",
+        isInternal: true,
+        currentUserId: "current-user",
+      });
       expect(result).toBe(true);
     });
 
     it("should return false for internal comments for AGENT", async () => {
-      const result = await canBeNotifiedAboutComments({userId: "agent-123", role: "AGENT", isInternal: true, currentUserId: "current-user"});
+      const result = await canBeNotifiedAboutComments({
+        userId: "agent-123",
+        role: "AGENT",
+        isInternal: true,
+        currentUserId: "current-user",
+      });
       expect(result).toBe(false);
     });
   });
@@ -646,21 +726,44 @@ describe("Permissions", () => {
 
   describe("Market Center permissions", () => {
     describe("canCreateMarketCenters", () => {
-      it("should return true only for ADMIN", async () => {
+      it("returns true for ADMIN with Enterprise subscription", async () => {
+        mockSubscriptionRepository.getSubscriptionById.mockResolvedValue({
+          status: "ACTIVE",
+          planType: "ENTERPRISE",
+          marketCenterId: "mc-123",
+        });
+
         expect(
-          await canCreateMarketCenters(createUserContext({ role: "ADMIN" }))
+          await canCreateMarketCenters(
+            createUserContext({ role: "ADMIN", marketCenterId: "mc-123" })
+          )
         ).toBe(true);
+      });
+
+      it("returns false for non-admin roles", async () => {
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue({
+          status: "ACTIVE",
+          planType: "ENTERPRISE",
+          marketCenterId: "mc-123",
+        });
+
         expect(
           await canCreateMarketCenters(createUserContext({ role: "STAFF" }))
         ).toBe(false);
-        expect(
-          await canCreateMarketCenters(
-            createUserContext({ role: "STAFF_LEADER" })
+      });
+
+      it("throws if no active subscription exists", async () => {
+        mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue({
+          status: "INACTIVE",
+          planType: "ENTERPRISE",
+          marketCenterId: "mc-123",
+        });
+
+        await expect(
+          canCreateMarketCenters(
+            createUserContext({ role: "ADMIN", marketCenterId: "mc-123" })
           )
-        ).toBe(false);
-        expect(
-          await canCreateMarketCenters(createUserContext({ role: "AGENT" }))
-        ).toBe(false);
+        ).rejects.toThrow();
       });
     });
 
@@ -800,21 +903,24 @@ describe("Permissions", () => {
   describe("marketCenterScopeFilter", () => {
     describe("ADMIN role - subscription-based access", () => {
       it("should return marketCenterId when Admin can access market center (Enterprise)", async () => {
-        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(true);
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(
+          true
+        );
         const userContext = createUserContext({
           role: "ADMIN",
           marketCenterId: "mc-123",
         });
         const result = await marketCenterScopeFilter(userContext, "mc-456");
         expect(result).toEqual({ id: "mc-456" });
-        expect(mockSubscriptionRepository.canAccessMarketCenter).toHaveBeenCalledWith(
-          "mc-123",
-          "mc-456"
-        );
+        expect(
+          mockSubscriptionRepository.canAccessMarketCenter
+        ).toHaveBeenCalledWith("mc-123", "mc-456");
       });
 
       it("should return null when Admin cannot access market center (non-Enterprise)", async () => {
-        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(false);
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(
+          false
+        );
         const userContext = createUserContext({
           role: "ADMIN",
           marketCenterId: "mc-123",
@@ -824,7 +930,9 @@ describe("Permissions", () => {
       });
 
       it("should allow Admin to access their own market center", async () => {
-        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(true);
+        mockSubscriptionRepository.canAccessMarketCenter.mockResolvedValue(
+          true
+        );
         const userContext = createUserContext({
           role: "ADMIN",
           marketCenterId: "mc-123",
@@ -883,11 +991,9 @@ describe("Permissions", () => {
 
     describe("ADMIN role - uses subscription repository", () => {
       it("should delegate to subscriptionRepository for ADMIN", async () => {
-        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
-          "mc-1",
-          "mc-2",
-          "mc-3",
-        ]);
+        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(
+          ["mc-1", "mc-2", "mc-3"]
+        );
         const userContext = createUserContext({
           role: "ADMIN",
           marketCenterId: "mc-1",
@@ -902,9 +1008,9 @@ describe("Permissions", () => {
       });
 
       it("should return single market center for non-Enterprise admin", async () => {
-        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
-          "mc-123",
-        ]);
+        mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue(
+          ["mc-123"]
+        );
         const userContext = createUserContext({
           role: "ADMIN",
           marketCenterId: "mc-123",
