@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 
@@ -40,12 +40,36 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
 
     let ticketsFound: TicketRow[] = [];
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+
+    let marketCenterIds: string[] = [];
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
+        const filteredMCIds = req.marketCenterIds.filter((id) =>
+          accessibleMarketCenterIds.includes(id)
+        );
+        marketCenterIds = filteredMCIds;
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -64,7 +88,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
-        if (!userContext.marketCenterId) {
+        if (!userContext?.marketCenterId) {
           // User without market center - see tickets they're assigned to, created, or unassigned
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.status, t.created_at, t.updated_at
@@ -101,7 +125,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
@@ -120,10 +144,16 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
               AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.status, t.created_at, t.updated_at
             FROM tickets t
             WHERE (t.status = ANY(${statuses}))
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.assignee_id IS NULL
+                OR t.creator_id = ${userContext.userId}
+              )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
               AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})

@@ -23,11 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import CreateUser from "./create-user-form";
+import CreateUser from "@/components/ui/users/create-user-form";
+import { TeamSwitcher } from "@/components/ui/team-switcher";
+import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import { useStore } from "@/context/store-provider";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import {
-  ChevronRight,
-  ChevronLeft,
   Filter,
   Users,
   UserPlus,
@@ -39,11 +41,14 @@ import {
   RefreshCw,
   Copy,
   Trash2,
+  CircleEllipsis,
 } from "lucide-react";
-import { formatPaginationText } from "@/lib/utils";
+import { calculateTotalPages } from "@/lib/utils";
 import { toast } from "sonner";
-import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
 import { MarketCenter, UserRole } from "@/lib/types";
+import { useAuth } from "@clerk/nextjs";
+import { API_BASE } from "@/lib/api/utils";
+import { useFetchMarketCenterInvitations } from "@/hooks/use-market-center";
 
 type InvitationStatus =
   | "All"
@@ -87,69 +92,104 @@ const getStatusIcon = (status: string) => {
     case "CANCELLED":
       return <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />;
     default:
-      return <Mail className="h-3 w-3 sm:h-4 sm:w-4" />;
+      return <CircleEllipsis className="h-3 w-3 sm:h-4 sm:w-4 text-gray-300" />;
   }
 };
 
 export default function UserInvitationManagement() {
+  const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
+
+  const defaultMarketCenterId = useMemo(
+    () => (isEnterprise ? "all" : (currentUser?.marketCenterId ?? "all")),
+    [isEnterprise, currentUser?.marketCenterId]
+  );
+
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
+    string | "all"
+  >(defaultMarketCenterId);
+  const [statusFilter, setStatusFilter] = useState<InvitationStatus | "All">(
+    "All"
+  );
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
-  const [statusFilter, setStatusFilter] = useState<InvitationStatus>("All");
+
   const [showCreateUserForm, setShowCreateUserForm] = useState(false);
-  const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const [showCancellationAlert, setShowCancellationAlert] = useState(false);
   const [invitationToCancel, setInvitationToCancel] =
     useState<TeamInvitation | null>(null);
 
   const { permissions } = useUserRole();
-  const fetchWithAuth = useFetchWithAuth();
+  const { getToken } = useAuth();
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setStatusFilter("All");
-  };
+    setSelectedMarketCenterId(defaultMarketCenterId);
+    setCurrentPage(1);
+  }, [defaultMarketCenterId]);
 
-  const hasActiveFilters = statusFilter !== "All";
-
-  const fetchInvitations = useCallback(async () => {
-    if (!permissions?.canManageAllUsers) return;
-    setLoadingInvitations(true);
-
-    try {
-      const response = await fetchWithAuth("/invitations");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch invitations");
-      }
-
-      const data = await response.json();
-      setInvitations(data?.invitations ?? []);
-    } catch (error) {
-      console.error("Failed to fetch invitations:", error);
-      toast.error("Failed to load invitations");
-    } finally {
-      setLoadingInvitations(false);
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "All") {
+      params.append("inviteStatus", statusFilter);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissions?.canManageAllUsers]);
+    if (selectedMarketCenterId !== "all") {
+      params.append("marketCenterIds", selectedMarketCenterId);
+    }
 
-  useEffect(() => {
-    fetchInvitations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissions?.canManageAllUsers]);
+    params.append("limit", String(itemsPerPage));
+    params.append("offset", String((currentPage - 1) * itemsPerPage));
 
-  const existingEmails = useMemo(
-    () => invitations.map((inv) => inv.email),
-    [invitations]
+    return params;
+  }, [statusFilter, selectedMarketCenterId, currentPage, itemsPerPage]);
+
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
+  const invitationsQueryKey = useMemo(
+    () => ["invitations-management", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const {
+    data: invitations,
+    isLoading: loadingInvitations,
+    refetch: fetchInvitations,
+  } = useFetchMarketCenterInvitations({
+    canManageAllUsers: permissions?.canManageAllUsers ?? false,
+    invitationsQueryKey: invitationsQueryKey,
+    queryParams,
+  });
+
+  const existingEmails = useMemo(() => {
+    const emails =
+      invitations && invitations.map((inv: TeamInvitation) => inv.email);
+    return emails;
+  }, [invitations]);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      (isEnterprise && selectedMarketCenterId !== "all") ||
+      statusFilter !== "All",
+    [isEnterprise, selectedMarketCenterId, statusFilter]
   );
 
   const handleResendInvitation = async (token: string) => {
     setActionLoading(token);
     try {
-      const response = await fetchWithAuth(`/invitations/${token}/resend`, {
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+      const response = await fetch(`${API_BASE}/invitations/${token}/resend`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (!response.ok) {
@@ -170,10 +210,16 @@ export default function UserInvitationManagement() {
     if (!invitationToCancel || !invitationToCancel?.token) return;
     setActionLoading(invitationToCancel.token);
     try {
-      const response = await fetchWithAuth(
-        `/invitations/${invitationToCancel.token}`,
+      const token = await getToken();
+      if (!token) throw new Error("Failed to get authentication token");
+      const response = await fetch(
+        `${API_BASE}/invitations/${invitationToCancel.token}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -197,23 +243,31 @@ export default function UserInvitationManagement() {
     toast.success("Signup URL copied to clipboard!");
   };
 
-  // Filter invitations by status
-  const filteredInvitations = invitations.filter((inv) => {
-    if (statusFilter === "All") return true;
-    return inv.status === statusFilter;
-  });
-
   // Paginate
-  const totalPages = Math.ceil(filteredInvitations.length / itemsPerPage);
-  const paginatedInvitations = filteredInvitations.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const invitationsAmount = useMemo(
+    () => (invitations ? invitations.length : 0),
+    [invitations]
+  );
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: invitationsAmount,
+        itemsPerPage,
+      }),
+    [invitationsAmount, itemsPerPage]
   );
 
-  const pendingCount = invitations.filter((i) => i.status === "PENDING").length;
-  const acceptedCount = invitations.filter(
-    (i) => i.status === "ACCEPTED"
-  ).length;
+  const pendingCount: number = useMemo(() => {
+    return invitations
+      ? invitations.filter((i: TeamInvitation) => i.status === "PENDING").length
+      : 0;
+  }, [invitations]);
+  const acceptedCount: number = useMemo(() => {
+    return invitations
+      ? invitations.filter((i: TeamInvitation) => i.status === "ACCEPTED")
+          .length
+      : 0;
+  }, [invitations]);
 
   return (
     <>
@@ -224,7 +278,7 @@ export default function UserInvitationManagement() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Team Invitations ({invitations.length})
+                  Team Invitations ({invitationsAmount})
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
                   {pendingCount} pending, {acceptedCount} accepted
@@ -279,14 +333,26 @@ export default function UserInvitationManagement() {
               {showFilters && (
                 <Card className="p-4 bg-muted/50">
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {/* MARKET CENTER */}
                     <div className="space-y-2">
-                      <Label>Status</Label>
+                      <Label>Market Center</Label>
+                      <TeamSwitcher
+                        selectedMarketCenterId={selectedMarketCenterId}
+                        setSelectedMarketCenterId={setSelectedMarketCenterId}
+                        handleMarketCenterSelected={() => setCurrentPage(1)}
+                      />
+                    </div>
+
+                    {/* INVITATION STATUS */}
+                    <div className="space-y-2">
+                      <Label>Invitation Status</Label>
                       <Select
                         value={statusFilter}
                         onValueChange={(value: InvitationStatus) => {
                           setStatusFilter(value);
                           setCurrentPage(1);
                         }}
+                        disabled={loadingInvitations}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Filter by status" />
@@ -294,10 +360,14 @@ export default function UserInvitationManagement() {
                         <SelectContent>
                           {statusOptions.map((status) => (
                             <SelectItem key={status} value={status}>
-                              <div className="flex items-center gap-2">
-                                {status !== "All" && getStatusIcon(status)}
-                                {status === "All" ? "All Invitations" : status}
-                              </div>
+                              {status === "All" ? (
+                                <p>All Statuses</p>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(status)}
+                                  <p>{status}</p>
+                                </div>
+                              )}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -310,7 +380,7 @@ export default function UserInvitationManagement() {
           </CardHeader>
 
           <CardContent>
-            {loadingInvitations && invitations.length === 0 ? (
+            {loadingInvitations && (!invitations || !invitationsAmount) ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse">
@@ -326,8 +396,8 @@ export default function UserInvitationManagement() {
                     : "opacity-100"
                 }`}
               >
-                {paginatedInvitations.length > 0 ? (
-                  paginatedInvitations.map((invitation: TeamInvitation) => (
+                {invitations && invitations.length > 0 ? (
+                  invitations.map((invitation: TeamInvitation) => (
                     <div
                       key={invitation.id}
                       className="flex items-center justify-between flex-wrap p-4 border rounded-lg  hover:bg-muted/50 transition-colors"
@@ -469,42 +539,14 @@ export default function UserInvitationManagement() {
             )}
 
             {/* Pagination */}
-            {filteredInvitations.length > itemsPerPage && (
-              <div className="flex items-center justify-between pt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing{" "}
-                  {formatPaginationText({
-                    totalItems: filteredInvitations.length,
-                    itemsPerPage,
-                    currentPage,
-                  })}{" "}
-                  of {filteredInvitations.length} invitations
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    disabled={currentPage === 1}
-                    type="button"
-                  >
-                    <ChevronLeft className="h-4 w-4" /> Previous
-                  </Button>
-                  <span className="text-sm">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    disabled={currentPage === totalPages}
-                    type="button"
-                  >
-                    Next <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <PagesAndItemsCount
+              type="invitations"
+              totalItems={invitationsAmount}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+            />
           </CardContent>
         </Card>
 
@@ -512,7 +554,9 @@ export default function UserInvitationManagement() {
         <CreateUser
           showCreateUserForm={showCreateUserForm}
           setShowCreateUserForm={setShowCreateUserForm}
-          queryInvalidation={fetchInvitations}
+          queryInvalidation={async () => {
+            await fetchInvitations();
+          }}
           existingEmails={existingEmails}
         />
       </div>

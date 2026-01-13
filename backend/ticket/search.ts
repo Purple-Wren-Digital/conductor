@@ -40,6 +40,10 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
 
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
@@ -73,7 +77,11 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
 
     let marketCenterIds: string[] = [];
 
-    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
       const accessibleMarketCenterIds =
         await subscriptionRepository.getAccessibleMarketCenterIds(
           userContext.marketCenterId

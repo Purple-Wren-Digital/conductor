@@ -18,32 +18,16 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
   useFetchMarketCenter,
   useFetchMarketCenterTickets,
 } from "@/hooks/use-market-center";
-import {
-  Users,
-  Plus,
-  User,
-  TrendingUp,
-  TicketIcon,
-  UserX,
-  InfoIcon,
-} from "lucide-react";
+import { Plus, TrendingUp, TicketIcon, InfoIcon } from "lucide-react";
 import Link from "next/link";
 import type { SurveyResults, Ticket } from "@/lib/types";
 import {
-  defaultActiveStatuses,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
@@ -71,7 +55,6 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export function StaffDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -98,9 +81,10 @@ export function StaffDashboard() {
     return userRatingsData;
   }, [userRatingsData]);
 
-  const marketCenterId = currentUser?.marketCenterId
-    ? currentUser?.marketCenterId
-    : "";
+  const marketCenterId = useMemo(
+    () => (currentUser?.marketCenterId ? currentUser?.marketCenterId : ""),
+    [currentUser?.marketCenterId]
+  );
 
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
@@ -110,8 +94,9 @@ export function StaffDashboard() {
     statusOptions.forEach((option) => {
       queryParams.append("status", option);
     });
+    currentUser?.id && queryParams.append("assigneeId", currentUser.id);
     return queryParams;
-  }, []);
+  }, [currentUser?.id]);
 
   const { data: ticketsData, isLoading: ticketsLoading } =
     useFetchMarketCenterTickets({
@@ -127,30 +112,22 @@ export function StaffDashboard() {
     return ticketsData?.tickets ?? [];
   }, [ticketsData]);
 
-  const filteredTickets = useMemo(() => {
-    return selectedTeamMemberId === currentUser?.id
-      ? tickets.filter((t: Ticket) => t.assigneeId === selectedTeamMemberId)
-      : selectedTeamMemberId === "Unassigned"
-        ? tickets.filter((t: Ticket) => !t.assigneeId)
-        : tickets;
-  }, [currentUser?.id, selectedTeamMemberId, tickets]);
-
   const stats = useMemo(() => {
-    const totalTickets = filteredTickets.length;
-    const activeTicketsCount: number = filteredTickets.filter(
+    const totalTickets = tickets.length;
+    const activeTicketsCount: number = tickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
     ).length;
-    const activeTickets: Ticket[] = filteredTickets.filter(
+    const activeTickets: Ticket[] = tickets.filter(
       (t: Ticket) => t.status !== "RESOLVED"
     );
-    const highPriority = filteredTickets.filter(
+    const highPriority = tickets.filter(
       (t: Ticket) => t.urgency === "HIGH" && t.status !== "RESOLVED"
     ).length;
-    const unassignedTickets = filteredTickets.filter(
+    const unassignedTickets = tickets.filter(
       (t: Ticket) =>
         (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
     ).length;
-    const ticketsByStatus = filteredTickets.reduce(
+    const ticketsByStatus = tickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
         const statusKey =
           ticket.status === "CREATED" && !!ticket?.assigneeId
@@ -172,7 +149,7 @@ export function StaffDashboard() {
       {}
     );
 
-    const overdueTickets = filteredTickets.filter((t: Ticket) => {
+    const overdueTickets = tickets.filter((t: Ticket) => {
       if (t.status !== "RESOLVED" && t?.dueDate) {
         const dueDate = new Date(t.dueDate);
         const now = new Date();
@@ -188,7 +165,7 @@ export function StaffDashboard() {
     let createdThisWeek = 0;
     let resolvedThisWeek = 0;
 
-    filteredTickets.forEach((t: Ticket) => {
+    tickets.forEach((t: Ticket) => {
       const createdDate = t.createdAt ? new Date(t.createdAt) : null;
       const resolvedDate =
         t.status === "RESOLVED" && t.resolvedAt ? new Date(t.resolvedAt) : null;
@@ -213,7 +190,7 @@ export function StaffDashboard() {
       ticketsByStatus,
       ticketsByUrgency,
     };
-  }, [filteredTickets]);
+  }, [tickets]);
 
   const statusChartData = useMemo(() => {
     if (!stats) return [];
@@ -262,37 +239,12 @@ export function StaffDashboard() {
                 {marketCenter?.name ?? "your"} market center
               </p>
             </div>
-            <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-              <Select
-                value={selectedTeamMemberId}
-                onValueChange={(value) => setSelectedTeamMemberId(value)}
-              >
-                <SelectTrigger className="w-full sm:w-[250px]">
-                  <SelectValue placeholder="Select Team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">
-                    <Users className="w-4 h-4" />
-                    All
-                  </SelectItem>
-                  <SelectItem value={currentUser?.id ?? "impossible-id"}>
-                    <User className={`w-4 h-4`} />
-                    {currentUser?.name}
-                  </SelectItem>
-                  <SelectItem value={"Unassigned"}>
-                    <UserX className={`w-4 h-4`} />
-                    Unassigned
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button
-                className="w-full sm:w-fit"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Create Ticket
-              </Button>
-            </div>
+            <Button
+              className="w-full sm:w-fit"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Create Ticket
+            </Button>
           </div>
 
           <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
@@ -413,7 +365,7 @@ export function StaffDashboard() {
             <CardContent className="h-[250px] md:h-[220px]">
               <ChartContainer
                 config={ticketByStatusChartConfig}
-                className="h-4/5 w-[99%] md:w-full mx-auto"
+                className="h-[99%] w-[99%] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart

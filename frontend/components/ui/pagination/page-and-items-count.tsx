@@ -6,7 +6,7 @@ import type React from "react";
 import { Button } from "@/components/ui/button";
 
 export type PagesAndItemsCountProps = {
-  type: "tickets" | "users" | "market centers" | "logs";
+  type: "tickets" | "users" | "market centers" | "logs" | "invitations";
   totalItems: number;
   itemsPerPage: number;
   currentPage: number;

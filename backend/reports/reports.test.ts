@@ -5,22 +5,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockDb, mockUserContext, mockFromTimestamp } = vi.hoisted(() => ({
-  mockDb: {
-    queryAll: vi.fn(),
-    queryRow: vi.fn(),
-    exec: vi.fn(),
-  },
-  mockUserContext: {
-    name: "Admin User",
-    userId: "user-123",
-    email: "admin@test.com",
-    role: "ADMIN" as const,
-    marketCenterId: "mc-123",
-    clerkId: "clerk-123",
-  },
-  mockFromTimestamp: vi.fn((date: Date | null) => date),
-}));
+const { mockDb, mockUserContext, mockFromTimestamp, subscriptionRepository } =
+  vi.hoisted(() => ({
+    mockDb: {
+      queryAll: vi.fn(),
+      queryRow: vi.fn(),
+      exec: vi.fn(),
+    },
+    mockUserContext: {
+      name: "Admin User",
+      userId: "user-123",
+      email: "admin@test.com",
+      role: "ADMIN" as const,
+      marketCenterId: "mc-123",
+      clerkId: "clerk-123",
+    },
+    mockFromTimestamp: vi.fn((date: Date | null) => date),
+    subscriptionRepository: {
+      getSubscriptionById: vi.fn(),
+      findByMarketCenterId: vi.fn(),
+      getAccessibleMarketCenterIds: vi.fn(),
+    },
+  }));
 
 // Mock encore.dev/api
 vi.mock("encore.dev/api", () => ({
@@ -49,6 +55,7 @@ vi.mock("encore.dev/api", () => ({
 vi.mock("../ticket/db", () => ({
   db: mockDb,
   fromTimestamp: mockFromTimestamp,
+  subscriptionRepository,
 }));
 
 // Mock the auth module
@@ -79,7 +86,7 @@ describe("Reports", () => {
         { id: "ticket-3", status: "UNASSIGNED" },
       ]);
 
-      const result = await backlog({});
+      const result = await backlog({ marketCenterIds: ["mc-123"] });
 
       expect(result).toEqual({
         created: 2,
@@ -91,7 +98,7 @@ describe("Reports", () => {
     it("should return empty backlog when no tickets", async () => {
       mockDb.queryAll.mockResolvedValueOnce([]);
 
-      const result = await backlog({});
+      const result = await backlog({ marketCenterIds: ["mc-456"] });
 
       expect(result).toEqual({
         created: 0,
@@ -105,7 +112,7 @@ describe("Reports", () => {
         { id: "ticket-1", status: "CREATED" },
       ]);
 
-      const result = await backlog({ marketCenterIds: ["mc-456"] });
+      const result = await backlog({ marketCenterIds: ["mc-123"] });
 
       expect(result.total).toBe(1);
       expect(mockDb.queryAll).toHaveBeenCalled();

@@ -114,7 +114,8 @@ function rowToInvitation(row: TeamInvitationRow): TeamInvitation {
     name: row.name,
     email: row.email,
     role: row.role,
-    status: row.status,
+    status:
+      (row?.status as InvitationStatus) ?? ("PENDING" as InvitationStatus),
     marketCenterId: row.market_center_id ?? undefined,
     invitedBy: row.invited_by ?? undefined,
     token: row.token,
@@ -373,6 +374,31 @@ export const marketCenterRepository = {
       WHERE market_center_id = ${marketCenterId}
       ORDER BY created_at DESC
     `;
+    return rows.map(rowToInvitation);
+  },
+
+  async findInvitationsByMultipleMarketCenterIds({
+    marketCenterIds,
+    inviteStatus,
+    limit,
+    offset,
+  }: {
+    marketCenterIds: string[];
+    inviteStatus?: InvitationStatus;
+    limit: number;
+    offset: number;
+  }): Promise<TeamInvitation[]> {
+    const rows = await db.queryAll<TeamInvitationRow>`
+    SELECT *
+    FROM team_invitations
+    WHERE market_center_id = ANY(${marketCenterIds}::text[])
+    AND (
+      ${inviteStatus}::"InvitationStatus" IS NULL
+      OR status = ${inviteStatus}::"InvitationStatus"
+    )
+    ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
     return rows.map(rowToInvitation);
   },
 

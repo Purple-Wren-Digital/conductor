@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
 import { getTicketSlaStatus } from "./utils";
@@ -45,12 +45,37 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
 
     // Convert arrays to filter params (null if empty)
-    const categoryIds = req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
-    const assigneeIds = req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
+    const categoryIds =
+      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+    const assigneeIds =
+      req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
     const statusList = req.status && req.status.length > 0 ? req.status : null;
-    const marketCenterIds = req.marketCenterIds && req.marketCenterIds.length > 0 ? req.marketCenterIds : null;
+
+    let marketCenterIds: string[] = [];
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
+        const filteredMCIds = req.marketCenterIds.filter((id) =>
+          accessibleMarketCenterIds.includes(id)
+        );
+        marketCenterIds = filteredMCIds;
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -93,6 +118,7 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             WHERE (
               tc.market_center_id = ${userContext.marketCenterId}
               OR assignee.market_center_id = ${userContext.marketCenterId}
+              OR creator.market_center_id = ${userContext.marketCenterId}
             )
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
@@ -103,7 +129,7 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date,
                    t.assignee_id, assignee.name as assignee_name
@@ -117,12 +143,14 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
           `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT t.id, t.created_at, t.resolved_at, t.due_date,
                    t.assignee_id, assignee.name as assignee_name
             FROM tickets t
             LEFT JOIN users assignee ON t.assignee_id = assignee.id
-            WHERE (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+            WHERE t.assignee_id = ${userContext.userId}
+            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
@@ -147,9 +175,7 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
       if (slaStatus === "compliant" || slaStatus === "onTrack") continue;
 
       const assigneeId = ticket.assignee_id || "Unassigned";
-      const assignee = allUserStats.find(
-        (user) => user.id === assigneeId
-      );
+      const assignee = allUserStats.find((user) => user.id === assigneeId);
 
       const assigneeName = ticket.assignee_id
         ? ticket.assignee_name || "No Name"

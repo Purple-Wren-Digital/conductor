@@ -1,5 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db } from "../ticket/db";
+import { db, subscriptionRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export type Granularity = "daily" | "weekly" | "monthly";
@@ -49,6 +49,10 @@ export const resolvedByMonth = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const isActive = subscription && subscription?.status === "ACTIVE";
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
@@ -57,10 +61,26 @@ export const resolvedByMonth = api<
       req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
     const creatorIds =
       req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
-    const marketCenterIds =
-      req.marketCenterIds && req.marketCenterIds.length > 0
-        ? req.marketCenterIds
-        : null;
+
+    let marketCenterIds: string[] = [];
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
+        const filteredMCIds = req.marketCenterIds.filter((id) =>
+          accessibleMarketCenterIds.includes(id)
+        );
+        marketCenterIds = filteredMCIds;
+      } else {
+        marketCenterIds = accessibleMarketCenterIds;
+      }
+    }
 
     // Parse date filters
     let dateFrom: Date | null = null;
@@ -126,7 +146,7 @@ export const resolvedByMonth = api<
         }
         break;
       case "ADMIN":
-        if (marketCenterIds) {
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           tickets = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.resolved_at
             FROM tickets t
@@ -147,11 +167,16 @@ export const resolvedByMonth = api<
               AND (${dateTo}::timestamp IS NULL OR t.resolved_at <= ${dateTo})
           `;
         } else {
+          // No subscription or inactive subscription - limit to own tickets
           tickets = await db.queryAll<TicketRow>`
             SELECT t.id, t.resolved_at
             FROM tickets t
             WHERE t.status = 'RESOLVED'
               AND t.resolved_at IS NOT NULL
+              AND (
+                t.assignee_id = ${userContext.userId}
+                OR t.creator_id = ${userContext.userId}
+              )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
               AND (${creatorIds}::text[] IS NULL OR t.creator_id = ANY(${creatorIds}))

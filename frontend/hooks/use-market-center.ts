@@ -350,3 +350,53 @@ export function useFetchMarketCenterNotificationPreferences({
     enabled: !!id,
   });
 }
+
+// MARKET CENTER INVITATION
+export function useFetchMarketCenterInvitations({
+  canManageAllUsers,
+  invitationsQueryKey,
+  queryParams,
+}: {
+  canManageAllUsers: boolean;
+  invitationsQueryKey: readonly [
+    "invitations-management",
+    Record<string, string>,
+  ];
+  queryParams: URLSearchParams | null;
+}) {
+  const { getToken } = useAuth();
+
+  return useQuery({
+    queryKey: invitationsQueryKey,
+    queryFn: async () => {
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get authentication token");
+        const response = await fetch(
+          `${API_BASE}/invitations/list${queryParams ? `?${queryParams.toString()}` : ""}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Fetch invitations - Error data:", errorData);
+          throw new Error(errorData?.message ?? "Failed to fetch invitations");
+        }
+        const data = await response.json();
+        if (!data) {
+          throw new Error("Fetch invitations - No data received");
+        }
+        return data?.invitations ?? [];
+      } catch (error) {
+        console.error("Failed to fetch invitations:", error);
+        return [];
+      }
+    },
+    enabled: !!canManageAllUsers,
+  });
+}

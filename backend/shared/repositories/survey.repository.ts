@@ -171,40 +171,41 @@ export const surveyRepository = {
   },
 
   // Get all average ratings (for admin)
-  async getAllAverages(): Promise<{
-    totalSurveys: number;
-    assigneeAverageRating: number | null;
-    overallAverageRating: number | null;
-    marketCenterAverageRating: number | null;
-  }> {
-    const result = await db.queryRow<{
-      total: number;
-      assignee_avg: string | null;
-      overall_avg: string | null;
-      mc_avg: string | null;
-    }>`
-      SELECT
-        COUNT(*)::int as total,
-        AVG(assignee_rating)::decimal(3,2) as assignee_avg,
-        AVG(overall_rating)::decimal(3,2) as overall_avg,
-        AVG(market_center_rating)::decimal(3,2) as mc_avg
-      FROM ticket_ratings
-      WHERE completed = true
-    `;
+  // async getAllAverages(): Promise<{
+  //   totalSurveys: number;
+  //   assigneeAverageRating: number | null;
+  //   overallAverageRating: number | null;
+  //   marketCenterAverageRating: number | null;
+  // }> {
+  //   const result = await db.queryRow<{
+  //     total: number;
+  //     assignee_avg: string | null;
+  //     overall_avg: string | null;
+  //     mc_avg: string | null;
+  //   }>`
+  //     SELECT
+  //       COUNT(*)::int as total,
+  //       AVG(assignee_rating)::decimal(3,2) as assignee_avg,
+  //       AVG(overall_rating)::decimal(3,2) as overall_avg,
+  //       AVG(market_center_rating)::decimal(3,2) as mc_avg
+  //     FROM ticket_ratings
+  //     WHERE completed = true
 
-    return {
-      totalSurveys: result?.total ?? 0,
-      assigneeAverageRating: result?.assignee_avg
-        ? parseFloat(result.assignee_avg)
-        : null,
-      overallAverageRating: result?.overall_avg
-        ? parseFloat(result.overall_avg)
-        : null,
-      marketCenterAverageRating: result?.mc_avg
-        ? parseFloat(result.mc_avg)
-        : null,
-    };
-  },
+  //   `;
+
+  //   return {
+  //     totalSurveys: result?.total ?? 0,
+  //     assigneeAverageRating: result?.assignee_avg
+  //       ? parseFloat(result.assignee_avg)
+  //       : null,
+  //     overallAverageRating: result?.overall_avg
+  //       ? parseFloat(result.overall_avg)
+  //       : null,
+  //     marketCenterAverageRating: result?.mc_avg
+  //       ? parseFloat(result.mc_avg)
+  //       : null,
+  //   };
+  // },
 
   // Check if surveys exist for assignee
   async hasCompletedSurveysForAssignee(assigneeId: string): Promise<boolean> {
