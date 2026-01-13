@@ -25,20 +25,20 @@ export const updateInvitationStatus = api({}, async (): Promise<void> => {
     if (userExists && invitation.status !== "ACCEPTED") {
       newStatus = "ACCEPTED";
     }
-    // PENDING = No user and expiresAt in future
+    // PENDING = No user, expiresAt in future and status is EXPIRED
     if (
       !userExists &&
       invitation.expiresAt &&
       invitation.expiresAt > now &&
-      invitation.status !== "PENDING"
+      invitation.status === "EXPIRED"
     ) {
       newStatus = "PENDING";
     }
-    // EXPIRED = No user and past expiresAt date
+    // EXPIRED = No user, past expiresAt date and status is PENDING
     if (
       invitation.expiresAt &&
       invitation.expiresAt <= now &&
-      invitation.status !== "EXPIRED"
+      invitation.status === "PENDING"
     ) {
       newStatus = "EXPIRED";
     }
