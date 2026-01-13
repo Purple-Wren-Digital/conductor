@@ -77,8 +77,6 @@ import {
   UserStatusType,
 } from "@/lib/utils";
 
-export type MarketCenterAssignmentFilter = "Assigned" | "Unassigned";
-
 export default function MarketCenterUsers({
   marketCenterId,
   marketCenterName,
@@ -107,8 +105,9 @@ export default function MarketCenterUsers({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
-  const [selectedAssignment, setSelectedAssignment] =
-    useState<MarketCenterAssignmentFilter>("Assigned");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
+    string | "Unassigned"
+  >(marketCenterId ?? "Unassigned");
   const [selectedUserStatus, setSelectedUserStatus] = useState<
     UserStatusType | "all"
   >("Active");
@@ -135,7 +134,7 @@ export default function MarketCenterUsers({
         showFilters,
         searchQuery,
         selectedRole,
-        selectedAssignment,
+        selectedMarketCenterId,
         selectedUserStatus,
         sortBy,
         sortDir,
@@ -147,7 +146,7 @@ export default function MarketCenterUsers({
     showFilters,
     searchQuery,
     selectedRole,
-    selectedAssignment,
+    selectedMarketCenterId,
     selectedUserStatus,
     sortBy,
     sortDir,
@@ -162,7 +161,9 @@ export default function MarketCenterUsers({
       setShowFilters(fetchedFilters.showFilters || false);
       setSearchQuery(fetchedFilters.searchQuery || "");
       setSelectedRole(fetchedFilters.selectedRole || "all");
-      setSelectedAssignment(fetchedFilters.selectedAssignment || "Assigned");
+      setSelectedMarketCenterId(
+        fetchedFilters.selectedMarketCenterId ?? marketCenterId
+      );
       setSelectedUserStatus(fetchedFilters.selectedUserStatus || "Active");
       setSortBy(fetchedFilters.sortBy || "updatedAt");
       setSortDir(fetchedFilters.sortDir || "desc");
@@ -185,12 +186,10 @@ export default function MarketCenterUsers({
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     if (selectedRole !== "all") params.append("role", selectedRole);
     // Market Center Assignment
-    if (marketCenterId && selectedAssignment === "Assigned") {
-      params.append("marketCenterId", marketCenterId);
-    }
-    if (selectedAssignment === "Unassigned") {
+    if (selectedMarketCenterId === "Unassigned")
       params.append("marketCenterId", "Unassigned");
-    }
+    if (selectedMarketCenterId !== "Unassigned" && marketCenterId)
+      params.append("marketCenterId", marketCenterId);
     // Active/Inactive
     if (selectedUserStatus === "Active" || selectedUserStatus === "all") {
       params.append("isActive", "true");
@@ -208,7 +207,7 @@ export default function MarketCenterUsers({
     marketCenterId,
     debouncedSearchQuery,
     selectedRole,
-    selectedAssignment,
+    selectedMarketCenterId,
     selectedUserStatus,
     sortBy,
     sortDir,
@@ -246,7 +245,7 @@ export default function MarketCenterUsers({
     return (
       !!searchQuery ||
       selectedRole !== "all" ||
-      selectedAssignment !== "Assigned" ||
+      selectedMarketCenterId !== marketCenterId ||
       selectedUserStatus !== "Active" ||
       sortDir !== "desc" ||
       sortBy !== "updatedAt"
@@ -254,7 +253,7 @@ export default function MarketCenterUsers({
   }, [
     searchQuery,
     selectedRole,
-    selectedAssignment,
+    selectedMarketCenterId,
     selectedUserStatus,
     sortDir,
     sortBy,
@@ -264,7 +263,7 @@ export default function MarketCenterUsers({
     setCurrentPage(1);
     setSearchQuery("");
     setSelectedRole("all");
-    setSelectedAssignment("Assigned");
+    setSelectedMarketCenterId(marketCenterId || "Assigned");
     setSelectedUserStatus("Active");
     setSortDir("desc");
     setSortBy("updatedAt");
@@ -416,6 +415,32 @@ export default function MarketCenterUsers({
             {showFilters && (
               <Card className="p-4 bg-muted/50">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* ASSIGNMENT */}
+                  <div className="space-y-2">
+                    <Label>Market Center</Label>
+                    <Select
+                      value={selectedMarketCenterId}
+                      onValueChange={(value: string | "Unassigned") => {
+                        setSelectedMarketCenterId(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={isLoading || usersLoading}
+                      aria-label="Filter by Market Center Assignment Type: Assigned, Unassigned, or All"
+                    >
+                      <SelectTrigger className="gap-2">
+                        <SelectValue
+                          placeholder={"Filter by Assignment Type"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={marketCenterId || "Assigned"}>
+                          {marketCenterName}
+                        </SelectItem>
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* ROLE */}
                   <div className="space-y-2">
                     <Label>Role</Label>
@@ -442,38 +467,6 @@ export default function MarketCenterUsers({
                             </div>
                           </SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* ASSIGNMENT */}
-                  <div className="space-y-2">
-                    <ToolTip
-                      content={`"Assigned:" Users currently assigned to this Market Center | "Unassigned:" Users not assigned to any market center`}
-                      trigger={
-                        <div className="flex items-center gap-2 hover:cursor-pointer">
-                          <Label>Assignment Status</Label>
-                          <InfoIcon className="size-3 text-muted-foreground" />
-                        </div>
-                      }
-                    />
-                    <Select
-                      value={selectedAssignment}
-                      onValueChange={(value: MarketCenterAssignmentFilter) => {
-                        setSelectedAssignment(value);
-                        setCurrentPage(1);
-                      }}
-                      disabled={isLoading || usersLoading}
-                      aria-label="Filter by Market Center Assignment Type: Assigned, Unassigned, or All"
-                    >
-                      <SelectTrigger className="gap-2">
-                        <SelectValue
-                          placeholder={"Filter by Assignment Type"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Assigned">Assigned</SelectItem>
-                        <SelectItem value="Unassigned">Unassigned</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
