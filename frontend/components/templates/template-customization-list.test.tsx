@@ -10,6 +10,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const mockUseFetchTemplateStatuses = vi.fn();
 const mockUseFetchAllMarketCenters = vi.fn();
 const mockPush = vi.fn();
+const mockUseStore = vi.fn();
+const mockUseUserRole = vi.fn();
+const mockUseIsEnterprise = vi.fn();
 
 vi.mock("@/hooks/use-template-customization", () => ({
   useFetchTemplateStatuses: (props: unknown) =>
@@ -36,6 +39,18 @@ vi.mock("sonner", () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock("@/context/store-provider", () => ({
+  useStore: () => mockUseStore(),
+}));
+
+vi.mock("@/hooks/use-user-role", () => ({
+  useUserRole: () => mockUseUserRole(),
+}));
+
+vi.mock("@/hooks/useSubscription", () => ({
+  useIsEnterprise: () => mockUseIsEnterprise(),
 }));
 
 // Import after mocks
@@ -164,6 +179,17 @@ const mockTemplateStatuses = [
 describe("TemplateCustomizationList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up default mocks for user context
+    mockUseStore.mockReturnValue({
+      currentUser: { marketCenterId: "mc-austin" },
+    });
+    mockUseUserRole.mockReturnValue({
+      role: "ADMIN",
+    });
+    mockUseIsEnterprise.mockReturnValue({
+      isEnterprise: false,
+    });
   });
 
   describe("Loading State", () => {
@@ -207,6 +233,8 @@ describe("TemplateCustomizationList", () => {
 
   describe("Market Center Selection", () => {
     it("should display market center selector", async () => {
+      // Set isEnterprise to true so market center is not auto-selected
+      mockUseIsEnterprise.mockReturnValue({ isEnterprise: true });
       mockUseFetchAllMarketCenters.mockReturnValue({
         data: mockMarketCenters,
         isLoading: false,
@@ -471,6 +499,8 @@ describe("TemplateCustomizationList", () => {
 
   describe("Empty State", () => {
     it("should show message when no market center is selected", async () => {
+      // Set isEnterprise to true so market center is not auto-selected
+      mockUseIsEnterprise.mockReturnValue({ isEnterprise: true });
       mockUseFetchAllMarketCenters.mockReturnValue({
         data: mockMarketCenters,
         isLoading: false,
@@ -515,6 +545,7 @@ describe("TemplateCustomizationList", () => {
 
   describe("Permission Handling", () => {
     it("should not allow STAFF role to access", () => {
+      mockUseUserRole.mockReturnValue({ role: "STAFF" });
       mockUseFetchAllMarketCenters.mockReturnValue({
         data: mockMarketCenters,
         isLoading: false,
@@ -530,6 +561,7 @@ describe("TemplateCustomizationList", () => {
     });
 
     it("should not allow AGENT role to access", () => {
+      mockUseUserRole.mockReturnValue({ role: "AGENT" });
       mockUseFetchAllMarketCenters.mockReturnValue({
         data: mockMarketCenters,
         isLoading: false,

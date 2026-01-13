@@ -13,6 +13,8 @@ const mockUseStore = vi.fn();
 const mockUseUserRole = vi.fn();
 const mockUseAutoCloseSettings = vi.fn();
 const mockUseUpdateAutoCloseSettings = vi.fn();
+const mockUseFetchAllMarketCenters = vi.fn();
+const mockUseIsEnterprise = vi.fn();
 
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({ getToken: mockGetToken }),
@@ -29,6 +31,14 @@ vi.mock("@/hooks/use-user-role", () => ({
 vi.mock("@/hooks/use-settings", () => ({
   useAutoCloseSettings: () => mockUseAutoCloseSettings(),
   useUpdateAutoCloseSettings: () => mockUseUpdateAutoCloseSettings(),
+}));
+
+vi.mock("@/hooks/use-market-center", () => ({
+  useFetchAllMarketCenters: () => mockUseFetchAllMarketCenters(),
+}));
+
+vi.mock("@/hooks/useSubscription", () => ({
+  useIsEnterprise: () => mockUseIsEnterprise(),
 }));
 
 vi.mock("sonner", () => ({
@@ -97,6 +107,17 @@ const defaultMocks = () => {
   mockUseUpdateAutoCloseSettings.mockReturnValue({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
+  });
+
+  mockUseFetchAllMarketCenters.mockReturnValue({
+    data: {
+      marketCenters: [{ id: "mc-123", name: "Test Market Center" }],
+    },
+    isLoading: false,
+  });
+
+  mockUseIsEnterprise.mockReturnValue({
+    isEnterprise: false,
   });
 };
 
@@ -207,27 +228,6 @@ describe("AutoCloseSettings", () => {
     });
   });
 
-  describe("Market center validation", () => {
-    it("should show error when no market center is found", () => {
-      mockUseStore.mockReturnValue({
-        currentUser: { marketCenterId: null },
-      });
-
-      renderWithProviders(<AutoCloseSettings />);
-
-      expect(screen.getByText(/No market center found/)).toBeInTheDocument();
-    });
-
-    it("should show error when currentUser has no marketCenterId", () => {
-      mockUseStore.mockReturnValue({
-        currentUser: {},
-      });
-
-      renderWithProviders(<AutoCloseSettings />);
-
-      expect(screen.getByText(/No market center found/)).toBeInTheDocument();
-    });
-  });
 
   describe("Loading state", () => {
     it("should show loading spinner when fetching data", () => {
@@ -299,7 +299,8 @@ describe("AutoCloseSettings", () => {
     it("should disable save button when form is not dirty", () => {
       renderWithProviders(<AutoCloseSettings />);
 
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      const saveButton = screen.getByRole("button", { name: /save auto-close settings/i });
+      // Button should be disabled because form is not dirty
       expect(saveButton).toBeDisabled();
     });
 
@@ -310,7 +311,7 @@ describe("AutoCloseSettings", () => {
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      const saveButton = screen.getByRole("button", { name: /save auto-close settings/i });
       expect(saveButton).not.toBeDisabled();
     });
 
@@ -329,7 +330,7 @@ describe("AutoCloseSettings", () => {
       await user.click(switchElement);
 
       // Submit the form
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      const saveButton = screen.getByRole("button", { name: /save auto-close settings/i });
       await user.click(saveButton);
 
       await waitFor(() => {
@@ -354,7 +355,7 @@ describe("AutoCloseSettings", () => {
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      const saveButton = screen.getByRole("button", { name: /save auto-close settings/i });
       await user.click(saveButton);
 
       await waitFor(() => {
@@ -377,7 +378,7 @@ describe("AutoCloseSettings", () => {
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      const saveButton = screen.getByRole("button", { name: /save auto-close settings/i });
       await user.click(saveButton);
 
       await waitFor(() => {

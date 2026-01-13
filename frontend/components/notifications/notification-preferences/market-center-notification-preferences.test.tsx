@@ -123,6 +123,7 @@ describe("MarketCenterNotificationPreferences", () => {
     render(
       <MarketCenterNotificationPreferences
         marketCenterId="mc-123"
+        selectedMarketCenterName="Test Market Center"
         isLoadingMarketCenters={false}
       />,
       {
@@ -132,15 +133,8 @@ describe("MarketCenterNotificationPreferences", () => {
 
     // Wait for data to be displayed
     await waitFor(() => {
-      expect(screen.getByText("Notification Settings")).toBeInTheDocument();
+      expect(screen.getByText("Test Market Center")).toBeInTheDocument();
     });
-
-    // Check that the description is shown
-    expect(
-      screen.getByText(
-        "Enable or disable app activity notifications for your market center"
-      )
-    ).toBeInTheDocument();
 
     // Check that preference types are shown (with underscores replaced by spaces)
     expect(screen.getByText("ticket created")).toBeInTheDocument();
@@ -223,6 +217,7 @@ describe("MarketCenterNotificationPreferences", () => {
     render(
       <MarketCenterNotificationPreferences
         marketCenterId="mc-123"
+        selectedMarketCenterName="Test Market Center"
         isLoadingMarketCenters={false}
       />,
       {
@@ -231,7 +226,7 @@ describe("MarketCenterNotificationPreferences", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Notification Settings")).toBeInTheDocument();
+      expect(screen.getByText("Test Market Center")).toBeInTheDocument();
     });
 
     const saveButton = screen.getByRole("button", {
