@@ -117,6 +117,12 @@ export async function canReassignTicket({
   return false;
 }
 
+export async function canChangeTicketCreator(
+  userContext: UserContext
+): Promise<boolean> {
+  return userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER";
+}
+
 export async function canViewInternalComments(
   userContext: UserContext
 ): Promise<boolean> {

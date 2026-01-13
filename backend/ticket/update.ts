@@ -13,6 +13,7 @@ import {
   canDeleteTicket,
   canModifyTicket,
   canReassignTicket,
+  canChangeTicketCreator,
 } from "../auth/permissions";
 import { ActivityUpdates } from "@/emails/types";
 import { UsersToNotify } from "../notifications/types";
@@ -44,6 +45,7 @@ export interface UpdateTicketRequest {
   categoryId?: string;
   dueDate?: Date;
   assigneeId?: string;
+  creatorId?: string;
   todos?: string[];
 }
 
@@ -108,6 +110,24 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       throw APIError.permissionDenied(
         "You can only assign tickets to users in your team"
       );
+    }
+
+    // Check if user can change creator
+    const canChangeCreator = await canChangeTicketCreator(userContext);
+
+    // Validate new creator exists if creatorId is provided
+    let newCreator = null;
+    if (req.creatorId && req.creatorId !== oldTicket.creatorId) {
+      if (!canChangeCreator) {
+        throw APIError.permissionDenied(
+          "You do not have permission to change the ticket creator"
+        );
+      }
+      const user = await userRepository.findById(req.creatorId);
+      if (!user) {
+        throw APIError.notFound("New creator not found");
+      }
+      newCreator = user;
     }
 
     const marketCenterId =
@@ -210,6 +230,7 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       categoryId: string | null;
       dueDate: Date | null;
       assigneeId: string | null;
+      creatorId: string | null;
       resolvedAt: Date | null;
       surveyId: string | null;
     }> = {};
@@ -309,6 +330,39 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
           changedById: userContext.userId,
         });
       }
+    }
+
+    // CREATOR CHANGES
+    if (newCreator && newCreator.id !== oldTicket.creatorId) {
+      updateData.creatorId = newCreator.id;
+      const previousCreatorName = oldTicket.creator?.name ?? "Unknown";
+      ticketHistoryData.push({
+        ticketId: req.ticketId,
+        action: "UPDATE",
+        field: "creator",
+        previousValue: previousCreatorName,
+        newValue: newCreator.name ?? "Unknown",
+        snapshot: oldTicket,
+        changedById: userContext.userId,
+      });
+
+      // Notify old creator that they are no longer the creator
+      if (oldTicket.creatorId) {
+        usersToNotify.push({
+          id: oldTicket.creatorId,
+          name: previousCreatorName,
+          email: oldTicket.creator?.email ?? "N/a",
+          updateType: "removed",
+        });
+      }
+
+      // Notify new creator
+      usersToNotify.push({
+        id: newCreator.id,
+        name: newCreator.name ?? "No name listed",
+        email: newCreator.email ?? "N/a",
+        updateType: "added",
+      });
     }
 
     // ASSIGNMENT CHANGES

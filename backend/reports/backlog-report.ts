@@ -116,7 +116,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
                 tc.market_center_id = ${userContext.marketCenterId}
                 OR creator.market_center_id = ${userContext.marketCenterId}
                 OR assignee.market_center_id = ${userContext.marketCenterId}
-                OR t.assignee_id IS NULL
+                OR (t.assignee_id IS NULL AND (tc.market_center_id = ${userContext.marketCenterId} OR creator.market_center_id = ${userContext.marketCenterId}))
               )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
@@ -137,7 +137,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
                 tc.market_center_id = ANY(${marketCenterIds})
                 OR creator.market_center_id = ANY(${marketCenterIds})
                 OR assignee.market_center_id = ANY(${marketCenterIds})
-                OR t.assignee_id IS NULL
+                OR (t.assignee_id IS NULL AND (tc.market_center_id = ANY(${marketCenterIds}) OR creator.market_center_id = ANY(${marketCenterIds})))
               )
               AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
               AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})

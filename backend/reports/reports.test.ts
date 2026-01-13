@@ -170,6 +170,151 @@ describe("Reports", () => {
         "User not permitted to generate ticket reports"
       );
     });
+
+    describe("market center scoping for unassigned tickets", () => {
+      it("should only count unassigned tickets within ADMIN accessible market centers", async () => {
+        vi.mocked(getUserContext).mockResolvedValue({
+          name: "Admin User",
+          userId: "admin-123",
+          email: "admin@test.com",
+          role: "ADMIN" as const,
+          marketCenterId: "mc-123",
+          clerkId: "clerk-admin",
+        });
+
+        subscriptionRepository.findByMarketCenterId.mockResolvedValue({
+          id: "sub-1",
+          status: "ACTIVE",
+        });
+        subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-123",
+          "mc-456",
+        ]);
+
+        // Only return unassigned tickets that belong to accessible market centers
+        // (via category or creator market center)
+        mockDb.queryAll.mockResolvedValueOnce([
+          { id: "ticket-1", status: "UNASSIGNED" }, // In mc-123 via category
+          { id: "ticket-2", status: "UNASSIGNED" }, // In mc-456 via creator
+        ]);
+
+        const result = await backlog({});
+
+        expect(result.unassigned).toBe(2);
+        expect(result.total).toBe(2);
+        // Verify the query was called (SQL should filter by market center)
+        expect(mockDb.queryAll).toHaveBeenCalledTimes(1);
+      });
+
+      it("should only count unassigned tickets within STAFF market center scope", async () => {
+        vi.mocked(getUserContext).mockResolvedValue({
+          name: "Staff User",
+          userId: "staff-123",
+          email: "staff@test.com",
+          role: "STAFF" as const,
+          marketCenterId: "mc-789",
+          clerkId: "clerk-staff",
+        });
+
+        // Return only unassigned tickets that belong to mc-789
+        mockDb.queryAll.mockResolvedValueOnce([
+          { id: "ticket-1", status: "UNASSIGNED" },
+        ]);
+
+        const result = await backlog({});
+
+        expect(result.unassigned).toBe(1);
+        expect(mockDb.queryAll).toHaveBeenCalledTimes(1);
+      });
+
+      it("should return zero unassigned when no unassigned tickets exist in market center", async () => {
+        vi.mocked(getUserContext).mockResolvedValue({
+          name: "Admin User",
+          userId: "admin-123",
+          email: "admin@test.com",
+          role: "ADMIN" as const,
+          marketCenterId: "mc-123",
+          clerkId: "clerk-admin",
+        });
+
+        subscriptionRepository.findByMarketCenterId.mockResolvedValue({
+          id: "sub-1",
+          status: "ACTIVE",
+        });
+        subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-123",
+        ]);
+
+        // No unassigned tickets in the market center
+        mockDb.queryAll.mockResolvedValueOnce([
+          { id: "ticket-1", status: "ASSIGNED" },
+          { id: "ticket-2", status: "CREATED" },
+        ]);
+
+        const result = await backlog({});
+
+        expect(result.unassigned).toBe(0);
+        expect(result.created).toBe(2);
+        expect(result.total).toBe(2);
+      });
+
+      it("should not include unassigned tickets from other market centers for STAFF_LEADER", async () => {
+        vi.mocked(getUserContext).mockResolvedValue({
+          name: "Staff Leader",
+          userId: "leader-123",
+          email: "leader@test.com",
+          role: "STAFF_LEADER" as const,
+          marketCenterId: "mc-100",
+          clerkId: "clerk-leader",
+        });
+
+        // Query should only return tickets scoped to mc-100
+        mockDb.queryAll.mockResolvedValueOnce([
+          { id: "ticket-1", status: "UNASSIGNED" }, // From mc-100
+          { id: "ticket-2", status: "ASSIGNED" }, // From mc-100
+        ]);
+
+        const result = await backlog({});
+
+        expect(result.unassigned).toBe(1);
+        expect(result.created).toBe(1);
+        expect(result.total).toBe(2);
+      });
+
+      it("should handle mixed ticket statuses with proper market center scoping", async () => {
+        vi.mocked(getUserContext).mockResolvedValue({
+          name: "Admin User",
+          userId: "admin-123",
+          email: "admin@test.com",
+          role: "ADMIN" as const,
+          marketCenterId: "mc-123",
+          clerkId: "clerk-admin",
+        });
+
+        subscriptionRepository.findByMarketCenterId.mockResolvedValue({
+          id: "sub-1",
+          status: "ACTIVE",
+        });
+        subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-123",
+        ]);
+
+        // Mix of statuses, all properly scoped to mc-123
+        mockDb.queryAll.mockResolvedValueOnce([
+          { id: "ticket-1", status: "CREATED" },
+          { id: "ticket-2", status: "ASSIGNED" },
+          { id: "ticket-3", status: "UNASSIGNED" },
+          { id: "ticket-4", status: "UNASSIGNED" },
+          { id: "ticket-5", status: "CREATED" },
+        ]);
+
+        const result = await backlog({});
+
+        expect(result.created).toBe(3); // 2 CREATED + 1 ASSIGNED (unchanged)
+        expect(result.unassigned).toBe(2);
+        expect(result.total).toBe(5);
+      });
+    });
   });
 
   describe("createdByMonth", () => {

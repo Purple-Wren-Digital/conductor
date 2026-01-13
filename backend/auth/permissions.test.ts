@@ -68,6 +68,7 @@ import {
   canCreateTicket,
   canDeleteTicket,
   canReassignTicket,
+  canChangeTicketCreator,
   canViewInternalComments,
   canCreateInternalComments,
   canBeNotifiedAboutComments,
@@ -478,6 +479,32 @@ describe("Permissions", () => {
         userContext,
         newAssigneeId: "other-staff",
       });
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("canChangeTicketCreator", () => {
+    it("should return true for ADMIN", async () => {
+      const userContext = createUserContext({ role: "ADMIN" });
+      const result = await canChangeTicketCreator(userContext);
+      expect(result).toBe(true);
+    });
+
+    it("should return true for STAFF_LEADER", async () => {
+      const userContext = createUserContext({ role: "STAFF_LEADER" });
+      const result = await canChangeTicketCreator(userContext);
+      expect(result).toBe(true);
+    });
+
+    it("should return false for STAFF", async () => {
+      const userContext = createUserContext({ role: "STAFF" });
+      const result = await canChangeTicketCreator(userContext);
+      expect(result).toBe(false);
+    });
+
+    it("should return false for AGENT", async () => {
+      const userContext = createUserContext({ role: "AGENT" });
+      const result = await canChangeTicketCreator(userContext);
       expect(result).toBe(false);
     });
   });

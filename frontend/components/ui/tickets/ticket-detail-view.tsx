@@ -534,6 +534,75 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
     }
   };
 
+  const handleCreatorChange = async (newCreatorId: string) => {
+    if (!ticket) return;
+    if (ticket && ticket.status === "RESOLVED") {
+      toast.info("Resolved tickets cannot be edited");
+      return;
+    }
+    if (newCreatorId === ticket.creator?.id) return;
+
+    setIsLoading(true);
+    const prev = ticket;
+    const nextCreator = users.find((u) => u.id === newCreatorId);
+    if (nextCreator) {
+      setTicket({
+        ...ticket,
+        creator: {
+          id: nextCreator.id,
+          name: nextCreator.name,
+          email: nextCreator.email,
+          role: nextCreator.role,
+          marketCenterId: nextCreator.marketCenterId,
+        } as any,
+      });
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({ creatorId: newCreatorId }),
+      });
+      const data = await res.json();
+
+      if (
+        data &&
+        data?.ticket &&
+        data?.usersToNotify &&
+        data?.usersToNotify?.length > 0
+      ) {
+        await Promise.all(
+          data.usersToNotify.map(async (user: UsersToNotify) => {
+            await handleSendTicketNotifications({
+              ticket: { ...data.ticket, previousAssignment: null } as Ticket & {
+                previousAssignment: string | null;
+              },
+              userToNotify: user,
+              changedDetails: data?.changedDetails ?? [],
+            });
+          })
+        );
+      }
+      toast.success("Creator updated successfully");
+    } catch {
+      toast.error("Error: Failed to update ticket creator");
+      setTicket(prev);
+    } finally {
+      await refreshAllData();
+      await invalidateTicketHistory();
+      setIsLoading(false);
+    }
+  };
+
   const handleReopenTicket = async () => {
     if (!ticketId) {
       throw new Error("Ticket ID is required to reopen a ticket");
@@ -1098,6 +1167,46 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
                                 </SelectItem>
                               );
                             })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {permissions?.canChangeTicketCreator && (
+                    <div className="space-y-2">
+                      <Label>Creator</Label>
+                      <Select
+                        value={ticket.creator?.id || ""}
+                        onValueChange={handleCreatorChange}
+                        disabled={
+                          !permissions?.canChangeTicketCreator ||
+                          isLoading ||
+                          isHistoryLoading
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue>
+                            {ticket.creator?.name || "Unknown"}
+                          </SelectValue>
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {users &&
+                            users.length > 0 &&
+                            users.map((user) => (
+                              <SelectItem
+                                key={user.id}
+                                value={user.id}
+                                disabled={isLoading || isHistoryLoading}
+                              >
+                                {user.name}:{" "}
+                                {user?.role
+                                  ? capitalizeEveryWord(
+                                      user.role.split("_").join(" ")
+                                    )
+                                  : "Unknown"}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>

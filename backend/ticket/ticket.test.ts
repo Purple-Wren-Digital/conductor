@@ -7,6 +7,8 @@ const {
   mockUserRepository,
   mockTodoRepository,
   mockCommentRepository,
+  mockMarketCenterRepository,
+  mockSurveyRepository,
   mockUserContext,
 } = vi.hoisted(() => ({
   mockDb: {
@@ -38,6 +40,12 @@ const {
   mockCommentRepository: {
     findByTicketId: vi.fn(),
     count: vi.fn(),
+  },
+  mockMarketCenterRepository: {
+    findCategoryById: vi.fn(),
+  },
+  mockSurveyRepository: {
+    findOrCreate: vi.fn(),
   },
   mockUserContext: {
     name: "Test Admin",
@@ -78,6 +86,18 @@ vi.mock("./db", () => ({
   userRepository: mockUserRepository,
   todoRepository: mockTodoRepository,
   commentRepository: mockCommentRepository,
+  marketCenterRepository: mockMarketCenterRepository,
+  surveyRepository: mockSurveyRepository,
+  withTransaction: vi.fn((fn) => fn()),
+}));
+
+// Mock SLA service
+vi.mock("../sla/sla.service", () => ({
+  slaService: {
+    setTicketSla: vi.fn(() => Promise.resolve()),
+    recordFirstResponse: vi.fn(() => Promise.resolve()),
+    recordResolution: vi.fn(() => Promise.resolve()),
+  },
 }));
 
 // Mock user context
@@ -89,7 +109,8 @@ vi.mock("../auth/user-context", () => ({
 vi.mock("../auth/permissions", () => ({
   canCreateTicket: vi.fn(() => Promise.resolve(true)),
   canReassignTicket: vi.fn(() => Promise.resolve(true)),
-  canUpdateTicket: vi.fn(() => Promise.resolve(true)),
+  canModifyTicket: vi.fn(() => Promise.resolve(true)),
+  canChangeTicketCreator: vi.fn(() => Promise.resolve(true)),
   canDeleteTicket: vi.fn(() => Promise.resolve(true)),
 }));
 
@@ -112,8 +133,14 @@ vi.mock("../utils", () => ({
 import { create } from "./create";
 import { get } from "./get";
 import { assign } from "./assign";
+import { update } from "./update";
 import { getUserContext } from "../auth/user-context";
-import { canCreateTicket, canReassignTicket } from "../auth/permissions";
+import {
+  canCreateTicket,
+  canReassignTicket,
+  canModifyTicket,
+  canChangeTicketCreator,
+} from "../auth/permissions";
 
 describe("Ticket Service Tests", () => {
   beforeEach(() => {
@@ -121,6 +148,8 @@ describe("Ticket Service Tests", () => {
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
     vi.mocked(canCreateTicket).mockResolvedValue(true);
     vi.mocked(canReassignTicket).mockResolvedValue(true);
+    vi.mocked(canModifyTicket).mockResolvedValue(true);
+    vi.mocked(canChangeTicketCreator).mockResolvedValue(true);
   });
 
   describe("create", () => {
@@ -517,6 +546,140 @@ describe("Ticket Service Tests", () => {
       await expect(
         assign({ id: "ticket-123", assigneeId: "nonexistent-user" })
       ).rejects.toThrow("New assignee not found");
+    });
+  });
+
+  describe("update - creator change", () => {
+    const mockOldTicket = {
+      id: "ticket-123",
+      title: "Test Ticket",
+      description: "Test Description",
+      status: "ASSIGNED",
+      urgency: "MEDIUM",
+      creatorId: "old-creator-123",
+      assigneeId: "user-456",
+      creator: {
+        id: "old-creator-123",
+        name: "Old Creator",
+        email: "old@test.com",
+        marketCenterId: "mc-123",
+      },
+      assignee: {
+        id: "user-456",
+        name: "Assignee",
+        email: "assignee@test.com",
+        marketCenterId: "mc-123",
+      },
+      category: {
+        id: "cat-123",
+        name: "Support",
+        marketCenterId: "mc-123",
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it("should change ticket creator successfully", async () => {
+      const mockNewCreator = {
+        id: "new-creator-456",
+        name: "New Creator",
+        email: "new@test.com",
+        marketCenterId: "mc-123",
+      };
+
+      const mockUpdatedTicket = {
+        ...mockOldTicket,
+        creatorId: "new-creator-456",
+        creator: mockNewCreator,
+      };
+
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockOldTicket
+      );
+      mockUserRepository.findById.mockResolvedValue(mockNewCreator);
+      mockTicketRepository.update.mockResolvedValue(mockUpdatedTicket);
+      mockTicketRepository.createManyHistory.mockResolvedValue([]);
+
+      const result = await update({
+        ticketId: "ticket-123",
+        creatorId: "new-creator-456",
+      });
+
+      expect(result.ticket.creatorId).toBe("new-creator-456");
+      expect(mockTicketRepository.update).toHaveBeenCalledWith(
+        "ticket-123",
+        expect.objectContaining({ creatorId: "new-creator-456" })
+      );
+      expect(mockTicketRepository.createManyHistory).toHaveBeenCalled();
+      // Should notify both old and new creator
+      expect(result.usersToNotify.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("should throw permission denied when user cannot change creator", async () => {
+      vi.mocked(canChangeTicketCreator).mockResolvedValue(false);
+
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockOldTicket
+      );
+
+      await expect(
+        update({
+          ticketId: "ticket-123",
+          creatorId: "new-creator-456",
+        })
+      ).rejects.toThrow("You do not have permission to change the ticket creator");
+    });
+
+    it("should throw not found when new creator does not exist", async () => {
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockOldTicket
+      );
+      mockUserRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        update({
+          ticketId: "ticket-123",
+          creatorId: "nonexistent-user",
+        })
+      ).rejects.toThrow("New creator not found");
+    });
+
+    it("should not change creator when creatorId matches current creator", async () => {
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        mockOldTicket
+      );
+      mockTicketRepository.update.mockResolvedValue(mockOldTicket);
+      mockTicketRepository.createManyHistory.mockResolvedValue([]);
+
+      // Try to update with same creator - should need another field to update
+      await expect(
+        update({
+          ticketId: "ticket-123",
+          creatorId: "old-creator-123", // Same as current creator
+        })
+      ).rejects.toThrow("no fields to update");
+
+      // userRepository.findById should not be called for validation
+      // since creator hasn't changed
+      expect(mockUserRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it("should not allow creator change on resolved tickets", async () => {
+      const resolvedTicket = {
+        ...mockOldTicket,
+        status: "RESOLVED",
+      };
+
+      mockTicketRepository.findByIdWithRelations.mockResolvedValue(
+        resolvedTicket
+      );
+
+      await expect(
+        update({
+          ticketId: "ticket-123",
+          creatorId: "new-creator-456",
+        })
+      ).rejects.toThrow("Resolved tickets cannot be modified further");
     });
   });
 });
