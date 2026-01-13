@@ -4,6 +4,7 @@ import type React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useStore } from "@/context/store-provider";
 import type {
+  MarketCenter,
   OrderBy,
   PrismaUser,
   UserEditFormData,
@@ -35,9 +36,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TeamSwitcher } from "@/components/ui/team-switcher";
-import CreateUser from "./create-user-form";
-import { useFetchAllUsers } from "@/hooks/use-users";
+import CreateUser from "@/components/ui/users/create-user-form";
+import {
+  useFetchMarketCenterUsers,
+  useSearchMarketCenters,
+} from "@/hooks/use-market-center";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
@@ -74,15 +78,21 @@ export default function UserManagement() {
   const queryClient = useQueryClient();
 
   const { role, permissions } = useUserRole();
-
+  const { isEnterprise } = useIsEnterprise();
   const { currentUser, setCurrentUser } = useStore();
 
-  const marketCenterId = currentUser?.marketCenterId
-    ? currentUser.marketCenterId
-    : "null";
-
-  const defaultMarketCenterId =
-    role === "STAFF" || role === "STAFF_LEADER" ? marketCenterId : "all";
+  const defaultMarketCenterId = useMemo(
+    () =>
+      ((role === "ADMIN" && !isEnterprise) ||
+        role === "STAFF" ||
+        role === "STAFF_LEADER") &&
+      currentUser?.marketCenterId
+        ? currentUser.marketCenterId
+        : role === "ADMIN" && isEnterprise
+          ? "all"
+          : "Unassigned",
+    [currentUser?.marketCenterId, role, isEnterprise]
+  );
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -93,8 +103,8 @@ export default function UserManagement() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
-    string | "all"
-  >(defaultMarketCenterId);
+    string | "all" | "Unassigned"
+  >("all");
   const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
   const [selectedUserStatus, setSelectedUserStatus] = useState<
     UserStatusType | "all"
@@ -130,10 +140,18 @@ export default function UserManagement() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (defaultMarketCenterId) {
+      setSelectedMarketCenterId(defaultMarketCenterId);
+    }
+  }, [defaultMarketCenterId]);
+
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
     if (selectedRole !== "all") params.append("role", selectedRole);
+
+    // User Status
     if (selectedUserStatus !== "all" && selectedUserStatus === "Active") {
       params.append("isActive", "true");
     }
@@ -141,33 +159,33 @@ export default function UserManagement() {
       params.append("isActive", "false");
     }
 
-    if (role === "ADMIN" && selectedMarketCenterId !== "all")
-      params.append("marketCenterId", selectedMarketCenterId);
-    if (
-      (role === "STAFF" || role === "STAFF_LEADER") &&
+    // Market Center Assignment
+    if (selectedMarketCenterId === "Unassigned") {
+      params.append("marketCenterId", "Unassigned");
+    } else if (
+      isEnterprise &&
       selectedMarketCenterId !== "all" &&
-      currentUser?.marketCenterId
-    )
-      params.append("marketCenterId", currentUser?.marketCenterId);
-
-    if (
-      selectedMarketCenterId !== "all" &&
-      (role === "STAFF" || role === "STAFF_LEADER") &&
-      currentUser?.marketCenterId
+      selectedMarketCenterId !== "Unassigned"
     ) {
-      params.append("marketCenterId", currentUser?.marketCenterId);
+      params.append("marketCenterId", selectedMarketCenterId);
+    } else if (
+      !isEnterprise &&
+      defaultMarketCenterId &&
+      selectedMarketCenterId === defaultMarketCenterId
+    ) {
+      params.append("marketCenterId", defaultMarketCenterId);
     }
-    params.append("sortDir", orderDir);
+    defaultMarketCenterId && params.append("sortDir", orderDir);
     params.append("limit", String(itemsPerPage));
     params.append("offset", String((currentPage - 1) * itemsPerPage));
     return params;
   }, [
+    isEnterprise,
     debouncedSearchQuery,
     selectedRole,
     selectedUserStatus,
+    defaultMarketCenterId,
     selectedMarketCenterId,
-    currentUser?.marketCenterId,
-    role,
     orderDir,
     currentPage,
     itemsPerPage,
@@ -178,18 +196,21 @@ export default function UserManagement() {
     [queryParams]
   );
   const usersQueryKey = useMemo(
-    () => ["users", queryKeyParams] as const,
-    [queryKeyParams]
+    () => ["user-management", selectedMarketCenterId, queryKeyParams] as const,
+    [selectedMarketCenterId, queryKeyParams]
   );
 
-  const { data: usersData, isLoading: usersLoading } = useFetchAllUsers({
-    usersQueryKey,
-    queryParams,
-    role,
-  });
+  const { data: usersData, isLoading: usersLoading } =
+    useFetchMarketCenterUsers({
+      queryKey: usersQueryKey,
+      queryKeyParams: queryKeyParams,
+      marketCenterId: selectedMarketCenterId,
+    });
 
-  const userQueryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: ["users"] });
+  const userQueryInvalidator = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: usersQueryKey }),
+    [queryClient, usersQueryKey]
+  );
 
   const allUsers: UserWithStats[] = useMemo(
     () => usersData?.users ?? [],
@@ -205,26 +226,54 @@ export default function UserManagement() {
     [totalUsers, itemsPerPage]
   );
 
+  const marketCentersQueryKey = useMemo(
+    () => ["user-management-market-centers", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: marketCentersData, isLoading: marketCentersLoading } =
+    useSearchMarketCenters({
+      role: role,
+      queryParams: queryParams,
+      marketCentersQueryKey: marketCentersQueryKey,
+    });
+
+  const marketCenters: MarketCenter[] = useMemo(
+    () => marketCentersData?.marketCenters ?? [],
+    [marketCentersData]
+  );
+
   const existingEmails = useMemo(
     () => allUsers.map((inv) => inv.email),
     [allUsers]
   );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedRole("all");
-    setSelectedMarketCenterId("all");
+    setSelectedMarketCenterId(defaultMarketCenterId);
     setCurrentPage(1);
     setSortBy("updatedAt");
     setOrderDir("desc");
-  };
+  }, [defaultMarketCenterId]);
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedRole !== "all" ||
-    selectedMarketCenterId !== "all" ||
-    orderDir !== "desc" ||
-    sortBy !== "updatedAt";
+  const hasActiveFilters = useMemo(() => {
+    return (
+      (!!searchQuery && !!searchQuery.trim()) ||
+      selectedRole !== "all" ||
+      searchQuery !== "" ||
+      selectedMarketCenterId !== defaultMarketCenterId ||
+      orderDir !== "desc" ||
+      sortBy !== "updatedAt"
+    );
+  }, [
+    searchQuery,
+    selectedRole,
+    selectedMarketCenterId,
+    defaultMarketCenterId,
+    orderDir,
+    sortBy,
+  ]);
 
   // DELETE MODAL ACTIONS
   const handleEditUser = (user: UserWithStats) => {
@@ -277,7 +326,7 @@ export default function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
-  const resetEditUserFormAndClose = () => {
+  const resetEditUserFormAndClose = useCallback(() => {
     setShowEditUserForm(false);
     setEditingUser(null);
     setFormErrors({});
@@ -286,10 +335,14 @@ export default function UserManagement() {
       lastName: "",
       email: "",
       role: "AGENT",
-      marketCenterId: "",
+      marketCenterId:
+        defaultMarketCenterId === "Unassigned" ||
+        defaultMarketCenterId === "all"
+          ? ""
+          : defaultMarketCenterId,
     });
     setEditingUser(null);
-  };
+  }, [defaultMarketCenterId]);
 
   const handleSendUserNotifications = useCallback(
     async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
@@ -610,37 +663,33 @@ export default function UserManagement() {
                   {/* MARKET CENTER */}
                   <div className="space-y-2">
                     <Label>Market Center</Label>
-                    <TeamSwitcher
-                      selectedMarketCenterId={selectedMarketCenterId}
-                      setSelectedMarketCenterId={setSelectedMarketCenterId}
-                      handleMarketCenterSelected={() => setCurrentPage(1)}
-                    />
-                  </div>
-
-                  {/* ROLES */}
-                  <div className="space-y-2">
-                    <Label>User Roles</Label>
                     <Select
-                      value={selectedRole}
-                      onValueChange={(value: UserRole | "all") => {
-                        setSelectedRole(value);
+                      value={selectedMarketCenterId}
+                      onValueChange={(value: string | "Unassigned") => {
+                        setSelectedMarketCenterId(value);
                         setCurrentPage(1);
                       }}
-                      disabled={!allUsers || !allUsers.length}
+                      disabled={marketCentersLoading || usersLoading}
+                      aria-label="Filter by Market Center Assignment Type: Assigned, Unassigned, or All"
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className="gap-2">
+                        <SelectValue
+                          placeholder={"Select Market Center assignment"}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        {roleOptions.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(role)}
-                              {role.split("_").join(" ")}
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {isEnterprise && (
+                          <SelectItem value="all">All</SelectItem>
+                        )}
+
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                        {marketCenters &&
+                          marketCenters.length > 0 &&
+                          marketCenters.map((mc) => (
+                            <SelectItem key={mc.id} value={mc.id}>
+                              {mc.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -654,7 +703,7 @@ export default function UserManagement() {
                         setSelectedUserStatus(value);
                         setCurrentPage(1);
                       }}
-                      disabled={!allUsers || !allUsers.length}
+                      disabled={usersLoading}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -666,6 +715,34 @@ export default function UserManagement() {
                             <div className="flex items-center gap-2">
                               {getUserStatusIcons(status)}
                               {status} Users
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* ROLES */}
+                  <div className="space-y-2">
+                    <Label>User Roles</Label>
+                    <Select
+                      value={selectedRole}
+                      onValueChange={(value: UserRole | "all") => {
+                        setSelectedRole(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={usersLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(role)}
+                              {role.split("_").join(" ")}
                             </div>
                           </SelectItem>
                         ))}

@@ -49,6 +49,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
+import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useFetchOneUser } from "@/hooks/use-users";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 
@@ -75,6 +76,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     lastName: "",
     email: "",
     role: user?.role ?? "AGENT",
+    marketCenterId: user?.marketCenterId ?? "Unassigned",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,8 +106,26 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     const hasNameChanged: boolean = user && userNameForm !== user?.name;
     const hasEmailChanged: boolean = formData?.email !== user?.email;
     const hasRoleChanged: boolean = formData?.role !== user?.role;
-    const userUpdatesMade = hasNameChanged || hasEmailChanged || hasRoleChanged;
-    return { hasNameChanged, hasEmailChanged, hasRoleChanged, userUpdatesMade };
+
+    const formMarketCenterId =
+      !formData?.marketCenterId || formData?.marketCenterId === "Unassigned"
+        ? null
+        : formData?.marketCenterId;
+    const hasMarketCenterChanged: boolean =
+      formMarketCenterId !== user?.marketCenterId;
+    const userUpdatesMade =
+      hasNameChanged ||
+      hasEmailChanged ||
+      hasRoleChanged ||
+      hasMarketCenterChanged;
+
+    return {
+      hasNameChanged,
+      hasEmailChanged,
+      hasRoleChanged,
+      hasMarketCenterChanged,
+      userUpdatesMade,
+    };
   }, [userNameForm, formData, user]);
 
   const validateForm = () => {
@@ -290,6 +310,13 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     user?.id
   );
 
+  const { data: marketCentersData, isLoading: isMarketCentersLoading } =
+    useFetchAllMarketCenters(showEditUserForm ? role : undefined);
+  const marketCenters: MarketCenter[] = useMemo(
+    () => marketCentersData?.marketCenters || [],
+    [marketCentersData]
+  );
+
   return (
     <div className="space-y-6">
       {/* TOP INFO */}
@@ -306,6 +333,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
               lastName: user && user?.name ? user?.name.split(" ")?.[1] : "",
               email: user?.email ?? "",
               role: user?.role ?? "AGENT",
+              marketCenterId: user?.marketCenterId ?? "Unassigned",
             });
           }}
           className="gap-2"
@@ -566,6 +594,53 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                       </SelectItem>
                     );
                   })}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-destructive">
+                {formErrors?.role && formErrors.role}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Market Center</Label>
+              <Select
+                value={formData.marketCenterId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, marketCenterId: value })
+                }
+                disabled={
+                  !role ||
+                  role === "AGENT" ||
+                  isSubmitting ||
+                  userLoading ||
+                  isMarketCentersLoading
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      isMarketCentersLoading
+                        ? "Loading market centers..."
+                        : "Select a market center"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={"Unassigned"}>
+                    <div className="flex items-center gap-2">Unassigned</div>
+                  </SelectItem>
+                  {!isMarketCentersLoading &&
+                    marketCenters &&
+                    marketCenters.map((mc: MarketCenter) => {
+                      if (!mc || !mc?.id) return null;
+                      return (
+                        <SelectItem key={mc.id} value={mc.id}>
+                          {mc?.name
+                            ? mc.name
+                            : `Name not found: #${mc.id.slice(0, 8)}`}
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
             </div>

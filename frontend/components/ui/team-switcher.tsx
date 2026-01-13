@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building, Building2 } from "lucide-react";
+import { BanIcon, Building, Building2 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { MarketCenter } from "@/lib/types";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
@@ -21,6 +21,7 @@ interface TeamSwitcherProps {
   setMarketCenters?: React.Dispatch<
     React.SetStateAction<{ name: string; id: string }[]>
   >;
+  unassigned?: "Unassigned";
 }
 
 export function TeamSwitcher({
@@ -28,6 +29,7 @@ export function TeamSwitcher({
   setSelectedMarketCenterId,
   handleMarketCenterSelected,
   setMarketCenters,
+  unassigned,
 }: TeamSwitcherProps) {
   const { role } = useUserRole();
   const { data, isLoading } = useFetchAllMarketCenters(role);
@@ -40,8 +42,7 @@ export function TeamSwitcher({
 
   // Only show "All Teams" option if user is Admin with Enterprise subscription
   // and has access to multiple market centers
-  const canViewAllTeams =
-    role === "ADMIN" && isEnterprise && marketCenters.length > 1;
+  const canViewAllTeams = marketCenters.length > 0;
 
   useEffect(() => {
     if (!setMarketCenters || !marketCenters) return;
@@ -63,7 +64,7 @@ export function TeamSwitcher({
     <Select
       value={selectedMarketCenterId}
       onValueChange={(value) => {
-        if (!isEnterprise) return;
+        if (!isEnterprise && !unassigned) return;
         setSelectedMarketCenterId(value);
         const selectedMarketCenter = marketCenters.find((mc) => mc.id == value);
         handleMarketCenterSelected &&
@@ -75,10 +76,16 @@ export function TeamSwitcher({
         <SelectValue placeholder="Select a team" />
       </SelectTrigger>
       <SelectContent>
-        {canViewAllTeams && (
+        {isEnterprise && canViewAllTeams && (
           <SelectItem value="all">
             <Building2 className="h-4 w-4" />
             All Teams
+          </SelectItem>
+        )}
+        {unassigned && (
+          <SelectItem value="Unassigned">
+            <BanIcon className="h-4 w-4" />
+            Unassigned
           </SelectItem>
         )}
         {marketCenters &&

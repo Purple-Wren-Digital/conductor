@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useCallback, useMemo, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EditMarketCenter from "@/components/ui/marketCenters/market-center-edit-form";
@@ -13,11 +13,8 @@ import {
 } from "@/components/ui/tabs/base-tabs";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { API_BASE } from "@/lib/api/utils";
 import type {
-  PrismaUser,
   MarketCenterForm,
-  UsersResponse,
   MarketCenterNotificationCallback,
 } from "@/lib/types";
 import {
@@ -52,23 +49,8 @@ export default function MarketCenterDetailView({
   marketCenterId,
 }: MarketCenterDetailProps) {
   const router = useRouter();
-  const { user: clerkUser } = useUser();
-
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? "team";
-
-  const queryClient = useQueryClient();
-  const { getToken } = useAuth();
-
-  const { role } = useUserRole();
-
-  const { data: marketCenter } = useFetchMarketCenter(role, marketCenterId);
-
-  const totalTeamMembers = marketCenter?.users ? marketCenter?.users.length : 0;
-  const totalCategories = marketCenter?.ticketCategories
-    ? marketCenter?.ticketCategories.length
-    : 0;
-  const totalTickets = marketCenter?.totalTickets ?? 0;
 
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [marketCenterFormData, setMarketCenterFormData] =
@@ -78,59 +60,45 @@ export default function MarketCenterDetailView({
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const invalidateMarketCenter = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["get-market-center", marketCenterId],
-    });
-  }, [queryClient, marketCenterId]);
+  const { getToken } = useAuth();
+  const { role } = useUserRole();
 
-  const { data: ratingsData, isLoading: marketCenterRatingsLoading } =
-    useFetchRatingsByMarketCenter(
-      ["market-center-details-ratings", marketCenterId],
-      marketCenterId
-    );
+  const {
+    data: marketCenter,
+    isLoading: marketCenterLoading,
+    refetch: refetchMarketCenter,
+  } = useFetchMarketCenter(role, marketCenterId);
+
+  const totalTeamMembers = useMemo(
+    () => (marketCenter?.users ? marketCenter?.users.length : 0),
+    [marketCenter]
+  );
+  const totalCategories = useMemo(
+    () =>
+      marketCenter?.ticketCategories
+        ? marketCenter?.ticketCategories.length
+        : 0,
+    [marketCenter]
+  );
+  const totalTickets = useMemo(
+    () => marketCenter?.totalTickets ?? 0,
+    [marketCenter]
+  );
+
+  const {
+    data: ratingsData,
+    isLoading: marketCenterRatingsLoading,
+    refetch: refetchMarketCenterRatings,
+  } = useFetchRatingsByMarketCenter(
+    ["market-center-details-ratings", marketCenterId],
+    marketCenterId
+  );
 
   const handleTabChange = (newTab: string) => {
     const params = new URLSearchParams(searchParams);
     params.set("tab", newTab);
     router.replace(`?${params.toString()}`);
   };
-
-  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
-    UsersResponse,
-    Error,
-    UsersResponse
-  >({
-    queryKey: ["market-center-detail-users"],
-    queryFn: async (): Promise<UsersResponse> => {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const res = await fetch(`${API_BASE}/users`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!clerkUser,
-  });
-
-  const users: PrismaUser[] = usersData?.users ?? [];
-  const unassignedUsers: PrismaUser[] = users.filter((user) => {
-    if (!user?.marketCenterId) return user;
-  });
-
-  const invalidateUsers = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["market-center-detail-users"],
-    });
-  }, [queryClient]);
 
   const handleSendMarketCenterNotifications = useCallback(
     async ({
@@ -153,6 +121,11 @@ export default function MarketCenterDetailView({
     },
     [getToken]
   );
+
+  const refreshAll = useCallback(async () => {
+    await refetchMarketCenter();
+    await refetchMarketCenterRatings();
+  }, [refetchMarketCenter, refetchMarketCenterRatings]);
 
   return (
     <div className="space-y-6">
@@ -181,8 +154,10 @@ export default function MarketCenterDetailView({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between  gap-2 md:text-xl">
-            {marketCenter && marketCenter?.name && `${marketCenter.name} `}
-            Market Center
+            {marketCenterLoading
+              ? "Loading..."
+              : `${marketCenter && marketCenter?.name && marketCenter.name} Market Center`}
+
             <ToolTip
               content="Ratings are based on resolved tickets within this market center via survey responses"
               trigger={<InfoIcon className="size-3.5 text-primary" />}
@@ -274,7 +249,7 @@ export default function MarketCenterDetailView({
               marketCenterName={marketCenter.name}
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
-              invalidateMarketCenter={invalidateMarketCenter}
+              invalidateMarketCenter={refreshAll}
               handleSendMarketCenterNotifications={
                 handleSendMarketCenterNotifications
               }
@@ -288,7 +263,7 @@ export default function MarketCenterDetailView({
               marketCenter={marketCenter}
               isLoading={isSubmitting}
               setIsLoading={setIsSubmitting}
-              invalidateMarketCenter={invalidateMarketCenter}
+              invalidateMarketCenter={refreshAll}
             />
           )}
         </TabsContent>
@@ -303,12 +278,9 @@ export default function MarketCenterDetailView({
         editingMarketCenter={marketCenter}
         showEditMCForm={showEditMCForm}
         setShowEditMCForm={setShowEditMCForm}
-        assignedUsers={marketCenter?.users ?? []}
-        unassignedUsers={unassignedUsers}
         formData={marketCenterFormData}
         setFormData={setMarketCenterFormData}
-        refreshMarketCenters={invalidateMarketCenter}
-        refreshUsers={invalidateUsers}
+        refreshMarketCenters={refreshAll}
       />
     </div>
   );

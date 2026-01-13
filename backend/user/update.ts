@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
+import type { MarketCenter } from "../marketCenters/types";
 import { getUserContext } from "../auth/user-context";
 import { canManageTeam } from "../auth/permissions";
 import {
@@ -45,6 +46,8 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       req.id,
       req.marketCenterId
     );
+    const canUpdateMarketCenterAssignment =
+      userContext?.role && userContext.role !== "AGENT" && !isEditingSelf;
 
     if (!canModifyUsers && !isEditingSelf) {
       throw APIError.permissionDenied(
@@ -53,41 +56,47 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     }
 
     // Build update data object + user history
-    let marketCenterId: string | null = existingUser?.marketCenterId ?? null;
+    let previousMarketCenterId: string | null =
+      existingUser?.marketCenterId ?? null;
 
     const updateUserData: any = {};
     const userHistoryData: any[] = [];
-
-    if (
-      !isEditingSelf &&
-      req?.marketCenterId &&
-      req?.marketCenterId !== existingUser?.marketCenterId &&
-      userContext?.role === "ADMIN"
-    ) {
-      const marketCenter = await marketCenterRepository.findById(
+    let marketCenterToAssign: MarketCenter | null = null;
+    let marketCenterToAssignId: string | null = null;
+    if (req?.marketCenterId && req.marketCenterId === "Unassigned") {
+      marketCenterToAssign = null;
+      marketCenterToAssignId = null;
+    } else if (req?.marketCenterId && req.marketCenterId !== "Unassigned") {
+      marketCenterToAssign = await marketCenterRepository.findById(
         req.marketCenterId
       );
+    } else {
+      marketCenterToAssign = null;
+    }
 
-      marketCenterId = marketCenter?.id ?? null;
-      if (marketCenter) {
-        updateUserData.marketCenterId = marketCenter.id;
-        userHistoryData.push({
-          userId: req.id,
-          action: "UPDATE",
-          field: "market center",
-          previousValue: existingUser?.marketCenterId ?? "Unassigned",
-          newValue: req?.marketCenterId ?? "Unassigned",
-          snapshot: existingUser,
-          changedById: userContext.userId,
-        });
-      }
+    if (
+      canUpdateMarketCenterAssignment &&
+      req?.marketCenterId !== undefined &&
+      marketCenterToAssign &&
+      marketCenterToAssignId !== previousMarketCenterId
+    ) {
+      updateUserData.marketCenterId = marketCenterToAssignId;
+      userHistoryData.push({
+        userId: req.id,
+        action: "UPDATE",
+        field: "market center",
+        previousValue: existingUser?.marketCenterId ?? "Unassigned",
+        newValue: marketCenterToAssignId ?? "Unassigned",
+        snapshot: existingUser,
+        changedById: userContext.userId,
+      });
     }
 
     if (!isEditingSelf && req?.role && req.role !== existingUser?.role) {
       updateUserData.role = req.role;
       userHistoryData.push({
         userId: req.id,
-        marketCenterId: marketCenterId,
+        marketCenterId: marketCenterToAssignId,
         action: "UPDATE",
         field: "role",
         previousValue: existingUser.role,
@@ -101,7 +110,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       updateUserData.isActive = req.isActive;
       userHistoryData.push({
         userId: req.id,
-        marketCenterId: marketCenterId,
+        marketCenterId: marketCenterToAssignId,
         action: "UPDATE",
         field: req.isActive === true ? "Activated" : "Deactivated",
         previousValue:
@@ -117,7 +126,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       updateUserData.name = name;
       userHistoryData.push({
         userId: req.id,
-        marketCenterId: marketCenterId,
+        marketCenterId: marketCenterToAssignId,
         action: "UPDATE",
         field: "name",
         previousValue: existingUser.name,
@@ -131,7 +140,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       updateUserData.email = req.email;
       userHistoryData.push({
         userId: req.id,
-        marketCenterId: marketCenterId,
+        marketCenterId: marketCenterToAssignId,
         action: "UPDATE",
         field: "email",
         previousValue: existingUser.email,

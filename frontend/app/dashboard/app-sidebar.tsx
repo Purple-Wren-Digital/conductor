@@ -4,13 +4,13 @@ import React, { Dispatch, SetStateAction, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import SideBarNewNotification from "@/components/notifications/new-notification-detail";
@@ -83,7 +83,10 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar {...rest} className={cn(className, "border-r")}>
+    <Sidebar
+      {...rest}
+      className={cn(className, "border-r h-[calc(100vh-65px)]")}
+    >
       <SidebarHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
@@ -102,7 +105,11 @@ export function AppSidebar({
             )}
             {!isLoading && currentUser && (
               <div className="flex flex-col gap-1">
-                <Link href={"/dashboard/account"} className="hover:underline">
+                <Link
+                  href={"/dashboard/account"}
+                  className="hover:underline"
+                  aria-label="Navigate to your account"
+                >
                   <p className="font-medium text-sm">
                     {currentUser?.name
                       ? `${currentUser.name}`
@@ -128,7 +135,7 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overscroll-contain scroll-smooth">
         <SidebarMenu>
           <SidebarGroup>
             {/* DASHBOARD */}
@@ -346,32 +353,34 @@ export function AppSidebar({
               markAsReadMutation={markAsReadMutation}
             />
           </SidebarGroup>
+        </SidebarMenu>
+      </SidebarContent>
 
-          <SidebarGroup className="mb-2 fixed bottom-0 sm:bottom-15 max-w-[16rem]">
-            {/* Subscription */}
-            {permissions?.canManageSubscription && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
-                  <Link href={`/dashboard/subscription`}>
-                    <CreditCard className="text-muted-foreground" />
-                    Subscription
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
-            {/* ACCOUNT */}
+      <SidebarFooter className="border-t list-none p-4">
+        <SidebarMenu className="">
+          {/* Subscription */}
+          {permissions?.canManageSubscription && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
-                <Link href={`/dashboard/account`}>
-                  <CircleUserRound className="text-muted-foreground" /> Manage
-                  Account
+                <Link href={`/dashboard/subscription`}>
+                  <CreditCard className="text-muted-foreground" />
+                  Subscription
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarGroup>
+          )}
+
+          {/* ACCOUNT */}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild disabled={isLoading || !currentUser}>
+              <Link href={`/dashboard/account`}>
+                <CircleUserRound className="text-muted-foreground" /> Manage
+                Account
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarContent>
+      </SidebarFooter>
     </Sidebar>
   );
 }

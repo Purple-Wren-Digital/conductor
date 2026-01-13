@@ -1,9 +1,9 @@
 import { APIError } from "encore.dev/api";
 import type { UserContext } from "./user-context";
 import { ticketRepository } from "../ticket/db";
-import { Ticket } from "../ticket/types";
-import { UserRole } from "../user/types";
+import type { UserRole } from "../user/types";
 import { subscriptionRepository } from "../shared/repositories";
+import { checkCanCreateMarketCenter } from "./subscription-check";
 
 export async function requireRole(
   userContext: UserContext,
@@ -307,6 +307,10 @@ export async function canDeactivateUsers(
 export async function canCreateMarketCenters(
   userContext: UserContext
 ): Promise<boolean> {
+  if (userContext.role !== "ADMIN") {
+    return false;
+  }
+  await checkCanCreateMarketCenter(userContext?.marketCenterId ?? null);
   return userContext.role === "ADMIN";
 }
 

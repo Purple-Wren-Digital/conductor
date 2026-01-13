@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useMemo, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
-import { API_BASE } from "@/lib/api/utils";
+import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
+import { useStore } from "@/context/store-provider";
+import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
+import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
@@ -22,13 +25,10 @@ import type {
   PrismaUser,
   UsersToNotify,
 } from "@/lib/types";
-import { toast } from "sonner";
-
-import UserMultiSelectDropdown from "../multi-select/user-multi-select-dropdown";
-// import { arraysEqualById } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
-import { useStore } from "@/context/store-provider";
+import { arraysEqualById } from "@/lib/utils";
 import { createAndSendNotification } from "@/lib/utils/notifications";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
 
 type EditMarketCenterProps = {
   editingMarketCenter: MarketCenter | null;
@@ -37,12 +37,9 @@ type EditMarketCenterProps = {
   >;
   showEditMCForm: boolean;
   setShowEditMCForm: React.Dispatch<React.SetStateAction<boolean>>;
-  assignedUsers: PrismaUser[];
-  unassignedUsers: PrismaUser[];
   formData: MarketCenterForm;
   setFormData: React.Dispatch<React.SetStateAction<MarketCenterForm>>;
-  refreshMarketCenters: () => void;
-  refreshUsers: () => void;
+  refreshMarketCenters: () => Promise<void>;
 };
 
 export default function EditMarketCenter({
@@ -50,19 +47,31 @@ export default function EditMarketCenter({
   setEditingMarketCenter,
   showEditMCForm,
   setShowEditMCForm,
-  assignedUsers,
-  unassignedUsers,
   formData,
   setFormData,
   refreshMarketCenters,
-  refreshUsers,
 }: EditMarketCenterProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { getToken } = useAuth();
 
+  const { getToken } = useAuth();
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
+
+  const assignedUsers: PrismaUser[] = useMemo(() => {
+    return editingMarketCenter?.users ?? [];
+  }, [editingMarketCenter]);
+
+  const { data: unassignedUsersData, isLoading: unassignedUsersLoading } =
+    useFetchMarketCenterUsers({
+      queryKey: ["edit-market-center-unassigned-users"],
+      queryKeyParams: {},
+      marketCenterId: "Unassigned",
+    });
+
+  const unassignedUsers: PrismaUser[] = useMemo(() => {
+    return unassignedUsersData?.users ?? [];
+  }, [unassignedUsersData]);
 
   const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
     setFormData({
@@ -81,23 +90,18 @@ export default function EditMarketCenter({
     if (setEditingMarketCenter) setEditingMarketCenter(null);
   };
 
-  // const hasNameChanged: boolean = formData.name &&
-  //   formData.name.trim() === editingMarketCenter?.name.trim();
-  // const haveAssignmentsChanged: boolean =
-  //   assignedUsers.length !== formData.selectedUsers.length ||
-  //   !arraysEqualById(assignedUsers, formData.selectedUsers);
-
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
-    if (!formData.selectedUsers || !formData.selectedUsers.length) {
-      errors.users = "Select at least one user";
+    if (!formData?.name || !formData.name.trim()) {
+      errors.name = "Name is required";
     }
 
-    // if (!hasNameChanged && !haveAssignmentsChanged) {
-    //   errors.name = "Nothing to update";
-    //   errors.users = "Nothing to update";
-    // }
+    if (
+      formData?.name.trim() !== editingMarketCenter?.name.trim() &&
+      !arraysEqualById(assignedUsers, formData.selectedUsers)
+    ) {
+      errors.general = "Please update at least one field to continue";
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -189,23 +193,25 @@ export default function EditMarketCenter({
     onError: () => {
       toast.error(`Error: Unable to save changes`);
     },
-    onSettled: () => {
-      refreshMarketCenters();
-      refreshUsers();
+    onSettled: async () => {
+      await refreshMarketCenters();
       setIsSubmitting(false);
     },
   });
 
   const handleUpdateMarketCenter = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!permissions?.canManageAllMarketCenters) {
-      toast.warning("Only Admin can update market centers");
-      return;
-    }
     setIsSubmitting(true);
-    if (!editingMarketCenter?.id) {
-      throw new Error("Missing marker center id");
+
+    const canStaffUpdate =
+      permissions?.canManageAllMarketCenters ||
+      (permissions?.canManageTeam &&
+        currentUser?.marketCenterId === editingMarketCenter?.id);
+
+    if (!canStaffUpdate) {
+      toast.warning("You do not have permission to update this market center");
+      setIsSubmitting(false);
+      return;
     }
     if (!validateForm()) {
       toast.error("Invalid form input(s)");
@@ -267,17 +273,20 @@ export default function EditMarketCenter({
               type="editing"
               filter={true}
               disabled={
-                (!assignedUsers || !assignedUsers.length) &&
-                (!unassignedUsers || !unassignedUsers.length)
+                unassignedUsersLoading ||
+                ((!assignedUsers || !assignedUsers.length) &&
+                  (!unassignedUsers || !unassignedUsers.length))
               }
               marketCenterId={editingMarketCenter?.id || null}
               placeholder={
-                formData.selectedUsers && formData.selectedUsers.length
-                  ? `${formData.selectedUsers.length} users selected`
-                  : (assignedUsers && assignedUsers.length > 0) ||
-                      (unassignedUsers && unassignedUsers.length > 0)
-                    ? "Add or remove users"
-                    : "No available users found"
+                unassignedUsersLoading
+                  ? "Loading users..."
+                  : formData.selectedUsers && formData.selectedUsers.length
+                    ? `${formData.selectedUsers.length} users selected`
+                    : (assignedUsers && assignedUsers.length > 0) ||
+                        (unassignedUsers && unassignedUsers.length > 0)
+                      ? "Add or remove users"
+                      : "No available users found"
               }
               formFieldName="Users"
               options={[...assignedUsers, ...unassignedUsers]}
@@ -291,6 +300,9 @@ export default function EditMarketCenter({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <p className="text-sm text-destructive">
+              {formErrors?.general && formErrors.general}
+            </p>
             <Button
               type="button"
               variant="outline"
@@ -305,7 +317,7 @@ export default function EditMarketCenter({
 
             <Button
               type="submit"
-              disabled={isSubmitting} // { isSubmitting || !hasNameChanged || !haveAssignmentsChanged }
+              disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Submit"}
             </Button>

@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useMemo, useCallback, use } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TeamSwitcher } from "@/components/ui/team-switcher";
-import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
@@ -37,7 +36,6 @@ import type {
   PrismaUser,
   TicketCategory,
   UserSortBy,
-  UsersResponse,
 } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useIsEnterprise } from "@/hooks/useSubscription";
@@ -56,11 +54,6 @@ import {
   useSearchMarketCenters,
 } from "@/hooks/use-market-center";
 import {
-  useQuery,
-  useQueryClient,
-  UseQueryResult,
-} from "@tanstack/react-query";
-import {
   calculateTotalPages,
   formatOrderBy,
   formatUserOptions,
@@ -69,38 +62,24 @@ import {
 } from "@/lib/utils";
 import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
 import { createAndSendNotification } from "@/lib/utils/notifications";
-import MarketCentersTable from "../tables/market-centers-table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../alert-dialog";
+import MarketCentersTable from "@/components/ui/tables/market-centers-table";
+import Link from "next/link";
 
 type CategoryOption = { label: string; ids: string[] };
 const defaultSelectedCategory: CategoryOption = { label: "all", ids: [] };
 
 export default function MarketCenterManagement() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { user: clerkUser } = useUser();
 
   const { role } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
 
   // FORM ACTIONS
   const [showCreateMCForm, setShowCreateMCForm] = useState(false);
-  const [showEnterpriseInquiryModal, setShowEnterpriseInquiryModal] =
-    useState(false);
 
   const [showEditMCForm, setShowEditMCForm] = useState(false);
   const [editingMarketCenter, setEditingMarketCenter] =
     useState<MarketCenter | null>(null);
-  const [assignedUsers, setAssignedUsers] = useState<PrismaUser[]>([]);
 
   const [formData, setFormData] = useState<MarketCenterForm>({
     name: "",
@@ -237,73 +216,50 @@ export default function MarketCenterManagement() {
     [queryKeyParams]
   );
 
-  const { data: marketCentersData, isLoading: marketCentersLoading } =
-    useSearchMarketCenters({
-      role: role,
-      queryParams: queryParams,
-      marketCentersQueryKey: marketCentersQueryKey,
-    });
-
-  const marketCenters: MarketCenter[] = marketCentersData?.marketCenters ?? [];
-  const totalMarketCenters: number = marketCentersData?.total ?? 0;
-  const totalPages = calculateTotalPages({
-    totalItems: totalMarketCenters,
-    itemsPerPage,
+  const {
+    data: marketCentersData,
+    isLoading: marketCentersLoading,
+    refetch: refetchMarketCenters,
+  } = useSearchMarketCenters({
+    role: role,
+    queryParams: queryParams,
+    marketCentersQueryKey: marketCentersQueryKey,
   });
 
-  const invalidateMarketCenters = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: marketCentersQueryKey,
-    });
-  }, [queryClient, marketCentersQueryKey]);
-
-  const { data: usersData }: UseQueryResult<UsersResponse, Error> = useQuery<
-    UsersResponse,
-    Error,
-    UsersResponse
-  >({
-    queryKey: ["market-center-filter-users"],
-    queryFn: async (): Promise<UsersResponse> => {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const response = await fetch(`${API_BASE}/users`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          response?.statusText
-            ? response.statusText
-            : "Failed to fetch all users"
-        );
-      }
-      const data = await response.json();
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!clerkUser,
-  });
-
-  const users: PrismaUser[] = usersData?.users ?? [];
-  const unassignedUsers: PrismaUser[] = users.filter((user) => {
-    if (!user?.marketCenterId) return user;
-  });
-
-  const invalidateUsers = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["market-center-filter-users"],
-    });
-  }, [queryClient]);
-
-  const { data: ticketCategoryData } = useFetchMarketCenterCategories(
-    selectedMarketCenterId
+  const marketCenters: MarketCenter[] = useMemo(
+    () => marketCentersData?.marketCenters ?? [],
+    [marketCentersData]
   );
+
+  const totalMarketCenters: number = useMemo(
+    () => marketCentersData?.total ?? 0,
+    [marketCentersData]
+  );
+  const totalPages = useMemo(
+    () =>
+      calculateTotalPages({
+        totalItems: totalMarketCenters,
+        itemsPerPage,
+      }),
+    [totalMarketCenters, itemsPerPage]
+  );
+
+  const assignedUsers: PrismaUser[] = useMemo(() => {
+    let users: PrismaUser[] = [];
+    marketCenters.forEach((mc) => {
+      if (mc.users && mc.users.length > 0) {
+        users.push(...mc?.users);
+      }
+    });
+
+    return users;
+  }, [marketCenters]);
+
+  const {
+    data: ticketCategoryData,
+    isLoading: isCategoriesLoading,
+    refetch: refetchTicketCategories,
+  } = useFetchMarketCenterCategories(selectedMarketCenterId);
   const categories: TicketCategory[] = useMemo(
     () => ticketCategoryData?.categories ?? [],
     [ticketCategoryData]
@@ -329,7 +285,7 @@ export default function MarketCenterManagement() {
     }));
   }, [groupedCategories]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedUsers([]);
     setSelectedCategory(defaultSelectedCategory);
@@ -337,30 +293,44 @@ export default function MarketCenterManagement() {
     setCurrentPage(1);
     setSortBy("updatedAt");
     setOrderDir("desc");
-  };
+  }, []);
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    (selectedCategory.label !== "all" &&
-      selectedCategory?.ids &&
-      selectedCategory.ids.length > 0) ||
-    selectedMarketCenterId !== "all" ||
-    (selectedUsers && selectedUsers?.length > 0) ||
-    orderDir !== "desc" ||
-    sortBy !== "updatedAt";
+  const hasActiveFilters = useMemo(() => {
+    return (
+      !!searchQuery ||
+      (selectedCategory.label !== "all" &&
+        selectedCategory?.ids &&
+        selectedCategory.ids.length > 0) ||
+      selectedMarketCenterId !== "all" ||
+      (selectedUsers && selectedUsers?.length > 0) ||
+      orderDir !== "desc" ||
+      sortBy !== "updatedAt"
+    );
+  }, [
+    searchQuery,
+    selectedCategory,
+    selectedMarketCenterId,
+    selectedUsers,
+    orderDir,
+    sortBy,
+  ]);
 
-  const openCreateModal = () => {
+  const refreshAll = useCallback(async () => {
+    await refetchMarketCenters();
+    await refetchTicketCategories();
+  }, [refetchMarketCenters, refetchTicketCategories]);
+
+  const openCreateModal = useCallback(() => {
     setEditingMarketCenter(null);
     setMarketCenterToDelete(null);
     setFormData({
       name: "",
       selectedUsers: [],
     });
-    setAssignedUsers([]);
     setShowCreateMCForm(true);
-  };
+  }, []);
 
-  const openEditModal = (marketCenter: MarketCenter) => {
+  const openEditModal = useCallback((marketCenter: MarketCenter) => {
     setEditingMarketCenter(marketCenter);
     setMarketCenterToDelete(null);
     setFormData({
@@ -370,19 +340,14 @@ export default function MarketCenterManagement() {
           ? marketCenter.users
           : [],
     });
-    setAssignedUsers(
-      marketCenter?.users && marketCenter?.users.length
-        ? marketCenter.users
-        : []
-    );
     setShowEditMCForm(true);
-  };
+  }, []);
 
-  const openDeleteModal = (marketCenter: MarketCenter) => {
+  const openDeleteModal = useCallback((marketCenter: MarketCenter) => {
     setEditingMarketCenter(null);
     setMarketCenterToDelete(marketCenter);
     setShowDeleteModal(true);
-  };
+  }, []);
 
   const handleSendMarketCenterNotifications = useCallback(
     async ({
@@ -428,13 +393,17 @@ export default function MarketCenterManagement() {
             </Button>
           )}
           {!isEnterprise && permissions?.canManageSubscription && (
-            <Button
-              // onClick={() => openCreateModal()}
-              className="gap-2 w-full sm:w-fit"
-            >
-              <Plus className="h-4 w-4" />
-              Add Market Center
-            </Button>
+            <Link href="/dashboard/subscription">
+              <div className="flex flex-col items-end gap-2">
+                <Button className="gap-2 w-full sm:w-fit" disabled>
+                  <Plus className="h-4 w-4" />
+                  Add Market Center
+                </Button>
+                <p className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                  Upgrade to Enterprise to manage multiple market centers
+                </p>
+              </div>
+            </Link>
           )}
         </div>
         <div className="space-y-4 my-4">
@@ -530,6 +499,7 @@ export default function MarketCenterManagement() {
                       }
                     }}
                     aria-label="Filter by ticket categories"
+                    disabled={isCategoriesLoading}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a Category" />
@@ -558,10 +528,10 @@ export default function MarketCenterManagement() {
                     placeholder={
                       selectedUsers && selectedUsers.length > 0
                         ? `${selectedUsers.length ?? 0} users selected`
-                        : `All Users (${users?.length ?? 0})`
+                        : `All Users (${assignedUsers?.length ?? 0})`
                     }
                     formFieldName={"Users"}
-                    options={users}
+                    options={assignedUsers}
                     selectedOptions={selectedUsers}
                     handleSetSelectedOptions={(newSelected: PrismaUser[]) => {
                       setSelectedUsers(newSelected);
@@ -584,7 +554,6 @@ export default function MarketCenterManagement() {
                 {/* SORT BY */}
                 <div className="space-y-2">
                   <Label>Sort By</Label>
-
                   <Select
                     value={sortBy}
                     onValueChange={(value: UserSortBy) => {
@@ -736,9 +705,7 @@ export default function MarketCenterManagement() {
         setShowCreateMCForm={setShowCreateMCForm}
         formData={formData}
         setFormData={setFormData}
-        refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={invalidateUsers}
-        unassignedUsers={unassignedUsers}
+        refreshMarketCenters={refreshAll}
         handleSendMarketCenterNotifications={
           handleSendMarketCenterNotifications
         }
@@ -752,10 +719,7 @@ export default function MarketCenterManagement() {
         setShowEditMCForm={setShowEditMCForm}
         formData={formData}
         setFormData={setFormData}
-        assignedUsers={assignedUsers}
-        unassignedUsers={unassignedUsers}
-        refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={invalidateUsers}
+        refreshMarketCenters={refreshAll}
       />
 
       {/* DELETE MARKET CENTER */}
@@ -764,31 +728,11 @@ export default function MarketCenterManagement() {
         setMarketCenterToDelete={setMarketCenterToDelete}
         showDeleteModal={showDeleteModal}
         setShowDeleteModal={setShowDeleteModal}
-        refreshMarketCenters={invalidateMarketCenters}
-        refreshUsers={invalidateUsers}
+        refreshMarketCenters={refreshAll}
         handleSendMarketCenterNotifications={
           handleSendMarketCenterNotifications
         }
       />
-
-      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Want more market centers?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Contact us today to upgrade your subscription and unlock access to
-              unlimited market centers and other advanced features.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>
-              {/* Link href="mailto:sales@example.com" */}
-              Inquire
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

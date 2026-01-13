@@ -48,9 +48,18 @@ export default function MarketCenterUserTable({
     >
       <TableCell className="flex gap-2 items-center">
         <div className="flex flex-col gap-1" onClick={onClick}>
-          <p className="font-medium hover:underline">
-            {user?.name ?? "No Name"}
+          <p className="flex gap-2 items-center font-medium hover:underline">
+            {user?.name ?? "No Name Found"}
+            {!user?.isActive && (
+              <span className="text-sm text-muted-foreground">(Inactive)</span>
+            )}
+            {!user?.marketCenterId && (
+              <span className="text-sm text-muted-foreground">
+                (Unassigned)
+              </span>
+            )}
           </p>
+
           <span className="flex items-center gap-1 whitespace-nowrap text-sm text-muted-foreground">
             <TicketIcon className="h-2.75 w-2.75" />
             {user?._count?.assignedTickets ?? 0} assigned •{" "}
@@ -94,7 +103,7 @@ export default function MarketCenterUserTable({
                 {category.name}
               </Badge>
             ))
-          : "N/a"}
+          : "-"}
       </TableCell>
       <TableCell className="flex gap-2 items-center justify-end">
         <Button
