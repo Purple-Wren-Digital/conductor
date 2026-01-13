@@ -61,10 +61,10 @@ export async function getUserContext(): Promise<UserContext> {
       );
 
       const isInvalid =
-        (userInvitation?.expiresAt &&
-          new Date() > new Date(userInvitation?.expiresAt)) ||
-        userInvitation?.status === "EXPIRED" ||
-        userInvitation?.status === "CANCELLED";
+        userInvitation?.expiresAt &&
+        new Date() > new Date(userInvitation?.expiresAt) &&
+        (userInvitation?.status === "EXPIRED" ||
+          userInvitation?.status === "CANCELLED");
 
       if (userInvitation && !isInvalid) {
         user = await userRepository.create({

@@ -366,6 +366,16 @@ export const marketCenterRepository = {
     return rows.map(rowToInvitation);
   },
 
+  async findInvitationsNeedingCorrection(): Promise<TeamInvitation[]> {
+    const rows = await db.queryAll<TeamInvitationRow>`
+      SELECT *
+      FROM team_invitations
+      WHERE status IN ('PENDING', 'EXPIRED', 'CANCELLED')
+      ORDER BY created_at DESC;
+    `;
+    return rows.map(rowToInvitation);
+  },
+
   async findInvitationsByMarketCenterId(
     marketCenterId: string
   ): Promise<TeamInvitation[]> {

@@ -77,7 +77,7 @@ export const userRepository = {
   // Find user by Clerk ID
   async findByClerkId(clerkId: string): Promise<User | null> {
     const row = await db.queryRow<UserRow>`
-      SELECT * FROM users WHERE clerk_id = ${clerkId}
+      SELECT * FROM users WHERE clerk_id = ${clerkId} AND is_active = true
     `;
     return row ? rowToUser(row) : null;
   },
@@ -88,6 +88,18 @@ export const userRepository = {
       SELECT * FROM users WHERE email = ${email}
     `;
     return row ? rowToUser(row) : null;
+  },
+
+  async findExistingEmails(emails: string[]): Promise<string[]> {
+    if (emails.length === 0) return [];
+
+    const rows = await db.queryAll<{ email: string }>`
+      SELECT email
+      FROM users
+      WHERE email IN ${emails}
+    `;
+
+    return rows ? rows.map((r) => r.email) : [];
   },
 
   // Find user by ID or Clerk ID
