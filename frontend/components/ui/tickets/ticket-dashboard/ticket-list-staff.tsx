@@ -70,6 +70,7 @@ import {
   EyeClosed,
   Filter,
   Plus,
+  Save,
   Search,
   Users,
   X,
@@ -106,6 +107,7 @@ export default function TicketListStaff() {
 
   const [hydrated, setHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSavedFilters, setHasSavedFilters] = useState(false);
 
   const [viewDashboardHeader, setViewDashboardHeader] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
@@ -152,73 +154,37 @@ export default function TicketListStaff() {
 
   const { getToken } = useAuth();
 
-  // FILTERS STATE PERSISTENCE
+  // Load saved filters from localStorage on mount (only if user explicitly saved them)
   useEffect(() => {
-    if (!hydrated) return; // prevents overwrite on load
-    localStorage.setItem(
-      "ticket-filters",
-      JSON.stringify({
-        searchQuery,
-        selectedStatuses,
-        selectedUrgencies,
-        selectedCategory,
-        selectedAssignee,
-        selectedCreator,
-        dateFrom: dateFrom ? dateFrom.toISOString() : null,
-        dateTo: dateTo ? dateTo.toISOString() : null,
-        openFrom,
-        openTo,
-        sortBy,
-        sortDir,
-        currentPage,
-        showFilters,
-      })
-    );
-  }, [
-    hydrated,
-    searchQuery,
-    selectedStatuses,
-    selectedUrgencies,
-    selectedCategory,
-    selectedAssignee,
-    selectedCreator,
-    dateTo,
-    dateFrom,
-    openFrom,
-    openTo,
-    sortBy,
-    sortDir,
-    currentPage,
-    showFilters,
-  ]);
-
-  useEffect(() => {
-    const filtersString = localStorage.getItem("ticket-filters");
+    const filtersString = localStorage.getItem("ticket-filters-saved-staff");
     if (filtersString) {
-      const fetchedFilters = JSON.parse(filtersString);
-
-      setSearchQuery(fetchedFilters.searchQuery || "");
-      setSelectedStatuses(
-        fetchedFilters.selectedStatuses || defaultActiveStatuses
-      );
-      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
-      setSelectedCategory(fetchedFilters.selectedCategory || "all");
-      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
-      setSelectedCreator(fetchedFilters.selectedCreator || "all");
-      setDateFrom(
-        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
-      );
-      setDateTo(
-        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
-      );
-      setOpenFrom(fetchedFilters.openFrom || false);
-      setOpenTo(fetchedFilters.openTo || false);
-      setSortBy(fetchedFilters.sortBy || "updatedAt");
-      setSortDir(fetchedFilters.sortDir || "desc");
-      setCurrentPage(fetchedFilters.currentPage || 1);
-      setShowFilters(fetchedFilters.showFilters || false);
+      try {
+        const savedFilters = JSON.parse(filtersString);
+        setSearchQuery(savedFilters.searchQuery || "");
+        setSelectedStatuses(
+          savedFilters.selectedStatuses || defaultActiveStatuses
+        );
+        setSelectedUrgencies(savedFilters.selectedUrgencies || []);
+        setSelectedCategory(savedFilters.selectedCategory || "all");
+        setSelectedAssignee(savedFilters.selectedAssignee || "all");
+        setSelectedCreator(savedFilters.selectedCreator || "all");
+        setDateFrom(
+          savedFilters.dateFrom ? new Date(savedFilters.dateFrom) : undefined
+        );
+        setDateTo(
+          savedFilters.dateTo ? new Date(savedFilters.dateTo) : undefined
+        );
+        setOpenFrom(savedFilters.openFrom || false);
+        setOpenTo(savedFilters.openTo || false);
+        setSortBy(savedFilters.sortBy || "updatedAt");
+        setSortDir(savedFilters.sortDir || "desc");
+        setShowFilters(savedFilters.showFilters || false);
+        setHasSavedFilters(true);
+      } catch {
+        // Invalid JSON, ignore saved filters
+        localStorage.removeItem("ticket-filters-saved-staff");
+      }
     }
-
     setHydrated(true);
   }, []);
 
@@ -728,7 +694,7 @@ export default function TicketListStaff() {
     [getToken, handleSendTicketNotifications, refetchAllData]
   );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
@@ -745,7 +711,51 @@ export default function TicketListStaff() {
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
-  };
+  }, [marketCenterId]);
+
+  const saveFilters = useCallback(() => {
+    localStorage.setItem(
+      "ticket-filters-saved-staff",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        showFilters,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+      })
+    );
+    setHasSavedFilters(true);
+    toast.success("Filters saved");
+  }, [
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    dateFrom,
+    dateTo,
+    showFilters,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+  ]);
+
+  const clearSavedFilters = useCallback(() => {
+    localStorage.removeItem("ticket-filters-saved-staff");
+    setHasSavedFilters(false);
+    clearFilters();
+    toast.success("Saved filters cleared");
+  }, [clearFilters]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -885,15 +895,39 @@ export default function TicketListStaff() {
                   )}
                 </Button>
                 {hasActiveFilters && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="gap-2 w-full sm:w-fit"
+                      type="button"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={saveFilters}
+                      className="gap-2 w-full sm:w-fit"
+                      type="button"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save Filters
+                    </Button>
+                  </>
+                )}
+                {hasSavedFilters && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearFilters}
-                    className="gap-2 w-full sm:w-fit"
+                    onClick={clearSavedFilters}
+                    className="gap-2 w-full sm:w-fit text-destructive hover:text-destructive"
                     type="button"
                   >
                     <X className="h-4 w-4" />
-                    Clear
+                    Clear Saved
                   </Button>
                 )}
               </div>

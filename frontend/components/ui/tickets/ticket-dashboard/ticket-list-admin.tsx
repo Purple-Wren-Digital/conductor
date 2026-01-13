@@ -74,6 +74,7 @@ import {
   Eye,
   EyeClosed,
   Users,
+  Save,
 } from "lucide-react";
 import type {
   Ticket,
@@ -128,6 +129,7 @@ export default function AdminTicketList() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [hasSavedFilters, setHasSavedFilters] = useState(false);
 
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -181,78 +183,40 @@ export default function AdminTicketList() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  // FILTERS STATE PERSISTENCE
+  // Load saved filters from localStorage on mount (only if user explicitly saved them)
   useEffect(() => {
-    if (!hydrated) return; // prevents overwrite on load
-    localStorage.setItem(
-      "ticket-filters",
-      JSON.stringify({
-        searchQuery,
-        selectedStatuses,
-        selectedUrgencies,
-        selectedCategory,
-        selectedAssignee,
-        selectedCreator,
-        selectedMarketCenterId,
-        dateFrom: dateFrom ? dateFrom.toISOString() : null,
-        dateTo: dateTo ? dateTo.toISOString() : null,
-        showFilters,
-        openFrom,
-        openTo,
-        sortBy,
-        sortDir,
-        currentPage,
-      })
-    );
-  }, [
-    hydrated,
-    searchQuery,
-    selectedStatuses,
-    selectedUrgencies,
-    selectedCategory,
-    selectedAssignee,
-    selectedCreator,
-    selectedMarketCenterId,
-    dateFrom,
-    dateTo,
-    openFrom,
-    openTo,
-    sortBy,
-    sortDir,
-    currentPage,
-    showFilters,
-  ]);
-
-  useEffect(() => {
-    const filtersString = localStorage.getItem("ticket-filters");
+    const filtersString = localStorage.getItem("ticket-filters-saved");
     if (filtersString) {
-      const fetchedFilters = JSON.parse(filtersString);
-      setSearchQuery(fetchedFilters.searchQuery || "");
-      setSelectedStatuses(
-        fetchedFilters.selectedStatuses || defaultActiveStatuses
-      );
-      setSelectedUrgencies(fetchedFilters.selectedUrgencies || []);
-      setSelectedCategory(fetchedFilters.selectedCategory || "all");
-      setSelectedAssignee(fetchedFilters.selectedAssignee || "all");
-      setSelectedCreator(fetchedFilters.selectedCreator || "all");
-      setSelectedMarketCenterId(fetchedFilters.selectedMarketCenterId || "all");
-      setDateFrom(
-        fetchedFilters.dateFrom ? new Date(fetchedFilters.dateFrom) : undefined
-      );
-      setDateTo(
-        fetchedFilters.dateTo ? new Date(fetchedFilters.dateTo) : undefined
-      );
-
-      setOpenFrom(fetchedFilters.openFrom || false);
-      setOpenTo(fetchedFilters.openTo || false);
-      setSortBy(fetchedFilters.sortBy || "updatedAt");
-      setSortDir(fetchedFilters.sortDir || "desc");
-      setCurrentPage(fetchedFilters.currentPage || 1);
-      setShowFilters(fetchedFilters.showFilters || false);
+      try {
+        const savedFilters = JSON.parse(filtersString);
+        setSearchQuery(savedFilters.searchQuery || "");
+        setSelectedStatuses(
+          savedFilters.selectedStatuses || defaultActiveStatuses
+        );
+        setSelectedUrgencies(savedFilters.selectedUrgencies || []);
+        setSelectedCategory(savedFilters.selectedCategory || defaultSelectedCategory);
+        setSelectedAssignee(savedFilters.selectedAssignee || "all");
+        setSelectedCreator(savedFilters.selectedCreator || "all");
+        setSelectedMarketCenterId(savedFilters.selectedMarketCenterId || "all");
+        setDateFrom(
+          savedFilters.dateFrom ? new Date(savedFilters.dateFrom) : undefined
+        );
+        setDateTo(
+          savedFilters.dateTo ? new Date(savedFilters.dateTo) : undefined
+        );
+        setOpenFrom(savedFilters.openFrom || false);
+        setOpenTo(savedFilters.openTo || false);
+        setSortBy(savedFilters.sortBy || "updatedAt");
+        setSortDir(savedFilters.sortDir || "desc");
+        setShowFilters(savedFilters.showFilters || false);
+        setHasSavedFilters(true);
+      } catch {
+        // Invalid JSON, ignore saved filters
+        localStorage.removeItem("ticket-filters-saved");
+      }
     }
-
     setHydrated(true);
-  }, []);
+  }, [defaultSelectedCategory]);
 
   // Handle filter query param from dashboard navigation
   useEffect(() => {
@@ -839,6 +803,52 @@ export default function AdminTicketList() {
     setFilterOverdue(false);
   }, [defaultSelectedCategory]);
 
+  const saveFilters = useCallback(() => {
+    localStorage.setItem(
+      "ticket-filters-saved",
+      JSON.stringify({
+        searchQuery,
+        selectedStatuses,
+        selectedUrgencies,
+        selectedCategory,
+        selectedAssignee,
+        selectedCreator,
+        selectedMarketCenterId,
+        dateFrom: dateFrom ? dateFrom.toISOString() : null,
+        dateTo: dateTo ? dateTo.toISOString() : null,
+        showFilters,
+        openFrom,
+        openTo,
+        sortBy,
+        sortDir,
+      })
+    );
+    setHasSavedFilters(true);
+    toast.success("Filters saved");
+  }, [
+    searchQuery,
+    selectedStatuses,
+    selectedUrgencies,
+    selectedCategory,
+    selectedAssignee,
+    selectedCreator,
+    selectedMarketCenterId,
+    dateFrom,
+    dateTo,
+    showFilters,
+    openFrom,
+    openTo,
+    sortBy,
+    sortDir,
+  ]);
+
+  const clearSavedFilters = useCallback(() => {
+    localStorage.removeItem("ticket-filters-saved");
+    setHasSavedFilters(false);
+    clearFilters();
+    toast.success("Saved filters cleared");
+  }, [clearFilters]);
+
   const hasActiveFilters = useMemo(() => {
     return (
       !!searchQuery ||
@@ -993,15 +1003,39 @@ export default function AdminTicketList() {
                 )}
               </Button>
               {hasActiveFilters && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="gap-2 w-full sm:w-fit"
+                    type="button"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={saveFilters}
+                    className="gap-2 w-full sm:w-fit"
+                    type="button"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Filters
+                  </Button>
+                </>
+              )}
+              {hasSavedFilters && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={clearFilters}
-                  className="gap-2 w-full sm:w-fit"
+                  onClick={clearSavedFilters}
+                  className="gap-2 w-full sm:w-fit text-destructive hover:text-destructive"
                   type="button"
                 >
                   <X className="h-4 w-4" />
-                  Clear
+                  Clear Saved
                 </Button>
               )}
             </div>
