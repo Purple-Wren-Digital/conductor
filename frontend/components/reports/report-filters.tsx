@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -131,6 +131,21 @@ export function ReportFilters({
     currentUser?.role
   );
   const marketCenters: MarketCenter[] = marketCentersData?.marketCenters || [];
+
+  // Set default market center for non-ADMIN users
+  useEffect(() => {
+    if (
+      currentUser &&
+      currentUser.role !== "ADMIN" &&
+      currentUser.marketCenterId &&
+      filters.marketCenterIds.length === 0
+    ) {
+      onFiltersChange({
+        ...filters,
+        marketCenterIds: [currentUser.marketCenterId],
+      });
+    }
+  }, [currentUser, filters.marketCenterIds.length]);
 
   // Fetch categories (if a market center is selected, fetch its categories, otherwise fetch all)
   const selectedMarketCenterId =
