@@ -738,14 +738,16 @@ export default function UserManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Roles</SelectItem>
-                        {roleOptions.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(role)}
-                              {role.split("_").join(" ")}
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {roleOptions
+                          .filter((role) => role !== "AGENT")
+                          .map((role) => (
+                            <SelectItem key={role} value={role}>
+                              <div className="flex items-center gap-2">
+                                {getRoleIcon(role)}
+                                {role.split("_").join(" ")}
+                              </div>
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
