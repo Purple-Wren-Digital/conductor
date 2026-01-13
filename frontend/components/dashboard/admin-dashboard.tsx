@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useListAdminTickets, useListAllRatings } from "@/hooks/use-tickets";
+import { useListAdminTickets, useListAllRatings, useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
 import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
 import {
@@ -137,6 +137,21 @@ export function AdminDashboard() {
     ["admin-dashboard-global-ratings", role ?? "AGENT"],
     role
   );
+
+  // Fetch single market center ratings when there's only one MC
+  const singleMarketCenterId = marketCenters.length === 1 ? marketCenters[0]?.id : undefined;
+  const { data: singleMcRatings } = useFetchRatingsByMarketCenter(
+    ["admin-dashboard-single-mc-ratings", singleMarketCenterId ?? ""],
+    singleMarketCenterId
+  );
+
+  // Use single MC ratings when there's only one market center, otherwise use global averages
+  const displayRatings = useMemo(() => {
+    if (marketCenters.length === 1 && singleMcRatings) {
+      return singleMcRatings;
+    }
+    return globalAverages;
+  }, [marketCenters.length, singleMcRatings, globalAverages]);
 
   // SLA Metrics - last 30 days
   const slaDateFilters = useMemo(() => {
@@ -359,21 +374,21 @@ export function AdminDashboard() {
                     : "No Market Centers found"}
                 :
                 <StarRating
-                  rating={globalAverages?.marketCenterAverageRating || 0}
+                  rating={displayRatings?.marketCenterAverageRating || 0}
                   size={16}
                 />
               </span>
               <span className="flex items-center gap-1">
                 All Users:
                 <StarRating
-                  rating={globalAverages?.assigneeAverageRating || 0}
+                  rating={displayRatings?.assigneeAverageRating || 0}
                   size={16}
                 />
               </span>
               <span className="flex items-center gap-1">
                 All Tickets:
                 <StarRating
-                  rating={globalAverages?.overallAverageRating || 0}
+                  rating={displayRatings?.overallAverageRating || 0}
                   size={16}
                 />
               </span>
