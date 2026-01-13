@@ -171,7 +171,7 @@ export default function MarketCenterUsers({
     }
 
     setHydrated(true);
-  }, []);
+  }, [marketCenterId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -254,6 +254,7 @@ export default function MarketCenterUsers({
     searchQuery,
     selectedRole,
     selectedMarketCenterId,
+    marketCenterId,
     selectedUserStatus,
     sortDir,
     sortBy,
@@ -263,11 +264,11 @@ export default function MarketCenterUsers({
     setCurrentPage(1);
     setSearchQuery("");
     setSelectedRole("all");
-    setSelectedMarketCenterId(marketCenterId || "Assigned");
+    setSelectedMarketCenterId(marketCenterId || "Unassigned");
     setSelectedUserStatus("Active");
     setSortDir("desc");
     setSortBy("updatedAt");
-  }, []);
+  }, [marketCenterId]);
 
   const getRoleIcon = (role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
@@ -425,15 +426,13 @@ export default function MarketCenterUsers({
                         setCurrentPage(1);
                       }}
                       disabled={isLoading || usersLoading}
-                      aria-label="Filter by Market Center Assignment Type: Assigned, Unassigned, or All"
+                      aria-label="Filter by Market Center"
                     >
                       <SelectTrigger className="gap-2">
-                        <SelectValue
-                          placeholder={"Filter by Assignment Type"}
-                        />
+                        <SelectValue placeholder={"Filter by Market Center"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={marketCenterId || "Assigned"}>
+                        <SelectItem value={marketCenterId || ""}>
                           {marketCenterName}
                         </SelectItem>
                         <SelectItem value="Unassigned">Unassigned</SelectItem>

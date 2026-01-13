@@ -38,10 +38,7 @@ export function useFetchAllMarketCenters(role?: UserRole) {
 type SearchMarketCentersType = {
   role?: UserRole;
   queryParams: URLSearchParams;
-  marketCentersQueryKey: readonly [
-    "market-center-search",
-    Record<string, string>,
-  ];
+  marketCentersQueryKey: readonly [string, Record<string, string>];
 };
 
 // GET ALL MARKET CENTERS
@@ -136,7 +133,9 @@ export function useFetchMarketCenterUsers({
   queryKeyParams,
   marketCenterId,
 }: {
-  queryKey: (string | Record<string, string> | undefined)[];
+  queryKey:
+    | (string | Record<string, string> | undefined)[]
+    | readonly [string, string, Record<string, string>];
   queryKeyParams?: Record<string, string>;
   marketCenterId?: string;
 }) {

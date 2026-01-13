@@ -4,6 +4,7 @@ import type React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useStore } from "@/context/store-provider";
 import type {
+  MarketCenter,
   OrderBy,
   PrismaUser,
   UserEditFormData,
@@ -35,10 +36,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TeamSwitcher } from "@/components/ui/team-switcher";
 import CreateUser from "@/components/ui/users/create-user-form";
+import {
+  useFetchMarketCenterUsers,
+  useSearchMarketCenters,
+} from "@/hooks/use-market-center";
 import { useIsEnterprise } from "@/hooks/useSubscription";
-import { useFetchAllUsers } from "@/hooks/use-users";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
@@ -78,15 +81,18 @@ export default function UserManagement() {
   const { isEnterprise } = useIsEnterprise();
   const { currentUser, setCurrentUser } = useStore();
 
-  const marketCenterId =
-    ((role !== "ADMIN" && !isEnterprise) ||
-      role === "STAFF" ||
-      role === "STAFF_LEADER") &&
-    currentUser?.marketCenterId
-      ? currentUser.marketCenterId
-      : null;
-
-  const defaultMarketCenterId = marketCenterId ? marketCenterId : "all";
+  const defaultMarketCenterId = useMemo(
+    () =>
+      ((role === "ADMIN" && !isEnterprise) ||
+        role === "STAFF" ||
+        role === "STAFF_LEADER") &&
+      currentUser?.marketCenterId
+        ? currentUser.marketCenterId
+        : role === "ADMIN" && isEnterprise
+          ? "all"
+          : "Unassigned",
+    [currentUser?.marketCenterId, role, isEnterprise]
+  );
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -98,7 +104,7 @@ export default function UserManagement() {
 
   const [selectedMarketCenterId, setSelectedMarketCenterId] = useState<
     string | "all" | "Unassigned"
-  >(defaultMarketCenterId);
+  >("all");
   const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
   const [selectedUserStatus, setSelectedUserStatus] = useState<
     UserStatusType | "all"
@@ -134,6 +140,12 @@ export default function UserManagement() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (defaultMarketCenterId) {
+      setSelectedMarketCenterId(defaultMarketCenterId);
+    }
+  }, [defaultMarketCenterId]);
+
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedSearchQuery) params.append("query", debouncedSearchQuery);
@@ -148,24 +160,32 @@ export default function UserManagement() {
     }
 
     // Market Center Assignment
-    if (selectedMarketCenterId !== "all") {
-      params.append("marketCenterId", selectedMarketCenterId);
-    }
     if (selectedMarketCenterId === "Unassigned") {
       params.append("marketCenterId", "Unassigned");
+    } else if (
+      isEnterprise &&
+      selectedMarketCenterId !== "all" &&
+      selectedMarketCenterId !== "Unassigned"
+    ) {
+      params.append("marketCenterId", selectedMarketCenterId);
+    } else if (
+      !isEnterprise &&
+      defaultMarketCenterId &&
+      selectedMarketCenterId === defaultMarketCenterId
+    ) {
+      params.append("marketCenterId", defaultMarketCenterId);
     }
-
-    params.append("sortDir", orderDir);
+    defaultMarketCenterId && params.append("sortDir", orderDir);
     params.append("limit", String(itemsPerPage));
     params.append("offset", String((currentPage - 1) * itemsPerPage));
     return params;
   }, [
+    isEnterprise,
     debouncedSearchQuery,
     selectedRole,
     selectedUserStatus,
+    defaultMarketCenterId,
     selectedMarketCenterId,
-    currentUser?.marketCenterId,
-    role,
     orderDir,
     currentPage,
     itemsPerPage,
@@ -176,18 +196,21 @@ export default function UserManagement() {
     [queryParams]
   );
   const usersQueryKey = useMemo(
-    () => ["users", queryKeyParams] as const,
-    [queryKeyParams]
+    () => ["user-management", selectedMarketCenterId, queryKeyParams] as const,
+    [selectedMarketCenterId, queryKeyParams]
   );
 
-  const { data: usersData, isLoading: usersLoading } = useFetchAllUsers({
-    usersQueryKey,
-    queryParams,
-    role,
-  });
+  const { data: usersData, isLoading: usersLoading } =
+    useFetchMarketCenterUsers({
+      queryKey: usersQueryKey,
+      queryKeyParams: queryKeyParams,
+      marketCenterId: selectedMarketCenterId,
+    });
 
-  const userQueryInvalidator = () =>
-    queryClient.invalidateQueries({ queryKey: ["users"] });
+  const userQueryInvalidator = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: usersQueryKey }),
+    [queryClient, usersQueryKey]
+  );
 
   const allUsers: UserWithStats[] = useMemo(
     () => usersData?.users ?? [],
@@ -203,30 +226,54 @@ export default function UserManagement() {
     [totalUsers, itemsPerPage]
   );
 
+  const marketCentersQueryKey = useMemo(
+    () => ["user-management-market-centers", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: marketCentersData, isLoading: marketCentersLoading } =
+    useSearchMarketCenters({
+      role: role,
+      queryParams: queryParams,
+      marketCentersQueryKey: marketCentersQueryKey,
+    });
+
+  const marketCenters: MarketCenter[] = useMemo(
+    () => marketCentersData?.marketCenters ?? [],
+    [marketCentersData]
+  );
+
   const existingEmails = useMemo(
     () => allUsers.map((inv) => inv.email),
     [allUsers]
   );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedRole("all");
-    setSelectedMarketCenterId("all");
+    setSelectedMarketCenterId(defaultMarketCenterId);
     setCurrentPage(1);
     setSortBy("updatedAt");
     setOrderDir("desc");
-  };
+  }, [defaultMarketCenterId]);
 
   const hasActiveFilters = useMemo(() => {
     return (
       (!!searchQuery && !!searchQuery.trim()) ||
       selectedRole !== "all" ||
       searchQuery !== "" ||
-      selectedMarketCenterId !== "all" ||
+      selectedMarketCenterId !== defaultMarketCenterId ||
       orderDir !== "desc" ||
       sortBy !== "updatedAt"
     );
-  }, [searchQuery, selectedRole, selectedMarketCenterId, orderDir, sortBy]);
+  }, [
+    searchQuery,
+    selectedRole,
+    selectedMarketCenterId,
+    defaultMarketCenterId,
+    orderDir,
+    sortBy,
+  ]);
 
   // DELETE MODAL ACTIONS
   const handleEditUser = (user: UserWithStats) => {
@@ -279,7 +326,7 @@ export default function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
-  const resetEditUserFormAndClose = () => {
+  const resetEditUserFormAndClose = useCallback(() => {
     setShowEditUserForm(false);
     setEditingUser(null);
     setFormErrors({});
@@ -288,10 +335,14 @@ export default function UserManagement() {
       lastName: "",
       email: "",
       role: "AGENT",
-      marketCenterId: "",
+      marketCenterId:
+        defaultMarketCenterId === "Unassigned" ||
+        defaultMarketCenterId === "all"
+          ? ""
+          : defaultMarketCenterId,
     });
     setEditingUser(null);
-  };
+  }, [defaultMarketCenterId]);
 
   const handleSendUserNotifications = useCallback(
     async ({ trigger, receivingUser, data }: UserNotificationCallback) => {
@@ -612,12 +663,35 @@ export default function UserManagement() {
                   {/* MARKET CENTER */}
                   <div className="space-y-2">
                     <Label>Market Center</Label>
-                    <TeamSwitcher
-                      selectedMarketCenterId={selectedMarketCenterId}
-                      setSelectedMarketCenterId={setSelectedMarketCenterId}
-                      handleMarketCenterSelected={() => setCurrentPage(1)}
-                      unassigned="Unassigned"
-                    />
+                    <Select
+                      value={selectedMarketCenterId}
+                      onValueChange={(value: string | "Unassigned") => {
+                        setSelectedMarketCenterId(value);
+                        setCurrentPage(1);
+                      }}
+                      disabled={marketCentersLoading || usersLoading}
+                      aria-label="Filter by Market Center Assignment Type: Assigned, Unassigned, or All"
+                    >
+                      <SelectTrigger className="gap-2">
+                        <SelectValue
+                          placeholder={"Select Market Center assignment"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isEnterprise && (
+                          <SelectItem value="all">All</SelectItem>
+                        )}
+
+                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                        {marketCenters &&
+                          marketCenters.length > 0 &&
+                          marketCenters.map((mc) => (
+                            <SelectItem key={mc.id} value={mc.id}>
+                              {mc.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* ACTIVE / INACTIVE */}
