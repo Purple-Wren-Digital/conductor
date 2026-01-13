@@ -339,17 +339,23 @@ export function BaseTicketForm({
               <Select
                 value={values.categoryId}
                 onValueChange={(value) => {
-                  const selectedCategory = marketCenterTicketCategories?.find(
-                    (c) => c?.id === value
-                  );
-                  const assignee = marketCenterAssignees?.find(
-                    (user) => user?.id == selectedCategory?.defaultAssigneeId
-                  );
-                  onChange({
-                    categoryId: value,
-                    assigneeId:
-                      assignee && assignee?.id ? assignee.id : "Unassigned",
-                  });
+                  // Only auto-assign based on category default if user is not an Agent
+                  if (role !== "AGENT") {
+                    const selectedCategory = marketCenterTicketCategories?.find(
+                      (c) => c?.id === value
+                    );
+                    const assignee = marketCenterAssignees?.find(
+                      (user) => user?.id == selectedCategory?.defaultAssigneeId
+                    );
+                    onChange({
+                      categoryId: value,
+                      assigneeId:
+                        assignee && assignee?.id ? assignee.id : "Unassigned",
+                    });
+                  } else {
+                    // Agent tickets should remain unassigned
+                    onChange({ categoryId: value });
+                  }
                 }}
                 disabled={disabled}
               >
