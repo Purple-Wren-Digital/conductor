@@ -1,9 +1,17 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
-import { marketCenterRepository } from "../shared/repositories";
+import {
+  marketCenterRepository,
+  subscriptionRepository,
+} from "../shared/repositories";
 import type { AutoCloseSettings, MarketCenterSettings } from "./types";
 
 const DEFAULT_AUTO_CLOSE_DAYS = 2;
+
+export const defaultAutoCloseSettings: AutoCloseSettings = {
+  enabled: true,
+  awaitingResponseDays: DEFAULT_AUTO_CLOSE_DAYS,
+};
 
 export interface GetAutoCloseSettingsRequest {
   marketCenterId: string;
@@ -38,41 +46,72 @@ export const getAutoCloseSettings = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const isStaffLeader = userContext?.role === "STAFF_LEADER";
+    const isAdmin = userContext?.role === "ADMIN";
 
     // Only STAFF_LEADER and ADMIN can view auto-close settings
-    if (userContext.role !== "STAFF_LEADER" && userContext.role !== "ADMIN") {
+    if (!userContext?.role || (!isStaffLeader && !isAdmin)) {
       throw APIError.permissionDenied(
         "Only staff leaders and administrators can view auto-close settings"
       );
     }
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        req.marketCenterId
+      );
 
-    const marketCenter = await marketCenterRepository.findById(
-      req.marketCenterId
-    );
+    const marketCenterId: string | undefined = isAdmin
+      ? accessibleMarketCenterIds.find((id) => id === req.marketCenterId)
+      : isStaffLeader && userContext?.marketCenterId
+        ? accessibleMarketCenterIds.find(
+            (id) =>
+              id === req.marketCenterId && id === userContext?.marketCenterId
+          )
+        : undefined;
 
-    if (!marketCenter) {
-      throw APIError.notFound("Market center not found");
-    }
-
-    // Verify user has access to this market center
-    if (
-      userContext.role !== "ADMIN" &&
-      userContext.marketCenterId !== req.marketCenterId
-    ) {
+    if (!marketCenterId) {
       throw APIError.permissionDenied(
         "You do not have access to this market center's settings"
       );
     }
 
-    const settings = marketCenter.settings as MarketCenterSettings | undefined;
+    const marketCenter = await marketCenterRepository.findById(marketCenterId);
 
-    // Return existing settings or defaults
-    return {
-      autoClose: settings?.autoClose ?? {
-        enabled: true,
-        awaitingResponseDays: DEFAULT_AUTO_CLOSE_DAYS,
-      },
-    };
+    if (!marketCenter) {
+      throw APIError.notFound("Market center not found");
+    }
+
+    let settings: MarketCenterSettings =
+      (marketCenter.settings as MarketCenterSettings) ?? {};
+    let autoCloseSettings: AutoCloseSettings | null =
+      settings.autoClose ?? null;
+
+    // If settings don’t exist, initialize defaults
+    if (!autoCloseSettings) {
+      const updatedMarketCenter = await marketCenterRepository.update(
+        marketCenterId,
+        {
+          settings: { ...settings, autoClose: defaultAutoCloseSettings },
+        }
+      );
+
+      if (!updatedMarketCenter?.settings?.autoClose) {
+        throw APIError.internal("Failed to initialize auto-close settings");
+      }
+
+      await marketCenterRepository.createHistory({
+        marketCenterId,
+        action: "ADD",
+        field: "autoClose",
+        previousValue: null,
+        newValue: JSON.stringify(defaultAutoCloseSettings),
+        changedById: "SYSTEM",
+      });
+
+      autoCloseSettings = defaultAutoCloseSettings;
+    }
+
+    return { autoClose: autoCloseSettings };
   }
 );
 
@@ -139,6 +178,15 @@ export const updateAutoCloseSettings = api<
       ...currentSettings,
       autoClose: newAutoCloseSettings,
     };
+
+    if (
+      !newAutoCloseSettings ||
+      (newAutoCloseSettings.enabled === currentSettings.autoClose?.enabled &&
+        newAutoCloseSettings.awaitingResponseDays ===
+          currentSettings.autoClose?.awaitingResponseDays)
+    ) {
+      throw APIError.internal("Nothing to update in market center settings");
+    }
 
     // Update market center settings
     const updatedMarketCenter = await marketCenterRepository.update(

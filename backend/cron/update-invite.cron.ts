@@ -1,7 +1,7 @@
 import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
 import { marketCenterRepository, userRepository } from "../ticket/db";
-import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
+import type { InvitationStatus } from "../marketCenters/types";
 // DOCS: https://encore.dev/docs/ts/primitives/cron-jobs?_gl=1*9ln59d*_gcl_au*MTI2NzYyODg1MS4xNzYxODgxNjMz
 // DEV/Testing:  cleanupOldNotifications.cfg.endpoint()
 

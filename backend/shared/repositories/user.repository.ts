@@ -96,7 +96,7 @@ export const userRepository = {
     const rows = await db.queryAll<{ email: string }>`
       SELECT email
       FROM users
-      WHERE email IN ${emails}
+      WHERE email = ANY(${emails})
     `;
 
     return rows ? rows.map((r) => r.email) : [];
