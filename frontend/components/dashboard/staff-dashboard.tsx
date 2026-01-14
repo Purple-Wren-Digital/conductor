@@ -252,27 +252,25 @@ export function StaffDashboard() {
               content="Ratings are based on your resolved tickets via survey responses"
               trigger={<InfoIcon className="size-3 text-primary" />}
             />
-            <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
-              <span className="flex items-center gap-1">
-                {clerkUser?.firstName ? `${clerkUser?.firstName}'s` : "Your"}{" "}
-                Avg Rating:
-                <StarRating
-                  rating={userAvgRatings?.assigneeAverageRating || 0}
-                  size={16}
-                />
-              </span>
-              <span className="flex items-center gap-1">
-                Tickets Overall:
-                <StarRating
-                  rating={userAvgRatings?.overallAverageRating || 0}
-                  size={16}
-                />
-              </span>
-            </div>
+            <span className="flex items-center gap-1 md:mr-2">
+              {clerkUser?.firstName ? `${clerkUser?.firstName}'s` : "Your"} Avg
+              Rating:
+              <StarRating
+                rating={userAvgRatings?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              Tickets Overall:
+              <StarRating
+                rating={userAvgRatings?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
           </div>
         </section>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* TOP STATS */}
+        <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("active")}
@@ -292,6 +290,7 @@ export function StaffDashboard() {
               </p>
             </CardContent>
           </Card>
+
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("new")}
@@ -348,11 +347,11 @@ export function StaffDashboard() {
               </p>
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        <div className="grid gap-4 lg:grid-cols-2 justify-center">
+        <section className="grid gap-4 auto-cols-[minmax(0,2fr)] lg:grid-cols-2 place-content-evenly">
           {/* TICKETS BY STATUS*/}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Tickets by Status</CardTitle>
@@ -414,7 +413,7 @@ export function StaffDashboard() {
             </CardContent>
           </Card>
           {/* RECENT ACTIVITY */}
-          <Card className="max-w-2xs sm:max-w-full row-span-2">
+          <Card className="row-span-2">
             <CardHeader className="flex flex-row flex-wrap justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Recent Activity</CardTitle>
@@ -476,7 +475,7 @@ export function StaffDashboard() {
             </CardContent>
           </Card>
           {/* TICKETS BY URGENCY */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Active Tickets by Urgency</CardTitle>
@@ -549,7 +548,7 @@ export function StaffDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </section>
       </div>
       <CreateTicketForm
         isOpen={isCreateOpen}
