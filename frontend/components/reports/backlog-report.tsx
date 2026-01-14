@@ -10,8 +10,10 @@ import {
 } from "@/components/ui/chart";
 import { ReportProps } from "@/components/reports/reports-dashboard";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
-import { useFetchTicketBacklogReport } from "@/hooks/use-reports";
 import { startOfDay, endOfDay } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useFetchTicketBacklogReport } from "@/hooks/use-reports";
+import { InfoIcon } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -22,15 +24,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { InfoIcon } from "lucide-react";
 
 export const backlogDefaultValues = { created: 0, unassigned: 0, total: 0 };
 
-export default function TicketBacklogReport({ isSelected, filters }: ReportProps) {
+export default function TicketBacklogReport({
+  isSelected,
+  filters,
+}: ReportProps) {
+  const isMobile = useIsMobile();
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (filters.dateFrom) params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
-    if (filters.dateTo) params.append("dateTo", endOfDay(filters.dateTo).toISOString());
+    if (filters.dateFrom)
+      params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
+    if (filters.dateTo)
+      params.append("dateTo", endOfDay(filters.dateTo).toISOString());
     if (filters.marketCenterIds.length > 0) {
       filters.marketCenterIds.forEach((id) =>
         params.append("marketCenterIds", id)
@@ -41,7 +48,12 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
     }
 
     return params;
-  }, [filters.dateFrom, filters.dateTo, filters.marketCenterIds, filters.categoryIds]);
+  }, [
+    filters.dateFrom,
+    filters.dateTo,
+    filters.marketCenterIds,
+    filters.categoryIds,
+  ]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -87,7 +99,9 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
   }, [ticketsByStatus]);
 
   return (
-    <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
+    <div
+      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+    >
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
@@ -102,15 +116,17 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
             Total Tickets: {totalTickets}
           </Badge>
           <ToolTip
-            trigger={<InfoIcon className="size-4.5" />}
+            trigger={<InfoIcon className="size-4.5 p-0" />}
             content={
-              "Unchanged: Tickets assigned but never updated\nUnassigned: Tickets with no staff member assigned"
+              "Unchanged Tickets are assigned but never updated. Unassigned Tickets have no staff member assigned."
             }
+            classNameMobileButton="h-4.5 w-4.5"
           />
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-3 justify-center mt-5">
+      <div
+        className={`flex flex-wrap gap-3 justify-center ${isMobile ? "mt-5" : "mt-0"}`}
+      >
         {ticketsByStatus.map((item) => (
           <div
             key={`backlog-${item.label}`}
@@ -123,15 +139,18 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
           </div>
         ))}
       </div>
-      <ChartContainer
-        config={ticketsBacklogChartConfig}
-        className="w-[99%] md:w-full"
-      >
+
+      <ChartContainer config={ticketsBacklogChartConfig}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={ticketsByStatus}
-            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
-            barSize={75}
+            margin={{
+              top: isMobile ? 0 : 15,
+              right: 30,
+              left: isMobile ? 0 : 30,
+              bottom: isMobile ? 10 : 30,
+            }}
+            barSize={isMobile ? 50 : 75}
             aria-label="Bar chart showing the amount of tickets that are unchanged and unassigned"
           >
             <CartesianGrid strokeDasharray="7 7" />
@@ -151,8 +170,8 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
               label={{
                 value: "Amount of Tickets",
                 angle: -90,
-                position: "insideLeft",
-                dx: 5,
+                position: isMobile ? "" : "insideLeft",
+                dx: isMobile ? -5 : 5,
               }}
             />
             <ChartTooltip
@@ -163,6 +182,7 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
               {ticketsByStatus.map((entry, i) => (
                 <Cell
                   key={`backlog-cell-${i}`}
+                  name={entry.label}
                   fill="#6D1C24"
                   stroke="#4B1D22"
                   strokeWidth={0.75}
@@ -170,6 +190,9 @@ export default function TicketBacklogReport({ isSelected, filters }: ReportProps
               ))}
               <LabelList
                 dataKey="value"
+                aria-label={
+                  "Amount of tickets that are either unchanged or unassigned"
+                }
                 position="top"
                 formatter={(value: number) => (value ?? 0).toString()}
                 className="fill-foreground rounded-md"

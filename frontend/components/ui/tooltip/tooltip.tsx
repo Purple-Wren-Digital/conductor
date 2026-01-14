@@ -46,8 +46,6 @@ export function ToolTip({
     setIsMobileTooltipOpen(true);
   };
 
-  console.log("Trigger is button?", triggerIsButton, "Content:", content);
-
   if (isMobile && triggerIsButton) {
     return (
       <div

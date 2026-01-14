@@ -22,6 +22,8 @@ import {
 } from "recharts";
 import { InfoIcon } from "lucide-react";
 import { ToolTip } from "../ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
+// TODO: Update the at-risk calculation based on market center's SLA policy
 
 export const reportDefaultValues = {
   compliant: 0,
@@ -30,7 +32,11 @@ export const reportDefaultValues = {
   overdue: 0,
 };
 
-export default function SlaComplianceReport({ isSelected, filters }: ReportProps) {
+export default function SlaComplianceReport({
+  isSelected,
+  filters,
+}: ReportProps) {
+  const isMobile = useIsMobile();
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     // SLA reports don't use date filtering - they show current compliance status
@@ -90,7 +96,9 @@ export default function SlaComplianceReport({ isSelected, filters }: ReportProps
   }, [ticketsBySlaStatus]);
 
   return (
-    <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
+    <div
+      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+    >
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
@@ -108,17 +116,18 @@ export default function SlaComplianceReport({ isSelected, filters }: ReportProps
           />
         </div>
       </div>
-
       {/* REPORT CONTENT */}
-      <ChartContainer
-        config={slaComplianceChartConfig}
-        className="w-[99%] md:w-full"
-      >
+      <ChartContainer config={slaComplianceChartConfig}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={ticketsBySlaStatus}
-            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
-            barSize={75}
+            margin={{
+              top: isMobile ? 0 : 15,
+              right: 30,
+              left: isMobile ? 0 : 20,
+              bottom: isMobile ? 10 : 20,
+            }}
+            barSize={isMobile ? 50 : 75}
             aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
           >
             <CartesianGrid strokeDasharray="7 7" />
@@ -138,8 +147,8 @@ export default function SlaComplianceReport({ isSelected, filters }: ReportProps
               label={{
                 value: "Amount of Tickets",
                 angle: -90,
-                position: "insideLeft",
-                dx: 5,
+                position: isMobile ? "" : "insideLeft",
+                dx: isMobile ? -5 : 5,
               }}
             />
             <ChartTooltip
@@ -150,6 +159,7 @@ export default function SlaComplianceReport({ isSelected, filters }: ReportProps
               {ticketsBySlaStatus.map((entry, i) => (
                 <Cell
                   key={`status-cell-${i}`}
+                  name={entry.label}
                   fill="#6D1C24"
                   stroke="#4B1D22"
                   strokeWidth={0.75}

@@ -20,7 +20,9 @@ import {
   YAxis,
 } from "recharts";
 import { InfoIcon } from "lucide-react";
-import { ToolTip } from "../ui/tooltip/tooltip";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
+// TODO: Update the at-risk calculation based on market center's SLA policy
 
 export const complianceByUsersDefaultValues = {
   assignees: [],
@@ -32,6 +34,7 @@ export default function SlaComplianceByUsersReport({
   isSelected,
   filters,
 }: ReportProps) {
+  const isMobile = useIsMobile();
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     // SLA reports don't use date filtering - they show current compliance status
@@ -102,7 +105,9 @@ export default function SlaComplianceByUsersReport({
   }, [slaByUsers]);
 
   return (
-    <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
+    <div
+      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+    >
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
@@ -123,16 +128,17 @@ export default function SlaComplianceByUsersReport({
           />
         </div>
       </div>
-
       {/* REPORT CONTENT */}
-      <ChartContainer
-        config={slaComplianceByUsersChartConfig}
-        className="w-[99%] md:w-full "
-      >
+      <ChartContainer config={slaComplianceByUsersChartConfig}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={slaByUsers}
-            margin={{ top: 15, right: 30, left: 20, bottom: 20 }}
+            margin={{
+              top: isMobile ? 0 : 15,
+              right: 30,
+              left: isMobile ? 0 : 20,
+              bottom: isMobile ? 10 : 20,
+            }}
             barSize={30}
             aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
           >
@@ -153,8 +159,8 @@ export default function SlaComplianceByUsersReport({
               label={{
                 value: "Amount of Tickets",
                 angle: -90,
-                position: "insideLeft",
-                dx: 5,
+                position: isMobile ? "" : "insideLeft",
+                dx: isMobile ? -5 : 5,
               }}
             />
             <ChartTooltip
