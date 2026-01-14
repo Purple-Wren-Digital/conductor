@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useFetchUserHistory } from "@/hooks/use-history";
 import { OrderBy, UserHistory } from "@/lib/types";
 import { calculateTotalPages, capitalizeEveryWord } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  Loader,
   LockIcon,
   Mailbox,
   MessageSquare,
@@ -37,6 +39,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const [orderBy, setOrderBy] = useState<OrderBy>("desc");
+
+  const isMobile = useIsMobile();
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -104,8 +108,8 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
     }
   };
   return (
-    <div className="max-w-[300px] xs:max-w-full overflow-x-auto rounded-lg border p-1 ">
-      <Table className=" overflow-scroll">
+    <div className="grid auto-cols-[minmax(0,2fr)] place-content-evenly p-1 rounded-lg border">
+      <Table className="overflow-scroll">
         <TableHeader>
           <TableRow>
             <TableHead>Edited User</TableHead>
@@ -120,15 +124,21 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
         <TableBody>
           {isLoading && (
             <TableRow>
-              <TableCell className="text-muted-foreground col-span-full">
-                Loading...
+              <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                <span className={` ${isMobile ? "min-w-[100px]" : ""}`}>
+                  <Loader className="text-muted-foreground inline-block mr-2 animate-spin" />
+                </span>
               </TableCell>
             </TableRow>
           )}
           {!isLoading && (!userHistoryLogs || !userHistoryLogs.length) && (
             <TableRow>
-              <TableCell className="text-muted-foreground col-span-full">
-                No logs found
+              <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                <p
+                  className={`text-muted-foreground ${isMobile ? "min-w-[100px]" : ""}`}
+                >
+                  No logs found
+                </p>
               </TableCell>
             </TableRow>
           )}
@@ -146,14 +156,13 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                     ? "COMMENT"
                     : log?.action;
 
-              const isViewingUser = userId === log?.userId; //|| userId === log?.changedById;
+              const isViewingUser = userId === log?.userId;
               const isViewingChangedBy = userId === log?.changedById;
-              const isViewing = isViewingUser || isViewingChangedBy;
               return (
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* USER CHANGED */}
                   <TableCell
-                    className="font-semibold cursor-pointer"
+                    className="cursor-pointer"
                     onClick={() => {
                       if (!isViewingUser && log?.userId) {
                         router.push(`/dashboard/users/${log.userId}`);
@@ -167,58 +176,82 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                     }}
                   >
                     <ToolTip
-                      content={`View ${
-                        log?.user?.name ? log.user?.name : "user"
-                      }'s Profile`}
+                      content={
+                        isViewingUser
+                          ? `You are already viewing ${
+                              log?.user?.name ? log.user?.name : "this user"
+                            }'s profile`
+                          : isMobile
+                            ? `Navigating to ${
+                                log?.user?.name ? log.user?.name : "this user"
+                              }'s profile`
+                            : `View ${
+                                log?.user?.name ? log.user?.name : "this user"
+                              }'s profile`
+                      }
                       trigger={
-                        <p className="underline decoration-dotted cursor-pointer">
+                        <p className="font-semibold underline decoration-dotted">
                           {log?.user && log?.user?.name
                             ? log.user.name
                             : log.userId.slice(0, 8)}
                         </p>
                       }
+                      className="flex justify-start p-0"
+                      classNameMobileButton="flex justify-start p-0"
                     />
                   </TableCell>
                   {/* ACTION */}
-                  <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                    {getActionIcon(action.split("_").join(" "))}
-                    {action.split("_").join(" ").toLowerCase()}
+                  <TableCell>
+                    <span className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
+                      {getActionIcon(action.split("_").join(" "))}
+                      {action.split("_").join(" ").toLowerCase()}
+                    </span>
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
-                    {log?.field
-                      ? log.field.split("_").join(" ").toLowerCase()
-                      : "Not found"}
+                    <p className="flex flex-col min-w-[80px]">
+                      {log?.field
+                        ? log.field.split("_").join(" ").toLowerCase()
+                        : "Not found"}
+                    </p>
                   </TableCell>
                   {/* NEW VALUE */}
-                  <TableCell className="font-medium">
-                    <ToolTip
-                      content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field.split("_").join(" "))}` : ""}: ${log?.newValue ? log?.newValue : "-"}`}
-                      trigger={
-                        <p className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
-                          {log?.newValue && log?.field === "role"
-                            ? log.newValue.split("_").join(" ")
-                            : log?.newValue
-                              ? log.newValue
-                              : "-"}
-                        </p>
-                      }
-                    />
+                  <TableCell>
+                    <span className="flex flex-col font-semibold min-w-[100px] max-w-[150px] cursor-pointer">
+                      <ToolTip
+                        content={`Updated${log?.field ? ` ${capitalizeEveryWord(log?.field.split("_").join(" "))}` : ""}: ${log?.newValue ? log?.newValue : "No new value"}`}
+                        trigger={
+                          <p className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                            {log?.newValue && log?.field === "role"
+                              ? log.newValue.split("_").join(" ")
+                              : log?.newValue
+                                ? log.newValue
+                                : "No new data"}
+                          </p>
+                        }
+                        className="flex justify-start p-0"
+                        classNameMobileButton="flex justify-start p-0"
+                      />
+                    </span>
                   </TableCell>
                   {/* PREVIOUS VALUE */}
-                  <TableCell className="text-muted-foreground truncate overflow-hidden text-ellipsis whitespace-nowrap max-w-[50px] cursor-pointer">
-                    <ToolTip
-                      content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "-"}`}
-                      trigger={
-                        <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {log?.previousValue && log?.field === "role"
-                            ? log.previousValue.split("_").join(" ")
-                            : log?.previousValue
-                              ? log.previousValue
-                              : "-"}
-                        </p>
-                      }
-                    />
+                  <TableCell>
+                    <span className="flex flex-col min-w-[100px] max-w-[150px] cursor-pointer text-muted-foreground">
+                      <ToolTip
+                        content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue ? log?.previousValue : "No previous value"}`}
+                        trigger={
+                          <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                            {log?.previousValue && log?.field === "role"
+                              ? log.previousValue.split("_").join(" ")
+                              : log?.previousValue
+                                ? log.previousValue
+                                : "None"}
+                          </p>
+                        }
+                        className="flex justify-start p-0"
+                        classNameMobileButton="flex justify-start p-0"
+                      />
+                    </span>
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell
@@ -236,34 +269,40 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
                       }
                     }}
                   >
-                    {log?.changedById === "SYSTEM" ? (
-                      "System"
-                    ) : (
-                      <ToolTip
-                        content={`Changed By: ${
-                          log?.changedBy && log?.changedBy?.name
-                            ? log?.changedBy?.name
-                            : log?.changedById
-                              ? log?.changedById.slice(0, 8)
-                              : "Not found"
-                        }`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
-                            {log?.changedBy && log?.changedBy?.name
+                    <span className="flex flex-col min-w-[60px]">
+                      {log?.changedById === "SYSTEM" ? (
+                        "System"
+                      ) : (
+                        <ToolTip
+                          content={`Changed By: ${
+                            log?.changedBy && log?.changedBy?.name
                               ? log?.changedBy?.name
                               : log?.changedById
                                 ? log?.changedById.slice(0, 8)
-                                : "Not found"}
-                          </p>
-                        }
-                      />
-                    )}
+                                : "Not found"
+                          }`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                              {log?.changedBy && log?.changedBy?.name
+                                ? log?.changedBy?.name
+                                : log?.changedById
+                                  ? log?.changedById.slice(0, 8)
+                                  : "Not found"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* DATE CHANGED ON */}
                   <TableCell className="font-medium">
-                    {log?.changedAt
-                      ? new Date(log.changedAt).toLocaleDateString()
-                      : "Not found"}
+                    <p className="flex flex-col min-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {log?.changedAt
+                        ? new Date(log.changedAt).toLocaleDateString()
+                        : "Not found"}
+                    </p>
                   </TableCell>
                 </TableRow>
               );
@@ -283,26 +322,3 @@ export default function UserHistoryTable({ userId }: { userId?: string }) {
     </div>
   );
 }
-
-// <TableHead className="text-center">Snapshot</TableHead>
-//  <TableCell className="font-medium">
-//   {log?.snapshot ? (
-//     <ToolTip
-//       content={`View snapshot of ticket at time of change`}
-//       trigger={
-//         <p
-//           className="underline decoration-dotted cursor-pointer text-center"
-//           onClick={() => {
-//             router.push(
-//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
-//             );
-//           }}
-//         >
-//           View
-//         </p>
-//       }
-//     />
-//   ) : (
-//     <p  className="text-muted-foreground">N/a</p>
-//   )}
-// </TableCell>

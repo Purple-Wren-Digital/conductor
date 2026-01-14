@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useFetchUserTicketHistory } from "@/hooks/use-history";
 import { OrderBy, TicketHistory } from "@/lib/types";
 import { calculateTotalPages } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  Loader,
   LockIcon,
   Mailbox,
   MessageSquare,
@@ -43,6 +45,8 @@ export default function UserTicketHistoryTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5); //(10);
   const [orderBy, setOrderBy] = useState<OrderBy>("desc");
+
+  const isMobile = useIsMobile();
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -105,7 +109,7 @@ export default function UserTicketHistoryTable({
     }
   };
   return (
-    <div className="max-w-[300px] xs:max-w-full overflow-x-auto rounded-lg border p-1 ">
+    <div className="grid auto-cols-[minmax(0,2fr)] place-content-evenly p-1 rounded-lg border">
       <Table className="overflow-scroll">
         <TableHeader>
           <TableRow>
@@ -121,16 +125,22 @@ export default function UserTicketHistoryTable({
         <TableBody>
           {isLoading && (
             <TableRow>
-              <TableCell className="text-muted-foreground col-span-full">
-                Loading...
+              <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                <span className={` ${isMobile ? "min-w-[100px]" : ""}`}>
+                  <Loader className="text-muted-foreground inline-block mr-2 animate-spin" />
+                </span>
               </TableCell>
             </TableRow>
           )}
           {!isLoading &&
             (!userTicketHistoryLogs || !userTicketHistoryLogs.length) && (
               <TableRow>
-                <TableCell className="text-muted-foreground col-span-full">
-                  No logs found
+                <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                  <p
+                    className={`text-muted-foreground ${isMobile ? "min-w-[100px]" : ""}`}
+                  >
+                    No logs found
+                  </p>
                 </TableCell>
               </TableRow>
             )}
@@ -172,10 +182,10 @@ export default function UserTicketHistoryTable({
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* TICKET */}
                   <TableCell
-                    className="font-semibold truncate overflow-hidden text-ellipsis whitespace-nowrap max-w-[80px] cursor-pointer"
-                    onClick={() => {
-                      router.push(`/dashboard/tickets/${log.ticketId}`);
-                    }}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      router.push(`/dashboard/tickets/${log.ticketId}`)
+                    }
                   >
                     <ToolTip
                       content={`View Ticket: ${
@@ -184,12 +194,14 @@ export default function UserTicketHistoryTable({
                           : log.ticketId.slice(0, 8)
                       }`}
                       trigger={
-                        <p className="underline decoration-dotted cursor-pointer">
+                        <p className="font-semibold underline decoration-dotted w-[90px]">
                           {log.ticket?.title
                             ? log.ticket?.title
                             : log.ticketId.slice(0, 8)}
                         </p>
                       }
+                      className="flex justify-start p-0"
+                      classNameMobileButton="flex justify-start p-0"
                     />
                   </TableCell>
                   {/* ACTION */}
@@ -201,59 +213,86 @@ export default function UserTicketHistoryTable({
                   </TableCell>
                   {/* FIELD */}
                   <TableCell className="font-semibold capitalize">
-                    {field.toLowerCase()}
+                    <p className="flex flex-col min-w-[80px]">
+                      {field.toLowerCase()}
+                    </p>
                   </TableCell>
                   {/* NEW VALUE */}
-                  <TableCell className="font-semibold max-w-[50px] cursor-pointer">
-                    {field === "comment" ||
-                    field === "description" ? (
-                      <SafeHtml
-                        content={newValueFormatted ? newValueFormatted : "-"}
-                        className="font-medium leading-relaxed text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
-                      />
-                    ) : (
-                      <ToolTip
-                        content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "-"}`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
-                            {newValueFormatted ? newValueFormatted : "-"}
-                          </p>
-                        }
-                      />
-                    )}
+                  <TableCell>
+                    <span className="flex flex-col font-semibold min-w-[100px] max-w-[150px] cursor-pointer">
+                      {field === "comment" || field === "description" ? (
+                        <SafeHtml
+                          content={newValueFormatted ? newValueFormatted : "-"}
+                          className={`
+                          font-medium leading-relaxed text-muted-foreground
+                          line-spacing-10 wrap-break-word whitespace-normal rich-text
+                          [&_a]:underline [&_a:hover]:text-muted-foreground
+                          [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
+                          [&_li]:list-item [&_li]:mb-1`}
+                        />
+                      ) : (
+                        <ToolTip
+                          content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "-"}`}
+                          trigger={
+                            <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                              {newValueFormatted
+                                ? newValueFormatted
+                                : "No new data"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* PREVIOUS VALUE */}
-                  <TableCell className="text-muted-foreground max-w-[50px] cursor-pointer">
-                    {log?.field === "comment" ||
-                    log?.field === "description" ? (
-                      <SafeHtml
-                        content={
-                          previousValueFormatted ? previousValueFormatted : "-"
-                        }
-                        className="leading-relaxed text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
-                      />
-                    ) : (
-                      <ToolTip
-                        content={`Previous ${field}: ${previousValueFormatted ? previousValueFormatted : "-"}`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                            {previousValueFormatted
+                  <TableCell>
+                    <span className="flex flex-col font-semibold min-w-[100px] max-w-[150px] cursor-pointer text-muted-foreground ">
+                      {log?.field === "comment" ||
+                      log?.field === "description" ? (
+                        <SafeHtml
+                          content={
+                            previousValueFormatted
                               ? previousValueFormatted
-                              : "-"}
-                          </p>
-                        }
-                      />
-                    )}
+                              : "-"
+                          }
+                          className={`
+                          font-medium leading-relaxed text-muted-foreground
+                          line-spacing-10 wrap-break-word whitespace-normal rich-text
+                          [&_a]:underline [&_a:hover]:text-muted-foreground
+                          [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
+                          [&_li]:list-item [&_li]:mb-1`}
+                        />
+                      ) : (
+                        <ToolTip
+                          content={`Previous ${field} data: ${previousValueFormatted ? previousValueFormatted : "No previous data"}`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                              {previousValueFormatted
+                                ? previousValueFormatted
+                                : "None"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell className="font-medium">
-                    {index === 0 ? <p>{username}</p> : <p></p>}
+                    <p className="flex flex-col min-w-[60px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {index === 0 ? username : ""}
+                    </p>
                   </TableCell>
                   {/* DATE CHANGED ON */}
                   <TableCell className="font-medium">
-                    {log?.changedAt
-                      ? new Date(log.changedAt).toLocaleDateString()
-                      : "Not found"}
+                    <p className="flex flex-col min-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {log?.changedAt
+                        ? new Date(log.changedAt).toLocaleDateString()
+                        : "Not found"}
+                    </p>
                   </TableCell>
                 </TableRow>
               );
@@ -273,26 +312,3 @@ export default function UserTicketHistoryTable({
     </div>
   );
 }
-
-// <TableHead className="text-center">Snapshot</TableHead>
-//  <TableCell className="font-medium">
-//   {log?.snapshot ? (
-//     <ToolTip
-//       content={`View snapshot of ticket at time of change`}
-//       trigger={
-//         <p
-//           className="underline decoration-dotted cursor-pointer text-center"
-//           onClick={() => {
-//             router.push(
-//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
-//             );
-//           }}
-//         >
-//           View
-//         </p>
-//       }
-//     />
-//   ) : (
-//     <p  className="text-muted-foreground">N/a</p>
-//   )}
-// </TableCell>

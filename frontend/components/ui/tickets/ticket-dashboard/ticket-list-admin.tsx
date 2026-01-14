@@ -194,7 +194,9 @@ export default function AdminTicketList() {
           savedFilters.selectedStatuses || defaultActiveStatuses
         );
         setSelectedUrgencies(savedFilters.selectedUrgencies || []);
-        setSelectedCategory(savedFilters.selectedCategory || defaultSelectedCategory);
+        setSelectedCategory(
+          savedFilters.selectedCategory || defaultSelectedCategory
+        );
         setSelectedAssignee(savedFilters.selectedAssignee || "all");
         setSelectedCreator(savedFilters.selectedCreator || "all");
         setSelectedMarketCenterId(savedFilters.selectedMarketCenterId || "all");
