@@ -313,7 +313,7 @@ export const acceptInvitation = api<
   },
   async ({ token }) => {
     // Get authenticated user's info from Clerk
-    const authData = getAuthData();
+    const authData = await getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("User not authenticated");
     }
@@ -343,17 +343,21 @@ export const acceptInvitation = api<
       );
     }
 
-    const isExpired = new Date() > new Date(invitation.expiresAt);
-    if (isExpired) {
+    if (invitation.status === "ACCEPTED") {
+      throw APIError.alreadyExists("Invitation has been accepted");
+    }
+
+    if (
+      new Date() > new Date(invitation.expiresAt) ||
+      invitation.status === "EXPIRED"
+    ) {
       await marketCenterRepository.updateInvitationStatus(
         invitation.id,
         "EXPIRED"
       );
       throw APIError.failedPrecondition("Invitation has expired");
-    } else if (
-      invitation.status !== "PENDING" &&
-      invitation.status !== "ACCEPTED"
-    ) {
+    }
+    if (invitation.status === "CANCELLED") {
       throw APIError.failedPrecondition(
         `Invitation is "${invitation.status.toLowerCase()}" and cannot be accepted`
       );
