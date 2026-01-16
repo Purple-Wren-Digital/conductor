@@ -13,9 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog/base-dialog";
 import { Input } from "@/components/ui/input";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
 import { useStore } from "@/context/store-provider";
 import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
+import { useIsEnterprise, useSubscription } from "@/hooks/useSubscription";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import type {
@@ -51,27 +53,77 @@ export default function EditMarketCenter({
   setFormData,
   refreshMarketCenters,
 }: EditMarketCenterProps) {
+  const [availableSeats, setAvailableSeats] = useState<number>(0);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { getToken } = useAuth();
   const { permissions } = useUserRole();
   const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
 
   const assignedUsers: PrismaUser[] = useMemo(() => {
     return editingMarketCenter?.users ?? [];
   }, [editingMarketCenter]);
 
-  const { data: unassignedUsersData, isLoading: unassignedUsersLoading } =
-    useFetchMarketCenterUsers({
-      queryKey: ["edit-market-center-unassigned-users"],
-      queryKeyParams: {},
-      marketCenterId: "Unassigned",
-    });
+  const { data: subscription, isLoading: isSubscriptionLoading } =
+    useSubscription();
+
+  const seats = useMemo(() => {
+    const activeSubscription =
+      (subscription && subscription?.status === "ACTIVE") ||
+      subscription?.status === "TRIALING";
+    const totalSeats = activeSubscription ? subscription.totalSeats : 0;
+    const filledSeats = activeSubscription ? subscription.usedSeats : 0;
+    const hasAvailableSeats = filledSeats < totalSeats;
+
+    setAvailableSeats(totalSeats - filledSeats);
+
+    return { activeSubscription, totalSeats, filledSeats, hasAvailableSeats };
+  }, [subscription]);
+
+  const unassignedUsersQueryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append("marketCenterId", "Unassigned");
+    if (!isEnterprise && !seats?.hasAvailableSeats) {
+      params.append("role", "AGENT");
+    }
+    return params;
+  }, [isEnterprise, seats]);
+
+  const unassignedUsersQueryKeyParams = useMemo(
+    () =>
+      Object.fromEntries(unassignedUsersQueryParams.entries()) as Record<
+        string,
+        string
+      >,
+    [unassignedUsersQueryParams]
+  );
+
+  const {
+    data: unassignedUsersData,
+    isLoading: unassignedUsersLoading,
+    refetch: refetchUnassignedUsers,
+  } = useFetchMarketCenterUsers({
+    queryKey: [
+      "edit-market-center-unassigned-users",
+      "Unassigned",
+      unassignedUsersQueryKeyParams,
+    ],
+    queryKeyParams: unassignedUsersQueryKeyParams,
+    marketCenterId: "Unassigned",
+  });
 
   const unassignedUsers: PrismaUser[] = useMemo(() => {
-    return unassignedUsersData?.users ?? [];
-  }, [unassignedUsersData]);
+    let unAssigned = unassignedUsersData?.users ?? [];
+    if (!isEnterprise && !seats?.hasAvailableSeats) {
+      unAssigned =
+        unAssigned && unAssigned.length > 0
+          ? unAssigned.filter((user: PrismaUser) => user.role === "AGENT")
+          : [];
+    }
+    return unAssigned;
+  }, [unassignedUsersData, isEnterprise, seats]);
 
   const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
     setFormData({
@@ -101,6 +153,18 @@ export default function EditMarketCenter({
       !arraysEqualById(assignedUsers, formData.selectedUsers)
     ) {
       errors.general = "Please update at least one field to continue";
+    }
+
+    if (!isEnterprise && formData.selectedUsers.length > 0) {
+      const selectedNonAgents = formData.selectedUsers.filter(
+        (user) => user.role !== "AGENT"
+      );
+      const selectedUsersExceedSeats =
+        !isEnterprise && selectedNonAgents.length > seats.totalSeats;
+
+      if (selectedUsersExceedSeats) {
+        errors.users = `Please upgrade your subscription to add more than ${seats.totalSeats} admin and staff users`;
+      }
     }
 
     setFormErrors(errors);
@@ -194,6 +258,7 @@ export default function EditMarketCenter({
       toast.error(`Error: Unable to save changes`);
     },
     onSettled: async () => {
+      await refetchUnassignedUsers();
       await refreshMarketCenters();
       setIsSubmitting(false);
     },
@@ -256,7 +321,26 @@ export default function EditMarketCenter({
 
           {/* USERS */}
           <div className="space-y-2 space-x-2 w-full">
-            <label className="text-md font-medium">Team Assignments *</label>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="text-md font-medium">Team Assignments</label>
+              <ToolTip
+                content={
+                  !!isEnterprise ||
+                  (!isEnterprise && seats?.hasAvailableSeats) ||
+                  (!isEnterprise && availableSeats === seats.totalSeats)
+                    ? "You have available seats. All roles can be assigned."
+                    : "Upgrade your subscription to assign the admin, staff leader or staff role."
+                }
+                trigger={
+                  <p className="text-xs text-muted-foreground">
+                    {isEnterprise
+                      ? "Unlimited seats"
+                      : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
+                    used`}
+                  </p>
+                }
+              />
+            </div>
             <div className="space-y-2 space-x-2 w-full">
               {formData.selectedUsers &&
                 formData.selectedUsers.length > 0 &&
@@ -273,13 +357,14 @@ export default function EditMarketCenter({
               type="editing"
               filter={true}
               disabled={
+                isSubscriptionLoading ||
                 unassignedUsersLoading ||
                 ((!assignedUsers || !assignedUsers.length) &&
                   (!unassignedUsers || !unassignedUsers.length))
               }
               marketCenterId={editingMarketCenter?.id || null}
               placeholder={
-                unassignedUsersLoading
+                isSubscriptionLoading || unassignedUsersLoading
                   ? "Loading users..."
                   : formData.selectedUsers && formData.selectedUsers.length
                     ? `${formData.selectedUsers.length} users selected`
@@ -315,10 +400,7 @@ export default function EditMarketCenter({
               Cancel
             </Button>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Submit"}
             </Button>
           </div>

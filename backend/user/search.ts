@@ -86,32 +86,31 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         userContext.marketCenterId
       );
 
-    const marketCenterId =
-      isAdmin &&
-      req?.marketCenterId !== undefined &&
-      accessibleMarketCenterIds.find((id) => id === req.marketCenterId)
-        ? req.marketCenterId
-        : isStaff &&
-            userContext?.marketCenterId &&
-            accessibleMarketCenterIds.find(
-              (id) => id === userContext?.marketCenterId
-            )
-          ? userContext.marketCenterId
-          : null;
+    const adminMarketCenterId: string | null =
+      isAdmin && req?.marketCenterId !== undefined ? req.marketCenterId : null;
 
-    if (isAdmin && marketCenterId) {
-      const foundId = accessibleMarketCenterIds.find(
-        (id) => id === marketCenterId
-      );
-      if (foundId) {
-        marketCenterIds.push(foundId);
+    const staffMarketCenterId =
+      isStaff &&
+      userContext?.marketCenterId &&
+      accessibleMarketCenterIds.find((id) => id === userContext?.marketCenterId)
+        ? userContext.marketCenterId
+        : null;
+
+    if (isAdmin && adminMarketCenterId) {
+      if (adminMarketCenterId === "Unassigned") {
+        marketCenterIds.push("Unassigned");
+      } else if (
+        adminMarketCenterId !== "Unassigned" &&
+        accessibleMarketCenterIds.includes(adminMarketCenterId)
+      ) {
+        marketCenterIds.push(adminMarketCenterId);
       }
     }
-    if (isAdmin && !marketCenterId) {
+    if (isAdmin && !adminMarketCenterId) {
       marketCenterIds = accessibleMarketCenterIds;
     }
-    if (isStaff && marketCenterId) {
-      marketCenterIds.push(marketCenterId);
+    if (isStaff && staffMarketCenterId) {
+      marketCenterIds.push(staffMarketCenterId);
     }
     if (isUnassigned) {
       marketCenterIds.push("Unassigned");

@@ -110,7 +110,7 @@ export default function UserMultiSelectDropdown({
                         "text-xs font-medium text-muted-foreground capitalize"
                       }
                     >
-                      {option?.role.toLowerCase()} •{" "}
+                      {option?.role.split("_").join(" ").toLowerCase()} •{" "}
                       {option.isActive ? "Active" : "Inactive"}
                     </p>
                   </div>

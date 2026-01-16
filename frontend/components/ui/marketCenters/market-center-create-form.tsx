@@ -19,9 +19,12 @@ import type {
   PrismaUser,
 } from "@/lib/types";
 import { toast } from "sonner";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
 import { useStore } from "@/context/store-provider";
 import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
+import { useIsEnterprise } from "@/hooks/useSubscription";
+import Link from "next/link";
 
 type CreateMarketCenterProps = {
   showCreateMCForm: boolean;
@@ -47,15 +50,21 @@ export default function CreateMarketCenter({
   const { getToken } = useAuth();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { currentUser } = useStore();
+  const { isEnterprise } = useIsEnterprise();
 
   const {
     data: unassignedUsersData,
     isLoading: usersLoading,
     refetch: refetchUnassignedUsers,
   } = useFetchMarketCenterUsers({
-    queryKey: ["create-market-center-users-unassigned", "Unassigned"],
-    queryKeyParams: {},
+    queryKey: [
+      "create-market-center-users-unassigned",
+      "Unassigned",
+      { marketCenterId: "Unassigned" },
+    ],
+    queryKeyParams: { marketCenterId: "Unassigned" },
     marketCenterId: "Unassigned",
   });
 
@@ -82,7 +91,8 @@ export default function CreateMarketCenter({
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = "Name is required";
-
+    if (!isEnterprise)
+      errors.general = "Upgrade to Enterprise to add a market center";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -198,7 +208,23 @@ export default function CreateMarketCenter({
             </p>
           </div>
           <div className="space-y-2 space-x-2 w-full">
-            <label className="text-md font-medium">Team Assignments</label>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="text-md font-medium">Team Assignments</label>
+              <ToolTip
+                content={
+                  isEnterprise
+                    ? "You have available seats. All roles can be assigned."
+                    : "Upgrade your subscription to assign the admin, staff leader or staff role."
+                }
+                trigger={
+                  <p className="text-xs text-muted-foreground">
+                    {isEnterprise
+                      ? "Unlimited seats available"
+                      : "No seats available"}
+                  </p>
+                }
+              />
+            </div>
             <div className="space-y-2 space-x-2 w-full">
               {formData &&
                 formData.selectedUsers.length > 0 &&
@@ -239,6 +265,14 @@ export default function CreateMarketCenter({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            {!isEnterprise ||
+              (formErrors.general && (
+                <Link href="/dashboard/subscription">
+                  <p className="text-xs text-destructive hover:text-red-900 hover:cursor-pointer">
+                    Upgrade to Enterprise to add a market center
+                  </p>
+                </Link>
+              ))}
             <Button
               type="button"
               variant="outline"
@@ -247,7 +281,7 @@ export default function CreateMarketCenter({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !isEnterprise}>
               {isSubmitting ? "Saving..." : "Submit"}
             </Button>
           </div>

@@ -52,6 +52,7 @@ import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useFetchOneUser } from "@/hooks/use-users";
 import { createAndSendNotification } from "@/lib/utils/notifications";
+import { useIsEnterprise, useSubscription } from "@/hooks/useSubscription";
 
 type UserDetailViewProps = { id: string };
 
@@ -81,8 +82,22 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { isEnterprise } = useIsEnterprise();
   const { currentUser, setCurrentUser } = useStore();
   const { role, permissions } = useUserRole();
+
+  const { data: subscription, isLoading: isSubscriptionLoading } =
+    useSubscription();
+
+  const seats = useMemo(() => {
+    const activeSubscription =
+      (subscription && subscription?.status === "ACTIVE") ||
+      subscription?.status === "TRIALING";
+    const totalSeats = activeSubscription ? subscription.totalSeats : 0;
+    const filledSeats = activeSubscription ? subscription.usedSeats : 0;
+    const hasAvailableSeats = filledSeats < totalSeats;
+    return { activeSubscription, totalSeats, filledSeats, hasAvailableSeats };
+  }, [subscription]);
 
   const getRoleIcon = (userRole: UserRole) => {
     const Icon = ROLE_ICONS[userRole as keyof typeof ROLE_ICONS];
@@ -427,7 +442,25 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Role *</Label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label className="text-sm font-medium">Role *</Label>
+                <ToolTip
+                  content={
+                    !!isEnterprise ||
+                    (!isEnterprise && seats?.hasAvailableSeats)
+                      ? "You have available seats. All roles can be assigned."
+                      : "Upgrade your subscription to assign the admin, staff leader or staff role."
+                  }
+                  trigger={
+                    <p className="text-xs text-muted-foreground">
+                      {!!isEnterprise
+                        ? "Unlimited seats"
+                        : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
+                    used`}
+                    </p>
+                  }
+                />
+              </div>
               <Select
                 value={user?.role}
                 onValueChange={(value: UserRole) => {
@@ -443,10 +476,10 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 }}
                 disabled={
                   currentUser?.id === user?.id ||
-                  !role ||
-                  role === "AGENT" ||
+                  !permissions?.canChangeUserRoles ||
                   isSubmitting ||
-                  userLoading
+                  userLoading ||
+                  isSubscriptionLoading
                 }
               >
                 <SelectTrigger>
@@ -455,15 +488,21 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (role === "STAFF" || role === "STAFF_LEADER") &&
-                      option === "ADMIN"
+                      (!isEnterprise &&
+                        !seats?.hasAvailableSeats &&
+                        role !== "AGENT") ||
+                      ((role === "STAFF" || role === "STAFF_LEADER") &&
+                        option === "ADMIN")
                     )
                       return null;
+
                     return (
                       <SelectItem key={option} value={option}>
                         <div className="flex items-center gap-2">
-                          {getRoleIcon(option)}
-                          {option ? option.split("_").join(" ") : "N/A"}
+                          {getRoleIcon(option ?? "AGENT")}
+                          {option
+                            ? option.split("_").join(" ")
+                            : "Role not assigned"}
                         </div>
                       </SelectItem>
                     );
@@ -567,14 +606,36 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Role *</Label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label className="text-sm font-medium">Role *</Label>
+                <ToolTip
+                  content={
+                    !!isEnterprise ||
+                    (!isEnterprise && seats?.hasAvailableSeats)
+                      ? "You have available seats. All roles can be assigned."
+                      : "Upgrade your subscription to assign the admin, staff leader or staff role."
+                  }
+                  trigger={
+                    <p className="text-xs text-muted-foreground">
+                      {!!isEnterprise
+                        ? "Unlimited seats"
+                        : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
+                    used`}
+                    </p>
+                  }
+                />
+              </div>
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) =>
                   setFormData({ ...formData, role: value })
                 }
                 disabled={
-                  !role || role === "AGENT" || isSubmitting || userLoading
+                  currentUser?.id === user?.id ||
+                  !permissions?.canChangeUserRoles ||
+                  isSubmitting ||
+                  userLoading ||
+                  isSubscriptionLoading
                 }
               >
                 <SelectTrigger>
@@ -583,8 +644,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (role === "STAFF" || role === "STAFF_LEADER") &&
-                      option === "ADMIN"
+                      (!isEnterprise &&
+                        !seats?.hasAvailableSeats &&
+                        role !== "AGENT") ||
+                      ((role === "STAFF" || role === "STAFF_LEADER") &&
+                        option === "ADMIN")
                     )
                       return null;
                     return (
