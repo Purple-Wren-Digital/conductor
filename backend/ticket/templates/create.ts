@@ -3,7 +3,7 @@ import type { TicketTemplate } from "./types";
 import { getUserContext } from "../../auth/user-context";
 import { marketCenterRepository } from "../db";
 import { ticketTemplateRepository } from "../../shared/repositories/ticket.template.repository";
-import { Urgency } from "../types";
+import type { Urgency } from "../types";
 
 export interface GetTemplatesRequest {
   marketCenterId: string;
@@ -14,15 +14,15 @@ export interface GetTemplatesRequest {
     title: string;
     ticketDescription: string;
     categoryId?: string;
+    defaultAssigneeId?: string;
     urgency?: Urgency;
     tags?: string[];
     todos?: string[];
   };
-  //   newTemplates?: Partial<TicketTemplate[]>;
 }
 
 export interface GetTemplatesResponse {
-  template: TicketTemplate; //[];
+  template: TicketTemplate;
 }
 export const createTemplate = api<GetTemplatesRequest, GetTemplatesResponse>(
   {

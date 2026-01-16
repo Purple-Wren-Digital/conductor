@@ -8,6 +8,10 @@ import {
 import { TicketTemplate } from "../../ticket/templates/types";
 import { Urgency } from "../../ticket/types";
 
+function isIdOrNull(value: string | undefined) {
+  return !value || value === "none" ? null : value;
+}
+
 // =============================================================================
 // DATABASE ROW TYPE
 // =============================================================================
@@ -19,7 +23,7 @@ interface TicketTemplateRow {
   title: string;
   ticket_description: string;
   categoryId: string | null;
-  categoryid: string | null;
+  assignee_id: string | null;
   urgency: Urgency | null;
   tags: any;
   todos: any;
@@ -41,7 +45,8 @@ function mapTicketTemplateRow(row: TicketTemplateRow): TicketTemplate {
     isActive: row.is_active,
     title: row.title,
     ticketDescription: row.ticket_description,
-    categoryId: row.categoryId ?? row.categoryid ?? undefined,
+    categoryId: row.categoryId ?? undefined,
+    assigneeId: row.assignee_id ?? undefined,
     urgency: row.urgency ?? undefined,
     tags: fromJson(row.tags) ?? [],
     todos: fromJson(row.todos) ?? [],
@@ -92,6 +97,7 @@ export const ticketTemplateRepository = {
         title,
         ticket_description,
         categoryId,
+        assignee_id,
         urgency,
         tags,
         todos,
@@ -107,7 +113,8 @@ export const ticketTemplateRepository = {
         ${input.description ?? null},
         ${input.title},
         ${input.ticketDescription},
-        ${input.categoryId ?? null},
+        ${isIdOrNull(input.categoryId)},
+        ${isIdOrNull(input.assigneeId)},
         ${input.urgency ?? null},
         ${toJson(input.tags ?? [])},
         ${toJson(input.todos ?? [])},
@@ -134,7 +141,8 @@ export const ticketTemplateRepository = {
         description = COALESCE(${input.description}, description),
         title = COALESCE(${input.title}, title),
         ticket_description = COALESCE(${input.ticketDescription}, ticket_description),
-        categoryId = COALESCE(${input.categoryId}, categoryId),
+        categoryId = COALESCE(${isIdOrNull(input.categoryId)}, categoryId),
+        assignee_id = COALESCE(${isIdOrNull(input.assigneeId)}, assignee_id),
         urgency = COALESCE(${input.urgency}, urgency),
         tags = COALESCE(${input.tags ? toJson(input.tags) : null}, tags),
         todos = COALESCE(${input.todos ? toJson(input.todos) : null}, todos),

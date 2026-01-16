@@ -32,8 +32,17 @@ import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useFetchTicketTemplateById } from "@/hooks/use-template-customization";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
-import type { MarketCenter, TicketCategory, Urgency } from "@/lib/types";
-import { findMarketCenter, urgencyOptions } from "@/lib/utils";
+import type {
+  MarketCenter,
+  PrismaUser,
+  TicketCategory,
+  Urgency,
+} from "@/lib/types";
+import {
+  capitalizeEveryWord,
+  findMarketCenter,
+  urgencyOptions,
+} from "@/lib/utils";
 import { ArrowLeft, Building, InfoIcon } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -62,7 +71,10 @@ export default function TicketTemplateEditor({
   const [selectedMarketCenter, setSelectedMarketCenter] =
     useState<MarketCenter>({} as MarketCenter);
   const [urgency, setUrgency] = useState<Urgency>("MEDIUM");
-  const [categoryId, setCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string | "none">("none");
+  const [defaultAssigneeId, setDefaultAssigneeId] = useState<string | "none">(
+    "none"
+  );
   const [templateDescription, setTemplateDescription] = useState("");
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
@@ -85,6 +97,7 @@ export default function TicketTemplateEditor({
     todos?: string;
     urgency?: string;
     categoryId?: string;
+    defaultAssigneeId?: string;
     isActive?: string;
   }>({});
 
@@ -103,10 +116,20 @@ export default function TicketTemplateEditor({
   }, [marketCentersData]);
 
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
-    return selectedMarketCenter && selectedMarketCenter?.ticketCategories
+    return !isMarketCentersLoading &&
+      selectedMarketCenter &&
+      selectedMarketCenter?.ticketCategories
       ? selectedMarketCenter?.ticketCategories
       : [];
-  }, [selectedMarketCenter]);
+  }, [selectedMarketCenter, isMarketCentersLoading]);
+
+  const marketCenterUsers: PrismaUser[] = useMemo(() => {
+    return !isMarketCentersLoading &&
+      selectedMarketCenter &&
+      selectedMarketCenter?.users
+      ? selectedMarketCenter?.users
+      : [];
+  }, [selectedMarketCenter, isMarketCentersLoading]);
 
   const prefillMarketCenterData = useCallback(
     (mcId: string) => {
@@ -130,29 +153,35 @@ export default function TicketTemplateEditor({
     role,
   });
 
-  const hasMadeChanges = useMemo(() => {
+  const hasMadeChanges: boolean = useMemo(() => {
+    if (!template) return true; // creating a new template always counts as change
+
+    const selectedCategoryId = categoryId === "none" ? undefined : categoryId;
+    const selectedAssigneeId =
+      defaultAssigneeId === "none" ? undefined : defaultAssigneeId;
+
     return (
-      templateName !== (template?.name || "") ||
-      templateDescription !== (template?.description || "") ||
-      ticketTitle !== (template?.title || "") ||
-      ticketDescription !== (template?.ticketDescription || "") ||
-      todos.length !== (template?.todos?.length || 0) ||
-      urgency !== (template?.urgency || "MEDIUM") ||
-      categoryId !== (template?.categoryId || "") ||
-      (!!selectedMarketCenter &&
-        Object.keys(selectedMarketCenter).length === 1) ||
-      (template && selectedMarketCenter?.id !== template.marketCenterId) ||
-      (template && isActive !== template?.isActive)
+      templateName !== template?.name ||
+      templateDescription !== template?.description ||
+      ticketTitle !== template?.title ||
+      ticketDescription !== template?.ticketDescription ||
+      JSON.stringify(todos) !== JSON.stringify(template.todos ?? []) ||
+      urgency !== template?.urgency ||
+      selectedCategoryId !== template?.categoryId ||
+      selectedAssigneeId !== template?.assigneeId ||
+      isActive !== template.isActive ||
+      selectedMarketCenter?.id !== template?.marketCenterId
     );
   }, [
+    categoryId,
     template,
+    defaultAssigneeId,
     templateName,
     templateDescription,
     ticketTitle,
     ticketDescription,
-    todos.length,
+    todos,
     urgency,
-    categoryId,
     selectedMarketCenter,
     isActive,
   ]);
@@ -171,6 +200,7 @@ export default function TicketTemplateEditor({
         editSubtaskInput,
         todos,
         categoryId,
+        defaultAssigneeId,
         urgency,
       })
     );
@@ -185,6 +215,7 @@ export default function TicketTemplateEditor({
     editSubtaskInput,
     todos,
     categoryId,
+    defaultAssigneeId,
     urgency,
     selectedMarketCenter,
     hydrated,
@@ -201,6 +232,7 @@ export default function TicketTemplateEditor({
       setTemplateDescription(fetchedInputs?.templateDescription);
       setSelectedMarketCenter(fetchedInputs?.selectedMarketCenter);
       setCategoryId(fetchedInputs?.categoryId);
+      setDefaultAssigneeId(fetchedInputs?.defaultAssigneeId);
       setUrgency(fetchedInputs?.urgency);
       setNewSubtaskTitle(fetchedInputs?.newSubtaskTitle);
       setEditingSubtask(fetchedInputs?.editingSubtask);
@@ -217,7 +249,8 @@ export default function TicketTemplateEditor({
       if (template?.marketCenterId) {
         prefillMarketCenterData(template.marketCenterId);
       }
-      setCategoryId(template.categoryId || "");
+      setCategoryId(template.categoryId || "none");
+      setDefaultAssigneeId(template?.assigneeId || "none");
       setUrgency(template?.urgency || "MEDIUM");
 
       setTicketTitle(template.title);
@@ -298,7 +331,7 @@ export default function TicketTemplateEditor({
     closeNewSubtaskTitle,
   ]);
 
-  const handleClearTemplate = () => {
+  const handleClearTemplate = useCallback(() => {
     setTemplateName("");
     setTemplateDescription("");
     setTicketTitle("");
@@ -306,31 +339,30 @@ export default function TicketTemplateEditor({
     setTodos([]);
     setUrgency("MEDIUM");
     setCategoryId("");
+    setDefaultAssigneeId("");
     setErrors({});
-  };
+  }, []);
 
   // Validate inputs
-  const validateInputs = () => {
+  const validateInputs = useCallback(() => {
     const newErrors: typeof errors = {};
-    if (!templateName || templateName.trim() === "") {
-      newErrors.templateName = "Template name is required";
-    }
-    if (!selectedMarketCenter || !selectedMarketCenter.id) {
+
+    if (!selectedMarketCenter?.id) {
       newErrors.marketCenter = "Market center selection is required";
     }
 
-    if (!categoryId) {
-      newErrors.categoryId = "Category selection is required";
+    if (!templateName?.trim()) {
+      newErrors.templateName = "Template name is required";
     }
 
     if (!urgency) {
       newErrors.urgency = "Urgency selection is required";
     }
 
-    if (!ticketTitle || ticketTitle.trim() === "") {
+    if (!ticketTitle?.trim()) {
       newErrors.ticketTitle = "Ticket title is required";
     }
-    if (!ticketDescription || ticketDescription.trim() === "") {
+    if (!ticketDescription?.trim()) {
       newErrors.ticketDescription = "Ticket description is required";
     }
 
@@ -347,7 +379,17 @@ export default function TicketTemplateEditor({
       return false;
     }
     return true;
-  };
+  }, [
+    hasMadeChanges,
+    isActive,
+    selectedMarketCenter,
+    templateId,
+    templateName,
+    ticketDescription,
+    ticketTitle,
+    type,
+    urgency,
+  ]);
 
   const hasErrors = useMemo(
     () => Object.values(errors).some(Boolean),
@@ -445,6 +487,7 @@ export default function TicketTemplateEditor({
             templateDescription: templateDescription,
             selectedMarketCenter: selectedMarketCenter.id,
             categoryId: categoryId,
+            defaultAssigneeId: defaultAssigneeId,
             urgency: urgency,
             ticketTitle: ticketTitle,
             ticketTemplateDescription: ticketDescription,
@@ -510,7 +553,7 @@ export default function TicketTemplateEditor({
               <p className="text-sm text-muted-foreground">
                 {type === "create"
                   ? "Create ticket templates for your market center"
-                  : "Edit your ticket template"}
+                  : "Updates applied to new tickets only"}
                 {hasMadeChanges && " • (Unsaved Changes)"}
               </p>
             </div>
@@ -544,13 +587,55 @@ export default function TicketTemplateEditor({
         </div>
 
         <div className="space-y-6">
+          {/* Market Center */}
+          <fieldset
+            className={`space-y-2 ${type === "edit" ? "w-full md:w-150" : "w-full"}`}
+            role="group"
+          >
+            <div className="flex items-center justify-between">
+              <Label htmlFor="templateName" className="text-md">
+                Market Center
+              </Label>
+            </div>
+            <Select
+              value={selectedMarketCenter?.id}
+              onValueChange={(value) =>
+                setSelectedMarketCenter(findMarketCenter(marketCenters, value))
+              }
+              disabled={isMarketCentersLoading}
+            >
+              <SelectTrigger
+                className={errors.marketCenter ? "border-destructive" : ""}
+                disabled={isMarketCentersLoading}
+              >
+                <SelectValue placeholder={"Select Market Center"} />
+              </SelectTrigger>
+              <SelectContent>
+                {marketCenters &&
+                  marketCenters.length > 0 &&
+                  marketCenters.map((marketCenter: MarketCenter) => (
+                    <SelectItem key={marketCenter?.id} value={marketCenter?.id}>
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 " />
+                        {marketCenter?.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-destructive">
+              {errors.marketCenter && errors.marketCenter}
+            </p>
+          </fieldset>
+
           {/* Edit Only - isActive */}
           {type === "edit" && (
             <fieldset className="space-y-2" role="group">
-              <div className="flex items-center flex-wrap ">
-                <Label htmlFor="isActive" className="text-md w-20">
+              <div className="flex items-center justify-between gap-4 w-full md:w-50">
+                <Label htmlFor="isActive" className="text-md">
                   {isActive ? "Active" : "Inactive"}
                 </Label>
+
                 <Switch
                   id="isActive"
                   checked={isActive}
@@ -558,6 +643,11 @@ export default function TicketTemplateEditor({
                     setIsActive(checked);
                   }}
                   aria-label={`Current: ${isActive ? "Active" : "Inactive"} status`}
+                  className={
+                    errors.isActive
+                      ? "data-[state=checked]:border-destructive data-[state=unchecked]:bg-destructive/30"
+                      : ""
+                  }
                 />
               </div>
               <p className="text-sm text-destructive">
@@ -617,57 +707,33 @@ export default function TicketTemplateEditor({
             </p>
           </fieldset>
 
-          {/* Market Center, Category, Urgency */}
+          {/* Category, Assignee, and Urgency */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Market Center */}
-            <fieldset className="space-y-2" role="group">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="templateName" className="text-md">
-                  Market Center
-                </Label>
-              </div>
-              <Select
-                value={selectedMarketCenter?.id}
-                onValueChange={(value) =>
-                  setSelectedMarketCenter(
-                    findMarketCenter(marketCenters, value)
-                  )
-                }
-                disabled={isMarketCentersLoading}
-              >
-                <SelectTrigger
-                  className={errors.marketCenter ? "border-destructive" : ""}
-                  disabled={isMarketCentersLoading}
-                >
-                  <SelectValue placeholder={"Select Market Center"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {marketCenters &&
-                    marketCenters.length > 0 &&
-                    marketCenters.map((marketCenter: MarketCenter) => (
-                      <SelectItem
-                        key={marketCenter?.id}
-                        value={marketCenter?.id}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4 " />
-                          {marketCenter?.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-destructive">
-                {errors.marketCenter && errors.marketCenter}
-              </p>
-            </fieldset>
-
             {/* Category */}
             <fieldset className="space-y-2" role="group">
               <Label className="text-md">Category </Label>
               <Select
                 value={categoryId}
-                onValueChange={(value) => setCategoryId(value)}
+                onValueChange={(value: string | "none") => {
+                  setCategoryId(value);
+                  if (value === "none") {
+                    setDefaultAssigneeId("none");
+                    return;
+                  }
+
+                  setCategoryId(value);
+
+                  const assigneeId =
+                    marketCenterUsers?.find(
+                      (u) =>
+                        u.id ===
+                        marketCenterTicketCategories?.find(
+                          (c) => c.id === value
+                        )?.defaultAssigneeId
+                    )?.id ?? "none";
+
+                  setDefaultAssigneeId(assigneeId);
+                }}
                 disabled={
                   isLoading || !marketCenters.length || isLoadingTemplate
                 }
@@ -691,6 +757,44 @@ export default function TicketTemplateEditor({
               </Select>
               <p className="text-sm text-destructive">
                 {errors.categoryId && errors.categoryId}
+              </p>
+            </fieldset>
+
+            {/* Assignee */}
+            <fieldset className="space-y-2" role="group">
+              <Label className="text-md">Assignee</Label>
+              <Select
+                value={defaultAssigneeId}
+                onValueChange={(value) => setDefaultAssigneeId(value)}
+                disabled={
+                  isLoading || !marketCenters.length || isLoadingTemplate
+                }
+              >
+                <SelectTrigger
+                  className={
+                    errors.defaultAssigneeId ? "border-destructive" : ""
+                  }
+                  disabled={
+                    isLoading || !marketCenters.length || isLoadingTemplate
+                  }
+                >
+                  <SelectValue placeholder="Select an assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {marketCenterUsers &&
+                    marketCenterUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}:{" "}
+                        {user?.role
+                          ? capitalizeEveryWord(user.role.split("_").join(" "))
+                          : "Role Not Set"}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-destructive">
+                {errors.defaultAssigneeId && errors.defaultAssigneeId}
               </p>
             </fieldset>
 
@@ -864,7 +968,7 @@ export default function TicketTemplateEditor({
                           ? "cursor-not-allowed"
                           : editingSubtask
                             ? "cursor-default"
-                            : "hover:cursor-pointer hover:underline"
+                            : "hover:cursor-pointer hover:text-primary"
                       } py-2`}
                     >
                       {/* Not editing */}
@@ -873,7 +977,7 @@ export default function TicketTemplateEditor({
                           <div className="flex h-9 w-full min-w-0 rounded-md border border-input px-3 py-1 text-base shadow-xs md:text-sm">
                             <Label
                               htmlFor={`todo-${todo}`}
-                              className={`text-md text-muted-foreground font-normal leading-relaxed `}
+                              className={`text-md text-muted-foreground font-normal leading-relaxed hover:text-primary`}
                               aria-label={`Subtask title: ${todo}. Click here to edit.`}
                             >
                               {todo}
@@ -883,7 +987,7 @@ export default function TicketTemplateEditor({
                             <Button
                               variant="outline"
                               size={"sm"}
-                              disabled
+                              disabled={isLoading || isLoadingTemplate}
                               aria-label="Edit subtask"
                             >
                               Edit
@@ -981,6 +1085,7 @@ export default function TicketTemplateEditor({
           )}
         </div>
       </div>
+
       <AlertDialog
         open={showUnsavedWarning}
         onOpenChange={setShowUnsavedWarning}

@@ -3,24 +3,23 @@ import type { TicketTemplate } from "./types";
 import { getUserContext } from "../../auth/user-context";
 import { ticketTemplateRepository } from "../../shared/repositories/ticket.template.repository";
 import { canModifyTicketTemplate } from "../../auth/permissions";
-import { Urgency } from "../types";
-import { Todo } from "../../todos/types";
-import { user } from "~encore/clients";
+import type { Urgency } from "../types";
 
-export interface GetTemplateRequest {
+export interface UpdateTemplateRequest {
   templateId: string;
   isActive: boolean;
   templateName: string;
   templateDescription: string;
   selectedMarketCenter: string;
-  categoryId: string;
+  categoryId?: string;
+  assignedUserId?: string;
   urgency: Urgency;
   ticketTitle: string;
   ticketTemplateDescription: string;
   ticketTemplateTodos: string[];
 }
 
-export const updateTemplate = api<GetTemplateRequest, TicketTemplate>(
+export const updateTemplate = api<UpdateTemplateRequest, TicketTemplate>(
   {
     expose: true,
     method: "PUT",

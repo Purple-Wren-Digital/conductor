@@ -8,6 +8,7 @@ export interface TicketTemplate {
   title: string;
   ticketDescription: string;
   categoryId?: string;
+  assigneeId?: string;
   urgency?: Urgency;
   tags?: string[];
   todos?: string[];

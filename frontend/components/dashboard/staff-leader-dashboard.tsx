@@ -36,7 +36,6 @@ import {
 import {
   Users,
   Plus,
-  User,
   Activity,
   TrendingUp,
   TicketIcon,
@@ -47,8 +46,6 @@ import type { PrismaUser, SurveyResults, Ticket } from "@/lib/types";
 import { calculateStaffStats } from "@/lib/utils/staff-stats";
 import {
   chartColors,
-  defaultActiveStatuses,
-  getResolvedInBusinessDays,
   sortByRoleThenName,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -362,33 +359,32 @@ export function StaffLeaderDashboard() {
               content="Ratings are based on resolved tickets within this market center via survey responses"
               trigger={<InfoIcon className="size-3 text-primary" />}
             />
-            <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
-              <span className="flex items-center gap-1">
-                {marketCenter?.name || "Market Center"}:
-                <StarRating
-                  rating={marketCenterRatings?.marketCenterAverageRating || 0}
-                  size={16}
-                />
-              </span>
-              <span className="flex items-center gap-1">
-                All Team Members:
-                <StarRating
-                  rating={marketCenterRatings?.assigneeAverageRating || 0}
-                  size={16}
-                />
-              </span>
-              <span className="flex items-center gap-1">
-                All Tickets:
-                <StarRating
-                  rating={marketCenterRatings?.overallAverageRating || 0}
-                  size={16}
-                />
-              </span>
-            </div>
+            <span className="flex items-center gap-1 md:mr-2">
+              {marketCenter?.name || "Market Center"}:
+              <StarRating
+                rating={marketCenterRatings?.marketCenterAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1 md:mr-2">
+              All Team Members:
+              <StarRating
+                rating={marketCenterRatings?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Tickets:
+              <StarRating
+                rating={marketCenterRatings?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
           </div>
+          {/* </div> */}
         </section>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* TOP STATS */}
+        <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("active")}
@@ -426,7 +422,6 @@ export function StaffLeaderDashboard() {
               </p>
             </CardContent>
           </Card>
-
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("overdue")}
@@ -445,7 +440,6 @@ export function StaffLeaderDashboard() {
               </p>
             </CardContent>
           </Card>
-
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("resolved")}
@@ -464,11 +458,11 @@ export function StaffLeaderDashboard() {
               </p>
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        <div className="grid gap-4 lg:grid-cols-2 justify-center">
+        <section className="grid gap-4 auto-cols-[minmax(0,2fr)] lg:grid-cols-2 place-content-evenly">
           {/* TEAM MEMBERS */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Staff Breakdown</CardTitle>
@@ -550,7 +544,7 @@ export function StaffLeaderDashboard() {
             </CardContent>
           </Card>
           {/* TICKETS BY STATUS */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Tickets by Status</CardTitle>
@@ -613,7 +607,7 @@ export function StaffLeaderDashboard() {
           </Card>
 
           {/* TICKETS BY USER */}
-          <Card className="h-fit max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Active Tickets by User</CardTitle>
@@ -688,7 +682,7 @@ export function StaffLeaderDashboard() {
           </Card>
 
           {/* RECENT ACTIVITY */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row flex-wrap justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Recent Activity</CardTitle>
@@ -697,7 +691,7 @@ export function StaffLeaderDashboard() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
+              <ScrollArea className="space-y-2 max-h-50 overflow-y-auto">
                 {!tickets && !tickets?.length && (
                   <p className="text-sm font-medium text-muted-foreground">
                     No tickets found
@@ -750,7 +744,7 @@ export function StaffLeaderDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </section>
       </div>
       <CreateTicketForm
         isOpen={isCreateOpen}
