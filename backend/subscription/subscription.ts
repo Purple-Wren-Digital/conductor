@@ -564,11 +564,18 @@ export const getSubscription = api(
     // Use getUserContext which handles Clerk ID lookup with email fallback
     const userContext = await getUserContext();
 
-    if (!userContext.marketCenterId) {
+    if (!userContext?.marketCenterId) {
       throw APIError.notFound("User or market center not found");
     }
 
-    const marketCenterId = userContext.marketCenterId;
+    const marketCenterId =
+      await subscriptionRepository.findPrimaryMarketCenterId(
+        userContext.marketCenterId
+      );
+
+    if (!marketCenterId) {
+      throw APIError.notFound("No market center found for subscription");
+    }
 
     const result =
       await subscriptionRepository.findByMarketCenterIdWithUserCount(

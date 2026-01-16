@@ -37,7 +37,6 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     auth: true,
   },
   async (req) => {
-    console.log(" ***** SEARCH MARKET CENTERS ***** ", req);
     const userContext = await getUserContext();
 
     // Get accessible market center IDs based on user's subscription

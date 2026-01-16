@@ -107,6 +107,16 @@ export const subscriptionRepository = {
     return row ? rowToSubscription(row) : null;
   },
 
+  // Find subscription by Stripe customer ID
+  async findByStripeCustomerId(
+    stripeCustomerId: string
+  ): Promise<Subscription | null> {
+    const row = await db.queryRow<SubscriptionRow>`
+      SELECT * FROM subscriptions WHERE stripe_customer_id = ${stripeCustomerId}
+    `;
+    return row ? rowToSubscription(row) : null;
+  },
+
   // Find subscription with market center user count (includes pending invitations)
   // Note: AGENT role users are free and don't count against paid seat limits
   async findByMarketCenterIdWithUserCount(marketCenterId: string): Promise<{
@@ -429,23 +439,84 @@ export const subscriptionRepository = {
     }
 
     // Get the user's subscription
-    const subscription = await this.findByMarketCenterId(userMarketCenterId);
+    const subscriptionFromMarketCenterId =
+      await this.findByMarketCenterId(userMarketCenterId);
 
-    if (!subscription) {
-      // No subscription - only their own market center
-      return [userMarketCenterId];
-    }
-
-    // Check if Enterprise plan
-    if (subscription.planType !== "ENTERPRISE") {
+    // // Check if Enterprise plan
+    if (
+      subscriptionFromMarketCenterId &&
+      subscriptionFromMarketCenterId.planType !== "ENTERPRISE"
+    ) {
       // Non-Enterprise: Only their own market center
       return [userMarketCenterId];
     }
 
-    // Enterprise: Get all market centers under the same stripe_customer_id
-    return this.findMarketCenterIdsByStripeCustomerId(
-      subscription.stripeCustomerId
-    );
+    if (
+      subscriptionFromMarketCenterId &&
+      subscriptionFromMarketCenterId.planType === "ENTERPRISE"
+    ) {
+      return this.findMarketCenterIdsByStripeCustomerId(
+        subscriptionFromMarketCenterId.stripeCustomerId
+      );
+    }
+    // Check if market center has a subscription via primary stripe customer id
+    if (!subscriptionFromMarketCenterId) {
+      const userMarketCenter =
+        await marketCenterRepository.findById(userMarketCenterId);
+      if (!userMarketCenter) {
+        return [];
+      }
+
+      // Enterprise: Get all market centers under the same stripe_customer_id
+      if (userMarketCenter?.primaryStripeCustomerId) {
+        return this.findMarketCenterIdsByStripeCustomerId(
+          userMarketCenter.primaryStripeCustomerId
+        );
+      }
+
+      if (userMarketCenter.primaryStripeCustomerId === null) {
+        return [userMarketCenterId];
+      }
+    }
+
+    return [];
+  },
+
+  // Find the primary market center ID for a user based on their subscription
+  // - Non-Enterprise: Only their own market center
+  // - Enterprise: All market centers under the same stripe_customer_id
+  async findPrimaryMarketCenterId(
+    userMarketCenterId: string
+  ): Promise<string | null> {
+    if (!userMarketCenterId) {
+      return null;
+    }
+
+    // Get the user's subscription
+    const subscriptionFromMarketCenterId =
+      await this.findByMarketCenterId(userMarketCenterId);
+    if (subscriptionFromMarketCenterId) {
+      return subscriptionFromMarketCenterId.marketCenterId;
+    } else {
+      // Check if market center has a subscription via primary stripe customer id
+      const userMarketCenter =
+        await marketCenterRepository.findById(userMarketCenterId);
+      if (!userMarketCenter) {
+        return userMarketCenterId;
+      }
+
+      // Enterprise: Get all market centers under the same stripe_customer_id
+      if (userMarketCenter?.primaryStripeCustomerId) {
+        const subscription = await this.findByStripeCustomerId(
+          userMarketCenter.primaryStripeCustomerId
+        );
+
+        return subscription && subscription?.marketCenterId
+          ? subscription.marketCenterId
+          : userMarketCenterId;
+      }
+    }
+    return userMarketCenterId;
   },
 
   // Check if a user can access a specific market center based on subscription

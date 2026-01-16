@@ -194,7 +194,9 @@ export default function AdminTicketList() {
           savedFilters.selectedStatuses || defaultActiveStatuses
         );
         setSelectedUrgencies(savedFilters.selectedUrgencies || []);
-        setSelectedCategory(savedFilters.selectedCategory || defaultSelectedCategory);
+        setSelectedCategory(
+          savedFilters.selectedCategory || defaultSelectedCategory
+        );
         setSelectedAssignee(savedFilters.selectedAssignee || "all");
         setSelectedCreator(savedFilters.selectedCreator || "all");
         setSelectedMarketCenterId(savedFilters.selectedMarketCenterId || "all");
@@ -909,7 +911,6 @@ export default function AdminTicketList() {
       if (role === "ADMIN") return "Global";
       if (!id) return "No Market Center";
       const mc = marketCenters && marketCenters.find((mc) => mc.id === id);
-      console.log("findMarketCenterName", id, mc);
       return mc && mc?.name ? mc.name : `#${id.slice(0, 8)}`;
     },
     [marketCenters]

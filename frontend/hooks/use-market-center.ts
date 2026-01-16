@@ -59,11 +59,6 @@ export function useSearchMarketCenters({
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
-      console.log("API_BASE:", API_BASE);
-      console.log(
-        "FULL URL:",
-        `${API_BASE}/marketCenters/search?${queryParams ? `?${queryParams.toString()}` : ""}`
-      );
 
       const response = await fetch(
         `${API_BASE}/marketCenters/search${queryParams ? `?${queryParams.toString()}` : ""}`,
@@ -75,16 +70,12 @@ export function useSearchMarketCenters({
           },
         }
       );
-      console.log("Market centers search response:", response);
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Search Market Centers - Error data:", errorData);
         throw new Error(errorData?.message ?? "Failed to fetch market centers");
       }
-
       const data = await response.json();
-      console.log("Market centers search data:", data);
-
       return {
         marketCenters: data?.marketCenters as MarketCenter[],
         total: data?.total,

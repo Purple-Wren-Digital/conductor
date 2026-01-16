@@ -22,6 +22,8 @@ interface MarketCenterRow {
   settings?: MarketCenterSettings;
   created_at: Date;
   updated_at: Date;
+  primary_stripe_subscription_id: string | null;
+  primary_stripe_customer_id: string | null;
 }
 
 interface TicketCategoryRow {
@@ -85,6 +87,8 @@ function rowToMarketCenter(row: MarketCenterRow): MarketCenter {
     name: row.name,
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
+    primaryStripeSubscriptionId: row.primary_stripe_subscription_id,
+    primaryStripeCustomerId: row.primary_stripe_customer_id,
     settings: settings
       ? {
           ...settings,

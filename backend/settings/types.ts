@@ -22,7 +22,6 @@ export interface AutoCloseSettings {
 export interface MarketCenterSettings {
   notificationPreferences?: MarketCenterNotificationPreferences[];
   notificationTemplates?: NotificationTemplate[];
-  ticketCategories?: TicketCategory[];
   ticketTemplates?: TicketTemplate[];
   marketCenter?: MarketCenter;
   autoClose?: AutoCloseSettings;

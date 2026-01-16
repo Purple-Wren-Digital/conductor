@@ -92,17 +92,11 @@ export const create = api<
         userContext.marketCenterId
       );
 
-    console.log(
-      "Available Market Centers after creation:",
-      availableMarketCenters
-    );
-
     if (
       !availableMarketCenters ||
       !availableMarketCenters.length ||
       !availableMarketCenters.includes(createdMarketCenter.id)
     ) {
-      console.log("No available market centers found for subscription");
       throw APIError.internal(
         "Failed to verify new market center is under subscription"
       );

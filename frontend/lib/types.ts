@@ -13,6 +13,8 @@ import {
   TicketSurveyProps,
   UpdatedTicketProps,
 } from "@/packages/transactional/emails/types";
+import { MarketCenterNotificationPreferences } from "./utils/market-centers-notifications/types";
+import { AutoCloseSettings } from "./api/settings";
 
 // CONTEXT
 export type AppContext = {
@@ -335,14 +337,16 @@ export interface DashboardMetrics {
 export interface MarketCenter {
   id: string;
   name: string;
-  settings?: {
-    notificationPreferences?: NotificationPreferences[];
-  } | null;
+  settings?: MarketCenterSettings | null;
   createdAt: Date;
   updatedAt: Date;
   marketCenterHistory: MarketCenterHistory[];
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
+
+  primaryStripeCustomerId: string | null;
+  primaryStripeSubscriptionId: string | null;
+
   users?: PrismaUser[];
   totalTickets?: number;
   totalUsers?: number;
@@ -350,6 +354,32 @@ export interface MarketCenter {
   // settingsAuditLogs?: SettingsAuditLog[];
 
   averages?: SurveyResults;
+}
+
+export interface MarketCenterSettings {
+  notificationPreferences?: MarketCenterNotificationPreferences[];
+  notificationTemplates?: NotificationTemplate[];
+  ticketTemplates?: TicketTemplate[];
+  marketCenter?: MarketCenter;
+  autoClose?: AutoCloseSettings;
+
+  // businessHours: BusinessHours;
+  // branding: BrandingSettings;
+  // holidays: string[];
+  // integrations: {
+  //   apiKeys: Record<string, string>;
+  //   webhooks: {
+  //     url: string;
+  //     events: string[];
+  //   }[];
+  // };
+  // general: {
+  //   name: string;
+  //   timezone: string;
+  //   language: string;
+  //   autoAssignment: boolean;
+  // };
+  // teamMembers: number;
 }
 
 export interface MarketCenterHistory {
