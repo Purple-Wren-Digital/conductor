@@ -2,6 +2,7 @@ import { api, APIError, Query } from "encore.dev/api";
 import { subscriptionRepository, userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
+// TODO: Accessible market centers based on subscription - primary market center ID in params for ADMIN ENTERPRISE users
 
 export interface SearchUsersRequest {
   query?: string;
@@ -74,36 +75,43 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         total: 1,
       };
     }
-    const isUnassigned =
-      req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
 
     // Determine market center filter based on subscription and role
     let marketCenterIds: string[] = [];
+
+    const isUnassigned =
+      req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
 
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
         userContext.marketCenterId
       );
-    const marketCenterId =
-      isAdmin && req?.marketCenterId !== undefined
-        ? req.marketCenterId
-        : isStaff && userContext?.marketCenterId
-          ? userContext.marketCenterId
-          : null;
 
-    if (isAdmin && marketCenterId) {
-      const foundId = accessibleMarketCenterIds.find(
-        (id) => id === marketCenterId
-      );
-      if (foundId) {
-        marketCenterIds.push(foundId);
-      }
-    }
-    if (isStaff && marketCenterId) {
-      marketCenterIds.push(marketCenterId);
-    }
+    const adminMarketCenterId: string | null =
+      isAdmin && req?.marketCenterId !== undefined && !isUnassigned
+        ? req.marketCenterId
+        : null;
+
+    const staffMarketCenterId =
+      isStaff &&
+      userContext?.marketCenterId &&
+      !isUnassigned &&
+      accessibleMarketCenterIds.find((id) => id === userContext?.marketCenterId)
+        ? userContext.marketCenterId
+        : null;
+
     if (isUnassigned) {
       marketCenterIds.push("Unassigned");
+    }
+
+    if (isAdmin && adminMarketCenterId && !isUnassigned) {
+      marketCenterIds.push(adminMarketCenterId);
+    }
+    if (isAdmin && !adminMarketCenterId && !isUnassigned) {
+      marketCenterIds = accessibleMarketCenterIds;
+    }
+    if (isStaff && staffMarketCenterId && !isUnassigned) {
+      marketCenterIds.push(staffMarketCenterId);
     }
 
     const { users, total } = await userRepository.search({

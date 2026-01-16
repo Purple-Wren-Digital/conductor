@@ -25,7 +25,7 @@ import { User, Copy, Check } from "lucide-react";
 import { ROLE_ICONS, roleOptions } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFetchWithAuth } from "@/lib/api/fetch-with-auth";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useIsEnterprise, useSubscription } from "@/hooks/useSubscription";
 
 interface InviteUserForm {
   name: string;
@@ -64,6 +64,7 @@ export default function CreateUser({
     useState<InvitationResponse | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const { isEnterprise } = useIsEnterprise();
   const { permissions } = useUserRole();
   const fetchWithAuth = useFetchWithAuth();
 
@@ -83,14 +84,14 @@ export default function CreateUser({
     const filledSeats = activeSubscription ? subscription.usedSeats : 0;
     const hasAvailableSeats = filledSeats < totalSeats;
 
-    if (!hasAvailableSeats) {
+    if (!isEnterprise && !hasAvailableSeats) {
       setFormData((prev) => ({
         ...prev,
         role: prev.role === "AGENT" ? "AGENT" : "",
       }));
     }
     return { activeSubscription, totalSeats, filledSeats, hasAvailableSeats };
-  }, [subscription]);
+  }, [subscription, isEnterprise]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -106,7 +107,11 @@ export default function CreateUser({
 
     if (!formData.role) {
       errors.role = "Role is required";
-    } else if (formData.role !== "AGENT" && !seats?.hasAvailableSeats) {
+    } else if (
+      !isEnterprise &&
+      formData.role !== "AGENT" &&
+      !seats?.hasAvailableSeats
+    ) {
       errors.role =
         "Please upgrade your subscription to add more admin and staff users";
     }
@@ -291,14 +296,16 @@ export default function CreateUser({
               </label>
               <ToolTip
                 content={
-                  seats?.hasAvailableSeats
+                  !!isEnterprise || (!isEnterprise && seats?.hasAvailableSeats)
                     ? "You have available seats. All roles can be assigned."
                     : "Upgrade your subscription to assign the admin, staff leader or staff role."
                 }
                 trigger={
                   <p className="text-xs text-muted-foreground">
-                    {seats.filledSeats} out of {seats.totalSeats} paid seats
-                    used
+                    {!!isEnterprise
+                      ? "Unlimited seats"
+                      : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
+                    used`}
                   </p>
                 }
               />
@@ -319,7 +326,11 @@ export default function CreateUser({
               </SelectTrigger>
               <SelectContent>
                 {roleOptions.map((role) => {
-                  if (!seats?.hasAvailableSeats && role !== "AGENT") {
+                  if (
+                    !isEnterprise &&
+                    !seats?.hasAvailableSeats &&
+                    role !== "AGENT"
+                  ) {
                     return null;
                   }
                   return (

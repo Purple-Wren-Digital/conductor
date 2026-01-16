@@ -54,16 +54,14 @@ export function useSearchMarketCenters({
     queryKey: marketCentersQueryKey,
     queryFn: async () => {
       if (!role || role === "AGENT") {
-        throw new Error(
-          "Only Admin and Staff users can view all market centers"
-        );
+        throw new Error("Only Admin and Staff users can view market centers");
       }
 
       const token = await getToken();
       if (!token) throw new Error("Failed to get authentication token");
 
       const response = await fetch(
-        `${API_BASE}/marketCenters/search?${queryParams.toString()}`,
+        `${API_BASE}/marketCenters/search${queryParams ? `?${queryParams.toString()}` : ""}`,
         {
           method: "GET",
           headers: {
@@ -72,16 +70,18 @@ export function useSearchMarketCenters({
           },
         }
       );
-      if (!response.ok) return { marketCenters: [] };
-
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Search Market Centers - Error data:", errorData);
+        throw new Error(errorData?.message ?? "Failed to fetch market centers");
+      }
       const data = await response.json();
-
       return {
         marketCenters: data?.marketCenters as MarketCenter[],
         total: data?.total,
       };
     },
-    enabled: role && role === "ADMIN",
+    enabled: !!role,
   });
 }
 

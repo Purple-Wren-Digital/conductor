@@ -75,6 +75,7 @@ import {
   EyeClosed,
   Users,
   Save,
+  InfoIcon,
 } from "lucide-react";
 import type {
   Ticket,
@@ -911,7 +912,6 @@ export default function AdminTicketList() {
       if (role === "ADMIN") return "Global";
       if (!id) return "No Market Center";
       const mc = marketCenters && marketCenters.find((mc) => mc.id === id);
-      console.log("findMarketCenterName", id, mc);
       return mc && mc?.name ? mc.name : `#${id.slice(0, 8)}`;
     },
     [marketCenters]
@@ -956,14 +956,22 @@ export default function AdminTicketList() {
 
           <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
             {isEnterprise && (
-              <TeamSwitcher
-                selectedMarketCenterId={selectedMarketCenterId}
-                setSelectedMarketCenterId={setSelectedMarketCenterId}
-                handleMarketCenterSelected={() => {
-                  setSelectedCategory(defaultSelectedCategory);
-                  setCurrentPage(1);
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <ToolTip
+                  content="Filter by each market center team's tickets with the team's defined ticket categories (not global categories)"
+                  trigger={
+                    <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                  }
+                />
+                <TeamSwitcher
+                  selectedMarketCenterId={selectedMarketCenterId}
+                  setSelectedMarketCenterId={setSelectedMarketCenterId}
+                  handleMarketCenterSelected={() => {
+                    setSelectedCategory(defaultSelectedCategory);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
             )}
             <Button
               className="gap-2 w-full sm:w-fit"

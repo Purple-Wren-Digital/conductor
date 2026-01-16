@@ -760,11 +760,7 @@ describe("Permissions", () => {
           marketCenterId: "mc-123",
         });
 
-        expect(
-          await canCreateMarketCenters(
-            createUserContext({ role: "ADMIN", marketCenterId: "mc-123" })
-          )
-        ).toBe(true);
+        expect(await canCreateMarketCenters("mc-123", "ADMIN")).toBe(true);
       });
 
       it("returns false for non-admin roles", async () => {
@@ -773,13 +769,23 @@ describe("Permissions", () => {
           planType: "ENTERPRISE",
           marketCenterId: "mc-123",
         });
-
+        const userContext = createUserContext({
+          role: "STAFF",
+          marketCenterId: "mc-123",
+        });
         expect(
-          await canCreateMarketCenters(createUserContext({ role: "STAFF" }))
+          await canCreateMarketCenters(
+            userContext.marketCenterId ?? "",
+            userContext.role
+          )
         ).toBe(false);
       });
 
       it("throws if no active subscription exists", async () => {
+        const userContext = createUserContext({
+          role: "ADMIN",
+          marketCenterId: "mc-123",
+        });
         mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue({
           status: "INACTIVE",
           planType: "ENTERPRISE",
@@ -787,9 +793,7 @@ describe("Permissions", () => {
         });
 
         await expect(
-          canCreateMarketCenters(
-            createUserContext({ role: "ADMIN", marketCenterId: "mc-123" })
-          )
+          canCreateMarketCenters("mc-123", "ADMIN")
         ).rejects.toThrow();
       });
     });

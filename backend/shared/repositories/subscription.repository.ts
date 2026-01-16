@@ -2,7 +2,13 @@
  * Subscription Repository - Raw SQL queries for subscription operations
  */
 
-import { db, fromTimestamp, toJson, fromJson } from "../../ticket/db";
+import {
+  db,
+  fromTimestamp,
+  toJson,
+  fromJson,
+  marketCenterRepository,
+} from "../../ticket/db";
 import { SubscriptionStatus, SubscriptionPlan } from "../../subscription/types";
 
 // Database row types
@@ -101,6 +107,16 @@ export const subscriptionRepository = {
     return row ? rowToSubscription(row) : null;
   },
 
+  // Find subscription by Stripe customer ID
+  async findByStripeCustomerId(
+    stripeCustomerId: string
+  ): Promise<Subscription | null> {
+    const row = await db.queryRow<SubscriptionRow>`
+      SELECT * FROM subscriptions WHERE stripe_customer_id = ${stripeCustomerId}
+    `;
+    return row ? rowToSubscription(row) : null;
+  },
+
   // Find subscription with market center user count (includes pending invitations)
   // Note: AGENT role users are free and don't count against paid seat limits
   async findByMarketCenterIdWithUserCount(marketCenterId: string): Promise<{
@@ -180,7 +196,7 @@ export const subscriptionRepository = {
     features?: any;
     cancelAt: Date | null;
     canceledAt: Date | null;
-  }): Promise<Subscription> {
+  }): Promise<Subscription | null> {
     const row = await db.queryRow<SubscriptionRow>`
       INSERT INTO subscriptions (
         stripe_subscription_id, stripe_customer_id, market_center_id, status, plan_type,
@@ -207,7 +223,59 @@ export const subscriptionRepository = {
       )
       RETURNING *
     `;
-    return rowToSubscription(row!);
+    return row ? rowToSubscription(row) : null;
+  },
+
+  // Find all market center IDs that share the same stripe_customer_id
+  // Used for Enterprise subscriptions with multiple market centers
+  async findMarketCenterIdsByStripeCustomerId(
+    stripeCustomerId: string
+  ): Promise<string[]> {
+    const rows = await db.queryAll<{ id: string }>`
+    (
+      SELECT market_center_id AS id
+      FROM subscriptions
+      WHERE stripe_customer_id = ${stripeCustomerId}
+    )
+    UNION
+    (
+      SELECT id
+      FROM market_centers
+      WHERE primary_stripe_customer_id = ${stripeCustomerId}
+    )
+  `;
+
+    return rows ? rows.map((r) => r.id) : [];
+  },
+
+  async assignMarketCenterToSubscription(primaryMCId: string): Promise<void> {
+    const primarySub =
+      await subscriptionRepository.findByMarketCenterId(primaryMCId);
+    if (!primarySub) {
+      throw new Error(
+        `No subscription found for primary market center ID: ${primaryMCId}`
+      );
+    }
+    await marketCenterRepository.update(primaryMCId, {
+      stripeSubscriptionId: primarySub.stripeSubscriptionId,
+      stripeCustomerId: primarySub.stripeCustomerId,
+    });
+  },
+
+  async marketCenterIdsNoSubscription(): Promise<string[]> {
+    // Implementation to unassign market center from subscription
+    const marketCenterRows = await db.queryAll<{ id: string }>`
+      SELECT mc.id
+      FROM market_centers mc
+      LEFT JOIN subscriptions s
+        ON s.market_center_id = mc.id
+      WHERE mc.primary_stripe_customer_id IS NULL
+        AND mc.primary_stripe_subscription_id IS NULL
+        AND s.id IS NULL;
+    `;
+    return marketCenterRows && marketCenterRows.length
+      ? marketCenterRows.map((row) => row.id)
+      : [];
   },
 
   // Update subscription
@@ -239,6 +307,42 @@ export const subscriptionRepository = {
     if (data.planType !== undefined) {
       updates.push(`plan_type = $${paramIndex++}`);
       values.push(data.planType);
+
+      // For ENTERPRISE plan, includedSeats and additionalSeats are managed differently
+      const existingSubscription = await this.findById(id);
+      if (
+        // handle upgrade to ENTERPRISE
+        existingSubscription &&
+        data.planType === "ENTERPRISE" &&
+        data.planType !== existingSubscription?.planType
+      ) {
+        await marketCenterRepository.update(
+          existingSubscription.marketCenterId,
+          {
+            stripeSubscriptionId: existingSubscription.stripeSubscriptionId,
+            stripeCustomerId: existingSubscription.stripeCustomerId,
+          }
+        );
+      }
+      if (
+        // handle downgrade from ENTERPRISE
+        existingSubscription &&
+        existingSubscription.planType === "ENTERPRISE" &&
+        data.planType !== existingSubscription.planType
+      ) {
+        const marketCenterIdsWithSub =
+          await this.findMarketCenterIdsByStripeCustomerId(
+            existingSubscription.stripeCustomerId
+          );
+        if (marketCenterIdsWithSub && marketCenterIdsWithSub.length > 0) {
+          for (const mc of marketCenterIdsWithSub) {
+            await marketCenterRepository.update(mc, {
+              stripeSubscriptionId: null,
+              stripeCustomerId: null,
+            });
+          }
+        }
+      }
     }
     if (data.priceId !== undefined) {
       updates.push(`price_id = $${paramIndex++}`);
@@ -291,25 +395,37 @@ export const subscriptionRepository = {
     `;
 
     const row = await db.rawQueryRow<SubscriptionRow>(sql, ...values);
+
+    if (!row) {
+      return null;
+    }
+
     return row ? rowToSubscription(row) : null;
   },
 
   // Delete subscription
   async delete(id: string): Promise<boolean> {
+    const existingSubscription = await this.findById(id);
+
+    if (
+      existingSubscription &&
+      existingSubscription.planType === "ENTERPRISE"
+    ) {
+      const marketCenterIdsWithSub =
+        await this.findMarketCenterIdsByStripeCustomerId(
+          existingSubscription.stripeCustomerId
+        );
+      if (marketCenterIdsWithSub && marketCenterIdsWithSub.length > 0) {
+        for (const mc of marketCenterIdsWithSub) {
+          await marketCenterRepository.update(mc, {
+            stripeSubscriptionId: null,
+            stripeCustomerId: null,
+          });
+        }
+      }
+    }
     await db.exec`DELETE FROM subscriptions WHERE id = ${id}`;
     return true;
-  },
-
-  // Find all market center IDs that share the same stripe_customer_id
-  // Used for Enterprise subscriptions with multiple market centers
-  async findMarketCenterIdsByStripeCustomerId(
-    stripeCustomerId: string
-  ): Promise<string[]> {
-    const rows = await db.queryAll<{ market_center_id: string }>`
-      SELECT market_center_id FROM subscriptions
-      WHERE stripe_customer_id = ${stripeCustomerId}
-    `;
-    return rows.map((row) => row.market_center_id);
   },
 
   // Get all market center IDs accessible to a user based on their subscription
@@ -323,23 +439,84 @@ export const subscriptionRepository = {
     }
 
     // Get the user's subscription
-    const subscription = await this.findByMarketCenterId(userMarketCenterId);
+    const subscriptionFromMarketCenterId =
+      await this.findByMarketCenterId(userMarketCenterId);
 
-    if (!subscription) {
-      // No subscription - only their own market center
-      return [userMarketCenterId];
-    }
-
-    // Check if Enterprise plan
-    if (subscription.planType !== "ENTERPRISE") {
+    // // Check if Enterprise plan
+    if (
+      subscriptionFromMarketCenterId &&
+      subscriptionFromMarketCenterId.planType !== "ENTERPRISE"
+    ) {
       // Non-Enterprise: Only their own market center
       return [userMarketCenterId];
     }
 
-    // Enterprise: Get all market centers under the same stripe_customer_id
-    return this.findMarketCenterIdsByStripeCustomerId(
-      subscription.stripeCustomerId
-    );
+    if (
+      subscriptionFromMarketCenterId &&
+      subscriptionFromMarketCenterId.planType === "ENTERPRISE"
+    ) {
+      return this.findMarketCenterIdsByStripeCustomerId(
+        subscriptionFromMarketCenterId.stripeCustomerId
+      );
+    }
+    // Check if market center has a subscription via primary stripe customer id
+    if (!subscriptionFromMarketCenterId) {
+      const userMarketCenter =
+        await marketCenterRepository.findById(userMarketCenterId);
+
+      // Enterprise: Get all market centers under the same stripe_customer_id
+      if (userMarketCenter && userMarketCenter.primaryStripeCustomerId) {
+        return this.findMarketCenterIdsByStripeCustomerId(
+          userMarketCenter.primaryStripeCustomerId
+        );
+      }
+
+      if (
+        userMarketCenter &&
+        userMarketCenter.primaryStripeCustomerId === null
+      ) {
+        return [userMarketCenterId];
+      }
+    }
+
+    return [userMarketCenterId];
+  },
+
+  // Find the primary market center ID for a user based on their subscription
+  // - Non-Enterprise: Only their own market center
+  // - Enterprise: All market centers under the same stripe_customer_id
+  async findPrimaryMarketCenterId(
+    userMarketCenterId: string
+  ): Promise<string | null> {
+    if (!userMarketCenterId) {
+      return null;
+    }
+
+    // Get the user's subscription
+    const subscriptionFromMarketCenterId =
+      await this.findByMarketCenterId(userMarketCenterId);
+    if (subscriptionFromMarketCenterId) {
+      return subscriptionFromMarketCenterId.marketCenterId;
+    } else {
+      // Check if market center has a subscription via primary stripe customer id
+      const userMarketCenter =
+        await marketCenterRepository.findById(userMarketCenterId);
+      if (!userMarketCenter) {
+        return userMarketCenterId;
+      }
+
+      // Enterprise: Get all market centers under the same stripe_customer_id
+      if (userMarketCenter?.primaryStripeCustomerId) {
+        const subscription = await this.findByStripeCustomerId(
+          userMarketCenter.primaryStripeCustomerId
+        );
+
+        return subscription && subscription?.marketCenterId
+          ? subscription.marketCenterId
+          : userMarketCenterId;
+      }
+    }
+    return userMarketCenterId;
   },
 
   // Check if a user can access a specific market center based on subscription
@@ -357,9 +534,8 @@ export const subscriptionRepository = {
     }
 
     // Get accessible market centers
-    const accessibleIds = await this.getAccessibleMarketCenterIds(
-      userMarketCenterId
-    );
+    const accessibleIds =
+      await this.getAccessibleMarketCenterIds(userMarketCenterId);
     return accessibleIds.includes(targetMarketCenterId);
   },
 };

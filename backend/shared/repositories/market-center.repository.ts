@@ -11,6 +11,9 @@ import type {
 } from "../../marketCenters/types";
 import type { UserRole } from "../../user/types";
 import { MarketCenterSettings } from "../../settings/types";
+import { defaultMarketCenterNotificationPreferences } from "../../marketCenters/notification-preferences/utils";
+import { defaultAutoCloseSettings } from "../../settings";
+import { notificationTemplatesDefault } from "../../notifications/templates/utils";
 
 // Database row types
 interface MarketCenterRow {
@@ -19,6 +22,8 @@ interface MarketCenterRow {
   settings?: MarketCenterSettings;
   created_at: Date;
   updated_at: Date;
+  primary_stripe_subscription_id: string | null;
+  primary_stripe_customer_id: string | null;
 }
 
 interface TicketCategoryRow {
@@ -82,6 +87,8 @@ function rowToMarketCenter(row: MarketCenterRow): MarketCenter {
     name: row.name,
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
+    primaryStripeSubscriptionId: row.primary_stripe_subscription_id,
+    primaryStripeCustomerId: row.primary_stripe_customer_id,
     settings: settings
       ? {
           ...settings,
@@ -185,20 +192,105 @@ export const marketCenterRepository = {
   // Create market center
   async create(data: {
     name: string;
-    settings?: MarketCenterSettings;
-  }): Promise<MarketCenter> {
+    stripeSubscriptionId?: string | null;
+    stripeCustomerId?: string | null;
+  }): Promise<MarketCenter | null> {
     const row = await db.queryRow<MarketCenterRow>`
-      INSERT INTO market_centers (name, settings, created_at, updated_at)
-      VALUES (${data.name}, ${toJson(data.settings ?? {})}::jsonb, NOW(), NOW())
+      INSERT INTO market_centers (name, settings, created_at, updated_at, primary_stripe_customer_id, primary_stripe_subscription_id)
+      VALUES (${data.name}, ${toJson({})}::jsonb, NOW(), NOW(), ${data.stripeCustomerId ?? null}, ${data.stripeSubscriptionId ?? null})
       RETURNING *
     `;
-    return rowToMarketCenter(row!);
+
+    return row ? rowToMarketCenter(row) : null;
+  },
+
+  async initializeMarketCenterDefaults(
+    marketCenterId: string,
+    categories: { name: string; description: string }[]
+  ): Promise<MarketCenter | null> {
+    await db.exec`
+      UPDATE market_centers
+      SET settings = settings || ${toJson({
+        notificationPreferences: defaultMarketCenterNotificationPreferences,
+        autoCloseSettings: defaultAutoCloseSettings,
+      })}::jsonb,
+      updated_at = NOW()
+      WHERE id = ${marketCenterId}
+    `;
+
+    for (const category of categories) {
+      await db.exec`
+      INSERT INTO ticket_categories (
+        id,
+        name,
+        description,
+        market_center_id,
+        created_at,
+        updated_at
+      ) VALUES (
+        gen_random_uuid()::text,
+        ${category.name},
+        ${category.description},
+        ${marketCenterId},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT DO NOTHING
+    `;
+    }
+
+    for (const template of notificationTemplatesDefault) {
+      await db.exec`
+      INSERT INTO notification_templates (
+        id,
+        template_name,
+        template_description,
+        category,
+        channel,
+        type,
+        subject,
+        body,
+        is_default,
+        created_at,
+        variables,
+        is_active,
+        market_center_id
+      )
+      VALUES (
+        gen_random_uuid()::text,
+        ${template.templateName},
+        ${template.templateDescription ?? ""},
+        ${template.category},
+        ${template.channel},
+        ${template.type},
+        ${template.subject ?? ""},
+        ${template.body},
+        ${template.isDefault ?? true},
+        NOW(),
+        ${template.variables ?? null}::jsonb,
+        ${template.isActive ?? true},
+        ${marketCenterId}
+      )
+      ON CONFLICT DO NOTHING
+    `;
+    }
+
+    const row = await db.queryRow<MarketCenterRow>`
+      SELECT * FROM market_centers WHERE id = ${marketCenterId}
+    `;
+
+    return row ? rowToMarketCenter(row) : null;
   },
 
   // Update market center
   async update(
     id: string,
-    data: Partial<{ name: string; settings?: MarketCenterSettings }>
+    data: Partial<{
+      name?: string;
+      settings?: MarketCenterSettings;
+      stripeSubscriptionId?: string | null;
+      stripeCustomerId?: string | null;
+    }>
   ): Promise<MarketCenter | null> {
     const updates: string[] = ["updated_at = NOW()"];
     const values: any[] = [];
@@ -211,6 +303,15 @@ export const marketCenterRepository = {
     if (data.settings !== undefined) {
       updates.push(`settings = $${paramIndex++}::jsonb`);
       values.push(data.settings);
+    }
+    if (data.stripeSubscriptionId !== undefined) {
+      updates.push(`primary_stripe_subscription_id = $${paramIndex++}`);
+      values.push(data.stripeSubscriptionId);
+    }
+
+    if (data.stripeCustomerId !== undefined) {
+      updates.push(`primary_stripe_customer_id = $${paramIndex++}`);
+      values.push(data.stripeCustomerId);
     }
 
     values.push(id);

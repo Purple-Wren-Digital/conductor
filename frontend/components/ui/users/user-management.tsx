@@ -36,12 +36,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import CreateUser from "@/components/ui/users/create-user-form";
 import {
   useFetchMarketCenterUsers,
   useSearchMarketCenters,
 } from "@/hooks/use-market-center";
-import { useIsEnterprise } from "@/hooks/useSubscription";
+import { useIsEnterprise, useSubscription } from "@/hooks/useSubscription";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
@@ -131,6 +132,20 @@ export default function UserManagement() {
   const [deleting, setDeleting] = useState(false);
 
   const { getToken } = useAuth();
+
+  const { data: subscription, isLoading: isSubscriptionLoading } =
+    useSubscription();
+
+  const seats = useMemo(() => {
+    const activeSubscription =
+      (subscription && subscription?.status === "ACTIVE") ||
+      subscription?.status === "TRIALING";
+    const totalSeats = activeSubscription ? subscription.totalSeats : 0;
+    const filledSeats = activeSubscription ? subscription.usedSeats : 0;
+    const hasAvailableSeats = filledSeats < totalSeats;
+
+    return { activeSubscription, totalSeats, filledSeats, hasAvailableSeats };
+  }, [subscription]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -738,16 +753,14 @@ export default function UserManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Roles</SelectItem>
-                        {roleOptions
-                          .filter((role) => role !== "AGENT")
-                          .map((role) => (
-                            <SelectItem key={role} value={role}>
-                              <div className="flex items-center gap-2">
-                                {getRoleIcon(role)}
-                                {role.split("_").join(" ")}
-                              </div>
-                            </SelectItem>
-                          ))}
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(role)}
+                              {role.split("_").join(" ")}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -951,26 +964,57 @@ export default function UserManagement() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role *</label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-sm font-medium">Role *</label>
+                <ToolTip
+                  content={
+                    !!isEnterprise ||
+                    (!isEnterprise && seats?.hasAvailableSeats)
+                      ? "You have available seats. All roles can be assigned."
+                      : "Upgrade your subscription to assign the admin, staff leader or staff role."
+                  }
+                  trigger={
+                    <p className="text-xs text-muted-foreground">
+                      {!!isEnterprise
+                        ? "Unlimited seats"
+                        : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
+                    used`}
+                    </p>
+                  }
+                />
+              </div>
               <Select
                 value={editUserFormData.role}
                 onValueChange={(value: UserRole) =>
                   setEditUserFormData({ ...editUserFormData, role: value })
                 }
-                disabled={isSubmitting || !permissions?.canChangeUserRoles}
+                disabled={
+                  currentUser?.id === editingUser?.id ||
+                  !permissions?.canChangeUserRoles ||
+                  isSubmitting ||
+                  isSubscriptionLoading
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role)}
-                        {role.split("_").join(" ")}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {roleOptions.map((option: UserRole) => {
+                    if (
+                      (!isEnterprise &&
+                        !seats?.hasAvailableSeats &&
+                        role !== "AGENT") ||
+                      ((role === "STAFF" || role === "STAFF_LEADER") &&
+                        option === "ADMIN")
+                    )
+                      return null;
+                    return (
+                      <SelectItem key={option} value={option}>
+                        {getRoleIcon(option)}
+                        {option ? option.split("_").join(" ") : "N/A"}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

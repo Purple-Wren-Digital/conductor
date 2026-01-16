@@ -131,7 +131,7 @@ export const update = api<
             marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "ADD",
-            field: "team",
+            field: "team member",
             newValue: JSON.stringify({
               id: userAdded.id,
               name: userAdded.name,
@@ -147,7 +147,7 @@ export const update = api<
             marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "REMOVE",
-            field: "team",
+            field: "team member",
             previousValue: JSON.stringify({
               id: userRemoved.id,
               name: userRemoved.name,
@@ -245,6 +245,8 @@ export const update = api<
       name: result.updatedMarketCenterRow!.name,
       createdAt: fromTimestamp(result.updatedMarketCenterRow!.created_at)!,
       updatedAt: fromTimestamp(result.updatedMarketCenterRow!.updated_at)!,
+      primaryStripeCustomerId: null,
+      primaryStripeSubscriptionId: null,
     };
 
     return {

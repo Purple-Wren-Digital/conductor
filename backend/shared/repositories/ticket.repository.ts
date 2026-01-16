@@ -379,7 +379,8 @@ export const ticketRepository = {
     if (params.userRole === "AGENT" && params.userId) {
       conditions.push(`t.creator_id = $${paramIndex++}`);
       values.push(params.userId);
-    } else if (
+    }
+    if (
       (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
       params?.marketCenterIds &&
       params?.marketCenterIds.length > 0
@@ -390,7 +391,8 @@ export const ticketRepository = {
       conditions.push(`tc.market_center_id IN (${placeholders})`);
       values.push(...params.marketCenterIds);
       paramIndex += params.marketCenterIds.length;
-    } else if (
+    }
+    if (
       (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
       (!params?.marketCenterIds || !params.marketCenterIds.length) &&
       params?.userId
@@ -400,7 +402,9 @@ export const ticketRepository = {
       );
       values.push(params.userId);
       paramIndex++;
-    } else if (
+    }
+
+    if (
       params.userRole === "ADMIN" &&
       params?.marketCenterIds &&
       params?.marketCenterIds.length > 0

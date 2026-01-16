@@ -311,13 +311,14 @@ export async function canDeactivateUsers(
 
 // MARKET CENTERS
 export async function canCreateMarketCenters(
-  userContext: UserContext
+  primaryMarketCenterId: string,
+  role?: UserRole
 ): Promise<boolean> {
-  if (userContext.role !== "ADMIN") {
+  if (!role || role !== "ADMIN") {
     return false;
   }
-  await checkCanCreateMarketCenter(userContext?.marketCenterId ?? null);
-  return userContext.role === "ADMIN";
+  await checkCanCreateMarketCenter(primaryMarketCenterId);
+  return role === "ADMIN";
 }
 
 export async function canManageMarketCenters(

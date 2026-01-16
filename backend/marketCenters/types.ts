@@ -9,6 +9,8 @@ export interface MarketCenter {
   name: string;
   createdAt: Date;
   updatedAt: Date;
+  primaryStripeCustomerId: string | null;
+  primaryStripeSubscriptionId: string | null;
   teamInvitations?: TeamInvitation[];
   ticketCategories?: TicketCategory[];
   users?: User[];
