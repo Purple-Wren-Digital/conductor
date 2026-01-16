@@ -18,6 +18,9 @@ vi.mock("../../ticket/db", () => ({
     rawQuery: vi.fn(),
     rawExec: vi.fn(),
   },
+  marketCenterRepository: {
+    findById: vi.fn(),
+  },
   fromTimestamp: (val: any) => (val ? new Date(val) : null),
   toTimestamp: (val: any) => (val ? val.toISOString() : null),
   toJson: (val: any) => JSON.stringify(val),
@@ -25,6 +28,23 @@ vi.mock("../../ticket/db", () => ({
     val ? (typeof val === "string" ? JSON.parse(val) : val) : null,
   generateId: vi.fn().mockReturnValue("generated-id-123"),
 }));
+// vi.mock("../../ticket/db", () => ({
+//   db: {
+//     queryRow: vi.fn(),
+//     queryAll: vi.fn(),
+//     exec: vi.fn(),
+//     rawQueryRow: vi.fn(),
+//     rawQueryAll: vi.fn(),
+//     rawQuery: vi.fn(),
+//     rawExec: vi.fn(),
+//   },
+//   fromTimestamp: (val: any) => (val ? new Date(val) : null),
+//   toTimestamp: (val: any) => (val ? val.toISOString() : null),
+//   toJson: (val: any) => JSON.stringify(val),
+//   fromJson: (val: any) =>
+//     val ? (typeof val === "string" ? JSON.parse(val) : val) : null,
+//   generateId: vi.fn().mockReturnValue("generated-id-123"),
+// }));
 
 // Import the mocked db and repositories
 import { db } from "../../ticket/db";
@@ -458,8 +478,8 @@ describe("Market Center Repository", () => {
 
     const mc = await marketCenterRepository.create({ name: "New MC" });
 
-    expect(mc).toBeDefined();
-    expect(mc.name).toBe("Test Market Center");
+    expect(mc).not.toBeNull();
+    expect(mc!.name).toBe("Test Market Center");
   });
 
   it("should update market center", async () => {
@@ -837,8 +857,8 @@ describe("Subscription Repository", () => {
       canceledAt: null,
     });
 
-    expect(sub).toBeDefined();
-    expect(sub.status).toBe("ACTIVE");
+    expect(sub).not.toBeNull();
+    expect(sub!.status).toBe("ACTIVE");
   });
 
   it("should update subscription", async () => {
@@ -892,9 +912,9 @@ describe("Subscription Repository", () => {
     describe("findMarketCenterIdsByStripeCustomerId", () => {
       it("should return all market center IDs for a stripe customer", async () => {
         mockedDb.queryAll.mockResolvedValueOnce([
-          { market_center_id: "mc-1" },
-          { market_center_id: "mc-2" },
-          { market_center_id: "mc-3" },
+          { id: "mc-1" },
+          { id: "mc-2" },
+          { id: "mc-3" },
         ]);
 
         const result =
@@ -948,9 +968,9 @@ describe("Subscription Repository", () => {
         mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowEnterprise);
         // Second call: find all market centers by stripe customer ID
         mockedDb.queryAll.mockResolvedValueOnce([
-          { market_center_id: "mc-1" },
-          { market_center_id: "mc-2" },
-          { market_center_id: "mc-3" },
+          { id: "mc-1" },
+          { id: "mc-2" },
+          { id: "mc-3" },
         ]);
 
         const result =
@@ -1020,9 +1040,9 @@ describe("Subscription Repository", () => {
         mockedDb.queryRow.mockResolvedValueOnce(mockSubscriptionRowEnterprise);
         // Second call: get all accessible market center IDs
         mockedDb.queryAll.mockResolvedValueOnce([
-          { market_center_id: "mc-1" },
-          { market_center_id: "mc-2" },
-          { market_center_id: "mc-target" },
+          { id: "mc-1" },
+          { id: "mc-2" },
+          { id: "mc-target" },
         ]);
 
         const result = await subscriptionRepository.canAccessMarketCenter(

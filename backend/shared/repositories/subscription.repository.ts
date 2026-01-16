@@ -463,23 +463,23 @@ export const subscriptionRepository = {
     if (!subscriptionFromMarketCenterId) {
       const userMarketCenter =
         await marketCenterRepository.findById(userMarketCenterId);
-      if (!userMarketCenter) {
-        return [];
-      }
 
       // Enterprise: Get all market centers under the same stripe_customer_id
-      if (userMarketCenter?.primaryStripeCustomerId) {
+      if (userMarketCenter && userMarketCenter.primaryStripeCustomerId) {
         return this.findMarketCenterIdsByStripeCustomerId(
           userMarketCenter.primaryStripeCustomerId
         );
       }
 
-      if (userMarketCenter.primaryStripeCustomerId === null) {
+      if (
+        userMarketCenter &&
+        userMarketCenter.primaryStripeCustomerId === null
+      ) {
         return [userMarketCenterId];
       }
     }
 
-    return [];
+    return [userMarketCenterId];
   },
 
   // Find the primary market center ID for a user based on their subscription
