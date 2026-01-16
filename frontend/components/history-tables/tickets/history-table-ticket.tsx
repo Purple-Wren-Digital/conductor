@@ -12,6 +12,7 @@ import {
 import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import { processCommentContent } from "@/lib/sanitize";
 import { OrderBy, TicketHistory } from "@/lib/types";
@@ -21,6 +22,7 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  Loader,
   LockIcon,
   Mailbox,
   MessageSquare,
@@ -43,6 +45,8 @@ export default function TicketHistoryTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const [orderBy, setOrderBy] = useState<OrderBy>("desc");
+
+  const isMobile = useIsMobile();
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -106,7 +110,7 @@ export default function TicketHistoryTable({
   };
 
   return (
-    <div className="max-w-[300px] xs:max-w-full rounded-lg border p-1 ">
+    <div className="grid auto-cols-[minmax(0,2fr)] place-content-evenly p-1">
       <Table className="overflow-scroll">
         <TableHeader>
           <TableRow>
@@ -121,15 +125,21 @@ export default function TicketHistoryTable({
         <TableBody>
           {isLoading && (
             <TableRow>
-              <TableCell className="text-muted-foreground col-span-full">
-                Loading...
+              <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                <span className={` ${isMobile ? "min-w-[100px]" : ""}`}>
+                  <Loader className="text-muted-foreground inline-block mr-2 animate-spin" />
+                </span>
               </TableCell>
             </TableRow>
           )}
           {!isLoading && (!ticketHistoryLogs || !ticketHistoryLogs.length) && (
             <TableRow>
-              <TableCell className="text-muted-foreground col-span-full">
-                No logs found
+              <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                <p
+                  className={`text-muted-foreground ${isMobile ? "min-w-[100px]" : ""}`}
+                >
+                  No logs found
+                </p>
               </TableCell>
             </TableRow>
           )}
@@ -172,56 +182,84 @@ export default function TicketHistoryTable({
                 <TableRow key={`${index}-${log?.id}`}>
                   {/* ACTION */}
                   <TableCell>
-                    <p className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
+                    <span className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
                       {getActionIcon(action.split("_").join(" "))}
                       {action.split("_").join(" ").toLowerCase()}
-                    </p>
+                    </span>
                   </TableCell>
                   {/* FIELD */}
                   <TableCell
                     className={`font-semibold ${action.includes("INVITE") ? "" : "capitalize"}`}
                   >
-                    {field.toLowerCase()}
+                    <p className="flex flex-col min-w-[80px]">
+                      {field.toLowerCase()}
+                    </p>
                   </TableCell>
                   {/* NEW VALUE */}
-                  <TableCell className="font-semibold max-w-[50px] cursor-pointer">
-                    {field === "comment" || field === "description" ? (
-                      <SafeHtml
-                        content={newValueFormatted ? newValueFormatted : "-"}
-                        className="font-medium leading-relaxed  text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
-                      />
-                    ) : (
-                      <ToolTip
-                        content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "N/a"}`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
-                            {newValueFormatted ? newValueFormatted : "N/a"}
-                          </p>
-                        }
-                      />
-                    )}
+                  <TableCell>
+                    <span className="flex flex-col font-semibold min-w-[100px] max-w-[150px] cursor-pointer">
+                      {field === "comment" || field === "description" ? (
+                        <SafeHtml
+                          content={
+                            newValueFormatted
+                              ? newValueFormatted
+                              : "No new value"
+                          }
+                          className={`
+                          font-medium leading-relaxed text-muted-foreground
+                          line-spacing-10 wrap-break-word whitespace-normal rich-text
+                          [&_a]:underline [&_a:hover]:text-muted-foreground
+                          [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
+                          [&_li]:list-item [&_li]:mb-1`}
+                        />
+                      ) : (
+                        <ToolTip
+                          content={`Updated ${field}: ${newValueFormatted ? newValueFormatted : "No new value"}`}
+                          trigger={
+                            <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                              {newValueFormatted
+                                ? newValueFormatted
+                                : "No new data"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* PREVIOUS VALUE */}
-                  <TableCell className="text-muted-foreground max-w-[50px] cursor-pointer">
-                    {field === "comment" || field === "description" ? (
-                      <SafeHtml
-                        content={
-                          previousValueFormatted ? previousValueFormatted : "-"
-                        }
-                        className="leading-relaxed text-muted-foreground line-spacing-10 wrap-break-word whitespace-normal rich-text [&_a]:underline [&_a:hover]:text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:list-item [&_li]:mb-1"
-                      />
-                    ) : (
-                      <ToolTip
-                        content={`Previous ${field}: ${previousValueFormatted ? processCommentContent(previousValueFormatted) : "N/a"}`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                            {previousValueFormatted
-                              ? processCommentContent(previousValueFormatted)
-                              : "N/a"}
-                          </p>
-                        }
-                      />
-                    )}
+                  <TableCell>
+                    <span className="flex flex-col min-w-[100px] max-w-[150px] cursor-pointer text-muted-foreground">
+                      {field === "comment" || field === "description" ? (
+                        <SafeHtml
+                          content={
+                            previousValueFormatted
+                              ? previousValueFormatted
+                              : "None"
+                          }
+                          className={`
+                          font-medium leading-relaxed text-muted-foreground
+                          line-spacing-10 wrap-break-word whitespace-normal rich-text
+                          [&_a]:underline [&_a:hover]:text-muted-foreground
+                          [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
+                          [&_li]:list-item [&_li]:mb-1`}
+                        />
+                      ) : (
+                        <ToolTip
+                          content={`Previous ${field}: ${previousValueFormatted ? processCommentContent(previousValueFormatted) : "No previous value"}`}
+                          trigger={
+                            <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                              {previousValueFormatted
+                                ? processCommentContent(previousValueFormatted)
+                                : "None"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* CHANGED BY */}
                   <TableCell
@@ -235,34 +273,40 @@ export default function TicketHistoryTable({
                       }
                     }}
                   >
-                    {log?.changedById === "SYSTEM" ? (
-                      "System"
-                    ) : (
-                      <ToolTip
-                        content={`Changed By: ${
-                          log?.changedBy && log?.changedBy?.name
-                            ? log?.changedBy?.name
-                            : log?.changedById
-                              ? log?.changedById.slice(0, 8)
-                              : "N/a"
-                        }`}
-                        trigger={
-                          <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
-                            {log?.changedBy && log?.changedBy?.name
+                    <span className="flex flex-col min-w-[60px]">
+                      {log?.changedById === "SYSTEM" ? (
+                        "System"
+                      ) : (
+                        <ToolTip
+                          content={`Changed By: ${
+                            log?.changedBy && log?.changedBy?.name
                               ? log?.changedBy?.name
                               : log?.changedById
                                 ? log?.changedById.slice(0, 8)
-                                : "N/a"}
-                          </p>
-                        }
-                      />
-                    )}
+                                : "-"
+                          }`}
+                          trigger={
+                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+                              {log?.changedBy && log?.changedBy?.name
+                                ? log?.changedBy?.name
+                                : log?.changedById
+                                  ? log?.changedById.slice(0, 8)
+                                  : "-"}
+                            </p>
+                          }
+                          className="flex justify-start p-0"
+                          classNameMobileButton="flex justify-start p-0"
+                        />
+                      )}
+                    </span>
                   </TableCell>
                   {/* DATE CHANGED ON */}
                   <TableCell className="font-medium">
-                    {log?.changedAt
-                      ? new Date(log.changedAt).toLocaleDateString()
-                      : "N/a"}
+                    <p className="flex flex-col min-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {log?.changedAt
+                        ? new Date(log.changedAt).toLocaleDateString()
+                        : "-"}
+                    </p>
                   </TableCell>
                 </TableRow>
               );
@@ -282,26 +326,3 @@ export default function TicketHistoryTable({
     </div>
   );
 }
-
-// <TableHead className="text-center">Snapshot</TableHead>
-//  <TableCell className="font-medium">
-//   {log?.snapshot ? (
-//     <ToolTip
-//       content={`View snapshot of ticket at time of change`}
-//       trigger={
-//         <p
-//           className="underline decoration-dotted cursor-pointer text-center"
-//           onClick={() => {
-//             router.push(
-//               `/dashboard/tickets/${log.ticketId}?snapshotId=${log.id}`
-//             );
-//           }}
-//         >
-//           View
-//         </p>
-//       }
-//     />
-//   ) : (
-//     <p  className="text-muted-foreground">N/a</p>
-//   )}
-// </TableCell>

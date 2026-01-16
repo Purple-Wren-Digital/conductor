@@ -4,10 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportProps } from "@/components/reports/reports-dashboard";
-import {
-  useFetchTicketReviewsReport,
-  TicketReview,
-} from "@/hooks/use-reports";
+import { useFetchTicketReviewsReport, TicketReview } from "@/hooks/use-reports";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import {
   Table,
@@ -47,12 +44,20 @@ function formatDate(dateString: string): string {
   });
 }
 
-function RatingDisplay({ rating, size = 16 }: { rating: number | null; size?: number }) {
+function RatingDisplay({
+  rating,
+  size = 16,
+}: {
+  rating: number | null;
+  size?: number;
+}) {
   if (rating === null) return <span className="text-muted-foreground">-</span>;
   return (
     <div className="flex items-center gap-1">
       <StarRating rating={rating} size={size} />
-      <span className="text-sm text-muted-foreground">({rating.toFixed(1)})</span>
+      <span className="text-sm text-muted-foreground">
+        ({rating.toFixed(1)})
+      </span>
     </div>
   );
 }
@@ -95,7 +100,9 @@ function ReviewDetailModal({
             {/* People */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Submitted By</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Submitted By
+                </p>
                 <p className="font-medium">{review.surveyorName}</p>
               </div>
               <div>
@@ -106,7 +113,9 @@ function ReviewDetailModal({
 
             {review.marketCenterName && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Market Center</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Market Center
+                </p>
                 <p className="font-medium">{review.marketCenterName}</p>
               </div>
             )}
@@ -142,10 +151,14 @@ function ReviewDetailModal({
               <p className="font-semibold text-[#6D1C24] mb-2">Comments</p>
               {review.comment ? (
                 <div className="bg-muted/30 rounded-lg p-4">
-                  <p className="text-sm whitespace-pre-wrap">{review.comment}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {review.comment}
+                  </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No comments provided</p>
+                <p className="text-sm text-muted-foreground italic">
+                  No comments provided
+                </p>
               )}
             </div>
 
@@ -165,7 +178,9 @@ export default function TicketReviewsReport({
   isSelected,
   filters,
 }: ReportProps) {
-  const [selectedReview, setSelectedReview] = useState<TicketReview | null>(null);
+  const [selectedReview, setSelectedReview] = useState<TicketReview | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const queryParams = useMemo(() => {
@@ -185,7 +200,12 @@ export default function TicketReviewsReport({
       params.set("dateTo", filters.dateTo.toISOString());
     }
     return params;
-  }, [filters.marketCenterIds, filters.categoryIds, filters.dateFrom, filters.dateTo]);
+  }, [
+    filters.marketCenterIds,
+    filters.categoryIds,
+    filters.dateFrom,
+    filters.dateTo,
+  ]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -213,7 +233,9 @@ export default function TicketReviewsReport({
   };
 
   return (
-    <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
+    <div
+      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+    >
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
@@ -305,8 +327,14 @@ export default function TicketReviewsReport({
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   </TableCell>
-                  <TableCell>{review.surveyorName}</TableCell>
-                  <TableCell>{review.assigneeName ?? "-"}</TableCell>
+                  <TableCell>
+                    <p className="min-w-[150px]">{review.surveyorName}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="min-w-[150px]">
+                      {review.assigneeName ?? "-"}
+                    </p>
+                  </TableCell>
                   <TableCell>
                     <RatingDisplay rating={review.overallRating} />
                   </TableCell>

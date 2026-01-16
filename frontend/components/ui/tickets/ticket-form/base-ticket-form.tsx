@@ -341,16 +341,17 @@ export function BaseTicketForm({
                 onValueChange={(value) => {
                   // Only auto-assign based on category default if user is not an Agent
                   if (role !== "AGENT") {
-                    const selectedCategory = marketCenterTicketCategories?.find(
-                      (c) => c?.id === value
-                    );
-                    const assignee = marketCenterAssignees?.find(
-                      (user) => user?.id == selectedCategory?.defaultAssigneeId
-                    );
+                    const assigneeId =
+                      marketCenterAssignees?.find(
+                        (u) =>
+                          u.id ===
+                          marketCenterTicketCategories?.find(
+                            (c) => c.id === value
+                          )?.defaultAssigneeId
+                      )?.id ?? "Unassigned";
                     onChange({
                       categoryId: value,
-                      assigneeId:
-                        assignee && assignee?.id ? assignee.id : "Unassigned",
+                      assigneeId: assigneeId,
                     });
                   } else {
                     // Agent tickets should remain unassigned

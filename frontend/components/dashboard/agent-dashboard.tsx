@@ -117,13 +117,14 @@ export function AgentDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <section>
         <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
           Welcome, {clerkUser?.firstName}
         </h1>
         <p className="text-muted-foreground">Manage your assigned tickets</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-4">
+      </section>
+      {/* TOP STATS */}
+      <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card
           className="cursor-pointer transition-colors hover:bg-muted/50"
           onClick={() => navigateToTicketsWithFilter("active")}
@@ -199,7 +200,7 @@ export function AgentDashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
       <AgentTicketList />
     </div>

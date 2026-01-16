@@ -10,7 +10,6 @@ import {
 import type { MarketCenter } from "./types";
 import type { User } from "../user/types";
 import type { UsersToNotify } from "../notifications/types";
-// TODO: PRIMARY MARKET CENTER ID SHOULD BE DERIVED FROM QUERY PARAMS
 
 export const defaultTicketCategories = [
   { name: "General", description: "General inquiries and support" },

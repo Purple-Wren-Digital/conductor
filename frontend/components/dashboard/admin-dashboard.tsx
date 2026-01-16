@@ -35,7 +35,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useListAdminTickets, useListAllRatings, useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
+import {
+  useListAdminTickets,
+  useListAllRatings,
+  useFetchRatingsByMarketCenter,
+} from "@/hooks/use-tickets";
 import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
 import {
@@ -139,7 +143,8 @@ export function AdminDashboard() {
   );
 
   // Fetch single market center ratings when there's only one MC
-  const singleMarketCenterId = marketCenters.length === 1 ? marketCenters[0]?.id : undefined;
+  const singleMarketCenterId =
+    marketCenters.length === 1 ? marketCenters[0]?.id : undefined;
   const { data: singleMcRatings } = useFetchRatingsByMarketCenter(
     ["admin-dashboard-single-mc-ratings", singleMarketCenterId ?? ""],
     singleMarketCenterId
@@ -359,45 +364,43 @@ export function AdminDashboard() {
               content="Ratings are based on all resolved tickets via survey responses"
               trigger={<InfoIcon className="size-3 text-primary" />}
             />
-            <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground font-medium">
-              <span className="flex items-center gap-1">
-                {marketCenters && marketCenters.length > 1
-                  ? `All Market Centers (${totalMarketCenters})`
-                  : marketCenters.length === 1
-                    ? `${
-                        marketCenters?.[0]?.name
-                          ? marketCenters[0].name
-                          : marketCenters?.[0]?.id
-                            ? `#${marketCenters[0]?.id?.slice(0, 8)}`
-                            : "your market center"
-                      }`
-                    : "No Market Centers found"}
-                :
-                <StarRating
-                  rating={displayRatings?.marketCenterAverageRating || 0}
-                  size={16}
-                />
-              </span>
-              <span className="flex items-center gap-1">
-                All Users:
-                <StarRating
-                  rating={displayRatings?.assigneeAverageRating || 0}
-                  size={16}
-                />
-              </span>
-              <span className="flex items-center gap-1">
-                All Tickets:
-                <StarRating
-                  rating={displayRatings?.overallAverageRating || 0}
-                  size={16}
-                />
-              </span>
-            </div>
+            <span className="flex items-center gap-1 md:mr-2">
+              {marketCenters && marketCenters.length > 1
+                ? `All Market Centers (${totalMarketCenters})`
+                : marketCenters.length === 1
+                  ? `${
+                      marketCenters?.[0]?.name
+                        ? marketCenters[0].name
+                        : marketCenters?.[0]?.id
+                          ? `#${marketCenters[0]?.id?.slice(0, 8)}`
+                          : "your market center"
+                    }`
+                  : "No Market Centers found"}
+              :
+              <StarRating
+                rating={displayRatings?.marketCenterAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1 md:mr-2">
+              All Users:
+              <StarRating
+                rating={displayRatings?.assigneeAverageRating || 0}
+                size={16}
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              All Tickets:
+              <StarRating
+                rating={displayRatings?.overallAverageRating || 0}
+                size={16}
+              />
+            </span>
           </div>
         </section>
 
         {/* TOP STATS */}
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("active")}
@@ -476,9 +479,9 @@ export function AdminDashboard() {
           </Card>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className="grid gap-4 auto-cols-[minmax(0,2fr)] lg:grid-cols-2 place-content-evenly">
           {/* STAFF BREAKDOWN */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
                 <CardTitle>Staff Breakdown</CardTitle>
@@ -563,7 +566,7 @@ export function AdminDashboard() {
           </Card>
 
           {/* TICKETS BY USER */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">Active Tickets by User</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground hidden sm:visible" />
@@ -633,7 +636,7 @@ export function AdminDashboard() {
           </Card>
 
           {/* TICKETS BY STATUS */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
               <div className="flex flex-col gap-1">
                 <CardTitle>Tickets by Status</CardTitle>
@@ -696,7 +699,7 @@ export function AdminDashboard() {
           </Card>
 
           {/* RECENT TICKET ACTIVITY */}
-          <Card className="max-w-2xs sm:max-w-full">
+          <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
@@ -704,7 +707,7 @@ export function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="space-y-2 md:h-50 overflow-y-auto">
+              <ScrollArea className="space-y-2 max-h-50 overflow-y-auto">
                 {tickets.slice(0, 5).map((ticket: any) => (
                   <div
                     key={ticket.id}

@@ -136,6 +136,7 @@ export interface TicketTemplate {
   title: string;
   ticketDescription: string;
   categoryId?: string;
+  assigneeId?: string;
   urgency: Urgency | "MEDIUM";
   tags?: string[];
   todos?: string[];

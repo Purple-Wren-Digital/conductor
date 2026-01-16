@@ -21,6 +21,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const defaultCreatedTicketsByMonthValues = {
   ticketsCreated: [],
@@ -32,19 +33,29 @@ export default function CreatedTicketsByMonthReport({
   isSelected,
   filters,
 }: ReportProps) {
+  const isMobile = useIsMobile();
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (filters.dateFrom) params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
-    if (filters.dateTo) params.append("dateTo", endOfDay(filters.dateTo).toISOString());
+    if (filters.dateFrom)
+      params.append("dateFrom", startOfDay(filters.dateFrom).toISOString());
+    if (filters.dateTo)
+      params.append("dateTo", endOfDay(filters.dateTo).toISOString());
     if (filters.marketCenterIds.length > 0) {
-      filters.marketCenterIds.forEach((id) => params.append("marketCenterIds", id));
+      filters.marketCenterIds.forEach((id) =>
+        params.append("marketCenterIds", id)
+      );
     }
     if (filters.categoryIds.length > 0) {
       filters.categoryIds.forEach((id) => params.append("categoryIds", id));
     }
 
     return params;
-  }, [filters.dateFrom, filters.dateTo, filters.marketCenterIds, filters.categoryIds]);
+  }, [
+    filters.dateFrom,
+    filters.dateTo,
+    filters.marketCenterIds,
+    filters.categoryIds,
+  ]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -128,15 +139,15 @@ export default function CreatedTicketsByMonthReport({
   };
 
   return (
-    <div className={`space-y-4 ${!isSelected ? "hidden" : ""}`}>
+    <div
+      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+    >
       <div className="flex flex-wrap justify-between items-center px-4">
         <div>
           <h2 className="text-xl font-semibold text-[#6D1C24]">
             {getReportTitle()}
           </h2>
-          <p className="text-muted-foreground">
-            {getReportDescription()}
-          </p>
+          <p className="text-muted-foreground">{getReportDescription()}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="px-2 py-1">
@@ -150,21 +161,21 @@ export default function CreatedTicketsByMonthReport({
       </div>
 
       {/* REPORT CONTENT */}
-      <ChartContainer
-        config={createdTicketsChartConfig}
-        className="w-[99%] md:w-full "
-      >
+      <ChartContainer config={createdTicketsChartConfig}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             style={{
               width: "100%",
               height: "100%",
-              margin: "0",
-              padding: "0",
               aspectRatio: 1.618,
             }}
             data={createdTicketsData}
-            margin={{ top: 15, right: 30, left: 30, bottom: 30 }}
+            margin={{
+              top: isMobile ? 0 : 15,
+              right: 30,
+              left: isMobile ? 0 : 30,
+              bottom: isMobile ? 0 : 30,
+            }}
             aria-label={`Line chart showing the amount of created tickets by ${granularity}`}
           >
             <CartesianGrid strokeDasharray="7 7" />
@@ -192,8 +203,8 @@ export default function CreatedTicketsByMonthReport({
               label={{
                 value: "Amount of Created Tickets",
                 angle: -90,
-                position: "insideLeft",
-                dx: 5,
+                position: isMobile ? "" : "insideLeft",
+                dx: isMobile ? -5 : 5,
               }}
             />
             <ChartTooltip

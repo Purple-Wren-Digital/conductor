@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useFetchMarketCenterHistory } from "@/hooks/use-history";
 import type { MarketCenterHistory, OrderBy } from "@/lib/types";
 import { calculateTotalPages, capitalizeEveryWord } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   CircleMinus,
   CirclePlus,
   Clipboard,
+  Loader,
   LockIcon,
   Mailbox,
   MessageSquare,
@@ -45,6 +47,8 @@ export default function MarketCenterHistory({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [orderBy, setOrderBy] = useState<OrderBy>("desc");
+
+  const isMobile = useIsMobile();
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -132,7 +136,7 @@ export default function MarketCenterHistory({
         newValue = `${parsedNewValue.status}`;
         newValueLink = "/dashboard/users/?tab=invitations";
       } else {
-        newValue = log?.newValue ?? "-";
+        newValue = log?.newValue ?? "";
       }
 
       // Previous Value Parsing
@@ -143,7 +147,7 @@ export default function MarketCenterHistory({
       ) {
         try {
           const parsed = JSON.parse(log.previousValue);
-          previousValue = parsed?.name ?? "-";
+          previousValue = parsed?.name ?? "";
           previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           previousValue = log.previousValue;
@@ -156,7 +160,7 @@ export default function MarketCenterHistory({
       ) {
         try {
           const parsed = JSON.parse(log.previousValue);
-          previousValue = parsed?.name ?? "-";
+          previousValue = parsed?.name ?? "";
           previousValueLink = parsed?.id ? `/dashboard/users/${parsed.id}` : "";
         } catch {
           previousValue = log.previousValue;
@@ -185,7 +189,7 @@ export default function MarketCenterHistory({
         previousValue = `${parsedPreviousValue.status}`;
         previousValueLink = "/dashboard/users/?tab=invitations";
       } else {
-        previousValue = log?.previousValue ?? "-";
+        previousValue = log?.previousValue ?? "";
       }
 
       return {
@@ -233,7 +237,7 @@ export default function MarketCenterHistory({
       <div className="flex flex-row items-center justify-between">
         <p className="text-lg font-bold m-4 ml-2">Recent Activity</p>
       </div>
-      <div className="max-w-[300px] xs:max-w-full rounded-lg border">
+      <div className="grid auto-cols-[minmax(0,2fr)] place-content-evenly p-1 rounded-lg border">
         <Table className="overflow-scroll">
           <TableHeader>
             <TableRow>
@@ -248,16 +252,22 @@ export default function MarketCenterHistory({
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell className="text-muted-foreground col-span-full">
-                  Loading...
+                <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                  <span className={` ${isMobile ? "min-w-[100px]" : ""}`}>
+                    <Loader className="text-muted-foreground inline-block mr-2 animate-spin" />
+                  </span>
                 </TableCell>
               </TableRow>
             )}
             {!isLoading &&
               (!marketCenterHistoryLogs || !marketCenterHistoryLogs.length) && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground col-span-full">
-                    No market center logs
+                  <TableCell className={`${isMobile ? "" : "col-span-full"}`}>
+                    <p
+                      className={`text-muted-foreground ${isMobile ? "min-w-[100px]" : ""}`}
+                    >
+                      No logs found
+                    </p>
                   </TableCell>
                 </TableRow>
               )}
@@ -281,50 +291,60 @@ export default function MarketCenterHistory({
                   return (
                     <TableRow key={log?.id + index}>
                       {/* ACTION */}
-                      <TableCell className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
-                        {getActionIcon(action.split("_").join(" "))}
-                        {action.split("_").join(" ").toLowerCase()}
+                      <TableCell>
+                        <span className="flex gap-2 items-center font-semibold cursor-pointer capitalize">
+                          {getActionIcon(action.split("_").join(" "))}
+                          {action.split("_").join(" ").toLowerCase()}
+                        </span>
                       </TableCell>
                       {/* FIELD */}
                       <TableCell
                         className={`font-semibold ${action.includes("INVITE") ? "" : "capitalize"}`}
                       >
-                        {log?.field
-                          ? log.field.split("_").join(" ")
-                          : "Not found"}
+                        <p className="flex flex-col min-w-[80px]">
+                          {log?.field
+                            ? log.field.split("_").join(" ")
+                            : "Not found"}
+                        </p>
                       </TableCell>
                       {/* NEW VALUE */}
                       <TableCell
-                        className="font-semibold max-w-[50px] cursor-pointer"
                         onClick={() => {
                           if (log?.newValueLink) router.push(log.newValueLink);
                         }}
                       >
-                        <ToolTip
-                          content={`Updated${log?.field ? `${capitalizeEveryWord(log?.field.split("_").join(" ").toLowerCase())}` : ""}: ${log?.newValue}`}
-                          trigger={
-                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log?.newValue}
-                            </p>
-                          }
-                        />
+                        <span className="flex flex-col font-semibold max-w-[150px] md:max-w-[50px] cursor-pointer">
+                          <ToolTip
+                            content={`Updated${log?.field ? `${capitalizeEveryWord(log?.field.split("_").join(" ").toLowerCase())}` : ""}: ${log?.newValue}`}
+                            trigger={
+                              <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                                {log?.newValue}
+                              </p>
+                            }
+                            className="flex justify-start p-0"
+                            classNameMobileButton="flex justify-start p-0"
+                          />
+                        </span>
                       </TableCell>
                       {/* PREVIOUS VALUE */}
                       <TableCell
-                        className="text-muted-foreground max-w-[50px] cursor-pointer"
                         onClick={() => {
                           if (log?.previousValueLink)
                             router.push(log.previousValueLink);
                         }}
                       >
-                        <ToolTip
-                          content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue}`}
-                          trigger={
-                            <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                              {log?.previousValue}
-                            </p>
-                          }
-                        />
+                        <span className="flex flex-col max-w-[150px] md:max-w-[50px] cursor-pointer text-muted-foreground">
+                          <ToolTip
+                            content={`Previous${log?.field ? ` ${capitalizeEveryWord(log?.field)}` : ""}: ${log?.previousValue}`}
+                            trigger={
+                              <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                                {log?.previousValue}
+                              </p>
+                            }
+                            className="flex justify-start p-0"
+                            classNameMobileButton="flex justify-start p-0"
+                          />
+                        </span>
                       </TableCell>
                       {/* CHANGED BY */}
                       <TableCell
@@ -338,34 +358,40 @@ export default function MarketCenterHistory({
                           }
                         }}
                       >
-                        {log?.changedById === "SYSTEM" ? (
-                          "System"
-                        ) : (
-                          <ToolTip
-                            content={`Changed By: ${
-                              log?.changedBy && log?.changedBy?.name
-                                ? log?.changedBy?.name
-                                : log?.changedById
-                                  ? log?.changedById.slice(0, 8)
-                                  : "-"
-                            }`}
-                            trigger={
-                              <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
-                                {log?.changedBy && log?.changedBy?.name
+                        <span className="flex flex-col font-semibold min-w-[60px] cursor-pointer text-muted-foreground ">
+                          {log?.changedById === "SYSTEM" ? (
+                            "System"
+                          ) : (
+                            <ToolTip
+                              content={`Changed By: ${
+                                log?.changedBy && log?.changedBy?.name
                                   ? log?.changedBy?.name
                                   : log?.changedById
                                     ? log?.changedById.slice(0, 8)
-                                    : "Not found"}
-                              </p>
-                            }
-                          />
-                        )}
+                                    : "Not found"
+                              }`}
+                              trigger={
+                                <p className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap ">
+                                  {log?.changedBy && log?.changedBy?.name
+                                    ? log?.changedBy?.name
+                                    : log?.changedById
+                                      ? log?.changedById.slice(0, 8)
+                                      : "Not found"}
+                                </p>
+                              }
+                              className="flex justify-start p-0"
+                              classNameMobileButton="flex justify-start p-0"
+                            />
+                          )}
+                        </span>
                       </TableCell>
                       {/* DATE CHANGED ON */}
                       <TableCell className="font-medium">
-                        {log?.changedAt
-                          ? new Date(log.changedAt).toLocaleDateString()
-                          : "-"}
+                        <p className="flex flex-col min-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
+                          {log?.changedAt
+                            ? new Date(log.changedAt).toLocaleDateString()
+                            : "Not found"}
+                        </p>
                       </TableCell>
                     </TableRow>
                   );

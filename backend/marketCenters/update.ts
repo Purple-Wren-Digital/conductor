@@ -7,7 +7,6 @@ import { canManageMarketCenters } from "../auth/permissions";
 import { subscriptionRepository } from "../shared/repositories";
 import { UsersToNotify } from "../notifications/types";
 import { AssignmentUpdateType } from "@/emails/types";
-// TODO: PRIMARY MARKET CENTER ID SHOULD BE DERIVED FROM QUERY PARAMS
 
 export interface UpdateMarketCenterRequest {
   id: string;
@@ -246,6 +245,8 @@ export const update = api<
       name: result.updatedMarketCenterRow!.name,
       createdAt: fromTimestamp(result.updatedMarketCenterRow!.created_at)!,
       updatedAt: fromTimestamp(result.updatedMarketCenterRow!.updated_at)!,
+      primaryStripeCustomerId: null,
+      primaryStripeSubscriptionId: null,
     };
 
     return {

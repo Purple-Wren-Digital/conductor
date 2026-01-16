@@ -170,7 +170,7 @@ export default function AutoCloseSettings() {
             onValueChange={setSelectedMarketCenterId}
             disabled={isLoadingMarketCenters || isLoading}
           >
-            <SelectTrigger role="combobox">
+            <SelectTrigger role="combobox" aria-label="Select Market Center">
               <SelectValue placeholder="Select Market Center" />
             </SelectTrigger>
             <SelectContent>
@@ -255,8 +255,8 @@ export default function AutoCloseSettings() {
               </>
             )}
             {isLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex items-center justify-center gap-2 py-8  text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
                 Loading auto-close settings...
               </div>
             )}
