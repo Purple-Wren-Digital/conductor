@@ -188,8 +188,8 @@ export const marketCenterRepository = {
   // Create market center
   async create(data: {
     name: string;
-    stripeSubscriptionId?: string;
-    stripeCustomerId?: string;
+    stripeSubscriptionId?: string | null;
+    stripeCustomerId?: string | null;
   }): Promise<MarketCenter | null> {
     const row = await db.queryRow<MarketCenterRow>`
       INSERT INTO market_centers (name, settings, created_at, updated_at, primary_stripe_customer_id, primary_stripe_subscription_id)
@@ -284,8 +284,8 @@ export const marketCenterRepository = {
     data: Partial<{
       name?: string;
       settings?: MarketCenterSettings;
-      stripeSubscriptionId?: string;
-      stripeCustomerId?: string;
+      stripeSubscriptionId?: string | null;
+      stripeCustomerId?: string | null;
     }>
   ): Promise<MarketCenter | null> {
     const updates: string[] = ["updated_at = NOW()"];
