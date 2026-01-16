@@ -75,11 +75,12 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
         total: 1,
       };
     }
-    const isUnassigned =
-      req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
 
     // Determine market center filter based on subscription and role
     let marketCenterIds: string[] = [];
+
+    const isUnassigned =
+      req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
 
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
@@ -87,33 +88,30 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       );
 
     const adminMarketCenterId: string | null =
-      isAdmin && req?.marketCenterId !== undefined ? req.marketCenterId : null;
+      isAdmin && req?.marketCenterId !== undefined && !isUnassigned
+        ? req.marketCenterId
+        : null;
 
     const staffMarketCenterId =
       isStaff &&
       userContext?.marketCenterId &&
+      !isUnassigned &&
       accessibleMarketCenterIds.find((id) => id === userContext?.marketCenterId)
         ? userContext.marketCenterId
         : null;
 
-    if (isAdmin && adminMarketCenterId) {
-      if (adminMarketCenterId === "Unassigned") {
-        marketCenterIds.push("Unassigned");
-      } else if (
-        adminMarketCenterId !== "Unassigned" &&
-        accessibleMarketCenterIds.includes(adminMarketCenterId)
-      ) {
-        marketCenterIds.push(adminMarketCenterId);
-      }
-    }
-    if (isAdmin && !adminMarketCenterId) {
-      marketCenterIds = accessibleMarketCenterIds;
-    }
-    if (isStaff && staffMarketCenterId) {
-      marketCenterIds.push(staffMarketCenterId);
-    }
     if (isUnassigned) {
       marketCenterIds.push("Unassigned");
+    }
+
+    if (isAdmin && adminMarketCenterId && !isUnassigned) {
+      marketCenterIds.push(adminMarketCenterId);
+    }
+    if (isAdmin && !adminMarketCenterId && !isUnassigned) {
+      marketCenterIds = accessibleMarketCenterIds;
+    }
+    if (isStaff && staffMarketCenterId && !isUnassigned) {
+      marketCenterIds.push(staffMarketCenterId);
     }
 
     const { users, total } = await userRepository.search({

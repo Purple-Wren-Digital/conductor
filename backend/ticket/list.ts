@@ -40,10 +40,11 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
         await subscriptionRepository.getAccessibleMarketCenterIds(
           userContext.marketCenterId
         );
-      if (req.marketCenterId) {
-        if (accessibleMarketCenterIds.includes(req.marketCenterId)) {
-          marketCenterIds.push(req.marketCenterId);
-        }
+      if (
+        req.marketCenterId !== undefined &&
+        accessibleMarketCenterIds.includes(req.marketCenterId)
+      ) {
+        marketCenterIds.push(req.marketCenterId);
       } else {
         marketCenterIds = accessibleMarketCenterIds;
       }

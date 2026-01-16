@@ -208,11 +208,10 @@ export const create = api<
       }
 
       if (
-        marketCenterDefaultsAdded.settings?.ticketCategories &&
-        marketCenterDefaultsAdded.settings?.ticketCategories.length > 0
+        marketCenterDefaultsAdded.ticketCategories &&
+        marketCenterDefaultsAdded.ticketCategories.length > 0
       ) {
-        for (const category of marketCenterDefaultsAdded.settings
-          .ticketCategories) {
+        for (const category of marketCenterDefaultsAdded.ticketCategories) {
           marketCenterHistoryLogs.push({
             marketCenterId: createdMarketCenter.id,
             action: "CREATE",

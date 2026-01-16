@@ -23,7 +23,7 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    if (userContext?.role === "AGENT") {
+    if (!userContext?.role || userContext?.role === "AGENT") {
       const user = await userRepository.findById(userContext.userId);
 
       return {
@@ -48,18 +48,25 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
       searchParams.role = req.role;
     }
 
-    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
+    // Determine market center filter based on subscription and role
 
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext.marketCenterId
+      );
+
+    if (
+      userContext.role === "ADMIN" &&
+      accessibleMarketCenterIds &&
+      accessibleMarketCenterIds.length > 0
+    ) {
       searchParams.marketCenterIds = accessibleMarketCenterIds;
     }
 
     if (
       (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-      userContext?.marketCenterId
+      userContext?.marketCenterId &&
+      accessibleMarketCenterIds.find((id) => id === userContext?.marketCenterId)
     ) {
       searchParams.marketCenterIds = [userContext.marketCenterId];
     }
