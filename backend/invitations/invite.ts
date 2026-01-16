@@ -162,6 +162,10 @@ export const inviteTeamMember = api<
           throw APIError.alreadyExists(
             "An expired invitation already exists for this email"
           );
+        default:
+          throw APIError.internal(
+            "An invitation already exists for this email"
+          );
       }
     }
 
@@ -339,18 +343,23 @@ export const acceptInvitation = api<
       );
     }
 
-    const isExpired = new Date() > new Date(invitation.expiresAt);
-    if (isExpired) {
+    if (invitation.status === "ACCEPTED") {
+      throw APIError.alreadyExists("Invitation has been accepted");
+    }
+
+    if (
+      new Date() > new Date(invitation.expiresAt) ||
+      invitation.status === "EXPIRED"
+    ) {
       await marketCenterRepository.updateInvitationStatus(
         invitation.id,
         "EXPIRED"
       );
       throw APIError.failedPrecondition("Invitation has expired");
     }
-
-    if (invitation.status !== "PENDING") {
+    if (invitation.status === "CANCELLED") {
       throw APIError.failedPrecondition(
-        `Invitation has been ${invitation.status.toLowerCase()}`
+        `Invitation is "${invitation.status.toLowerCase()}" and cannot be accepted`
       );
     }
 
@@ -440,6 +449,7 @@ export const acceptInvitation = api<
 
     return {
       success: true,
+      name: invitation.name,
       userId: user.id,
       marketCenterId: invitation.marketCenterId,
       role: invitation.role,

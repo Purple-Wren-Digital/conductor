@@ -12,7 +12,7 @@ import type { MarketCenter } from "./types";
 import type { User } from "../user/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 import { notificationTemplatesDefault } from "../notifications/templates/utils";
-// TODO: AUTO-CLOSE TICKETS CREATED
+import { defaultAutoCloseSettings } from "../settings";
 
 export const defaultTicketCategories = [
   { name: "General", description: "General inquiries and support" },
@@ -143,10 +143,13 @@ export const create = api<
           updatedAt: fromTimestamp(u.updated_at)!,
         })),
       };
+
       // Default Settings
       const settings = await marketCenterRepository.update(marketCenterRow.id, {
-        ...marketCenterRow.settings,
-        notificationPreferences: defaultMarketCenterNotificationPreferences,
+        settings: {
+          notificationPreferences: defaultMarketCenterNotificationPreferences,
+          autoClose: defaultAutoCloseSettings,
+        },
       });
 
       // Default InApp Notification Templates

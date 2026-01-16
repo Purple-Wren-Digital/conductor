@@ -363,11 +363,12 @@ describe("Invitation System", () => {
 
   describe("acceptInvitation", () => {
     const validAuthData = {
-      userID: "new-clerk-id",
+      userID: "clerk-id",
       emailAddress: "invitee@test.com",
     };
 
     it("should accept invitation and create new user when authenticated", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       const invitation = createInvitation();
       const newUser = createUser({
         id: "new-user-123",
@@ -375,7 +376,6 @@ describe("Invitation System", () => {
         role: "AGENT",
       });
 
-      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         invitation
       );
@@ -402,21 +402,20 @@ describe("Invitation System", () => {
           email: "invitee@test.com",
           role: "AGENT",
           marketCenterId: "mc-123",
-          clerkId: "new-clerk-id",
+          clerkId: "clerk-id",
         })
       );
     });
 
     it("should accept invitation and update existing user found by clerkId", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       const invitation = createInvitation();
       const existingUser = createUser({
         id: "existing-user",
         email: "invitee@test.com",
         marketCenterId: null,
-        clerkId: "new-clerk-id",
+        clerkId: "clerk-id",
       });
-
-      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         invitation
       );
@@ -439,12 +438,13 @@ describe("Invitation System", () => {
         expect.objectContaining({
           marketCenterId: "mc-123",
           role: "AGENT",
-          clerkId: "new-clerk-id",
+          clerkId: "clerk-id",
         })
       );
     });
 
     it("should accept invitation and update existing user found by email (race condition handling)", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
       const invitation = createInvitation();
       const existingUser = createUser({
         id: "existing-user",
@@ -452,7 +452,6 @@ describe("Invitation System", () => {
         marketCenterId: null,
       });
 
-      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         invitation
       );
@@ -476,7 +475,7 @@ describe("Invitation System", () => {
         expect.objectContaining({
           marketCenterId: "mc-123",
           role: "AGENT",
-          clerkId: "new-clerk-id",
+          clerkId: "clerk-id",
         })
       );
     });
@@ -490,27 +489,29 @@ describe("Invitation System", () => {
     });
 
     it("should throw error when email does not match invitation (security check)", async () => {
-      const invitation = createInvitation({ email: "different@test.com" });
-
       mockGetAuthData.mockResolvedValue(validAuthData);
+      const invitation = createInvitation({
+        email: "different@test.com",
+      });
+
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         invitation
       );
 
       await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
-        "This invitation was sent to a different email address"
+        "This invitation was sent to a different email address. Please sign up with the email that received the invitation."
       );
     });
 
     it("should allow email match case-insensitively", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
+
       const invitation = createInvitation({ email: "INVITEE@TEST.COM" });
       const newUser = createUser({
         id: "new-user-123",
         email: "invitee@test.com",
         role: "AGENT",
       });
-
-      mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         invitation
       );
@@ -532,13 +533,21 @@ describe("Invitation System", () => {
     });
 
     it("should throw error when auth has no email address", async () => {
-      mockGetAuthData.mockResolvedValue({
-        userID: "clerk-id",
-        emailAddress: null,
-      });
+      mockGetAuthData.mockResolvedValue({ userID: "clerk-id" });
 
       await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
         "No email address found for authenticated user"
+      );
+    });
+
+    it("should throw error for an accepted invitation that doesn't have a user", async () => {
+      mockGetAuthData.mockResolvedValue(validAuthData);
+      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
+        createInvitation({ status: "ACCEPTED" })
+      );
+
+      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
+        "Invitation has been accepted"
       );
     });
 
@@ -551,21 +560,12 @@ describe("Invitation System", () => {
       ).rejects.toThrow("Invitation not found");
     });
 
-    it("should throw error for already accepted invitation", async () => {
-      mockGetAuthData.mockResolvedValue(validAuthData);
-      mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
-        createInvitation({ status: "ACCEPTED" })
-      );
-
-      await expect(acceptInvitation({ token: "test-token" })).rejects.toThrow(
-        "Invitation has been accepted"
-      );
-    });
-
     it("should throw error for expired invitation", async () => {
       mockGetAuthData.mockResolvedValue(validAuthData);
       mockMarketCenterRepository.findInvitationByToken.mockResolvedValue(
         createInvitation({
+          id: "inv-123",
+          email: "invitee@test.com",
           expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
         })
       );

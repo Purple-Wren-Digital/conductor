@@ -1,9 +1,17 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
-import { marketCenterRepository } from "../shared/repositories";
+import {
+  marketCenterRepository,
+  subscriptionRepository,
+} from "../shared/repositories";
 import type { AutoCloseSettings, MarketCenterSettings } from "./types";
 
 const DEFAULT_AUTO_CLOSE_DAYS = 2;
+
+export const defaultAutoCloseSettings: AutoCloseSettings = {
+  enabled: true,
+  awaitingResponseDays: DEFAULT_AUTO_CLOSE_DAYS,
+};
 
 export interface GetAutoCloseSettingsRequest {
   marketCenterId: string;
@@ -38,9 +46,15 @@ export const getAutoCloseSettings = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const isStaffLeader = userContext?.role === "STAFF_LEADER";
+    const isAdmin = userContext?.role === "ADMIN";
 
-    // Only STAFF_LEADER and ADMIN can view auto-close settings
-    if (userContext.role !== "STAFF_LEADER" && userContext.role !== "ADMIN") {
+    // Only STAFF_LEADER and ADMIN can update auto-close settings
+    if (
+      !userContext?.role ||
+      userContext?.role === "AGENT" ||
+      userContext?.role === "STAFF"
+    ) {
       throw APIError.permissionDenied(
         "Only staff leaders and administrators can view auto-close settings"
       );
@@ -54,25 +68,41 @@ export const getAutoCloseSettings = api<
       throw APIError.notFound("Market center not found");
     }
 
-    // Verify user has access to this market center
-    if (
-      userContext.role !== "ADMIN" &&
-      userContext.marketCenterId !== req.marketCenterId
-    ) {
-      throw APIError.permissionDenied(
-        "You do not have access to this market center's settings"
+    if (userContext.role === "STAFF_LEADER") {
+      if (userContext.marketCenterId !== req.marketCenterId) {
+        throw APIError.permissionDenied(
+          "You do not have access to this market center's settings"
+        );
+      }
+    }
+    // ⬇️ ONLY admins hit this
+    else if (userContext.role === "ADMIN") {
+      const accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+
+      if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+        throw APIError.permissionDenied(
+          "You do not have access to this market center's settings"
+        );
+      }
+
+      const includesMarketCenterId = accessibleMarketCenterIds.some(
+        (id) => id === req.marketCenterId
       );
+
+      if (!includesMarketCenterId) {
+        throw APIError.permissionDenied(
+          "You do not have access to this market center's settings"
+        );
+      }
     }
 
-    const settings = marketCenter.settings as MarketCenterSettings | undefined;
+    const autoCloseSettings: AutoCloseSettings =
+      marketCenter?.settings?.autoClose ?? defaultAutoCloseSettings;
 
-    // Return existing settings or defaults
-    return {
-      autoClose: settings?.autoClose ?? {
-        enabled: true,
-        awaitingResponseDays: DEFAULT_AUTO_CLOSE_DAYS,
-      },
-    };
+    return { autoClose: autoCloseSettings };
   }
 );
 
@@ -92,9 +122,15 @@ export const updateAutoCloseSettings = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const isStaffLeader = userContext?.role === "STAFF_LEADER";
+    const isAdmin = userContext?.role === "ADMIN";
 
     // Only STAFF_LEADER and ADMIN can update auto-close settings
-    if (userContext.role !== "STAFF_LEADER" && userContext.role !== "ADMIN") {
+    if (
+      !userContext?.role ||
+      userContext?.role === "AGENT" ||
+      userContext?.role === "STAFF"
+    ) {
       throw APIError.permissionDenied(
         "Only staff leaders and administrators can update auto-close settings"
       );
@@ -103,16 +139,34 @@ export const updateAutoCloseSettings = api<
     const marketCenter = await marketCenterRepository.findById(
       req.marketCenterId
     );
-
     if (!marketCenter) {
       throw APIError.notFound("Market center not found");
     }
 
     // Verify user has access to this market center
-    if (
-      userContext.role !== "ADMIN" &&
-      userContext.marketCenterId !== req.marketCenterId
-    ) {
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        req.marketCenterId
+      );
+
+    let includesMarketCenterId = false;
+    if (accessibleMarketCenterIds && accessibleMarketCenterIds.length > 0) {
+      for (const id of accessibleMarketCenterIds) {
+        if (id === req.marketCenterId) {
+          includesMarketCenterId = true;
+          break;
+        }
+      }
+    }
+
+    const marketCenterId: string | undefined =
+      isAdmin && includesMarketCenterId
+        ? req.marketCenterId
+        : isStaffLeader && userContext?.marketCenterId
+          ? userContext.marketCenterId
+          : undefined;
+
+    if (!marketCenterId) {
       throw APIError.permissionDenied(
         "You do not have access to this market center's settings"
       );
@@ -139,6 +193,15 @@ export const updateAutoCloseSettings = api<
       ...currentSettings,
       autoClose: newAutoCloseSettings,
     };
+
+    if (
+      !newAutoCloseSettings ||
+      (newAutoCloseSettings.enabled === currentSettings.autoClose?.enabled &&
+        newAutoCloseSettings.awaitingResponseDays ===
+          currentSettings.autoClose?.awaitingResponseDays)
+    ) {
+      throw APIError.internal("Nothing to update in market center settings");
+    }
 
     // Update market center settings
     const updatedMarketCenter = await marketCenterRepository.update(
