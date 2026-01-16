@@ -7,6 +7,7 @@ import { canManageMarketCenters } from "../auth/permissions";
 import { subscriptionRepository } from "../shared/repositories";
 import { UsersToNotify } from "../notifications/types";
 import { AssignmentUpdateType } from "@/emails/types";
+// TODO: PRIMARY MARKET CENTER ID SHOULD BE DERIVED FROM QUERY PARAMS
 
 export interface UpdateMarketCenterRequest {
   id: string;
@@ -131,7 +132,7 @@ export const update = api<
             marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "ADD",
-            field: "team",
+            field: "team member",
             newValue: JSON.stringify({
               id: userAdded.id,
               name: userAdded.name,
@@ -147,7 +148,7 @@ export const update = api<
             marketCenterId: marketCenterRow.id,
             changedById: userContext.userId,
             action: "REMOVE",
-            field: "team",
+            field: "team member",
             previousValue: JSON.stringify({
               id: userRemoved.id,
               name: userRemoved.name,

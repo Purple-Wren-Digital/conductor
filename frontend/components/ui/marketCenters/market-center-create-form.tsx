@@ -91,7 +91,6 @@ export default function CreateMarketCenter({
     e.preventDefault();
     setIsSubmitting(true);
     setFormErrors({});
-    
     if (!validateForm()) {
       toast.error("Invalid form input(s)");
       setIsSubmitting(false);

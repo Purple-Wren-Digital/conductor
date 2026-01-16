@@ -1,5 +1,8 @@
-import type { MarketCenter } from "../marketCenters/types";
-import { NotificationCategory } from "../notifications/types";
+import type { MarketCenter, TicketCategory } from "../marketCenters/types";
+import {
+  NotificationCategory,
+  NotificationTemplate,
+} from "../notifications/types";
 import { TicketTemplate } from "../ticket/templates/types";
 
 export interface MarketCenterNotificationPreferences {
@@ -18,6 +21,8 @@ export interface AutoCloseSettings {
 
 export interface MarketCenterSettings {
   notificationPreferences?: MarketCenterNotificationPreferences[];
+  notificationTemplates?: NotificationTemplate[];
+  ticketCategories?: TicketCategory[];
   ticketTemplates?: TicketTemplate[];
   marketCenter?: MarketCenter;
   autoClose?: AutoCloseSettings;

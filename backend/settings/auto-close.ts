@@ -3,6 +3,10 @@ import { getUserContext } from "../auth/user-context";
 import { marketCenterRepository } from "../shared/repositories";
 import type { AutoCloseSettings, MarketCenterSettings } from "./types";
 
+export const defaultAutoCloseSettings: AutoCloseSettings = {
+  enabled: true,
+  awaitingResponseDays: 2,
+};
 const DEFAULT_AUTO_CLOSE_DAYS = 2;
 
 export interface GetAutoCloseSettingsRequest {

@@ -2,7 +2,13 @@
  * Subscription Repository - Raw SQL queries for subscription operations
  */
 
-import { db, fromTimestamp, toJson, fromJson } from "../../ticket/db";
+import {
+  db,
+  fromTimestamp,
+  toJson,
+  fromJson,
+  marketCenterRepository,
+} from "../../ticket/db";
 import { SubscriptionStatus, SubscriptionPlan } from "../../subscription/types";
 
 // Database row types
@@ -180,7 +186,7 @@ export const subscriptionRepository = {
     features?: any;
     cancelAt: Date | null;
     canceledAt: Date | null;
-  }): Promise<Subscription> {
+  }): Promise<Subscription | null> {
     const row = await db.queryRow<SubscriptionRow>`
       INSERT INTO subscriptions (
         stripe_subscription_id, stripe_customer_id, market_center_id, status, plan_type,
@@ -207,8 +213,26 @@ export const subscriptionRepository = {
       )
       RETURNING *
     `;
-    return rowToSubscription(row!);
+    return row ? rowToSubscription(row) : null;
   },
+
+  async assignMarketCenterToSubscription(primaryMCId: string): Promise<void> {
+    const primarySub =
+      await subscriptionRepository.findByMarketCenterId(primaryMCId);
+    if (!primarySub) {
+      throw new Error(
+        `No subscription found for primary market center ID: ${primaryMCId}`
+      );
+    }
+    await marketCenterRepository.update(primaryMCId, {
+      stripeSubscriptionId: primarySub.stripeSubscriptionId,
+      stripeCustomerId: primarySub.stripeCustomerId,
+    });
+  },
+
+  // TODO: //  async unassignMarketCenterFromSubscription(primaryMCId: string): Promise<void> {
+  //   // Implementation to unassign market center from subscription
+  // },
 
   // Update subscription
   async update(
@@ -291,11 +315,43 @@ export const subscriptionRepository = {
     `;
 
     const row = await db.rawQueryRow<SubscriptionRow>(sql, ...values);
+
+    if (!row) {
+      return null;
+    }
+
+    // Handle ENTERPRISE plan upgrade
+    const existingSubscription = await this.findById(id);
+
+    if (
+      existingSubscription &&
+      data.planType === "ENTERPRISE" &&
+      existingSubscription.planType !== data.planType
+    ) {
+      await marketCenterRepository.update(row.market_center_id, {
+        stripeSubscriptionId: row.stripe_subscription_id,
+        stripeCustomerId: row.stripe_customer_id,
+      });
+    }
+
+    // TODO: Handle ENTERPRISE plan downgrade
+    // if (
+    //   existingSubscription &&
+    //   existingSubscription.planType === "ENTERPRISE" &&
+    //   data.planType !== existingSubscription.planType
+    // ) {
+    //   // find all market centers under this subscription
+    //   const marketCenterIds = await this.findMarketCenterIdsByStripeCustomerId(
+    //     existingSubscription.stripeCustomerId
+    //   );
+    // }
+
     return row ? rowToSubscription(row) : null;
   },
 
   // Delete subscription
   async delete(id: string): Promise<boolean> {
+    //     // TODO: Handle ENTERPRISE plan delete - unassign market centers
     await db.exec`DELETE FROM subscriptions WHERE id = ${id}`;
     return true;
   },
@@ -305,11 +361,32 @@ export const subscriptionRepository = {
   async findMarketCenterIdsByStripeCustomerId(
     stripeCustomerId: string
   ): Promise<string[]> {
-    const rows = await db.queryAll<{ market_center_id: string }>`
+    const subscriptionRows = await db.queryAll<SubscriptionRow>`
       SELECT market_center_id FROM subscriptions
       WHERE stripe_customer_id = ${stripeCustomerId}
     `;
-    return rows.map((row) => row.market_center_id);
+
+    if (!subscriptionRows || !subscriptionRows.length) {
+      return [];
+    }
+    const marketCenterRows = await db.queryAll<{ id: string }>`
+      SELECT id FROM market_centers
+      WHERE primary_stripe_customer_id = ${stripeCustomerId}
+    `;
+
+    const subscriptionMCIds = subscriptionRows.map(
+      (row) => row.market_center_id
+    );
+    const marketCenterMCIds =
+      marketCenterRows && marketCenterRows.length
+        ? marketCenterRows.map((row) => row.id)
+        : [];
+
+    const rows = Array.from(
+      new Set([...subscriptionMCIds, ...marketCenterMCIds])
+    );
+
+    return rows;
   },
 
   // Get all market center IDs accessible to a user based on their subscription
@@ -357,9 +434,8 @@ export const subscriptionRepository = {
     }
 
     // Get accessible market centers
-    const accessibleIds = await this.getAccessibleMarketCenterIds(
-      userMarketCenterId
-    );
+    const accessibleIds =
+      await this.getAccessibleMarketCenterIds(userMarketCenterId);
     return accessibleIds.includes(targetMarketCenterId);
   },
 };

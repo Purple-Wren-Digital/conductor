@@ -4,15 +4,13 @@ import { getUserContext } from "../auth/user-context";
 import {
   db,
   marketCenterRepository,
-  withTransaction,
-  fromTimestamp,
-  toJson,
+  subscriptionRepository,
+  userRepository,
 } from "../ticket/db";
 import type { MarketCenter } from "./types";
 import type { User } from "../user/types";
-import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
-import { notificationTemplatesDefault } from "../notifications/templates/utils";
-// TODO: AUTO-CLOSE TICKETS CREATED
+import type { UsersToNotify } from "../notifications/types";
+// TODO: PRIMARY MARKET CENTER ID SHOULD BE DERIVED FROM QUERY PARAMS
 
 export const defaultTicketCategories = [
   { name: "General", description: "General inquiries and support" },
@@ -34,14 +32,11 @@ export interface CreateMarketCenterRequest {
   name: string;
   users?: User[];
   ticketCategories?: { name: string; description: string }[];
-  // TODO:
-  // settings:
-  // settingsAuditLogs?: SettingsAuditLog[];
-  // teamInvitations:
 }
 
 export interface CreateMarketCenterResponse {
   marketCenter: MarketCenter;
+  usersToNotify?: UsersToNotify[];
 }
 
 export const create = api<
@@ -57,7 +52,16 @@ export const create = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    const canCreate = await canCreateMarketCenters(userContext);
+    if (!userContext?.marketCenterId) {
+      throw APIError.invalidArgument(
+        "Missing primary market center ID under current subscription"
+      );
+    }
+
+    const canCreate = await canCreateMarketCenters(
+      userContext?.marketCenterId,
+      userContext?.role
+    );
 
     if (!canCreate) {
       throw APIError.permissionDenied(
@@ -65,164 +69,189 @@ export const create = api<
       );
     }
 
-    const result = await withTransaction(async (tx) => {
-      // Create market center
-      const marketCenterRow = await tx.queryRow<{
-        id: string;
-        name: string;
-        settings: any;
-        created_at: Date;
-        updated_at: Date;
-      }>`
-        INSERT INTO market_centers (id, name, settings, created_at, updated_at)
-        VALUES (gen_random_uuid()::text, ${req.name}, ${toJson({})}::jsonb, NOW(), NOW())
-        RETURNING id, name, settings, created_at, updated_at
-      `;
-
-      if (!marketCenterRow) {
-        throw APIError.internal("Failed to create market center");
-      }
-
-      // Associate users with market center
-      if (req?.users !== undefined && req?.users.length > 0) {
-        for (const user of req.users) {
-          await tx.exec`
-            UPDATE users
-            SET market_center_id = ${marketCenterRow.id}, updated_at = NOW()
-            WHERE id = ${user.id}
-          `;
-        }
-      }
-
-      // Create history entry
-      await tx.exec`
-        INSERT INTO market_center_history (
-          id, market_center_id, action, snapshot, changed_at, changed_by_id
-        ) VALUES (
-          gen_random_uuid()::text,
-          ${marketCenterRow.id},
-          'CREATE',
-          ${toJson({})}::jsonb,
-          NOW(),
-          ${userContext.userId}
-        )
-      `;
-
-      // Fetch users associated with the market center
-      const userRows = await tx.queryAll<{
-        id: string;
-        email: string;
-        name: string | null;
-        role: string;
-        clerk_id: string;
-        is_active: boolean;
-        market_center_id: string | null;
-        created_at: Date;
-        updated_at: Date;
-      }>`
-        SELECT id, email, name, role, clerk_id, is_active, market_center_id, created_at, updated_at
-        FROM users
-        WHERE market_center_id = ${marketCenterRow.id} AND is_active = true
-      `;
-
-      const marketCenter: MarketCenter = {
-        id: marketCenterRow.id,
-        name: marketCenterRow.name,
-        settings: marketCenterRow.settings,
-        createdAt: fromTimestamp(marketCenterRow.created_at)!,
-        updatedAt: fromTimestamp(marketCenterRow.updated_at)!,
-        users: userRows.map((u) => ({
-          id: u.id,
-          email: u.email,
-          name: u.name ?? "",
-          role: u.role as any,
-          clerkId: u.clerk_id,
-          isActive: u.is_active,
-          marketCenterId: u.market_center_id ?? null,
-          createdAt: fromTimestamp(u.created_at)!,
-          updatedAt: fromTimestamp(u.updated_at)!,
-        })),
-      };
-      // Default Settings
-      const settings = await marketCenterRepository.update(marketCenterRow.id, {
-        ...marketCenterRow.settings,
-        notificationPreferences: defaultMarketCenterNotificationPreferences,
-      });
-
-      // Default InApp Notification Templates
-      for (const template of notificationTemplatesDefault) {
-        await tx.exec`
-          INSERT INTO notification_templates (
-            id,
-            template_name,
-            template_description,
-            category,
-            channel,
-            type,
-            subject,
-            body,
-            is_default,
-            created_at,
-            variables,
-            is_active,
-            market_center_id
-          )
-          VALUES (
-            gen_random_uuid()::text,
-            ${template.templateName},
-            ${template.templateDescription ?? ""},
-            ${template.category},
-            ${template.channel},
-            ${template.type},
-            ${template.subject ?? ""},
-            ${template.body},
-            ${template.isDefault ?? true},
-            NOW(),
-            ${template.variables ?? null}::jsonb,
-            ${template.isActive ?? true},
-            ${marketCenterRow.id}
-          )
-        `;
-      }
-
-      let staffId: string | null = null;
-      if (req?.users && req.users.length > 0) {
-        const staffLeader = req.users.find((u) => u.role === "STAFF_LEADER");
-        if (staffLeader && staffLeader?.id) {
-          staffId = staffLeader.id;
-        }
-        if (!staffLeader || !staffLeader?.id || !staffId) {
-          const staff = req.users.find((u) => u.role === "STAFF");
-          if (staff && staff?.id) {
-            staffId = staff.id;
-          }
-        }
-      }
-
-      const ticketCategoriesToCreate =
-        req?.ticketCategories && req?.ticketCategories.length > 0
-          ? [...req.ticketCategories].flat()
-          : defaultTicketCategories;
-
-      for (const category of ticketCategoriesToCreate) {
-        await tx.exec`
-          INSERT INTO ticket_categories (
-            id, name, description, market_center_id, created_at, updated_at, default_assignee_id
-          ) VALUES (
-            gen_random_uuid()::text,
-            ${category.name},
-            ${category.description || ""},
-            ${marketCenterRow.id},
-            NOW(),
-            NOW(),
-            ${staffId}
-          )
-        `;
-      }
-
-      return { marketCenter };
+    const subscription = await subscriptionRepository.findByMarketCenterId(
+      userContext?.marketCenterId
+    );
+    const createdMarketCenter = await marketCenterRepository.create({
+      name: req.name,
+      stripeSubscriptionId:
+        subscription?.planType === "ENTERPRISE"
+          ? subscription?.stripeSubscriptionId
+          : undefined,
+      stripeCustomerId:
+        subscription?.planType === "ENTERPRISE"
+          ? subscription?.stripeCustomerId
+          : undefined,
     });
 
-    return { marketCenter: result.marketCenter };
+    if (!createdMarketCenter) {
+      throw APIError.internal("Failed to create market center");
+    }
+    const availableMarketCenters =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext.marketCenterId
+      );
+
+    console.log(
+      "Available Market Centers after creation:",
+      availableMarketCenters
+    );
+
+    if (
+      !availableMarketCenters ||
+      !availableMarketCenters.length ||
+      !availableMarketCenters.includes(createdMarketCenter.id)
+    ) {
+      console.log("No available market centers found for subscription");
+      throw APIError.internal(
+        "Failed to verify new market center is under subscription"
+      );
+    }
+
+    let marketCenterHistoryLogs: Array<{
+      marketCenterId: string;
+      action: string;
+      field?: string | null;
+      previousValue?: string | null;
+      newValue?: string | null;
+      snapshot?: any;
+      changedById?: string | null;
+    }> = [];
+
+    const numberOfMarketCenters = availableMarketCenters.length ?? 0;
+    marketCenterHistoryLogs.push({
+      marketCenterId: createdMarketCenter.id,
+      action: "CREATE",
+      field: "market center",
+      newValue: `${createdMarketCenter.name}: ${numberOfMarketCenters + 1} market centers under subscription`,
+      previousValue: `${numberOfMarketCenters} market centers under subscription`,
+      changedById: userContext.userId,
+    });
+
+    let usersToNotify: UsersToNotify[] = [];
+
+    let userHistoryLogs: Array<{
+      userId: string;
+      marketCenterId?: string | null;
+      action: string;
+      field?: string | null;
+      previousValue?: string | null;
+      newValue?: string | null;
+      snapshot?: any;
+      changedById?: string | null;
+    }> = [];
+    if (req?.users !== undefined && req?.users.length > 0) {
+      for (const user of req.users) {
+        await db.exec`
+          UPDATE users
+          SET market_center_id = ${createdMarketCenter.id}, updated_at = NOW()
+          WHERE id = ${user.id}
+        `;
+
+        marketCenterHistoryLogs.push({
+          marketCenterId: createdMarketCenter.id,
+          action: "ADD",
+          field: "team member",
+          changedById: userContext.userId,
+          newValue: JSON.stringify({
+            id: user.id,
+            name: user?.name ?? "Name not set",
+          }),
+          previousValue: null,
+        });
+
+        userHistoryLogs.push({
+          userId: user.id,
+          marketCenterId: createdMarketCenter.id,
+          action: "ADD",
+          field: "market center",
+          newValue: JSON.stringify({
+            id: createdMarketCenter.id,
+            name: createdMarketCenter.name,
+          }),
+          previousValue: user?.marketCenterId
+            ? JSON.stringify({
+                id: user?.marketCenterId,
+                name:
+                  user?.marketCenter && user?.marketCenter?.name
+                    ? user.marketCenter.name
+                    : "",
+              })
+            : null,
+          changedById: userContext.userId,
+        });
+
+        usersToNotify.push({
+          id: user.id,
+          email: user.email,
+          name: user?.name ?? "Name not set",
+          updateType: "added",
+        });
+      }
+    }
+
+    const categories =
+      req?.ticketCategories !== undefined && req.ticketCategories.length > 0
+        ? req?.ticketCategories
+        : defaultTicketCategories;
+
+    // Other initializations for the market center
+    const marketCenterDefaultsAdded =
+      await marketCenterRepository.initializeMarketCenterDefaults(
+        createdMarketCenter.id,
+        categories
+      );
+    if (marketCenterDefaultsAdded?.settings) {
+      if (createdMarketCenter.settings?.autoClose) {
+        marketCenterHistoryLogs.push({
+          marketCenterId: createdMarketCenter.id,
+          action: "CREATE",
+          field: "autoClose",
+          newValue: JSON.stringify(createdMarketCenter.settings.autoClose),
+          previousValue: null,
+          changedById: "SYSTEM",
+        });
+      }
+
+      if (
+        marketCenterDefaultsAdded.settings?.ticketCategories &&
+        marketCenterDefaultsAdded.settings?.ticketCategories.length > 0
+      ) {
+        for (const category of marketCenterDefaultsAdded.settings
+          .ticketCategories) {
+          marketCenterHistoryLogs.push({
+            marketCenterId: createdMarketCenter.id,
+            action: "CREATE",
+            field: "category",
+            newValue: category.name,
+            previousValue: null,
+            changedById:
+              req?.ticketCategories !== undefined &&
+              req.ticketCategories.length > 0
+                ? userContext.userId
+                : "SYSTEM",
+          });
+        }
+      }
+    }
+
+    if (marketCenterHistoryLogs && marketCenterHistoryLogs.length > 0) {
+      for (const log of marketCenterHistoryLogs) {
+        await marketCenterRepository.createHistory(log);
+      }
+    }
+
+    if (userHistoryLogs && userHistoryLogs.length > 0) {
+      for (const log of userHistoryLogs) {
+        await userRepository.createHistory(log);
+      }
+    }
+
+    return {
+      marketCenter: marketCenterDefaultsAdded
+        ? marketCenterDefaultsAdded
+        : createdMarketCenter,
+      usersToNotify: usersToNotify,
+    };
   }
 );

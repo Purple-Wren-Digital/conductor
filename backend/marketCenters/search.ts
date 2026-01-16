@@ -8,6 +8,7 @@ import {
 import { db } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { MarketCenter } from "./types";
+// TODO: PRIMARY MARKET CENTER ID SHOULD BE DERIVED FROM QUERY PARAMS
 
 export interface ListMarketCentersRequest {
   id?: Query<string>;
@@ -36,6 +37,7 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     auth: true,
   },
   async (req) => {
+    console.log(" ***** SEARCH MARKET CENTERS ***** ", req);
     const userContext = await getUserContext();
 
     // Get accessible market center IDs based on user's subscription
@@ -43,13 +45,13 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     // - Admin without Enterprise: Only their own market center
     // - Admin with Enterprise: All market centers under the same subscription
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext.marketCenterId
+      );
+
+    if (!userContext.marketCenterId || !accessibleMarketCenterIds.length) {
+      return { marketCenters: [], total: 0 };
+    }
 
     // AGENT + STAFF + STAFF_LEADER: only return their market center
     if (
@@ -92,9 +94,6 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     }
 
     // ADMIN: Return only market centers they have access to based on subscription
-    if (!userContext.marketCenterId || accessibleMarketCenterIds.length === 0) {
-      return { marketCenters: [], total: 0 };
-    }
 
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
