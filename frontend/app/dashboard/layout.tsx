@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/app/dashboard/app-sidebar";
-import { useUser, UserButton, useAuth } from "@clerk/nextjs";
-
+import { useUser, useAuth } from "@clerk/nextjs";
 import AllNotifications from "@/components/notifications/notifications-list";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -19,6 +18,13 @@ import { Footer } from "@/components/ui/footer";
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+
+// hydration fix
+const UserButton = dynamic(
+  () => import("@clerk/nextjs").then((m) => m.UserButton),
+  { ssr: false }
+);
 
 export default function DashboardLayout({
   children,
@@ -87,10 +93,14 @@ export default function DashboardLayout({
       getToken,
     });
 
-  const notifications: Notification[] = notificationsData?.notifications ?? [];
-  const unReadNotificationTotal: number = notificationsData
-    ? notificationsData?.unReadAmount
-    : 0;
+  const notifications: Notification[] = useMemo(
+    () => notificationsData?.notifications ?? [],
+    [notificationsData]
+  );
+  const unReadNotificationTotal: number = useMemo(
+    () => (notificationsData ? notificationsData?.unReadAmount : 0),
+    [notificationsData]
+  );
 
   const invalidateFetchAllUserNotifications = useCallback(async () => {
     await queryClient.invalidateQueries({
