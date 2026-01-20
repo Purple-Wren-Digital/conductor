@@ -70,6 +70,18 @@ export function AppSidebar({
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
 
+  const marketCenterName = useMemo(() => {
+    if (!!isEnterprise && currentUser && currentUser?.role === "ADMIN") {
+      return "Enterprise";
+    }
+    if (currentUser && currentUser?.marketCenterId) {
+      return currentUser?.marketCenter?.name
+        ? currentUser.marketCenter.name
+        : `#${currentUser.marketCenterId.slice(0, 8)}`;
+    }
+    return "No Market Center Assigned";
+  }, [currentUser, isEnterprise]);
+
   if (!currentUser) {
     return (
       <Sidebar {...rest} className={cn(className, "border-r")}>
@@ -104,32 +116,23 @@ export function AppSidebar({
               </div>
             )}
             {!isLoading && currentUser && (
-              <div className="flex flex-col gap-1">
-                <Link
-                  href={"/dashboard/account"}
-                  className="hover:underline"
-                  aria-label="Navigate to your account"
-                >
-                  <p className="font-medium text-sm">
-                    {currentUser?.name
-                      ? `${currentUser.name}`
-                      : "User not found"}
-                  </p>
-                </Link>
+              <Link
+                href={"/dashboard/account"}
+                className="flex flex-col gap-1"
+                aria-label="Navigate to your account"
+              >
+                <p className="font-medium text-sm hover:underline">
+                  {currentUser?.name ? `${currentUser.name}` : "User not found"}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {currentUser?.email}
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">
                   {currentUser?.role &&
                     currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
-                  •{" "}
-                  {currentUser?.role === "ADMIN"
-                    ? "Global"
-                    : currentUser?.marketCenter?.name
-                      ? currentUser?.marketCenter?.name
-                      : "No Market Center Assigned"}
+                  • {marketCenterName}
                 </p>
-              </div>
+              </Link>
             )}
           </div>
         </div>

@@ -38,19 +38,21 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-    if (!userContext || !userContext?.marketCenterId) {
-      return { marketCenters: [], total: 0 };
-    }
+
     // Get accessible market center IDs based on user's subscription
     // - Non-Admin roles: Only their own market center
     // - Admin without Enterprise: Only their own market center
     // - Admin with Enterprise: All market centers under the same subscription
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext.marketCenterId
+        userContext?.marketCenterId
       );
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (
+      !userContext?.marketCenterId ||
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length
+    ) {
       return { marketCenters: [], total: 0 };
     }
 
