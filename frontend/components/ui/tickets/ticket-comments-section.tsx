@@ -7,10 +7,12 @@ import { MessageSquare } from "lucide-react";
 
 interface TicketCommentsSectionProps {
   ticketId: string;
+  refreshAllData: () => Promise<void>;
 }
 
 export function TicketCommentsSection({
   ticketId,
+  refreshAllData,
 }: TicketCommentsSectionProps) {
   const commentCount = useCommentCount(ticketId); // Fallback to 2 for demo
 
@@ -23,7 +25,7 @@ export function TicketCommentsSection({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <CommentList ticketId={ticketId} />
+        <CommentList ticketId={ticketId} refreshAllData={refreshAllData} />
       </CardContent>
     </Card>
   );

@@ -24,9 +24,15 @@ interface CommentItemProps {
   comment: Comment;
   ticketId: string;
   isOwn: boolean;
+  refreshAllData: () => Promise<void>;
 }
 
-export function CommentItem({ comment, ticketId, isOwn }: CommentItemProps) {
+export function CommentItem({
+  comment,
+  ticketId,
+  isOwn,
+  refreshAllData,
+}: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -34,7 +40,7 @@ export function CommentItem({ comment, ticketId, isOwn }: CommentItemProps) {
   const updateMutation = useUpdateComment();
   const deleteMutation = useDeleteComment();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editContent || !editContent.trim()) {
       toast.error("Comment cannot be empty");
       return;
@@ -57,11 +63,13 @@ export function CommentItem({ comment, ticketId, isOwn }: CommentItemProps) {
       toast.info("No changes to save");
       setIsEditing(false);
     }
+    await refreshAllData();
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     setEditContent(comment.content);
     setIsEditing(false);
+    await refreshAllData();
   };
 
   const handleDelete = () => {
@@ -71,8 +79,9 @@ export function CommentItem({ comment, ticketId, isOwn }: CommentItemProps) {
         commentId: comment.id,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setIsDeleteDialogOpen(false);
+          await refreshAllData();
         },
       }
     );

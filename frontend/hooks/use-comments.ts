@@ -192,8 +192,12 @@ export function useCreateComment() {
         );
       }
       console.error("Failed to add comment", error);
+      const notificationError =
+        error?.message &&
+        (!!error?.message?.includes("Payload not formatted correctly") ||
+          !!error?.message?.includes("Failed to create and send notification"));
 
-      if (!error?.message?.includes("payload not formatted correctly")) {
+      if (!notificationError) {
         toast.error("Failed to add comment");
       }
     },
@@ -225,7 +229,7 @@ export function useCreateComment() {
             await createAndSendNotification({
               getToken: getToken,
               trigger: "New Comments",
-              templateName: "New Comments on Ticket",
+              templateName: "New Comments",
               receivingUser: {
                 id: user.id,
                 name: user.name,
