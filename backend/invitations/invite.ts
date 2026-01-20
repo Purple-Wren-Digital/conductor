@@ -629,13 +629,9 @@ export const listInvitations = api<
     const offset = req?.offset ?? 0;
 
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext?.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
 
     if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
       return { invitations: [] };

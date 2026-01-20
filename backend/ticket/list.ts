@@ -36,12 +36,17 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     let marketCenterIds: string[] = [];
 
     if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
+      let marketCenterIds: string[] = [];
+
       const accessibleMarketCenterIds =
         await subscriptionRepository.getAccessibleMarketCenterIds(
           userContext.marketCenterId
         );
+      if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+        return { tickets: [], total: 0 };
+      }
       if (
-        req.marketCenterId !== undefined &&
+        req.marketCenterId &&
         accessibleMarketCenterIds.includes(req.marketCenterId)
       ) {
         marketCenterIds.push(req.marketCenterId);
@@ -55,8 +60,9 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       userContext?.marketCenterId
     ) {
       marketCenterIds = [userContext.marketCenterId];
+    } else {
+      marketCenterIds = ["impossible_id_to_return_no_results"];
     }
-
     // Use the search method which handles role-based filtering
     const { tickets, total } = await ticketRepository.search({
       userId: userContext?.userId,

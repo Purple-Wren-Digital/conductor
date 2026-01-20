@@ -34,6 +34,15 @@ export const getAllRatings = api<{}, SurveyResults>(
         userContext?.marketCenterId
       );
 
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return {
+        totalSurveys: 0,
+        overallAverageRating: 0,
+        assigneeAverageRating: 0,
+        marketCenterAverageRating: 0,
+      };
+    }
+
     let surveyResults: SurveyResults = {
       totalSurveys: 0,
       overallAverageRating: 0,

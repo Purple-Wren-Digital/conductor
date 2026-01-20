@@ -36,6 +36,14 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return { users: [], total: 0 };
+    }
 
     if (!userContext?.role) {
       throw APIError.permissionDenied("Unauthorized");
@@ -81,11 +89,6 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
 
     const isUnassigned =
       req?.marketCenterId !== undefined && req?.marketCenterId === "Unassigned";
-
-    const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext.marketCenterId
-      );
 
     const adminMarketCenterId: string | null =
       isAdmin && req?.marketCenterId !== undefined && !isUnassigned

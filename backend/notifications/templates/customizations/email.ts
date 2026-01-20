@@ -69,7 +69,11 @@ export const saveEmailTemplate = api<
           ? [userContext.marketCenterId]
           : [];
 
-    if (!accessibleMarketCenterIds.includes(req.marketCenterId)) {
+    if (
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length ||
+      !accessibleMarketCenterIds.includes(req.marketCenterId)
+    ) {
       throw APIError.permissionDenied(
         "You do not have access to this market center"
       );

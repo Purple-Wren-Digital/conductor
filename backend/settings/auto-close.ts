@@ -46,8 +46,6 @@ export const getAutoCloseSettings = api<
   },
   async (req) => {
     const userContext = await getUserContext();
-    const isStaffLeader = userContext?.role === "STAFF_LEADER";
-    const isAdmin = userContext?.role === "ADMIN";
 
     // Only STAFF_LEADER and ADMIN can update auto-close settings
     if (
@@ -79,7 +77,7 @@ export const getAutoCloseSettings = api<
     else if (userContext.role === "ADMIN") {
       const accessibleMarketCenterIds =
         await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
+          userContext?.marketCenterId
         );
 
       if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
@@ -89,7 +87,7 @@ export const getAutoCloseSettings = api<
       }
 
       const includesMarketCenterId = accessibleMarketCenterIds.some(
-        (id) => id === req.marketCenterId
+        (id) => id === req?.marketCenterId
       );
 
       if (!includesMarketCenterId) {

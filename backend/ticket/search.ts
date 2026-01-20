@@ -76,12 +76,18 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
       const accessibleMarketCenterIds =
         await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
+          userContext?.marketCenterId
         );
-      if (req.marketCenterId) {
-        if (accessibleMarketCenterIds.includes(req.marketCenterId)) {
-          marketCenterIds.push(req.marketCenterId);
-        }
+
+      if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+        return { tickets: [], total: 0 };
+      }
+
+      if (
+        req.marketCenterId &&
+        accessibleMarketCenterIds.includes(req.marketCenterId)
+      ) {
+        marketCenterIds.push(req.marketCenterId);
       } else {
         marketCenterIds = accessibleMarketCenterIds;
       }
@@ -92,6 +98,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       userContext?.marketCenterId
     ) {
       marketCenterIds = [userContext.marketCenterId];
+    } else {
+      marketCenterIds = ["impossible_id_to_return_no_results"];
     }
 
     // Use repository search with role-based access control built in

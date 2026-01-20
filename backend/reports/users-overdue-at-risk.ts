@@ -45,6 +45,13 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return { assignees: [], ticketTotal: 0, assigneeTotal: 0 };
+    }
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );
@@ -63,10 +70,6 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
       userContext?.marketCenterId &&
       isActive
     ) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
       if (req.marketCenterIds && req.marketCenterIds.length > 0) {
         const filteredMCIds = req.marketCenterIds.filter((id) =>
           accessibleMarketCenterIds.includes(id)

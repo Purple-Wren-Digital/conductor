@@ -49,6 +49,18 @@ export const resolvedByMonth = api<
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return {
+        ticketsResolved: [],
+        total: 0,
+        granularity: (req.granularity as Granularity) || "monthly",
+      };
+    }
+
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );
@@ -63,15 +75,12 @@ export const resolvedByMonth = api<
       req.creatorIds && req.creatorIds.length > 0 ? req.creatorIds : null;
 
     let marketCenterIds: string[] = [];
+
     if (
       userContext.role === "ADMIN" &&
       userContext?.marketCenterId &&
       isActive
     ) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
       if (req.marketCenterIds && req.marketCenterIds.length > 0) {
         const filteredMCIds = req.marketCenterIds.filter((id) =>
           accessibleMarketCenterIds.includes(id)
