@@ -44,8 +44,6 @@ import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
 import {
   chartColors,
-  defaultActiveStatuses,
-  getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
@@ -181,7 +179,7 @@ export function AdminDashboard() {
     ).length;
     const unassignedTickets = openTickets.filter(
       (t: Ticket) =>
-        (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
+        t.status === "UNASSIGNED" || (t.status === "CREATED" && !t?.assigneeId)
     ).length;
     const overdueTickets = tickets.filter((t: Ticket) => {
       if (t.status !== "RESOLVED" && t?.dueDate) {
@@ -197,7 +195,7 @@ export function AdminDashboard() {
         const statusKey =
           ticket.status === "CREATED" && !!ticket?.assigneeId
             ? "ASSIGNED"
-            : ticket.status === "UNASSIGNED" || !ticket?.assigneeId
+            : ticket.status === "CREATED" && !ticket?.assigneeId
               ? "UNASSIGNED"
               : ticket.status;
         acc[statusKey] = (acc[statusKey] || 0) + 1;

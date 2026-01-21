@@ -118,7 +118,12 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       ...r,
       title: r.title ?? "",
       description: r.description ?? "",
-      status: r.status ?? ("ASSIGNED" as TicketStatus),
+      status:
+        !r?.status || (r.status === "CREATED" && !!r?.assigneeId)
+          ? ("ASSIGNED" as TicketStatus)
+          : r.status === "CREATED" && !r?.assigneeId
+            ? ("UNASSIGNED" as TicketStatus)
+            : (r.status ?? "ASSIGNED"),
       urgency: r.urgency ?? ("MEDIUM" as Urgency),
       categoryId: r.categoryId ?? "",
       category: r.category

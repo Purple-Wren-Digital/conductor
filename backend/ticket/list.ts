@@ -74,10 +74,40 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       offset,
     });
 
-    if (!tickets) {
+    if (!tickets || !tickets.length) {
       throw APIError.notFound("Could not find any tickets that meets criteria");
     }
 
-    return { tickets, total } as ListTicketsResponse;
+    const ticketsMapped: Partial<Ticket>[] = tickets.map((r) => ({
+      ...r,
+      title: r.title ?? "",
+      description: r.description ?? "",
+      status:
+        !r?.status || (r.status === "CREATED" && !!r?.assigneeId)
+          ? ("ASSIGNED" as TicketStatus)
+          : r.status === "CREATED" && !r?.assigneeId
+            ? ("UNASSIGNED" as TicketStatus)
+            : (r.status ?? "ASSIGNED"),
+      urgency: r.urgency ?? ("MEDIUM" as Urgency),
+      categoryId: r.categoryId ?? "",
+      category: r.category
+        ? {
+            ...r.category,
+            description: r.category.description ?? "",
+            defaultAssigneeId: r.category.defaultAssigneeId ?? null,
+          }
+        : null,
+      creator: r.creator
+        ? {
+            ...r.creator,
+            name: r.creator.name ?? "",
+          }
+        : undefined,
+      assignee: r.assignee
+        ? { ...r.assignee, name: r.assignee.name ?? "" }
+        : null,
+    }));
+
+    return { tickets: ticketsMapped, total } as ListTicketsResponse;
   }
 );

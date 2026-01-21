@@ -419,12 +419,19 @@ export const ticketRepository = {
 
     // Filter conditions
     if (params.status && params.status.length > 0) {
-      const placeholders =
-        params.status.map((_, i) => `$${paramIndex + i}`).join(", ") +
-        ", 'CREATED'";
+      const statuses =
+        params.status.includes("ASSIGNED") ||
+        params.status.includes("UNASSIGNED")
+          ? [...params.status, "CREATED"]
+          : params.status;
+
+      const placeholders = statuses
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+
       conditions.push(`t.status IN (${placeholders})`);
-      values.push(...params.status);
-      paramIndex += params.status.length;
+      values.push(...statuses);
+      paramIndex += statuses.length;
     } else {
       // Default: exclude RESOLVED
       conditions.push(`t.status != 'RESOLVED'`);
