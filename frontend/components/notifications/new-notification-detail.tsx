@@ -35,9 +35,9 @@ export default function SideBarNewNotification({
   >;
 }) {
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="my-2">
       {newestNotification && (
-        <Card className="p-2.5 gap-2 mt-5">
+        <Card className="p-2.5 gap-2">
           <CardHeader className="p-0 m-0 flex flex-row flex-wrap justify-between text-md">
             <div className="flex flex-col px-1 pt-1">
               <CardTitle>

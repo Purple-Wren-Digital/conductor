@@ -10,9 +10,14 @@ import { useStore } from "@/context/store-provider";
 interface CommentListProps {
   ticketId: string;
   className?: string;
+  refreshAllData: () => Promise<void>;
 }
 
-export function CommentList({ ticketId, className }: CommentListProps) {
+export function CommentList({
+  ticketId,
+  className,
+  refreshAllData,
+}: CommentListProps) {
   const { currentUser } = useStore();
   const { data: comments, error, isLoading, refetch } = useComments(ticketId);
 
@@ -58,12 +63,13 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         ) : (
           <ScrollArea className="h-100">
             <div className="space-y-3 pr-4">
-              {commentList.map((comment: Comment) => (
+              {commentList.map((comment: Comment, index: number) => (
                 <CommentItem
-                  key={comment.id}
+                  key={`${index}-${comment.id}`}
                   comment={comment}
                   ticketId={ticketId}
                   isOwn={currentUser?.id === comment.user?.id}
+                  refreshAllData={refreshAllData}
                 />
               ))}
             </div>
@@ -71,7 +77,7 @@ export function CommentList({ ticketId, className }: CommentListProps) {
         )}
       </div>
 
-      <CommentForm ticketId={ticketId} />
+      <CommentForm ticketId={ticketId} refreshAllData={refreshAllData} />
     </div>
   );
 }

@@ -45,10 +45,14 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
     // - Admin with Enterprise: All market centers under the same subscription
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext.marketCenterId
+        userContext?.marketCenterId
       );
 
-    if (!userContext.marketCenterId || !accessibleMarketCenterIds.length) {
+    if (
+      !userContext?.marketCenterId ||
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length
+    ) {
       return { marketCenters: [], total: 0 };
     }
 

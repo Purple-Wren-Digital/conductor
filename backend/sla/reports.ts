@@ -4,7 +4,7 @@
 
 import { api, APIError, Query } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
-import { slaRepository } from "../shared/repositories";
+import { slaRepository, subscriptionRepository } from "../shared/repositories";
 import type { SlaReportRequest, SlaReportResponse, SlaMetrics } from "./types";
 
 interface GetMetricsRequest {
@@ -30,6 +30,22 @@ export const getMetrics = api<GetMetricsRequest, GetMetricsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return {
+        metrics: {
+          totalTickets: 0,
+          ticketsWithSla: 0,
+          ticketsMet: 0,
+          ticketsBreached: 0,
+          complianceRate: 0,
+          avgResponseTimeMinutes: null,
+        },
+      };
+    }
 
     // Only ADMIN and STAFF_LEADER can view SLA metrics
     if (userContext.role !== "ADMIN" && userContext.role !== "STAFF_LEADER") {
@@ -67,6 +83,35 @@ export const getReport = api<GetReportRequest, SlaReportResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return {
+        metrics: {
+          totalTickets: 0,
+          ticketsWithSla: 0,
+          ticketsMet: 0,
+          ticketsBreached: 0,
+          complianceRate: 0,
+          avgResponseTimeMinutes: null,
+        },
+        byUrgency: [],
+        byAssignee: [],
+        trends: [],
+        resolutionMetrics: {
+          totalTickets: 0,
+          ticketsWithSla: 0,
+          ticketsMet: 0,
+          ticketsBreached: 0,
+          complianceRate: 0,
+          avgResolutionTimeMinutes: null,
+        },
+        resolutionByUrgency: [],
+        resolutionTrends: [],
+      };
+    }
 
     // Only ADMIN can view full SLA reports
     if (userContext.role !== "ADMIN") {
@@ -146,8 +191,17 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+
     // Only ADMIN can export SLA reports
-    if (userContext.role !== "ADMIN") {
+    if (
+      userContext.role !== "ADMIN" ||
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length
+    ) {
       throw APIError.permissionDenied(
         "You do not have permission to export SLA reports"
       );
@@ -158,7 +212,13 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const dateTo = req.dateTo ? new Date(req.dateTo) : new Date();
 
-    const [metrics, byUrgency, byAssignee, resolutionMetrics, resolutionByUrgency] = await Promise.all([
+    const [
+      metrics,
+      byUrgency,
+      byAssignee,
+      resolutionMetrics,
+      resolutionByUrgency,
+    ] = await Promise.all([
       slaRepository.getSlaMetrics({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByUrgency({ dateFrom, dateTo }),
       slaRepository.getSlaMetricsByAssignee({ dateFrom, dateTo }),

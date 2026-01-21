@@ -63,7 +63,7 @@ export const listSettingsCategories = api<void, ListSettingsCategoriesResponse>(
           ? [userContext.marketCenterId]
           : [];
 
-    if (accessibleMarketCenterIds.length === 0) {
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
       return { categories: [] };
     }
 
@@ -286,11 +286,11 @@ export const updateSettingsCategory = api<
 
         // Get old and new assignee names for history
         const oldAssigneeName = existingCategory.defaultAssigneeId
-          ? (await userRepository.findById(existingCategory.defaultAssigneeId))
-              ?.name ?? "Unknown"
+          ? ((await userRepository.findById(existingCategory.defaultAssigneeId))
+              ?.name ?? "Unknown")
           : "Unassigned";
         const newAssigneeName = newAssigneeId
-          ? (await userRepository.findById(newAssigneeId))?.name ?? "Unknown"
+          ? ((await userRepository.findById(newAssigneeId))?.name ?? "Unknown")
           : "Unassigned";
 
         await marketCenterRepository.createHistory({
@@ -305,7 +305,10 @@ export const updateSettingsCategory = api<
       }
     }
 
-    if (req.isActive !== undefined && req.isActive !== existingCategory.isActive) {
+    if (
+      req.isActive !== undefined &&
+      req.isActive !== existingCategory.isActive
+    ) {
       updateData.isActive = req.isActive;
       await marketCenterRepository.createHistory({
         marketCenterId: existingCategory.marketCenterId,

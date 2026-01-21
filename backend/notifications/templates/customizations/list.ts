@@ -52,7 +52,11 @@ export const listTemplateStatuses = api<
           ? [userContext.marketCenterId]
           : [];
 
-    if (!accessibleMarketCenterIds.includes(req.marketCenterId)) {
+    if (
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length ||
+      !accessibleMarketCenterIds.includes(req.marketCenterId)
+    ) {
       throw APIError.permissionDenied(
         "You do not have access to this market center"
       );
@@ -60,8 +64,12 @@ export const listTemplateStatuses = api<
 
     // Get all customizations for this market center
     const [emailCustomizations, inAppCustomizations] = await Promise.all([
-      emailTemplateCustomizationRepository.findAllByMarketCenter(req.marketCenterId),
-      inAppTemplateCustomizationRepository.findAllByMarketCenter(req.marketCenterId),
+      emailTemplateCustomizationRepository.findAllByMarketCenter(
+        req.marketCenterId
+      ),
+      inAppTemplateCustomizationRepository.findAllByMarketCenter(
+        req.marketCenterId
+      ),
     ]);
 
     // Build a map for quick lookup
@@ -76,7 +84,9 @@ export const listTemplateStatuses = api<
     }
 
     // Build status for each template type
-    const templateTypes = Object.keys(TEMPLATE_TYPE_LABELS) as CustomizableTemplateType[];
+    const templateTypes = Object.keys(
+      TEMPLATE_TYPE_LABELS
+    ) as CustomizableTemplateType[];
     const templates: TemplateStatus[] = templateTypes.map((templateType) => ({
       templateType,
       label: TEMPLATE_TYPE_LABELS[templateType],

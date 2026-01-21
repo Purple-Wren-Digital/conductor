@@ -4,9 +4,10 @@
 
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
-import { slaRepository } from "../shared/repositories";
+import { slaRepository, subscriptionRepository } from "../shared/repositories";
 import type { SlaPolicyResponse, UpdateSlaPolicyRequest } from "./types";
-
+// TODO: SLA Policies must be connected to market centers
+// Currently, if someone changes the SLA policies, it changes for all market centers
 interface GetPoliciesResponse {
   policies: SlaPolicyResponse[];
 }
@@ -23,6 +24,13 @@ export const getPolicies = api<{}, GetPoliciesResponse>(
   },
   async () => {
     const userContext = await getUserContext();
+    // const accessibleMarketCenterIds =
+    //   await subscriptionRepository.getAccessibleMarketCenterIds(
+    //     userContext?.marketCenterId
+    //   );
+    // if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    //   return { policies: [] };
+    // }
 
     // Only ADMIN and STAFF_LEADER can view SLA policies
     if (userContext.role !== "ADMIN" && userContext.role !== "STAFF_LEADER") {
@@ -65,7 +73,13 @@ export const updatePolicy = api<UpdateSlaPolicyRequest, UpdatePolicyResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
-
+    // const accessibleMarketCenterIds =
+    //   await subscriptionRepository.getAccessibleMarketCenterIds(
+    //     userContext?.marketCenterId
+    //   );
+    // if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    //   return { policies: [] };
+    // }
     // Only ADMIN can update SLA policies
     if (userContext.role !== "ADMIN") {
       throw APIError.permissionDenied(

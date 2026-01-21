@@ -52,14 +52,20 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
 
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext.marketCenterId
+        userContext?.marketCenterId
       );
 
     if (
-      userContext.role === "ADMIN" &&
-      accessibleMarketCenterIds &&
-      accessibleMarketCenterIds.length > 0
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length ||
+      !accessibleMarketCenterIds.find(
+        (id) => id === userContext?.marketCenterId
+      )
     ) {
+      return { users: [] };
+    }
+
+    if (userContext.role === "ADMIN") {
       searchParams.marketCenterIds = accessibleMarketCenterIds;
     }
 

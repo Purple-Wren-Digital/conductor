@@ -46,7 +46,7 @@ export const listCategories = api<
           ? [userContext.marketCenterId]
           : [];
 
-    if (accessibleMarketCenterIds.length === 0) {
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
       return { categories: [] };
     }
 
@@ -77,10 +77,14 @@ export const listCategories = api<
       values.push(req.marketCenterId);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const sql = `SELECT * FROM ticket_categories ${whereClause} ORDER BY name ASC`;
 
-    const categoriesRaw = await db.rawQueryAll<TicketCategoryRow>(sql, ...values);
+    const categoriesRaw = await db.rawQueryAll<TicketCategoryRow>(
+      sql,
+      ...values
+    );
 
     const categories = categoriesRaw.map((category) => ({
       id: category.id,

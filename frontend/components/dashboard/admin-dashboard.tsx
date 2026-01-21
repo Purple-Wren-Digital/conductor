@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useStore } from "@/context/store-provider";
 import {
   Card,
   CardContent,
@@ -17,6 +18,13 @@ import {
 } from "@/components/ui/chart";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -44,8 +52,6 @@ import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
 import {
   chartColors,
-  defaultActiveStatuses,
-  getResolvedInBusinessDays,
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
@@ -53,8 +59,9 @@ import {
   statusOptions,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
-import type { MarketCenter, Ticket } from "@/lib/types";
+import type { MarketCenter, PrismaUser, Ticket } from "@/lib/types";
 import { calculateStaffStats } from "@/lib/utils/staff-stats";
+import { useIsEnterprise } from "@/hooks/useSubscription";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import {
   Bar,
@@ -69,10 +76,17 @@ import {
 } from "recharts";
 
 export function AdminDashboard() {
+  const [selectedMarketCenter, setSelectedMarketCenter] = useState<{
+    name: string;
+    id: string;
+  }>({ name: "all", id: "all" } as any);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
+  const { currentUser } = useStore();
   const { role } = useUserRole();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const { isEnterprise } = useIsEnterprise();
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -84,14 +98,34 @@ export function AdminDashboard() {
     [router]
   );
 
+  // Fetch market centers
+  const { data: marketCentersData, isLoading: marketCentersLoading } =
+    useFetchAllMarketCenters(role);
+
+  const marketCenters: MarketCenter[] = useMemo(() => {
+    return marketCentersData?.marketCenters ?? [];
+  }, [marketCentersData]);
+
+  const totalMarketCenters = useMemo(() => {
+    return marketCentersData?.total || 0;
+  }, [marketCentersData]);
+
+  // Fetch tickets
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     statusOptions.forEach((option) => {
       params.append("status", option);
     });
 
+    if (isEnterprise && selectedMarketCenter?.id !== "all") {
+      params.append("marketCenterId", selectedMarketCenter.id);
+    }
+    if (!isEnterprise && currentUser?.marketCenterId) {
+      params.append("marketCenterId", currentUser.marketCenterId);
+    }
+
     return params;
-  }, []);
+  }, [isEnterprise, selectedMarketCenter, currentUser]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -112,6 +146,7 @@ export function AdminDashboard() {
   const adminTicketsQueryInvalidator = () =>
     queryClient.invalidateQueries({ queryKey: adminTicketsQueryKey });
 
+  // Fetch users
   const { data: usersData, isLoading: isUsersLoading } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
@@ -128,35 +163,43 @@ export function AdminDashboard() {
     },
     enabled: !!clerkUser,
   });
-  const teamMembers = useMemo(() => usersData?.users || [], [usersData]);
-
-  const { data: marketCentersData } = useFetchAllMarketCenters(role);
-
-  const marketCenters: MarketCenter[] = useMemo(() => {
-    return marketCentersData?.marketCenters ?? [];
-  }, [marketCentersData]);
-  const totalMarketCenters = marketCentersData?.total || 0;
+  const teamMembers: PrismaUser[] = useMemo(() => {
+    const allUsers: PrismaUser[] = usersData?.users || [];
+    if (
+      !!allUsers &&
+      isEnterprise &&
+      selectedMarketCenter &&
+      selectedMarketCenter?.id !== "all"
+    ) {
+      return allUsers.filter(
+        (user) => user.marketCenterId === selectedMarketCenter.id
+      );
+    }
+    return allUsers;
+  }, [usersData, isEnterprise, selectedMarketCenter]);
 
   const { data: globalAverages } = useListAllRatings(
     ["admin-dashboard-global-ratings", role ?? "AGENT"],
     role
   );
 
-  // Fetch single market center ratings when there's only one MC
-  const singleMarketCenterId =
-    marketCenters.length === 1 ? marketCenters[0]?.id : undefined;
   const { data: singleMcRatings } = useFetchRatingsByMarketCenter(
-    ["admin-dashboard-single-mc-ratings", singleMarketCenterId ?? ""],
-    singleMarketCenterId
+    ["admin-dashboard-single-mc-ratings", selectedMarketCenter?.id],
+    selectedMarketCenter?.id
   );
 
   // Use single MC ratings when there's only one market center, otherwise use global averages
   const displayRatings = useMemo(() => {
-    if (marketCenters.length === 1 && singleMcRatings) {
+    if (selectedMarketCenter?.id !== "all" || marketCenters.length === 1) {
       return singleMcRatings;
     }
     return globalAverages;
-  }, [marketCenters.length, singleMcRatings, globalAverages]);
+  }, [
+    marketCenters.length,
+    selectedMarketCenter?.id,
+    singleMcRatings,
+    globalAverages,
+  ]);
 
   // SLA Metrics - last 30 days
   const slaDateFilters = useMemo(() => {
@@ -316,49 +359,82 @@ export function AdminDashboard() {
     <>
       <div className="space-y-6">
         <section className="flex flex-col gap-2">
+          {/* Header */}
           <div className="flex flex-wrap justify-between items-center gap-5 md:items-start">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
-                Welcome, {clerkUser?.firstName}
-              </h1>
-              <p className="text-muted-foreground">
-                System-wide overview and management for{" "}
-                <span>
-                  {marketCenters &&
-                    marketCenters.length > 1 &&
-                    marketCenters.map((mc) => {
-                      if (!mc?.id) return null;
-                      return (
-                        <Link key={mc.id} href={`/dashboard/`}>
-                          {mc?.name ? mc.name : `#${mc.id.slice(0, 8)}`}
-                        </Link>
-                      );
-                    })}
-                  {marketCenters.length === 1 &&
-                    `${
-                      marketCenters?.[0]?.name
-                        ? marketCenters[0].name
-                        : marketCenters?.[0]?.id
-                          ? `#${marketCenters[0]?.id?.slice(0, 8)}`
-                          : "your market center"
-                    }`}
-                </span>
-              </p>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#6D1C24]">
+              Welcome, {clerkUser?.firstName}
+            </h1>
             <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
-              <Button asChild className="w-full sm:w-fit">
+              <Button size={"sm"} asChild className="w-full sm:w-fit">
                 <Link href="/dashboard/reports">
                   <BarChartIcon className="mr-2 h-4 w-4" /> View Reports
                 </Link>
               </Button>
               <Button
-                className="w-full sm:w-fit"
                 onClick={() => setIsCreateOpen(true)}
+                size={"sm"}
+                className="w-full sm:w-fit"
               >
                 <Plus className="h-4 w-4" /> Create Ticket
               </Button>
             </div>
           </div>
+          {/* Description */}
+          <div className={`flex items-center justify-between gap-1 flex-wrap`}>
+            <p className={`flex items-center justify-between gap-1 flex-wrap`}>
+              System-wide overview and management
+              {marketCenters.length === 1 ? " for" : ":"}
+              {marketCenters &&
+                marketCenters.length === 1 &&
+                marketCenters.map((mc, index) => (
+                  <span key={mc.id}>
+                    {mc.name ? mc.name : `#${mc.id.slice(0, 8)}`}
+                    {index < marketCenters.length - 1 && index < 1
+                      ? ", "
+                      : index === 1 && marketCenters.length === 3
+                        ? " & "
+                        : ""}
+                  </span>
+                ))}
+            </p>
+            {isEnterprise && marketCenters && marketCenters.length > 1 && (
+              <Select
+                value={selectedMarketCenter?.id || ""}
+                onValueChange={(value) => {
+                  const foundMarketCenter = marketCenters.find(
+                    (mc) => mc.id == value
+                  );
+                  if (foundMarketCenter) {
+                    setSelectedMarketCenter(foundMarketCenter);
+                  } else {
+                    setSelectedMarketCenter({ name: "all", id: "all" });
+                  }
+                }}
+                disabled={
+                  marketCentersLoading || isUsersLoading || ticketsLoading
+                }
+              >
+                <SelectTrigger className="md:max-w-[50%]">
+                  <SelectValue placeholder="Select a market center" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Teams</SelectItem>
+
+                  {marketCenters &&
+                    marketCenters.length > 0 &&
+                    marketCenters.map((mc) => {
+                      if (!mc || !mc?.id) return null;
+                      return (
+                        <SelectItem key={mc.id} value={mc.id}>
+                          {mc?.name ? mc.name : `#${mc.id.slice(0, 8)}`}
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          {/* Ratings */}
           <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
             <ToolTip
               content="Ratings are based on all resolved tickets via survey responses"
@@ -512,12 +588,12 @@ export function AdminDashboard() {
               </div>
               <ScrollArea className="space-y-4 md:h-50 overflow-y-auto">
                 {isUsersLoading && (
-                  <p className="space-y-4 text-sm text-muted-foreground font-medium">
+                  <p className="space-y-4 text-sm text-muted-foreground pt-2 px-2">
                     Loading...
                   </p>
                 )}
                 {!isUsersLoading && Object.keys(staffStats).length === 0 && (
-                  <p className="space-y-4 text-sm text-muted-foreground font-medium">
+                  <p className="space-y-4 text-sm text-muted-foreground pt-2 px-2">
                     No staff members found
                   </p>
                 )}

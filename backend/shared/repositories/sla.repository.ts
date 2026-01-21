@@ -1,3 +1,5 @@
+// TODO: SLA Policies must be connected to market centers
+// Currently, if someone changes the SLA policies, it changes for all market centers
 /**
  * SLA Repository - Raw SQL queries for SLA operations
  */

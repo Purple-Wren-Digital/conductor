@@ -55,6 +55,11 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    if (userContext.role === "AGENT") {
+      throw APIError.permissionDenied(
+        "User not permitted to view ticket reviews"
+      );
+    }
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );

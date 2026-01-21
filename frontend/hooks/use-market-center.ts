@@ -49,12 +49,12 @@ export function useSearchMarketCenters({
 }: SearchMarketCentersType) {
   const { getToken } = useAuth();
 
-  //pass in role and do not fetch if not admin!
+  //pass in role and do not fetch if not assigned user!
   return useQuery({
     queryKey: marketCentersQueryKey,
     queryFn: async () => {
       if (!role || role === "AGENT") {
-        throw new Error("Only Admin and Staff users can view market centers");
+        throw new Error("Only registered users can view market centers");
       }
 
       const token = await getToken();

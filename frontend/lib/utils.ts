@@ -202,7 +202,7 @@ export const USER_STATUS_ICONS = {
 
 // MISC
 export function arrayToCommaSeparatedListWithConjunction(
-  conjunction: "and" | "or",
+  conjunction: "and" | "or" | "&",
   array: any[]
 ) {
   if (array.length === 0) {

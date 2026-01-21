@@ -13,11 +13,12 @@ import { toast } from "sonner";
 
 interface CommentFormProps {
   ticketId: string;
+  refreshAllData: () => Promise<void>;
 }
 
 const DRAFT_KEY_PREFIX = "comment_draft_";
 
-export function CommentForm({ ticketId }: CommentFormProps) {
+export function CommentForm({ ticketId, refreshAllData }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const draftKey = `${DRAFT_KEY_PREFIX}${ticketId}`;
@@ -51,11 +52,12 @@ export function CommentForm({ ticketId }: CommentFormProps) {
     }
   }, [content, isInternal, draftKey]);
 
-  const onSubmitSuccess = useCallback(() => {
+  const onSubmitSuccess = useCallback(async () => {
     setContent("");
     setIsInternal(false);
     localStorage.removeItem(draftKey);
-  }, [draftKey]);
+    await refreshAllData();
+  }, [draftKey, refreshAllData]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {

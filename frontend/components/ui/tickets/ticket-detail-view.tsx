@@ -930,7 +930,10 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
             </CardContent>
           </Card>
 
-          <TicketCommentsSection ticketId={ticket.id} />
+          <TicketCommentsSection
+            ticketId={ticket.id}
+            refreshAllData={refreshAllData}
+          />
 
           {/* Attachments Section */}
           <Card id={`attachments-section-${ticket.id}`}>

@@ -35,6 +35,14 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 };
+    }
+
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );
@@ -46,15 +54,12 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
     const statusList = req.status && req.status.length > 0 ? req.status : null;
 
     let marketCenterIds: string[] = [];
+
     if (
       userContext.role === "ADMIN" &&
       userContext?.marketCenterId &&
       isActive
     ) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
       if (req.marketCenterIds && req.marketCenterIds.length > 0) {
         const filteredMCIds = req.marketCenterIds.filter((id) =>
           accessibleMarketCenterIds.includes(id)

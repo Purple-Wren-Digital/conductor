@@ -40,6 +40,14 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      return { created: 0, unassigned: 0, total: 0 };
+    }
+
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );
@@ -57,10 +65,6 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       userContext?.marketCenterId &&
       isActive
     ) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
       if (req.marketCenterIds && req.marketCenterIds.length > 0) {
         const filteredMCIds = req.marketCenterIds.filter((id) =>
           accessibleMarketCenterIds.includes(id)

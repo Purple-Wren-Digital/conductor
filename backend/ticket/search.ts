@@ -40,6 +40,18 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+
+    if (
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length ||
+      !userContext?.marketCenterId
+    ) {
+      return { tickets: [], total: 0 };
+    }
 
     const limit = Math.min(Math.max(Number(req.limit ?? 50), 1), 200);
     const offset = Math.max(Number(req.offset ?? 0), 0);
@@ -73,15 +85,12 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
 
     let marketCenterIds: string[] = [];
 
-    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
-      if (req.marketCenterId) {
-        if (accessibleMarketCenterIds.includes(req.marketCenterId)) {
-          marketCenterIds.push(req.marketCenterId);
-        }
+    if (userContext.role === "ADMIN") {
+      if (
+        req?.marketCenterId &&
+        accessibleMarketCenterIds.includes(req?.marketCenterId)
+      ) {
+        marketCenterIds.push(req.marketCenterId);
       } else {
         marketCenterIds = accessibleMarketCenterIds;
       }

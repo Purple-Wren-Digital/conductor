@@ -83,8 +83,11 @@ export function useFetchStaffTickets({
             },
           }
         );
-        if (!response || !response.ok)
-          throw new Error("Failed to fetch tickets");
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Error fetching staff tickets: ", errorData);
+          throw new Error(errorData?.message || "Failed to fetch tickets");
+        }
         const data = await response.json();
         return data;
       } catch {
@@ -174,7 +177,7 @@ export function useListAdminTickets({
         }
 
         const res = await fetch(
-          `${API_BASE}/tickets?${queryParams.toString()}`,
+          `${API_BASE}/tickets${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -255,16 +258,13 @@ export function useListAllRatings(
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
-        const res = await fetch(
-          `${API_BASE}/surveys/ratings/all`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            cache: "no-store",
-          }
-        );
+        const res = await fetch(`${API_BASE}/surveys/ratings/all`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
         if (!res.ok) {
           throw new Error("Failed to fetch survey data");
         }

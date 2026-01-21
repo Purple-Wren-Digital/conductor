@@ -30,19 +30,34 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    const accessibleMarketCenterIds =
+      await subscriptionRepository.getAccessibleMarketCenterIds(
+        userContext?.marketCenterId
+      );
+
+    if (
+      !accessibleMarketCenterIds ||
+      !accessibleMarketCenterIds.length ||
+      !userContext?.marketCenterId ||
+      (userContext?.marketCenterId &&
+        !accessibleMarketCenterIds.includes(
+          req?.marketCenterId ?? userContext.marketCenterId
+        ))
+    ) {
+      return { tickets: [], total: 0 };
+    }
+
     const limit = req.limit || 50;
     const offset = req.offset || 0;
 
     let marketCenterIds: string[] = [];
 
-    if (userContext.role === "ADMIN" && userContext?.marketCenterId) {
-      const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext.marketCenterId
-        );
+    if (userContext.role === "ADMIN") {
+      let marketCenterIds: string[] = [];
+
       if (
-        req.marketCenterId !== undefined &&
-        accessibleMarketCenterIds.includes(req.marketCenterId)
+        req.marketCenterId &&
+        accessibleMarketCenterIds.includes(req?.marketCenterId)
       ) {
         marketCenterIds.push(req.marketCenterId);
       } else {
@@ -56,7 +71,6 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
     ) {
       marketCenterIds = [userContext.marketCenterId];
     }
-
     // Use the search method which handles role-based filtering
     const { tickets, total } = await ticketRepository.search({
       userId: userContext?.userId,

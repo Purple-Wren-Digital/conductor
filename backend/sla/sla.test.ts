@@ -8,6 +8,7 @@ const {
   mockNotificationRepository,
   mockTicketRepository,
   mockUserContext,
+  mockSubscriptionRepository,
 } = vi.hoisted(() => ({
   mockDb: {
     queryAll: vi.fn(),
@@ -75,6 +76,10 @@ const {
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
   },
+  mockSubscriptionRepository: {
+    create: vi.fn(),
+    getAccessibleMarketCenterIds: vi.fn(),
+  },
 }));
 
 // Mock encore.dev/api
@@ -106,6 +111,7 @@ vi.mock("../shared/repositories", () => ({
   userRepository: mockUserRepository,
   notificationRepository: mockNotificationRepository,
   ticketRepository: mockTicketRepository,
+  subscriptionRepository: mockSubscriptionRepository,
 }));
 
 // Mock ticket/db
@@ -134,6 +140,9 @@ describe("SLA System Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   // ==========================================
@@ -1561,6 +1570,9 @@ describe("SLA System Tests", () => {
 describe("SLA Repository Unit Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSubscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("Policy Queries", () => {
@@ -1601,7 +1613,7 @@ describe("SLA Repository Unit Tests", () => {
   });
 
   describe("Ticket SLA Queries", () => {
-    it("findTicketsNeedingWarning50 should return unresponded tickets at 50%", async () => {
+    it("findTicketsNeedingWarning50 should return un-responded tickets at 50%", async () => {
       const mockTickets = [
         { id: "t1", sla_warning_50_sent: false, first_response_at: null },
         { id: "t2", sla_warning_50_sent: false, first_response_at: null },
