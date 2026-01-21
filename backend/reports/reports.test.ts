@@ -76,6 +76,9 @@ describe("Reports", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
+    subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+      "mc-123",
+    ]);
   });
 
   describe("backlog", () => {
@@ -268,6 +271,11 @@ describe("Reports", () => {
           clerkId: "clerk-leader",
         });
 
+        subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+          "mc-123",
+          "mc-456",
+        ]);
+
         // Query should only return tickets scoped to mc-100
         mockDb.queryAll.mockResolvedValueOnce([
           { id: "ticket-1", status: "UNASSIGNED" }, // From mc-100
@@ -372,6 +380,11 @@ describe("Reports", () => {
         marketCenterId: "mc-123",
         clerkId: "clerk-leader",
       });
+
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+        "mc-456",
+      ]);
 
       mockDb.queryAll.mockResolvedValueOnce([
         { id: "ticket-1", created_at: new Date("2024-01-15") },
@@ -628,6 +641,10 @@ describe("Reports", () => {
 
   describe("ticketReviews", () => {
     it("should return completed reviews with averages for ADMIN", async () => {
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+        "mc-456",
+      ]);
       const reviewDate = new Date("2024-01-15T10:00:00Z");
 
       mockDb.queryAll.mockResolvedValueOnce([
@@ -638,6 +655,7 @@ describe("Reports", () => {
           surveyor_name: "John Agent",
           assignee_name: "Jane Staff",
           market_center_name: "Downtown MC",
+          market_center_id: "mc-123",
           overall_rating: "4.50",
           assignee_rating: "5.00",
           market_center_rating: "4.00",
@@ -651,9 +669,24 @@ describe("Reports", () => {
           surveyor_name: "Bob Agent",
           assignee_name: "Jane Staff",
           market_center_name: "Downtown MC",
+          market_center_id: "mc-123",
           overall_rating: "3.50",
           assignee_rating: "4.00",
           market_center_rating: "3.00",
+          comment: null,
+          updated_at: reviewDate,
+        },
+        {
+          id: "review-3",
+          ticket_id: "ticket-3",
+          ticket_title: "Test Ticket 3",
+          surveyor_name: "Test Agent",
+          assignee_name: "John Staff",
+          market_center_name: "Testing MC",
+          market_center_id: "mc-456",
+          overall_rating: "4.50",
+          assignee_rating: "4.00",
+          market_center_rating: "5.00",
           comment: null,
           updated_at: reviewDate,
         },
@@ -661,11 +694,11 @@ describe("Reports", () => {
 
       const result = await ticketReviews({});
 
-      expect(result.totalReviews).toBe(2);
-      expect(result.reviews).toHaveLength(2);
-      expect(result.averageOverallRating).toBe(4.0);
-      expect(result.averageAssigneeRating).toBe(4.5);
-      expect(result.averageMarketCenterRating).toBe(3.5);
+      expect(result.totalReviews).toBe(3);
+      expect(result.reviews).toHaveLength(3);
+      expect(result.averageOverallRating).toBe(4.17);
+      expect(result.averageAssigneeRating).toBe(4.33);
+      expect(result.averageMarketCenterRating).toBe(4.0);
     });
 
     it("should return empty reviews when none exist", async () => {
@@ -738,6 +771,10 @@ describe("Reports", () => {
         clerkId: "clerk-staff",
       });
 
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+      ]);
+
       mockDb.queryAll.mockResolvedValueOnce([
         {
           id: "review-1",
@@ -787,6 +824,11 @@ describe("Reports", () => {
         clerkId: "clerk-leader",
       });
 
+      subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
+        "mc-123",
+        "mc-456",
+      ]);
+
       mockDb.queryAll.mockResolvedValueOnce([
         {
           id: "review-1",
@@ -795,6 +837,7 @@ describe("Reports", () => {
           surveyor_name: "Agent User",
           assignee_name: "Staff User",
           market_center_name: "Downtown MC",
+          market_center_id: "mc-123",
           overall_rating: "4.00",
           assignee_rating: "4.00",
           market_center_rating: "4.00",
@@ -851,6 +894,12 @@ describe("Reports", () => {
 
     it("should include review details in response", async () => {
       const reviewDate = new Date("2024-02-20T14:30:00Z");
+
+      subscriptionRepository.findByMarketCenterId.mockResolvedValue({
+        id: "sub-1",
+        status: "ACTIVE",
+        planType: "ENTERPRISE",
+      });
 
       mockDb.queryAll.mockResolvedValueOnce([
         {
