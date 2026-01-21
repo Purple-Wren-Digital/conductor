@@ -144,15 +144,15 @@ export default function EditMarketCenter({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData?.name || !formData.name.trim()) {
-      errors.name = "Name is required";
-    }
-
     if (
       formData?.name.trim() !== editingMarketCenter?.name.trim() &&
       !arraysEqualById(assignedUsers, formData.selectedUsers)
     ) {
       errors.general = "Please update at least one field to continue";
+    }
+
+    if (!formData?.name || !formData.name.trim()) {
+      errors.name = "Name is required";
     }
 
     if (!isEnterprise && formData.selectedUsers.length > 0) {
@@ -165,6 +165,12 @@ export default function EditMarketCenter({
       if (selectedUsersExceedSeats) {
         errors.users = `Please upgrade your subscription to add more than ${seats.totalSeats} admin and staff users`;
       }
+    }
+    if (
+      !formData.selectedUsers.length ||
+      !formData.selectedUsers.find((user) => user.role === "STAFF_LEADER")
+    ) {
+      errors.users = "At least one staff leader must be assigned";
     }
 
     setFormErrors(errors);
@@ -211,8 +217,27 @@ export default function EditMarketCenter({
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update market center`);
+        const errorData = await response.json();
+        console.error(
+          `Edit Market Center - ${response.status} RESPONSE:`,
+          errorData
+        );
+        const errorMessage = errorData?.message
+          ? errorData.message
+          : "Failed to create market center";
+        if (
+          errorMessage.includes("At least one staff leader must be assigned")
+        ) {
+          setFormErrors({
+            ...formErrors,
+            users: errorMessage,
+          });
+        }
+        throw new Error(
+          errorData?.message
+            ? errorData.message
+            : "Failed to create market center"
+        );
       }
       const data = await response.json();
       return data;
