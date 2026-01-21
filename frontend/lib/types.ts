@@ -618,8 +618,18 @@ export interface CreateNotificationPayload {
   templateName?: string;
   category: NotificationCategory;
   type: string;
-  title?: string;
-  body?: string;
+  email:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  inApp:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
   data?: NotificationData;
   priority?: Urgency;
 }

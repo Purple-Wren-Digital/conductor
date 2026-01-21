@@ -269,174 +269,242 @@ export function arrayToCommaSeparatedListWithConjunction(
   }
 }
 
-export const formatNotificationWithTemplate = (
-  content: NotificationContent,
-  template: NotificationTemplate
-) => {
+export const formatNotificationWithTemplate = ({
+  content,
+  template,
+}: {
+  content: NotificationContent;
+  template: {
+    email: NotificationTemplate | null;
+    inApp: NotificationTemplate | null;
+  };
+}) => {
   let formattedNotification: CreateNotificationPayload | null = null;
-  if (!template) {
+  if (!template || !content || !content?.data) {
     return formattedNotification;
   }
+  const changedDetails: string[] = [];
+  const rawChangedDetails = content.data.updatedTicket?.changedDetails;
 
+  if (
+    rawChangedDetails &&
+    Array.isArray(rawChangedDetails) &&
+    typeof rawChangedDetails[0] === "object" &&
+    typeof rawChangedDetails[0] !== "string" &&
+    "label" in rawChangedDetails[0]
+  ) {
+    rawChangedDetails.map((update: ActivityUpdates) => {
+      const formattedLabel = capitalizeEveryWord(update.label);
+      changedDetails.push(formattedLabel);
+    });
+  }
+
+  const createdOn =
+    content.data?.createdTicket?.createdOn ??
+    content.data?.ticketAssignment?.createdOn ??
+    content.data?.updatedTicket?.createdOn ??
+    content.data?.newComment?.createdOn;
+
+  const updatedOn =
+    content.data?.ticketAssignment?.updatedOn ??
+    content.data?.updatedTicket?.updatedOn;
+
+  const context: NotificationContext = {
+    assigneeId: content.data?.createdTicket?.assigneeId,
+    assigneeName: content.data?.createdTicket?.assigneeName,
+    categoryName: content.data?.categoryAssignment?.categoryName,
+    categoryDescription: content.data?.categoryAssignment?.categoryDescription,
+    changedDetails:
+      changedDetails && changedDetails.length > 0
+        ? arrayToCommaSeparatedListWithConjunction("and", changedDetails)
+        : undefined,
+    comment: content.data?.newComment?.comment,
+    commenterName: content.data?.newComment?.commenterName,
+    commenterId: content.data?.newComment?.commenterId,
+    creatorName: content.data?.createdTicket?.creatorName,
+    creatorId: content.data?.createdTicket?.creatorId,
+    createdOn: createdOn ? new Date(createdOn).toISOString() : undefined,
+    currentAssignment: content.data?.ticketAssignment?.currentAssignment
+      ? content.data.ticketAssignment.currentAssignment
+      : undefined,
+    dueDate: content.data?.createdTicket?.dueDate
+      ? new Date(content.data?.createdTicket?.dueDate).toISOString()
+      : undefined,
+    editorName:
+      content.data?.marketCenterAssignment?.editorName ??
+      content.data?.categoryAssignment?.editorName ??
+      content.data?.ticketAssignment?.editorName ??
+      content.data?.updatedTicket?.editorName,
+    editorEmail:
+      content.data?.marketCenterAssignment?.editorEmail ??
+      content.data?.categoryAssignment?.editorEmail,
+    editorId:
+      content.data?.ticketAssignment?.editorId ??
+      content.data?.updatedTicket?.editorId,
+    isInternal:
+      content.data?.newComment?.isInternal === true
+        ? "Internal"
+        : content.data?.newComment?.isInternal === false
+          ? "External"
+          : undefined,
+    marketCenterName:
+      content.data?.marketCenterAssignment?.marketCenterName ??
+      content.data?.categoryAssignment?.marketCenterName,
+    marketCenterId:
+      content.data?.marketCenterAssignment?.marketCenterId ??
+      content.data?.categoryAssignment?.marketCenterId,
+    previousAssignment: content.data?.ticketAssignment?.previousAssignment
+      ? content.data.ticketAssignment.previousAssignment
+      : undefined,
+    staffName: content.data?.surveyResults?.staffName,
+    surveyorName: content.data?.ticketSurvey?.surveyorName,
+    ticketTitle:
+      content.data?.createdTicket?.ticketTitle ??
+      content.data?.ticketAssignment?.ticketTitle ??
+      content.data?.updatedTicket?.ticketTitle ??
+      content.data?.newComment?.ticketTitle ??
+      content.data?.ticketSurvey?.ticketTitle ??
+      content.data?.surveyResults?.ticketTitle,
+    ticketNumber:
+      content.data?.createdTicket?.ticketNumber ??
+      content.data?.ticketAssignment?.ticketNumber ??
+      content.data?.updatedTicket?.ticketNumber ??
+      content.data?.newComment?.ticketNumber ??
+      content.data?.ticketSurvey?.ticketNumber ??
+      content.data?.surveyResults?.ticketNumber,
+    updatedOn: updatedOn ? new Date(updatedOn).toISOString() : undefined,
+    updateType: content.data?.ticketAssignment?.updateType,
+    userName: content?.receivingUser?.name,
+    userUpdate:
+      content.data?.marketCenterAssignment?.userUpdate ??
+      content.data?.categoryAssignment?.userUpdate,
+  };
+
+  const subjectEmail =
+    template && template?.email
+      ? renderTemplate({
+          templateContent: template.email.subject,
+          variables: extractTemplateVariables(template.email.variables || {}),
+          data: toSnakeCase({ ...context }),
+        })
+      : "";
+  const bodyEmail =
+    template && template?.email
+      ? renderTemplate({
+          templateContent: template.email.body,
+          variables: extractTemplateVariables(template.email.variables || {}),
+          data: toSnakeCase(context),
+        })
+      : "";
+
+  const subjectInApp =
+    template && template?.inApp
+      ? renderTemplate({
+          templateContent: template.inApp.subject,
+          variables: extractTemplateVariables(template.inApp.variables || {}),
+          data: toSnakeCase(context),
+        })
+      : "";
+  const bodyInApp =
+    template && template?.inApp
+      ? renderTemplate({
+          templateContent: template.inApp.body,
+          variables: extractTemplateVariables(template.inApp.variables || {}),
+          data: toSnakeCase(context),
+        })
+      : "";
+
+  // format based on notification type
   if (
     content.trigger === "Market Center Assignment" &&
     content?.data?.marketCenterAssignment
   ) {
-    const context: NotificationContext = {
-      editorName: content.data.marketCenterAssignment?.editorName,
-      editorEmail: content.data.marketCenterAssignment?.editorEmail,
-      marketCenterName: content.data.marketCenterAssignment?.marketCenterName,
-      marketCenterId: content.data.marketCenterAssignment?.marketCenterId,
-      userName: content.receivingUser?.name,
-      userUpdate: content.data.marketCenterAssignment?.userUpdate,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content.receivingUser.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "HIGH",
       data: {
         marketCenterId: content?.data?.marketCenterAssignment?.marketCenterId,
         marketCenterAssignment: content.data.marketCenterAssignment,
       },
-    });
+    };
   }
 
   if (
     content.trigger === "Category Assignment" &&
     content?.data?.categoryAssignment
   ) {
-    const context: NotificationContext = {
-      editorName: content.data.categoryAssignment?.editorName,
-      editorEmail: content.data.categoryAssignment?.editorEmail,
-      categoryName: content.data.categoryAssignment?.categoryName,
-      categoryDescription: content.data.categoryAssignment?.categoryDescription,
-      marketCenterName: content.data.categoryAssignment?.marketCenterName,
-      marketCenterId: content.data.categoryAssignment?.marketCenterId,
-      userName: content.receivingUser?.name,
-      userUpdate: content.data.categoryAssignment?.userUpdate,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      data: toSnakeCase(context),
-      variables: extractTemplateVariables(template.variables || {}),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      data: toSnakeCase(context),
-      variables: extractTemplateVariables(template.variables || {}),
-    });
-
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "HIGH",
       data: { categoryAssignment: content.data.categoryAssignment },
-    });
+    };
   }
 
   if (content.trigger === "Ticket Created" && content?.data?.createdTicket) {
-    const context: NotificationContext = {
-      ticketTitle: content.data.createdTicket?.ticketTitle,
-      ticketNumber: content.data.createdTicket?.ticketNumber,
-      creatorName: content.data.createdTicket?.creatorName,
-      creatorId: content.data.createdTicket?.creatorId,
-      createdOn: content.data.createdTicket?.createdOn
-        ? new Date(content.data.createdTicket?.createdOn).toISOString()
-        : undefined,
-      dueDate: content.data.createdTicket?.dueDate
-        ? new Date(content.data.createdTicket?.dueDate).toISOString()
-        : undefined,
-      assigneeId: content.data.createdTicket?.assigneeId,
-      assigneeName: content.data.createdTicket?.assigneeName,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const assigneeId = content.data.createdTicket?.assigneeId;
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
-      priority: assigneeId ? "HIGH" : "MEDIUM",
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
+      priority: content?.data?.createdTicket?.assigneeId ? "HIGH" : "MEDIUM",
       data: {
         ticketId: content.data.createdTicket?.ticketNumber,
         createdTicket: content.data.createdTicket,
       },
-    });
+    };
   }
 
   if (
     content.trigger === "Ticket Assignment" &&
     content?.data?.ticketAssignment
   ) {
-    const context: NotificationContext = {
-      ticketTitle: content.data.ticketAssignment?.ticketTitle,
-      ticketNumber: content.data.ticketAssignment?.ticketNumber,
-      createdOn: content.data.ticketAssignment?.createdOn
-        ? new Date(content.data.ticketAssignment?.createdOn).toISOString()
-        : undefined,
-      updatedOn: content.data.ticketAssignment?.updatedOn
-        ? new Date(content.data.ticketAssignment?.updatedOn).toISOString()
-        : undefined,
-      editorName: content.data.ticketAssignment?.editorName,
-      editorId: content.data.ticketAssignment?.editorId,
-      updateType: content.data.ticketAssignment?.updateType,
-      currentAssignment: content.data.ticketAssignment?.currentAssignment
-        ? content.data.ticketAssignment?.currentAssignment
-        : undefined,
-      previousAssignment: content.data.ticketAssignment?.previousAssignment
-        ? content.data.ticketAssignment?.previousAssignment
-        : undefined,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "HIGH",
       data: {
         ticketId: content.data.ticketAssignment?.ticketNumber,
         userId: content.data.ticketAssignment?.editorId,
         ticketAssignment: content.data.ticketAssignment,
       },
-    });
+    };
   }
 
   if (
@@ -444,156 +512,90 @@ export const formatNotificationWithTemplate = (
     content?.data?.updatedTicket &&
     content?.data?.updatedTicket?.changedDetails
   ) {
-    const updates: string[] = [];
-    const rawChangedDetails = content.data.updatedTicket?.changedDetails;
-
-    if (
-      rawChangedDetails &&
-      Array.isArray(rawChangedDetails) &&
-      typeof rawChangedDetails[0] === "object" &&
-      typeof rawChangedDetails[0] !== "string" &&
-      "label" in rawChangedDetails[0]
-    ) {
-      rawChangedDetails.map((update: ActivityUpdates) => {
-        const formattedLabel = capitalizeEveryWord(update.label);
-        updates.push(formattedLabel);
-      });
-    }
-
-    const context: NotificationContext = {
-      ticketNumber: content.data.updatedTicket?.ticketNumber,
-      ticketTitle: content.data.updatedTicket?.ticketTitle,
-      createdOn: content.data.updatedTicket?.createdOn
-        ? new Date(content.data.updatedTicket?.createdOn).toISOString()
-        : undefined,
-      updatedOn: content.data.updatedTicket?.updatedOn
-        ? new Date(content.data.updatedTicket?.updatedOn).toISOString()
-        : undefined,
-      editorName: content.data.updatedTicket?.editorName,
-      editorId: content.data.updatedTicket?.editorId,
-      changedDetails: arrayToCommaSeparatedListWithConjunction("and", updates),
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "MEDIUM",
       data: { updatedTicket: content.data.updatedTicket },
-    });
+    };
   }
 
   if (content.trigger === "New Comments" && content?.data?.newComment) {
-    const context: NotificationContext = {
-      ticketNumber: content.data.newComment?.ticketNumber,
-      ticketTitle: content.data.newComment?.ticketTitle,
-      commenterName: content.data.newComment?.commenterName,
-      commenterId: content.data.newComment?.commenterId,
-      createdOn: content.data.newComment?.createdOn
-        ? new Date(content.data.newComment?.createdOn).toISOString()
-        : undefined,
-      comment: content.data.newComment?.comment,
-      isInternal: content.data.newComment?.isInternal ? "Internal" : "External",
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "MEDIUM",
       data: {
         ticketId: content.data.newComment?.ticketNumber,
         newComment: content.data.newComment,
       },
-    });
+    };
   }
 
   if (content.trigger === "Ticket Survey" && content?.data?.ticketSurvey) {
-    const context: NotificationContext = {
-      ticketNumber: content.data.ticketSurvey?.ticketNumber,
-      ticketTitle: content.data.ticketSurvey?.ticketTitle,
-      surveyorName: content.data.ticketSurvey?.surveyorName,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "MEDIUM",
       data: { ticketSurvey: content.data.ticketSurvey },
-    });
+    };
   }
 
   if (
     content.trigger === "Ticket Survey Results" &&
     content?.data?.surveyResults
   ) {
-    const context: NotificationContext = {
-      ticketNumber: content.data.surveyResults?.ticketNumber,
-      ticketTitle: content.data.surveyResults?.ticketTitle,
-      staffName: content.data.surveyResults?.staffName,
-    };
-    const subject = renderTemplate({
-      templateContent: template.subject,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-    const body = renderTemplate({
-      templateContent: template.body,
-      variables: extractTemplateVariables(template.variables || {}),
-      data: toSnakeCase(context),
-    });
-
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACTIVITY",
       type: content.trigger,
-      title: subject,
-      body: body,
+      email:
+        template && template?.email
+          ? { title: subjectEmail, body: bodyEmail }
+          : "Notifications deactivated",
+      inApp:
+        template && template?.inApp
+          ? { title: subjectInApp, body: bodyInApp }
+          : "Notifications deactivated",
       priority: "MEDIUM",
       data: { surveyResults: content.data.surveyResults },
-    });
+    };
   }
 
   return formattedNotification;
 };
 
 export const formatNotificationWithoutTemplate = (
-  content: NotificationContent
+  content: NotificationContent,
+  emailEnabled: boolean,
+  inAppEnabled: boolean
 ): CreateNotificationPayload | null => {
   //
   let formattedNotification: CreateNotificationPayload | null = null;
@@ -607,12 +609,22 @@ export const formatNotificationWithoutTemplate = (
   }
   //  NO TEMPLATE NEEDED FOR NON-ACTIVITY NOTIFICATIONS
   if (content.trigger === "App Permissions") {
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "PERMISSIONS",
       type: content.trigger,
-      title: "Conductor Permissions",
-      body: `${content?.receivingUser?.name}, let's review your notification permissions and preferences`,
+      email: emailEnabled
+        ? {
+            title: "Conductor Permissions",
+            body: `${content?.receivingUser?.name}, let's review your notification permissions and preferences`,
+          }
+        : "Notifications deactivated",
+      inApp: inAppEnabled
+        ? {
+            title: "Conductor Permissions",
+            body: `${content?.receivingUser?.name}, let's review your notification permissions and preferences`,
+          }
+        : "Notifications deactivated",
       priority: "MEDIUM",
       data: {
         appPermissions: {
@@ -620,18 +632,24 @@ export const formatNotificationWithoutTemplate = (
           name: content?.receivingUser?.name,
         },
       },
-    });
+    };
   }
   if (content.trigger === "Invitation" && content?.data?.invitation) {
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACCOUNT",
       type: "General",
-      title: "Join Conductor Ticketing",
-      body: `${content.data.invitation?.inviterName} invited you to Conductor Ticketing`,
+      email: {
+        title: "Join Conductor Ticketing",
+        body: `${content.data.invitation?.inviterName} invited you to Conductor Ticketing`,
+      },
+      inApp: {
+        title: "Join Conductor Ticketing",
+        body: `${content.data.invitation?.inviterName} invited you to Conductor Ticketing`,
+      },
       priority: "MEDIUM",
       data: { invitation: content.data.invitation as NewUserInvitationProps },
-    });
+    };
   }
 
   if (
@@ -642,15 +660,32 @@ export const formatNotificationWithoutTemplate = (
     const updates = content.data.accountInformation.updates.map((update) => {
       return update.value;
     });
-    return (formattedNotification = {
+    formattedNotification = {
       userId: content?.receivingUser?.id,
       category: "ACCOUNT",
       type: content.trigger,
-      title: "Account Information Updated",
-      body: `${content.data.accountInformation?.changedByName} updated your following information: ${arrayToCommaSeparatedListWithConjunction("and", updates)}`,
+      email: emailEnabled
+        ? {
+            title: "Account Information Updated",
+            body: `${content.data.accountInformation?.changedByName} updated your following information: ${arrayToCommaSeparatedListWithConjunction(
+              "and",
+              updates
+            )}`,
+          }
+        : "Notifications deactivated",
+      inApp: inAppEnabled
+        ? {
+            title: "Account Information Updated",
+            body: `${content.data.accountInformation?.changedByName} updated your following information: ${arrayToCommaSeparatedListWithConjunction(
+              "and",
+              updates
+            )}`,
+          }
+        : "Notifications deactivated",
       priority: "HIGH",
       data: { accountInformation: content.data.accountInformation },
-    });
+    };
   }
+
   return formattedNotification;
 };

@@ -18,14 +18,23 @@ import { defaultMarketCenterNotificationPreferences } from "../marketCenters/not
 
 export interface CreateNotificationRequest {
   userId: string;
+  templateName?: string;
   category: NotificationCategory;
   type: string;
-  templateName?: string;
-  title: string;
-  body: string;
-  data: NotificationData;
+  email:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  inApp:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  data?: NotificationData;
   priority?: Urgency;
-  notificationType?: NotificationChannel[];
 }
 
 export interface CreateNotificationResponse {
@@ -102,26 +111,26 @@ export const create = api<CreateNotificationRequest>(
       (marketCenterTypeSettings?.email ?? true) &&
       (userTypeSettings?.email ?? true);
 
-    if (inAppEnabled) {
+    if (inAppEnabled && req.inApp !== "Notifications deactivated") {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "IN_APP",
         category: req.category,
         type: req.type,
-        title: req.title,
-        body: req.body,
+        title: req.inApp.title,
+        body: req.inApp.body,
         data: req?.data ?? undefined,
         priority: req?.priority ?? "LOW",
       });
     }
-    if (emailEnabled) {
+    if (emailEnabled && req.email !== "Notifications deactivated") {
       notificationsToCreate.push({
         userId: foundUser.id,
         channel: "EMAIL",
         category: req.category,
         type: req.type,
-        title: req.title,
-        body: req.body,
+        title: req.email.title,
+        body: req.email.body,
         data: req?.data ?? undefined,
         priority: req?.priority ?? "LOW",
       });
