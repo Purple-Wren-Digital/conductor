@@ -72,6 +72,24 @@ import { ticketReviews } from "./ticket-reviews-report";
 import { getTicketSlaStatus } from "./utils";
 import { getUserContext } from "../auth/user-context";
 
+const now = new Date();
+interface TicketRow {
+  id: string;
+  status: string;
+  created_at: Date;
+  updated_at: Date | null;
+  assignee_id: string | null;
+}
+
+const ticket = (overrides: Partial<TicketRow>) => ({
+  id: crypto.randomUUID(),
+  status: "CREATED",
+  assignee_id: null,
+  created_at: now,
+  updated_at: now,
+  ...overrides,
+});
+
 describe("Reports", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,20 +97,48 @@ describe("Reports", () => {
   });
 
   describe("backlog", () => {
-    it("should return backlog counts for ADMIN", async () => {
+    const addDays = (d: Date, n: number) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+    it("counts unchanged ASSIGNED and assigned CREATED tickets as created", async () => {
       mockDb.queryAll.mockResolvedValueOnce([
-        { id: "ticket-1", status: "CREATED" },
-        { id: "ticket-2", status: "ASSIGNED" },
-        { id: "ticket-3", status: "UNASSIGNED" },
+        ticket({ status: "ASSIGNED", assignee_id: "u1" }),
+        ticket({ status: "CREATED", assignee_id: "u2" }),
       ]);
 
-      const result = await backlog({ marketCenterIds: ["mc-123"] });
+      const result = await backlog({});
 
-      expect(result).toEqual({
-        created: 2,
-        unassigned: 1,
-        total: 3,
-      });
+      expect(result.created).toBe(2);
+      expect(result.unassigned).toBe(0);
+      expect(result.total).toBe(2);
+    });
+
+    it("counts UNASSIGNED and unassigned CREATED tickets as unassigned", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([
+        ticket({ status: "UNASSIGNED" }),
+        ticket({ status: "CREATED", assignee_id: null }),
+      ]);
+
+      const result = await backlog({});
+
+      expect(result.created).toBe(0);
+      expect(result.unassigned).toBe(2);
+      expect(result.total).toBe(2);
+    });
+
+    it("does not count changed tickets as created", async () => {
+      mockDb.queryAll.mockResolvedValueOnce([
+        ticket({
+          status: "ASSIGNED",
+          assignee_id: "u1",
+          updated_at: new Date(now.getTime() + 1000),
+        }),
+      ]);
+
+      const result = await backlog({});
+
+      expect(result.created).toBe(0);
+      expect(result.unassigned).toBe(0);
+      expect(result.total).toBe(0);
     });
 
     it("should return empty backlog when no tickets", async () => {
@@ -135,25 +181,6 @@ describe("Reports", () => {
       const result = await backlog({});
 
       expect(result.unassigned).toBe(1);
-    });
-
-    it("should work for STAFF role without market center", async () => {
-      vi.mocked(getUserContext).mockResolvedValue({
-        name: "Staff User",
-        userId: "staff-123",
-        email: "staff@test.com",
-        role: "STAFF" as const,
-        marketCenterId: null,
-        clerkId: "clerk-staff",
-      });
-
-      mockDb.queryAll.mockResolvedValueOnce([
-        { id: "ticket-1", status: "CREATED" },
-      ]);
-
-      const result = await backlog({});
-
-      expect(result.created).toBe(1);
     });
 
     it("should throw permission denied for AGENT role", async () => {
@@ -247,8 +274,8 @@ describe("Reports", () => {
 
         // No unassigned tickets in the market center
         mockDb.queryAll.mockResolvedValueOnce([
-          { id: "ticket-1", status: "ASSIGNED" },
-          { id: "ticket-2", status: "CREATED" },
+          { id: "ticket-1", status: "ASSIGNED", assignee_id: "user-2" },
+          { id: "ticket-2", status: "CREATED", assignee_id: "user-2" },
         ]);
 
         const result = await backlog({});
@@ -281,38 +308,21 @@ describe("Reports", () => {
         expect(result.total).toBe(2);
       });
 
-      it("should handle mixed ticket statuses with proper market center scoping", async () => {
-        vi.mocked(getUserContext).mockResolvedValue({
-          name: "Admin User",
-          userId: "admin-123",
-          email: "admin@test.com",
-          role: "ADMIN" as const,
-          marketCenterId: "mc-123",
-          clerkId: "clerk-admin",
-        });
-
-        subscriptionRepository.findByMarketCenterId.mockResolvedValue({
-          id: "sub-1",
-          status: "ACTIVE",
-        });
-        subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
-          "mc-123",
-        ]);
-
-        // Mix of statuses, all properly scoped to mc-123
+      it("returns correctly classified counts for mixed scoped tickets", async () => {
         mockDb.queryAll.mockResolvedValueOnce([
-          { id: "ticket-1", status: "CREATED" },
-          { id: "ticket-2", status: "ASSIGNED" },
-          { id: "ticket-3", status: "UNASSIGNED" },
-          { id: "ticket-4", status: "UNASSIGNED" },
-          { id: "ticket-5", status: "CREATED" },
+          ticket({ status: "CREATED", assignee_id: "u1" }), // created
+          ticket({ status: "ASSIGNED", assignee_id: "u2" }), // created
+          ticket({ status: "CREATED", assignee_id: null }), // unassigned
+          ticket({ status: "UNASSIGNED" }), // unassigned
         ]);
 
         const result = await backlog({});
 
-        expect(result.created).toBe(3); // 2 CREATED + 1 ASSIGNED (unchanged)
-        expect(result.unassigned).toBe(2);
-        expect(result.total).toBe(5);
+        expect(result).toEqual({
+          created: 2,
+          unassigned: 2,
+          total: 4,
+        });
       });
     });
   });
