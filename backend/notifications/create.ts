@@ -18,18 +18,157 @@ import { defaultMarketCenterNotificationPreferences } from "../marketCenters/not
 
 export interface CreateNotificationRequest {
   userId: string;
+  templateName?: string;
   category: NotificationCategory;
   type: string;
-  templateName?: string;
-  title: string;
-  body: string;
-  data: NotificationData;
+  email:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  inApp:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  data?: NotificationData;
   priority?: Urgency;
-  notificationType?: NotificationChannel[];
 }
 
 export interface CreateNotificationResponse {
   success: boolean;
+}
+
+export async function sendNotification(req: CreateNotificationRequest) {
+  const user = await userRepository.findByIdWithSettings(req.userId);
+
+  // Also try to find by clerkId if not found
+  let foundUser = user;
+  if (!foundUser) {
+    foundUser = await userRepository.findByIdWithSettings(req.userId);
+  }
+
+  if (!foundUser || !foundUser?.id || !foundUser?.clerkId) {
+    throw APIError.notFound("User not found");
+  }
+
+  if (!foundUser.isActive) {
+    throw APIError.canceled("User is inactive");
+  }
+
+  let marketCenterNotificationPreferences: MarketCenterNotificationPreferences[] =
+    defaultMarketCenterNotificationPreferences;
+
+  if (foundUser?.marketCenterId) {
+    const mc = await marketCenterRepository.findById(foundUser.marketCenterId);
+    if (mc && mc?.settings && mc?.settings?.notificationPreferences) {
+      marketCenterNotificationPreferences = mc.settings.notificationPreferences;
+    } else {
+      marketCenterNotificationPreferences =
+        defaultMarketCenterNotificationPreferences;
+    }
+  }
+
+  // USER PREFERENCE CHECKING
+  const userTypeSettings =
+    foundUser.userSettings?.notificationPreferences?.find(
+      (preference) => preference.type === req.type
+    );
+
+  const marketCenterTypeSettings = marketCenterNotificationPreferences.find(
+    (preference) => preference.type === req.type
+  );
+
+  let notificationsToCreate: Array<{
+    userId: string;
+    channel: NotificationChannel;
+    category: NotificationCategory;
+    type: string;
+    title: string;
+    body: string;
+    data?: NotificationData;
+    priority?: Urgency;
+  }> = [];
+
+  // Default to true if preferences are not set (opt-out model, not opt-in)
+  const inAppEnabled =
+    (marketCenterTypeSettings?.inApp ?? true) &&
+    (userTypeSettings?.inApp ?? true);
+
+  const emailEnabled =
+    (marketCenterTypeSettings?.email ?? true) &&
+    (userTypeSettings?.email ?? true);
+
+  if (inAppEnabled && req.inApp !== "Notifications deactivated") {
+    notificationsToCreate.push({
+      userId: foundUser.id,
+      channel: "IN_APP",
+      category: req.category,
+      type: req.type,
+      title: req.inApp.title,
+      body: req.inApp.body,
+      data: req?.data ?? undefined,
+      priority: req?.priority ?? "LOW",
+    });
+  }
+  if (emailEnabled && req.email !== "Notifications deactivated") {
+    notificationsToCreate.push({
+      userId: foundUser.id,
+      channel: "EMAIL",
+      category: req.category,
+      type: req.type,
+      title: req.email.title,
+      body: req.email.body,
+      data: req?.data ?? undefined,
+      priority: req?.priority ?? "LOW",
+    });
+  }
+
+  if (notificationsToCreate.length === 0) {
+    return { success: true };
+  }
+
+  const createdNotifications = await notificationRepository.createManyAndReturn(
+    notificationsToCreate
+  );
+
+  if (!createdNotifications || !createdNotifications.length) {
+    throw APIError.internal("Failed to create notification(s)");
+  }
+
+  await Promise.all(
+    createdNotifications.map(async (notification) => {
+      const safeNotification: Notification = {
+        ...notification,
+        priority: notification?.priority ?? "LOW",
+        data: notification.data ?? undefined,
+      };
+
+      switch (safeNotification.channel) {
+        case "EMAIL":
+          if (foundUser?.email) {
+            await sendEmailNotification({
+              userEmail: foundUser.email,
+              notification: {
+                ...safeNotification,
+                type: safeNotification?.type,
+                priority: safeNotification?.priority ?? undefined,
+                data: safeNotification?.data as NotificationData,
+              },
+              marketCenterId: foundUser.marketCenterId,
+              recipientName: foundUser.name ?? undefined,
+            });
+          }
+          break;
+
+        case "IN_APP":
+          await broadcastNotification(foundUser?.clerkId!, safeNotification);
+          break;
+      }
+    })
+  );
 }
 
 export const create = api<CreateNotificationRequest>(
@@ -40,136 +179,7 @@ export const create = api<CreateNotificationRequest>(
     auth: true,
   },
   async (req) => {
-    const user = await userRepository.findByIdWithSettings(req.userId);
-
-    // Also try to find by clerkId if not found
-    let foundUser = user;
-    if (!foundUser) {
-      foundUser = await userRepository.findByIdWithSettings(req.userId);
-    }
-
-    if (!foundUser || !foundUser?.id || !foundUser?.clerkId) {
-      throw APIError.notFound("User not found");
-    }
-
-    if (!foundUser.isActive) {
-      throw APIError.canceled("User is inactive");
-    }
-
-    let marketCenterNotificationPreferences: MarketCenterNotificationPreferences[] =
-      defaultMarketCenterNotificationPreferences;
-
-    if (foundUser?.marketCenterId) {
-      const mc = await marketCenterRepository.findById(
-        foundUser.marketCenterId
-      );
-      if (mc && mc?.settings && mc?.settings?.notificationPreferences) {
-        marketCenterNotificationPreferences =
-          mc.settings.notificationPreferences;
-      } else {
-        marketCenterNotificationPreferences =
-          defaultMarketCenterNotificationPreferences;
-      }
-    }
-
-    // USER PREFERENCE CHECKING
-    const userTypeSettings =
-      foundUser.userSettings?.notificationPreferences?.find(
-        (preference) => preference.type === req.type
-      );
-
-    const marketCenterTypeSettings = marketCenterNotificationPreferences.find(
-      (preference) => preference.type === req.type
-    );
-
-    let notificationsToCreate: Array<{
-      userId: string;
-      channel: NotificationChannel;
-      category: NotificationCategory;
-      type: string;
-      title: string;
-      body: string;
-      data?: NotificationData;
-      priority?: Urgency;
-    }> = [];
-
-    // Default to true if preferences are not set (opt-out model, not opt-in)
-    const inAppEnabled =
-      (marketCenterTypeSettings?.inApp ?? true) &&
-      (userTypeSettings?.inApp ?? true);
-
-    const emailEnabled =
-      (marketCenterTypeSettings?.email ?? true) &&
-      (userTypeSettings?.email ?? true);
-
-    if (inAppEnabled) {
-      notificationsToCreate.push({
-        userId: foundUser.id,
-        channel: "IN_APP",
-        category: req.category,
-        type: req.type,
-        title: req.title,
-        body: req.body,
-        data: req?.data ?? undefined,
-        priority: req?.priority ?? "LOW",
-      });
-    }
-    if (emailEnabled) {
-      notificationsToCreate.push({
-        userId: foundUser.id,
-        channel: "EMAIL",
-        category: req.category,
-        type: req.type,
-        title: req.title,
-        body: req.body,
-        data: req?.data ?? undefined,
-        priority: req?.priority ?? "LOW",
-      });
-    }
-
-    if (notificationsToCreate.length === 0) {
-      return { success: true };
-    }
-
-    const createdNotifications =
-      await notificationRepository.createManyAndReturn(notificationsToCreate);
-
-    if (!createdNotifications || !createdNotifications.length) {
-      throw APIError.internal("Failed to create notification(s)");
-    }
-
-    await Promise.all(
-      createdNotifications.map(async (notification) => {
-        const safeNotification: Notification = {
-          ...notification,
-          priority: notification?.priority ?? "LOW",
-          data: notification.data ?? undefined,
-        };
-
-        switch (safeNotification.channel) {
-          case "EMAIL":
-            if (foundUser?.email) {
-              await sendEmailNotification({
-                userEmail: foundUser.email,
-                notification: {
-                  ...safeNotification,
-                  type: safeNotification?.type,
-                  priority: safeNotification?.priority ?? undefined,
-                  data: safeNotification?.data as NotificationData,
-                },
-                marketCenterId: foundUser.marketCenterId,
-                recipientName: foundUser.name ?? undefined,
-              });
-            }
-            break;
-
-          case "IN_APP":
-            await broadcastNotification(foundUser?.clerkId!, safeNotification);
-            break;
-        }
-      })
-    );
-
+    await sendNotification(req);
     return { success: true };
   }
 );
