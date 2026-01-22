@@ -293,6 +293,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const handleSubmitEditUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
 
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
@@ -307,6 +308,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   };
 
   const handleRoleChange = async () => {
+    setFormErrors({});
     if (!permissions?.canManageTeam) {
       toast.error("You do not have permission to update users");
       return;
@@ -638,7 +640,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   isSubscriptionLoading
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`${formErrors?.role ? "border-destructive" : ""}`}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -680,7 +684,11 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   isMarketCentersLoading
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`${
+                    formErrors?.marketCenter ? "border-destructive" : ""
+                  }`}
+                >
                   <SelectValue
                     placeholder={
                       isMarketCentersLoading
@@ -707,6 +715,10 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     })}
                 </SelectContent>
               </Select>
+
+              <p className="text-sm text-destructive">
+                {formErrors?.marketCenter && formErrors.marketCenter}
+              </p>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">

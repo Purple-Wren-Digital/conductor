@@ -45,17 +45,6 @@ export const update = api<
       req.id
     );
 
-    if (
-      req?.users !== undefined &&
-      (!Array.isArray(req?.users) ||
-        !req.users.length ||
-        !req.users.find((user) => user.role === "STAFF_LEADER"))
-    ) {
-      throw APIError.invalidArgument(
-        "At least one staff leader must be assigned"
-      );
-    }
-
     if (!canAccess) {
       throw APIError.permissionDenied(
         "You do not have permission to update this market center"

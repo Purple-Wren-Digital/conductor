@@ -35,8 +35,12 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
 
     // Permission checks
     const existingUser = await userRepository.findById(req.id);
+    const isReactivatingUser = req.isActive === true;
 
-    if (!existingUser || existingUser.isActive === false) {
+    if (
+      !existingUser ||
+      (!isReactivatingUser && existingUser.isActive === false)
+    ) {
       throw APIError.notFound("User not found");
     }
 

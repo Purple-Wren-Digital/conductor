@@ -166,12 +166,6 @@ export default function EditMarketCenter({
         errors.users = `Please upgrade your subscription to add more than ${seats.totalSeats} admin and staff users`;
       }
     }
-    if (
-      !formData.selectedUsers.length ||
-      !formData.selectedUsers.find((user) => user.role === "STAFF_LEADER")
-    ) {
-      errors.users = "At least one staff leader must be assigned";
-    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -222,17 +216,6 @@ export default function EditMarketCenter({
           `Edit Market Center - ${response.status} RESPONSE:`,
           errorData
         );
-        const errorMessage = errorData?.message
-          ? errorData.message
-          : "Failed to create market center";
-        if (
-          errorMessage.includes("At least one staff leader must be assigned")
-        ) {
-          setFormErrors({
-            ...formErrors,
-            users: errorMessage,
-          });
-        }
         throw new Error(
           errorData?.message
             ? errorData.message

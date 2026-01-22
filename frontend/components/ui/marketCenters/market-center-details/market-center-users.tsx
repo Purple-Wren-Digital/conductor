@@ -270,16 +270,15 @@ export default function MarketCenterUsers({
     setSortBy("updatedAt");
   }, [marketCenterId]);
 
-  const getRoleIcon = (role: string) => {
+  const getRoleIcon = useCallback((role: string) => {
     const Icon = ROLE_ICONS[role as keyof typeof ROLE_ICONS] || User;
     return <Icon className="h-4 w-4" />;
-  };
-
+  }, []);
   // REMOVAL
-  const openRemoveUserModal = (user: PrismaUser) => {
+  const openRemoveUserModal = useCallback((user: PrismaUser) => {
     setUserToRemove(user);
     setShowRemoveUserForm(true);
-  };
+  }, []);
 
   const removeUserMutation = useMutation({
     mutationFn: async (user: PrismaUser) => {
@@ -302,9 +301,18 @@ export default function MarketCenterUsers({
           }),
         }
       );
-
-      if (!response.ok) throw new Error("Failed to update market center");
-
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(
+          `Edit Market Center - ${response.status} RESPONSE:`,
+          errorData
+        );
+        throw new Error(
+          errorData?.message
+            ? errorData.message
+            : "Failed to remove user from market center"
+        );
+      }
       return user;
     },
     onSuccess: async (user: PrismaUser) => {
@@ -686,12 +694,17 @@ export default function MarketCenterUsers({
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Team Member?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to remove{" "}
-              <span className={"font-semibold"}>
-                {userToRemove?.name ? userToRemove.name : "this person"}
-              </span>{" "}
-              from your team? This action cannot be undone.
+            <AlertDialogDescription className="my-2">
+              <span className="flex flex-col gap-4">
+                <span>
+                  Are you sure you want to remove{" "}
+                  <span className={"font-semibold"}>
+                    {userToRemove?.name ? userToRemove.name : "this person"}
+                  </span>{" "}
+                  from your team?
+                </span>
+                <span>This action cannot be undone.</span>
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -704,9 +717,11 @@ export default function MarketCenterUsers({
             </Button>
             <Button
               onClick={() => handleRemoveUser(userToRemove)}
-              variant="destructive"
-              className="bg-destructive text-white hover:bg-destructive/90"
-              disabled={isLoading || !permissions?.canManageTeam}
+              variant={"destructive"}
+              className="text-white hover:bg-destructive/90"
+              disabled={
+                isLoading || !permissions?.canManageTeam || !userToRemove
+              }
             >
               Remove Member
             </Button>

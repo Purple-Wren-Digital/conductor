@@ -23,7 +23,13 @@ export type AccountInformationProps = {
   changedByEmail?: string;
   updates:
     | {
-        value: "name" | "email" | "role" | "password";
+        value:
+          | "name"
+          | "email"
+          | "role"
+          | "password"
+          | "deactivation"
+          | "reactivation";
         originalValue: string | null;
         newValue: string | null;
       }[]
