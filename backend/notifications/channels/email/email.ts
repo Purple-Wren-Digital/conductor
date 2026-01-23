@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Resend } from "resend";
 import { secret } from "encore.dev/config";
-// import { formatEmailNotification } from "./utils";
 import {
   renderCustomizedEmailTemplate,
   renderDefaultEmailTemplate,

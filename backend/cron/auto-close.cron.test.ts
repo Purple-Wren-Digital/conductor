@@ -1,4 +1,3 @@
-import { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock hoisted values
@@ -57,24 +56,20 @@ vi.mock("../shared/repositories", () => ({
 }));
 
 // Mock email channel so we don't actually send emails
-vi.mock("../notifications/channels/email/email", async () => {
-  const actual = await vi.importActual("../notifications/channels/email/email");
-  return {
-    ...actual,
-    sendEmailNotification: vi.fn(), // <-- mock it
-  };
-});
+vi.mock("../notifications/channels/email/email", () => ({
+  sendEmailNotification: vi.fn().mockResolvedValue({
+    data: { id: "mock-email-id" },
+    error: null,
+  }),
+}));
 
 // Import after mocks
 import { checkAutoClose } from "./auto-close.cron";
 import * as emailModule from "../notifications/channels/email/email";
-// import type { SendEmailNotification: SendEmailNotificationType } from "../notifications/channels/email/email";
-import type { MockedFunction } from "vitest";
 
 describe("Auto-Close Cron Job Tests", () => {
-  const mockedSendEmail = emailModule.sendEmailNotification as MockedFunction<
-    typeof emailModule.sendEmailNotification
-  >;
+  const mockedSendEmail = vi.mocked(emailModule.sendEmailNotification);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset Date to a fixed point for consistent testing
@@ -368,7 +363,7 @@ describe("Auto-Close Cron Job Tests", () => {
       await checkAutoClose();
 
       // Should be called twice - once for creator, once for assignee
-      // expect(mockedSendEmail).toHaveBeenCalledTimes(2);
+      expect(mockedSendEmail).toHaveBeenCalledTimes(2);
     });
 
     it("should not send duplicate notification when creator is assignee", async () => {
@@ -409,7 +404,7 @@ describe("Auto-Close Cron Job Tests", () => {
       await checkAutoClose();
 
       // Should only be called once since creator === assignee
-      // expect(mockedSendEmail).toHaveBeenCalledTimes(1);
+      expect(mockedSendEmail).toHaveBeenCalledTimes(1);
     });
 
     it("should cache market center settings for multiple tickets", async () => {
@@ -711,6 +706,17 @@ describe("Auto-Close Cron Job Tests", () => {
       // Result: 2 business days, so ticket IS closed with 2-day threshold
       vi.setSystemTime(new Date("2025-01-15T12:00:00Z")); // Wednesday noon
 
+      const mockMaintenanceTicket = {
+        id: "maintenance-ticket-123",
+        title: "Maintenance Request - 123 Main St",
+        creator_id: "agent-user-1",
+        assignee_id: "staff-user-1",
+        category_id: "maintenance-cat-1",
+        market_center_id: "mc-active-123",
+        status_changed_at: new Date("2025-01-13T17:00:00Z"), // Monday 5pm
+      };
+      mockDb.rawQueryAll.mockResolvedValue([mockMaintenanceTicket]);
+
       const mockMarketCenter = {
         id: "mc-active-123",
         name: "Active Market Center",
@@ -925,7 +931,7 @@ describe("Auto-Close Cron Job Tests", () => {
 
     it("should debug: log which condition is failing for a non-closing ticket", async () => {
       // This test helps diagnose why a specific ticket might not be closing
-      const consoleSpy = vi.spyOn(console, "log");
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
       const mockMaintenanceTicket = {
         id: "debug-ticket",
