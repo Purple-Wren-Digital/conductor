@@ -90,9 +90,14 @@ export default function CreateMarketCenter({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
     if (!isEnterprise)
       errors.general = "Upgrade to Enterprise to add a market center";
+    if (!formData?.name.trim()) errors.name = "Name is required";
+    if (
+      !formData?.selectedUsers.length ||
+      !formData.selectedUsers.find((user) => user.role === "STAFF_LEADER")
+    )
+      errors.users = "At least one staff leader must be assigned";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -124,7 +129,21 @@ export default function CreateMarketCenter({
       });
       if (!response.ok) {
         const errorData = await response.json();
-        console.error(`${response.status} RESPONSE:`, errorData);
+        console.error(
+          `Create Market Center - ${response.status} RESPONSE:`,
+          errorData
+        );
+        const errorMessage = errorData?.message
+          ? errorData.message
+          : "Failed to create market center";
+        if (
+          errorMessage.includes("At least one staff leader must be assigned")
+        ) {
+          setFormErrors({
+            ...formErrors,
+            users: errorMessage,
+          });
+        }
         throw new Error(
           errorData?.message
             ? errorData.message

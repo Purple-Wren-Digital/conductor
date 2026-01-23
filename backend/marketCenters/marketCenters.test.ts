@@ -14,6 +14,7 @@ const { mockDb, mockWithTransaction, mockUserContext } = vi.hoisted(() => ({
   },
   mockWithTransaction: vi.fn(),
   mockUserContext: {
+    name: "Admin User",
     userId: "admin-123",
     email: "admin@test.com",
     role: "ADMIN" as const,
@@ -87,9 +88,24 @@ describe("Market Center Update", () => {
 
       // Existing users in market center
       mockDb.queryAll.mockResolvedValue([
-        { id: "user-1", email: "user1@test.com", name: "User 1", role: "STAFF" },
-        { id: "user-2", email: "user2@test.com", name: "User 2", role: "STAFF" },
-        { id: "user-3", email: "user3@test.com", name: "User 3", role: "AGENT" },
+        {
+          id: "user-1",
+          email: "user1@test.com",
+          name: "User 1",
+          role: "STAFF",
+        },
+        {
+          id: "user-2",
+          email: "user2@test.com",
+          name: "User 2",
+          role: "STAFF",
+        },
+        {
+          id: "user-3",
+          email: "user3@test.com",
+          name: "User 3",
+          role: "AGENT",
+        },
       ]);
 
       // Mock transaction
@@ -112,7 +128,12 @@ describe("Market Center Update", () => {
       const result = await update({
         id: "mc-123",
         users: [
-          { id: "user-1", email: "user1@test.com", name: "User 1", role: "STAFF" } as any,
+          {
+            id: "user-1",
+            email: "user1@test.com",
+            name: "User 1",
+            role: "STAFF",
+          } as any,
         ],
       });
 
@@ -125,7 +146,10 @@ describe("Market Center Update", () => {
       // Should have exec calls for removing users
       const removeUserCalls = execCalls.filter((call: any) => {
         const sql = call[0]?.join?.(" ") || "";
-        return sql.includes("market_center_id = NULL") || sql.includes("market_center_id");
+        return (
+          sql.includes("market_center_id = NULL") ||
+          sql.includes("market_center_id")
+        );
       });
 
       // Expecting 2 remove calls (for user-2 and user-3)
@@ -170,7 +194,12 @@ describe("Market Center Update", () => {
       const result = await update({
         id: "mc-123",
         users: [
-          { id: "user-new", email: "new@test.com", name: "New User", role: "STAFF" } as any,
+          {
+            id: "user-new",
+            email: "new@test.com",
+            name: "New User",
+            role: "STAFF",
+          } as any,
         ],
       });
 
@@ -192,7 +221,12 @@ describe("Market Center Update", () => {
       });
 
       mockDb.queryAll.mockResolvedValue([
-        { id: "user-1", email: "user1@test.com", name: "User 1", role: "STAFF" },
+        {
+          id: "user-1",
+          email: "user1@test.com",
+          name: "User 1",
+          role: "STAFF",
+        },
       ]);
 
       const mockTx = {

@@ -108,6 +108,8 @@ export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
       settings: result.marketCenterRow!.settings,
       createdAt: fromTimestamp(result.marketCenterRow!.created_at)!,
       updatedAt: fromTimestamp(result.marketCenterRow!.updated_at)!,
+      primaryStripeCustomerId: null,
+      primaryStripeSubscriptionId: null,
       users: result.userRows.map((user) => ({
         id: user.id,
         email: user.email,

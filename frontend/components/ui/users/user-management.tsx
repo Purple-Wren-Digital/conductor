@@ -498,7 +498,88 @@ export default function UserManagement() {
     setUserToDelete(user);
     setConfirmOpen(true);
   };
+  const activateUserMutation = useMutation({
+    mutationFn: async (userToActivate: UserWithStats | null) => {
+      if (
+        !permissions?.canDeactivateUsers ||
+        !userToActivate ||
+        !userToActivate?.id
+      )
+        throw new Error("Missing user to reactivate");
 
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+      const res = await fetch(`${API_BASE}/users/${userToActivate.id}/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Reactivate user error response: ", errorData);
+        throw new Error(errorData?.message || "Failed to reactivate user");
+      }
+      const data = await res.json();
+      if (!data || !data?.user) {
+        throw new Error("No response data found");
+      }
+
+      return data?.user as PrismaUser;
+    },
+    onSuccess: async (data) => {
+      toast.success(`${data?.name || "User"} was reactivated!`);
+      await handleSendUserNotifications({
+        trigger: "Account Information",
+        receivingUser: {
+          id: data?.id,
+          name: data?.name ?? data?.email,
+          email: data.email,
+        },
+        data: {
+          accountInformation: {
+            changedByName:
+              currentUser && currentUser?.name
+                ? currentUser.name
+                : "Another user",
+            changedByEmail: currentUser?.email,
+            updates: [
+              {
+                value: "reactivation",
+                originalValue: "Not Active",
+                newValue: "Active",
+              },
+            ].filter(Boolean) as {
+              value:
+                | "name"
+                | "email"
+                | "role"
+                | "password"
+                | "deactivation"
+                | "reactivation";
+              originalValue: string | null;
+              newValue: string | null;
+            }[],
+          },
+        },
+      });
+      setConfirmOpen(false);
+      setUserToDelete(null);
+    },
+    onError: (error) => {
+      console.log("Failed to reactivate user", error);
+      toast.error("Failed to reactivate user");
+    },
+    onSettled: async () => {
+      await userQueryInvalidator();
+      setDeleting(false);
+    },
+  });
   const deactivateUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (
@@ -506,7 +587,7 @@ export default function UserManagement() {
         !userToDelete ||
         !userToDelete?.id
       )
-        return;
+        throw new Error("Missing user to deactivate");
 
       const token = await getToken();
       if (!token) {
@@ -521,19 +602,61 @@ export default function UserManagement() {
         cache: "no-store",
         body: JSON.stringify({ isActive: false }),
       });
-      if (!res.ok) throw new Error("Failed to deactivate user");
-      return await res.json();
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Deactivate user error response: ", errorData);
+        throw new Error(errorData?.message || "Failed to deactivate user");
+      }
+      const data = await res.json();
+      if (!data || !data?.user) {
+        throw new Error("No response data found");
+      }
+      return data.user as PrismaUser;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       toast.success(`${userToDelete?.name || "User"} was removed`);
-      await userQueryInvalidator();
+      await handleSendUserNotifications({
+        trigger: "Account Information",
+        receivingUser: {
+          id: data?.id,
+          name: data?.name ?? data?.email,
+          email: data.email,
+        },
+        data: {
+          accountInformation: {
+            changedByName:
+              currentUser && currentUser?.name
+                ? currentUser.name
+                : "Another user",
+            changedByEmail: currentUser?.email,
+            updates: [
+              {
+                value: "deactivation",
+                originalValue: "Active",
+                newValue: "Not Active",
+              },
+            ].filter(Boolean) as {
+              value:
+                | "name"
+                | "email"
+                | "role"
+                | "password"
+                | "deactivation"
+                | "reactivation";
+              originalValue: string | null;
+              newValue: string | null;
+            }[],
+          },
+        },
+      });
       setConfirmOpen(false);
       setUserToDelete(null);
     },
     onError: () => {
       toast.error("Failed to deactivate user");
     },
-    onSettled: () => {
+    onSettled: async () => {
+      await userQueryInvalidator();
       setDeleting(false);
     },
   });
@@ -850,9 +973,15 @@ export default function UserManagement() {
                   <UserListItem
                     key={user.id}
                     user={user}
-                    deleteLabel="Deactivate"
+                    deleteLabel={user.isActive ? "Deactivate" : "Activate"}
                     onEdit={() => handleEditUser(user)}
-                    onDelete={() => openDeleteModal(user)}
+                    onDelete={() => {
+                      if (user.isActive) {
+                        openDeleteModal(user);
+                      } else {
+                        activateUserMutation.mutate(user);
+                      }
+                    }}
                     onClick={() => {
                       if (!user?.email) return;
                       router.push(`/dashboard/users/${user?.id}`);
@@ -995,7 +1124,9 @@ export default function UserManagement() {
                   isSubscriptionLoading
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`${formErrors.role ? "border-destructive" : ""}`}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1017,6 +1148,10 @@ export default function UserManagement() {
                   })}
                 </SelectContent>
               </Select>
+
+              <p className="text-sm text-destructive">
+                {formErrors?.role && formErrors.role}
+              </p>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
@@ -1044,43 +1179,34 @@ export default function UserManagement() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Deactivate user?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="my-2">
               {userToDelete ? (
-                <>
-                  This will deactivate{" "}
-                  <span className="font-medium">{userToDelete.name}</span> (
-                  {userToDelete.email}). They won’t be able to sign in, and
-                  they’ll be hidden from lists. You can restore them later.
-                </>
-              ) : null}
+                <span className="flex flex-col gap-4">
+                  <span>
+                    This will deactivate{" "}
+                    <span className="font-medium">{userToDelete.name}</span> (
+                    {userToDelete.email}).
+                  </span>
+                  <span>
+                    They won’t be able to sign in, and they’ll be hidden from
+                    lists.
+                  </span>
+                  <span>You may reactivate their account later.</span>
+                </span>
+              ) : (
+                <span>No user found for deactivation. Please try again.</span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter>
-            {/* <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setConfirmOpen(false);
-                setUserToDelete(null);
-              }}
-              disabled={deleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => confirmDelete("delete")}
-              disabled={deleting || !permissions?.canDeactivateUsers}
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </Button> */}
             <Button
               type="button"
               variant="destructive"
               onClick={() => confirmDelete("deactivate")}
-              disabled={deleting || !permissions?.canDeactivateUsers}
+              disabled={
+                deleting || !permissions?.canDeactivateUsers || !userToDelete
+              }
             >
               {deleting ? "Deactivating..." : "Deactivate"}
             </Button>

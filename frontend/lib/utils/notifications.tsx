@@ -1,6 +1,23 @@
 import { API_BASE } from "@/lib/api/utils";
 import { CreateNotificationPayload, NotificationData } from "@/lib/types";
 
+const standardNotifications = [
+  "App Permissions",
+  "Invitation",
+  "Account Information",
+];
+
+const customizableNotifications = [
+  "Ticket Created",
+  "Ticket Updated",
+  "Ticket Assignment",
+  "New Comments",
+  "Market Center Assignment",
+  "Category Assignment",
+  "Ticket Survey",
+  "Ticket Survey Results",
+];
+
 export type GetTokenOptions = {
   template?: string | undefined;
   organizationId?: string | undefined;
@@ -34,7 +51,7 @@ export type NotificationContent = {
   data?: NotificationData;
 };
 
-export const fetchAndFormatTemplate = async ({
+export const formatCustomizableTemplate = async ({
   templateName,
   type,
   content,
@@ -48,11 +65,17 @@ export const fetchAndFormatTemplate = async ({
   if (!getToken) {
     throw new Error("getToken function is required");
   }
-  if (!templateName) {
-    throw new Error("templateName is required");
+  if (!templateName || !type) {
+    throw new Error("Template name and type are required");
   }
-  if (!type) {
-    throw new Error("type is required");
+
+  if (
+    !customizableNotifications.includes(templateName) ||
+    !customizableNotifications.includes(type)
+  ) {
+    throw new Error(
+      "Invalid template name or type for customizable notification"
+    );
   }
 
   try {
@@ -72,9 +95,11 @@ export const fetchAndFormatTemplate = async ({
       }
     );
     if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Customizable Template Error:", errorData);
       throw new Error(
-        response?.statusText
-          ? response.statusText
+        errorData?.message
+          ? errorData.message
           : "Failed to fetch and format notification template"
       );
     }
@@ -85,10 +110,69 @@ export const fetchAndFormatTemplate = async ({
 
     return data?.formattedNotification as CreateNotificationPayload;
   } catch (error) {
-    console.error(
-      "Error fetching and formatting in-app notification template:",
-      error
+    console.error("Unable to format notification template:", error);
+    return null;
+  }
+};
+
+const formatStandardNotification = async ({
+  templateName,
+  type,
+  content,
+  getToken,
+}: {
+  templateName: "App Permissions" | "Invitation" | "Account Information";
+  type: "App Permissions" | "Invitation" | "Account Information";
+  content: NotificationContent;
+  getToken?: GetToken;
+}): Promise<CreateNotificationPayload | null> => {
+  if (!getToken) {
+    throw new Error("getToken function is required");
+  }
+  if (!templateName || !type) {
+    throw new Error("Template name and type are required");
+  }
+
+  if (
+    !standardNotifications.includes(templateName) ||
+    !standardNotifications.includes(type)
+  ) {
+    throw new Error("Invalid template name or type for standard notification");
+  }
+
+  try {
+    const token = await getToken();
+    if (!token) {
+      throw new Error("Failed to get authentication token");
+    }
+    const response = await fetch(
+      `${API_BASE}/notifications/templates/format/standard/${templateName}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ type: type, content: content }),
+      }
     );
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Standard Notification Error:", errorData);
+      throw new Error(
+        errorData?.message
+          ? errorData.message
+          : "Failed to format standard notification template"
+      );
+    }
+    const data = await response.json();
+    if (!data) {
+      throw new Error("No parsed standard template data");
+    }
+
+    return data?.formattedNotification as CreateNotificationPayload;
+  } catch (error) {
+    console.error("Unable to format standard notification:", error);
     return null;
   }
 };
@@ -99,16 +183,55 @@ export async function createAndSendNotification(
   if (!content || !content?.templateName || !content?.getToken) {
     throw new Error("Unable to format - Missing notification content");
   }
-  const payload: CreateNotificationPayload | null =
-    await fetchAndFormatTemplate({
+
+  const isStandard =
+    standardNotifications.includes(content.templateName) &&
+    standardNotifications.includes(content.trigger);
+
+  const isCustomizable =
+    customizableNotifications.includes(content.templateName) &&
+    customizableNotifications.includes(content.trigger);
+
+  if (!isStandard && !isCustomizable) {
+    throw new Error("Invalid templateName or trigger type");
+  }
+
+  let payload: CreateNotificationPayload | null = null;
+
+  if (isStandard) {
+    payload = await formatStandardNotification({
+      templateName: content.templateName as
+        | "App Permissions"
+        | "Invitation"
+        | "Account Information",
+      type: content.trigger as
+        | "App Permissions"
+        | "Invitation"
+        | "Account Information",
+      content: content,
+      getToken: content.getToken,
+    });
+  }
+  if (isCustomizable) {
+    payload = await formatCustomizableTemplate({
       templateName: content.templateName,
       type: content.trigger,
       content: content,
       getToken: content.getToken,
     });
+  }
 
-  if (!payload || !payload?.userId)
+  if (!payload || !payload?.userId) {
     throw new Error("Payload not formatted correctly");
+  }
+
+  if (
+    payload.email === "Notifications deactivated" &&
+    payload.inApp === "Notifications deactivated"
+  ) {
+    console.log("Aborting... All notifications of this type are deactivated");
+    return false;
+  }
 
   try {
     const token = await content.getToken();
@@ -129,11 +252,9 @@ export async function createAndSendNotification(
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Create and Send Notification - Failed:", errorData);
+      console.error("Create notification error data", errorData);
       throw new Error(
-        errorData?.message
-          ? errorData.message
-          : "Failed to create and send notification"
+        errorData?.message ? errorData.message : "Failed to create notification"
       );
     }
 
