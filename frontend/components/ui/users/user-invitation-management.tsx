@@ -42,6 +42,7 @@ import {
   Copy,
   Trash2,
   CircleEllipsis,
+  BanIcon,
 } from "lucide-react";
 import { calculateTotalPages } from "@/lib/utils";
 import { toast } from "sonner";
@@ -182,12 +183,12 @@ export default function UserInvitationManagement() {
   const handleResendInvitation = async (token: string) => {
     setActionLoading(token);
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Failed to get authentication token");
+      const authToken = await getToken();
+      if (!authToken) throw new Error("Failed to get authentication token");
       const response = await fetch(`${API_BASE}/invitations/${token}/resend`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
         },
       });
@@ -210,14 +211,14 @@ export default function UserInvitationManagement() {
     if (!invitationToCancel || !invitationToCancel?.token) return;
     setActionLoading(invitationToCancel.token);
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Failed to get authentication token");
+      const authToken = await getToken();
+      if (!authToken) throw new Error("Failed to get authentication token");
       const response = await fetch(
         `${API_BASE}/invitations/${invitationToCancel.token}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
         }
@@ -485,8 +486,9 @@ export default function UserInvitationManagement() {
                               <Copy className="h-4 w-4" />
                             </Button>
                           )}
-                          {invitation.status === "PENDING" ||
-                            (invitation.status === "EXPIRED" && (
+                          {(invitation.status === "PENDING" ||
+                            invitation.status === "EXPIRED") && (
+                            <>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -505,9 +507,6 @@ export default function UserInvitationManagement() {
                                   }`}
                                 />
                               </Button>
-                            ))}
-                          {invitation.status !== "CANCELLED" &&
-                            invitation.status !== "ACCEPTED" && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -521,9 +520,10 @@ export default function UserInvitationManagement() {
                                   "text-red-800 hover:text-red-950 disabled:text-muted-foreground"
                                 }
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <BanIcon className="h-4 w-4" />
                               </Button>
-                            )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
