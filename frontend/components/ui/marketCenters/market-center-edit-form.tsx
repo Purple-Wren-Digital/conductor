@@ -144,15 +144,15 @@ export default function EditMarketCenter({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData?.name || !formData.name.trim()) {
-      errors.name = "Name is required";
-    }
-
     if (
       formData?.name.trim() !== editingMarketCenter?.name.trim() &&
       !arraysEqualById(assignedUsers, formData.selectedUsers)
     ) {
       errors.general = "Please update at least one field to continue";
+    }
+
+    if (!formData?.name || !formData.name.trim()) {
+      errors.name = "Name is required";
     }
 
     if (!isEnterprise && formData.selectedUsers.length > 0) {
@@ -211,8 +211,16 @@ export default function EditMarketCenter({
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update market center`);
+        const errorData = await response.json();
+        console.error(
+          `Edit Market Center - ${response.status} RESPONSE:`,
+          errorData
+        );
+        throw new Error(
+          errorData?.message
+            ? errorData.message
+            : "Failed to create market center"
+        );
       }
       const data = await response.json();
       return data;

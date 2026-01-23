@@ -125,14 +125,14 @@ export function StaffDashboard() {
     ).length;
     const unassignedTickets = tickets.filter(
       (t: Ticket) =>
-        (!t.assigneeId || t.status === "UNASSIGNED") && t.status !== "RESOLVED"
+        t.status === "UNASSIGNED" || (t.status === "CREATED" && !t?.assigneeId)
     ).length;
     const ticketsByStatus = tickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
         const statusKey =
           ticket.status === "CREATED" && !!ticket?.assigneeId
             ? "ASSIGNED"
-            : ticket.status === "UNASSIGNED" || !ticket?.assigneeId
+            : ticket.status === "CREATED" && !ticket?.assigneeId
               ? "UNASSIGNED"
               : ticket.status;
         acc[statusKey] = (acc[statusKey] || 0) + 1;

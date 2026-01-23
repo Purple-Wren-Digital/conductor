@@ -68,6 +68,16 @@ export const create = api<
       );
     }
 
+    if (
+      !Array.isArray(req?.users) ||
+      !req.users.length ||
+      !req.users.find((user) => user.role === "STAFF_LEADER")
+    ) {
+      throw APIError.invalidArgument(
+        "At least one staff leader must be assigned"
+      );
+    }
+
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );

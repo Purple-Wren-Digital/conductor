@@ -418,7 +418,7 @@ export default function TicketTemplateEditor({
         throw new Error("Failed to get authentication token");
       }
       const res = await fetch(
-        `/api/ticket-templates/${selectedMarketCenter.id}`,
+        `${API_BASE}/ticket-templates/${selectedMarketCenter.id}`,
         {
           method: "POST",
           headers: {
@@ -954,7 +954,7 @@ export default function TicketTemplateEditor({
                     className="list-disc list-inside flex items-center gap-2 pl-1"
                   >
                     <Checkbox
-                      id={`todo-${todo}`}
+                      id={`${index}-todo-${todo}`}
                       className={`shadow disabled:bg-primary/50`}
                       disabled={true}
                     />
@@ -976,7 +976,7 @@ export default function TicketTemplateEditor({
                         <div className="flex items-center gap-2 flex-wrap w-full  md:flex-nowrap">
                           <div className="flex h-9 w-full min-w-0 rounded-md border border-input px-3 py-1 text-base shadow-xs md:text-sm">
                             <Label
-                              htmlFor={`todo-${todo}`}
+                              htmlFor={`${index}-todo-${todo}`}
                               className={`text-md text-muted-foreground font-normal leading-relaxed hover:text-primary`}
                               aria-label={`Subtask title: ${todo}. Click here to edit.`}
                             >
@@ -1004,6 +1004,7 @@ export default function TicketTemplateEditor({
                             className="flex items-center gap-2 flex-wrap w-full  md:flex-nowrap"
                           >
                             <Input
+                              id={`${index}-edit-todo-${todo}`}
                               type="text"
                               className={`h-8 ${errors?.editingSubtask ? "border-destructive" : ""}`}
                               value={editSubtaskInput || ""}
@@ -1036,10 +1037,7 @@ export default function TicketTemplateEditor({
                                   const existingTodoIndex = todos.findIndex(
                                     (todo) => todo === editingSubtask
                                   );
-                                  if (
-                                    existingTodoIndex !== -1 &&
-                                    editingSubtask
-                                  ) {
+                                  if (existingTodoIndex !== -1) {
                                     const updatedTodos = [...todos];
                                     updatedTodos[existingTodoIndex] =
                                       editingSubtask;

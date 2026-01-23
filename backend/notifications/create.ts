@@ -19,8 +19,22 @@ import { defaultMarketCenterNotificationPreferences } from "../marketCenters/not
 export interface CreateNotificationRequest {
   userId: string;
   templateName?: string;
+  templateName?: string;
   category: NotificationCategory;
   type: string;
+  email:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  inApp:
+    | {
+        title: string;
+        body: string;
+      }
+    | "Notifications deactivated";
+  data?: NotificationData;
   email:
     | {
         title: string;

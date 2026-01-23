@@ -22,6 +22,7 @@ interface TicketRow {
   status: string;
   created_at: Date;
   updated_at: Date | null;
+  assignee_id: string | null;
 }
 
 // created_at and updated_at should be added together at ticket creation
@@ -95,7 +96,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         if (!userContext?.marketCenterId) {
           // User without market center - see tickets they're assigned to, created, or unassigned
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.status, t.created_at, t.updated_at
+            SELECT t.id, t.status, t.created_at, t.updated_at, t.assignee_id
             FROM tickets t
             WHERE (t.status = ANY(${statuses}))
               AND (
@@ -110,7 +111,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         } else {
           // User with market center - see tickets in their market center scope
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at
+            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at, t.assignee_id
             FROM tickets t
             LEFT JOIN ticket_categories tc ON t.category_id = tc.id
             LEFT JOIN users creator ON t.creator_id = creator.id
@@ -131,7 +132,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       case "ADMIN":
         if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at
+            SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at, t.assignee_id
             FROM tickets t
             LEFT JOIN ticket_categories tc ON t.category_id = tc.id
             LEFT JOIN users creator ON t.creator_id = creator.id
@@ -150,7 +151,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         } else {
           // No subscription or inactive subscription - limit to own tickets
           ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.status, t.created_at, t.updated_at
+            SELECT t.id, t.status, t.created_at, t.updated_at, t.assignee_id
             FROM tickets t
             WHERE (t.status = ANY(${statuses}))
               AND (
@@ -170,14 +171,22 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         );
     }
 
-    const unchangedCount = ticketsFound.filter(
-      (t) =>
-        (t.status === "ASSIGNED" || t.status === "CREATED") &&
-        isUnchangedSinceCreation(t)
-    ).length;
-    const unassignedCount = ticketsFound.filter(
-      (t) => t.status === "UNASSIGNED"
-    ).length;
+    const unchangedCount = ticketsFound
+      ? ticketsFound.filter(
+          (t) =>
+            (t.status === "ASSIGNED" ||
+              (t.status === "CREATED" && !!t?.assignee_id)) &&
+            isUnchangedSinceCreation(t)
+        ).length
+      : 0;
+
+    const unassignedCount = ticketsFound
+      ? ticketsFound.filter(
+          (t) =>
+            t.status === "UNASSIGNED" ||
+            (t.status === "CREATED" && !t?.assignee_id)
+        ).length
+      : 0;
 
     return {
       created: unchangedCount,
