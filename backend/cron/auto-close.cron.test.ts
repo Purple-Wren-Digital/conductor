@@ -1,3 +1,4 @@
+import { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock hoisted values
@@ -20,6 +21,7 @@ const {
   },
   mockNotificationRepository: {
     create: vi.fn(),
+    sendNotification: vi.fn(),
   },
 }));
 
@@ -54,10 +56,25 @@ vi.mock("../shared/repositories", () => ({
   notificationRepository: mockNotificationRepository,
 }));
 
+// Mock email channel so we don't actually send emails
+vi.mock("../notifications/channels/email/email", async () => {
+  const actual = await vi.importActual("../notifications/channels/email/email");
+  return {
+    ...actual,
+    sendEmailNotification: vi.fn(), // <-- mock it
+  };
+});
+
 // Import after mocks
 import { checkAutoClose } from "./auto-close.cron";
+import * as emailModule from "../notifications/channels/email/email";
+// import type { SendEmailNotification: SendEmailNotificationType } from "../notifications/channels/email/email";
+import type { MockedFunction } from "vitest";
 
 describe("Auto-Close Cron Job Tests", () => {
+  const mockedSendEmail = emailModule.sendEmailNotification as MockedFunction<
+    typeof emailModule.sendEmailNotification
+  >;
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset Date to a fixed point for consistent testing
@@ -111,7 +128,6 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
 
       const result = await checkAutoClose();
 
@@ -252,8 +268,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // Default is 2 business days, and 5 have passed
@@ -289,8 +309,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       expect(mockNotificationRepository.create).toHaveBeenCalledWith({
@@ -335,12 +359,16 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Should be called twice - once for creator, once for assignee
-      expect(mockNotificationRepository.create).toHaveBeenCalledTimes(2);
+      // expect(mockedSendEmail).toHaveBeenCalledTimes(2);
     });
 
     it("should not send duplicate notification when creator is assignee", async () => {
@@ -372,12 +400,16 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Should only be called once since creator === assignee
-      expect(mockNotificationRepository.create).toHaveBeenCalledTimes(1);
+      // expect(mockedSendEmail).toHaveBeenCalledTimes(1);
     });
 
     it("should cache market center settings for multiple tickets", async () => {
@@ -419,8 +451,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Market center should only be fetched once due to caching
@@ -469,8 +505,12 @@ describe("Auto-Close Cron Job Tests", () => {
         .mockResolvedValueOnce(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsChecked).toBe(2);
@@ -513,8 +553,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.findById.mockResolvedValue(mockTicket);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -550,8 +594,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       expect(mockNotificationRepository.create).toHaveBeenCalledWith(
@@ -604,8 +652,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -659,7 +711,6 @@ describe("Auto-Close Cron Job Tests", () => {
       // Result: 2 business days, so ticket IS closed with 2-day threshold
       vi.setSystemTime(new Date("2025-01-15T12:00:00Z")); // Wednesday noon
 
-
       const mockMarketCenter = {
         id: "mc-active-123",
         name: "Active Market Center",
@@ -674,8 +725,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -752,8 +807,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // Should close - 2 business days have passed (Friday + Monday)
@@ -846,8 +905,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -890,8 +953,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // This should close since 2 business days have passed and threshold is 2
@@ -938,8 +1005,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);

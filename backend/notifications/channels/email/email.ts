@@ -6,7 +6,7 @@ import {
   renderCustomizedEmailTemplate,
   renderDefaultEmailTemplate,
 } from "./customization-renderer";
-import type { CreateEmailResponse } from "resend";
+import type { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import type { Notification } from "../../types";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");
