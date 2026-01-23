@@ -4,9 +4,16 @@ import { defineConfig } from "vite";
 
 // See https://encore.dev/docs/ts/develop/testing for more information on how to test with Encore.
 export default defineConfig({
-	resolve: {
-		alias: {
-			"~encore": path.resolve(__dirname, "./encore.gen"),
-		},
-	},
+  resolve: {
+    alias: {
+      "~encore": path.resolve(__dirname, "./encore.gen"),
+    },
+  },
+  test: {
+    globals: true,
+    environment: "node",
+    alias: {
+      "@": path.resolve(__dirname, "../frontend/packages/transactional"),
+    },
+  },
 });

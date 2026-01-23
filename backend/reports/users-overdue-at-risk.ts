@@ -275,7 +275,7 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
           "User not permitted to generate ticket reports"
         );
     }
-    const policies = await slaRepository.findAllPolicies();
+    const policies = await slaRepository.findActivePolicies();
     if (!policies || policies.length === 0) {
       return {
         assignees: [] as UserSLAStats[],

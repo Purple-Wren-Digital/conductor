@@ -39,9 +39,9 @@ interface AwaitingTicketRow {
  */
 function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
   let count = 0;
-  const current = new Date(startDate);
 
-  while (current < endDate) {
+  while (startDate.setHours(0, 0, 0, 0) < endDate.setHours(0, 0, 0, 0)) {
+    const current = new Date(startDate);
     const dayOfWeek = current.getDay();
     // Skip Saturday (6) and Sunday (0)
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -58,7 +58,8 @@ function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
  * and associated market center
  */
 async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
-  // Get tickets in AWAITING_RESPONSE status with the timestamp of when they entered this status
+  // Get tickets in AWAITING_RESPONSE status
+  // with the timestamp of when they entered this status from ticket_history
   const rows = await db.rawQueryAll<AwaitingTicketRow>(
     `
     SELECT

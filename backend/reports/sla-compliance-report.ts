@@ -27,14 +27,14 @@ export interface SLAResponse {
   };
 }
 
-interface SLAResponseTicketRow {
+interface SLAResponseMetricRow {
   response_compliant: number;
   response_on_track: number;
   response_at_risk: number;
   response_breached: number;
 }
 
-interface SLAResolutionTicketRow {
+interface SLAResolutionMetricRow {
   resolve_compliant: number;
   resolve_on_track: number;
   resolve_at_risk: number;
@@ -50,29 +50,22 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
   },
   async (req) => {
     const userContext = await getUserContext();
+    if (!userContext?.role || userContext.role === "AGENT") {
+      throw APIError.permissionDenied(
+        "User not permitted to generate SLA compliance reports"
+      );
+    }
     const accessibleMarketCenterIds =
       await subscriptionRepository.getAccessibleMarketCenterIds(
         userContext?.marketCenterId
       );
     if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
-      return {
-        response: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
-        resolve: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
-      };
+      throw APIError.internal("No accessible market centers found");
     }
-    const policies = await slaRepository.findAllPolicies();
-    if (!policies || policies.length === 0) {
-      return {
-        response: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
-        resolve: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
-      };
+    const policies = await slaRepository.findActivePolicies();
+    if (!policies || !policies.length) {
+      throw APIError.internal("No active SLA policies found");
     }
-
-    const subscription = await subscriptionRepository.findByMarketCenterId(
-      userContext?.marketCenterId
-    );
-    const isActive = subscription && subscription?.status === "ACTIVE";
-
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
@@ -83,21 +76,21 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
 
     if (
       userContext.role === "ADMIN" &&
-      userContext?.marketCenterId &&
-      isActive
+      req.marketCenterIds &&
+      req.marketCenterIds.length > 0
     ) {
-      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
-        const filteredMCIds = req.marketCenterIds.filter((id) =>
-          accessibleMarketCenterIds.includes(id)
-        );
-        marketCenterIds = filteredMCIds;
-      } else {
-        marketCenterIds = accessibleMarketCenterIds;
-      }
+      const filteredMCIds = req.marketCenterIds.filter((id) =>
+        accessibleMarketCenterIds.includes(id)
+      );
+      marketCenterIds = filteredMCIds;
+    } else if (userContext.role === "ADMIN") {
+      marketCenterIds = accessibleMarketCenterIds;
     }
-
-    if (!isActive && userContext?.marketCenterId) {
-      marketCenterIds = [userContext.marketCenterId];
+    if (
+      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
+      userContext?.marketCenterId
+    ) {
+      marketCenterIds = [userContext?.marketCenterId];
     }
 
     // Parse date filters
@@ -113,14 +106,14 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
       if (!isNaN(to.getTime())) dateTo = to;
     }
 
-    let responseSlaMetrics: SLAResponseTicketRow[] = [];
-    let resolutionSlaTickets: SLAResolutionTicketRow[] = [];
+    let responseSlaMetrics: SLAResponseMetricRow[] | null = null;
+    let resolutionSlaMetrics: SLAResolutionMetricRow[] | null = null;
 
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
         if (!userContext.marketCenterId) {
-          responseSlaMetrics = await db.queryAll<SLAResponseTicketRow>`
+          responseSlaMetrics = await db.queryAll<SLAResponseMetricRow>`
             SELECT
               COUNT(CASE WHEN first_response_at IS NOT NULL AND first_response_at <= sla_response_due_at THEN 1 END)::int as response_compliant,
               COUNT(CASE WHEN first_response_at IS NULL AND sla_breached = false THEN 1 END)::int as response_on_track,
@@ -138,7 +131,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
             AND sla_response_due_at IS NOT NULL
           `;
-          resolutionSlaTickets = await db.queryAll<SLAResolutionTicketRow>`
+          resolutionSlaMetrics = await db.queryAll<SLAResolutionMetricRow>`
             SELECT
               COUNT(CASE WHEN resolved_at IS NOT NULL AND resolved_at <= sla_resolution_due_at THEN 1 END)::int as resolve_compliant,
               COUNT(CASE WHEN resolved_at IS NULL AND sla_resolution_breached = false THEN 1 END)::int as resolve_on_track,
@@ -157,7 +150,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND sla_resolution_due_at IS NOT NULL
           `;
         } else {
-          responseSlaMetrics = await db.queryAll<SLAResponseTicketRow>`
+          responseSlaMetrics = await db.queryAll<SLAResponseMetricRow>`
             SELECT
               COUNT(CASE WHEN first_response_at IS NOT NULL AND first_response_at <= sla_response_due_at THEN 1 END)::int as response_compliant,
               COUNT(CASE WHEN first_response_at IS NULL AND sla_breached = false THEN 1 END)::int as response_on_track,
@@ -179,7 +172,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
             AND sla_response_due_at IS NOT NULL
           `;
-          resolutionSlaTickets = await db.queryAll<SLAResolutionTicketRow>`
+          resolutionSlaMetrics = await db.queryAll<SLAResolutionMetricRow>`
             SELECT
               COUNT(CASE WHEN resolved_at IS NOT NULL AND resolved_at <= sla_resolution_due_at THEN 1 END)::int as resolve_compliant,
               COUNT(CASE WHEN resolved_at IS NULL AND sla_resolution_breached = false THEN 1 END)::int as resolve_on_track,
@@ -204,8 +197,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
         }
         break;
       case "ADMIN":
-        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
-          responseSlaMetrics = await db.queryAll<SLAResponseTicketRow>`
+        if (marketCenterIds && marketCenterIds.length > 0) {
+          responseSlaMetrics = await db.queryAll<SLAResponseMetricRow>`
             SELECT
               COUNT(CASE WHEN first_response_at IS NOT NULL AND first_response_at <= sla_response_due_at THEN 1 END)::int as response_compliant,
               COUNT(CASE WHEN first_response_at IS NULL AND sla_breached = false THEN 1 END)::int as response_on_track,
@@ -227,7 +220,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
             AND sla_response_due_at IS NOT NULL
           `;
-          resolutionSlaTickets = await db.queryAll<SLAResolutionTicketRow>`
+          resolutionSlaMetrics = await db.queryAll<SLAResolutionMetricRow>`
             SELECT
               COUNT(CASE WHEN resolved_at IS NOT NULL AND resolved_at <= sla_resolution_due_at THEN 1 END)::int as resolve_compliant,
               COUNT(CASE WHEN resolved_at IS NULL AND sla_resolution_breached = false THEN 1 END)::int as resolve_on_track,
@@ -251,7 +244,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
           `;
         } else {
           // No subscription or inactive subscription - limit to own tickets
-          responseSlaMetrics = await db.queryAll<SLAResponseTicketRow>`
+          responseSlaMetrics = await db.queryAll<SLAResponseMetricRow>`
             SELECT
               COUNT(CASE WHEN first_response_at IS NOT NULL AND first_response_at <= sla_response_due_at THEN 1 END)::int as response_compliant,
               COUNT(CASE WHEN first_response_at IS NULL AND sla_breached = false THEN 1 END)::int as response_on_track,
@@ -269,7 +262,7 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
             AND sla_response_due_at IS NOT NULL
           `;
-          resolutionSlaTickets = await db.queryAll<SLAResolutionTicketRow>`
+          resolutionSlaMetrics = await db.queryAll<SLAResolutionMetricRow>`
             SELECT
               COUNT(CASE WHEN resolved_at IS NOT NULL AND resolved_at <= sla_resolution_due_at THEN 1 END)::int as resolve_compliant,
               COUNT(CASE WHEN resolved_at IS NULL AND sla_resolution_breached = false THEN 1 END)::int as resolve_on_track,
@@ -295,26 +288,21 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
         );
     }
 
-    let report = {
-      response: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
-      resolve: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
+    const report = {
+      response: {
+        compliant: Number(responseSlaMetrics?.[0]?.response_compliant ?? 0),
+        onTrack: Number(responseSlaMetrics?.[0]?.response_on_track ?? 0),
+        atRisk: Number(responseSlaMetrics?.[0]?.response_at_risk ?? 0),
+        overdue: Number(responseSlaMetrics?.[0]?.response_breached ?? 0),
+      },
+      resolve: {
+        compliant: Number(resolutionSlaMetrics?.[0]?.resolve_compliant ?? 0),
+        onTrack: Number(resolutionSlaMetrics?.[0]?.resolve_on_track ?? 0),
+        atRisk: Number(resolutionSlaMetrics?.[0]?.resolve_at_risk ?? 0),
+        overdue: Number(resolutionSlaMetrics?.[0]?.resolve_breached ?? 0),
+      },
     };
-
-    // Evaluate RESPONSE SLAs
-    for (const ticket of responseSlaMetrics) {
-      report.response.compliant += ticket.response_compliant;
-      report.response.onTrack += ticket.response_on_track;
-      report.response.atRisk += ticket.response_at_risk;
-      report.response.overdue += ticket.response_breached;
-    }
-
-    // Evaluate RESOLUTION SLAs
-    for (const ticket of resolutionSlaTickets) {
-      report.resolve.compliant += ticket.resolve_compliant;
-      report.resolve.onTrack += ticket.resolve_on_track;
-      report.resolve.atRisk += ticket.resolve_at_risk;
-      report.resolve.overdue += ticket.resolve_breached;
-    }
+    console.log("SLA Compliance Report generated:", report);
 
     return report;
   }

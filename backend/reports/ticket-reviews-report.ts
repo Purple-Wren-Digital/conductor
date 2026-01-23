@@ -63,20 +63,22 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
     );
-    const isActive = subscription && subscription?.status === "ACTIVE";
     const isEnterprise =
       subscription && subscription?.planType === "ENTERPRISE";
 
     // Convert arrays to filter params (null if empty)
     const categoryIds =
-      req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
+      req.categoryIds !== undefined && req.categoryIds.length > 0
+        ? req.categoryIds
+        : null;
     const marketCenterIds =
-      req.marketCenterIds && req.marketCenterIds.length > 0
+      req.marketCenterIds !== undefined && req.marketCenterIds.length > 0
         ? req.marketCenterIds
         : null;
     const assigneeIds =
-      req.assigneeIds && req.assigneeIds.length > 0 ? req.assigneeIds : null;
-
+      req.assigneeIds !== undefined && req.assigneeIds.length > 0
+        ? req.assigneeIds
+        : null;
     // Parse date filters
     let dateFrom: Date | null = null;
     let dateTo: Date | null = null;
@@ -90,7 +92,7 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
       if (!isNaN(to.getTime())) dateTo = to;
     }
 
-    let reviewsFound: ReviewRow[] = [];
+    let reviewsFound: ReviewRow[] | null = null;
 
     switch (userContext.role) {
       case "STAFF":
@@ -153,12 +155,7 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
         }
         break;
       case "ADMIN":
-        if (
-          isActive &&
-          isEnterprise &&
-          marketCenterIds &&
-          marketCenterIds.length > 0
-        ) {
+        if (isEnterprise && marketCenterIds && marketCenterIds.length > 0) {
           reviewsFound = await db.queryAll<ReviewRow>`
             SELECT
               tr.id,
@@ -185,7 +182,7 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
             AND (${dateTo}::timestamp IS NULL OR tr.updated_at <= ${dateTo})
             ORDER BY tr.updated_at DESC
           `;
-        } else if (isActive && userContext?.marketCenterId) {
+        } else if (userContext?.marketCenterId) {
           reviewsFound = await db.queryAll<ReviewRow>`
             SELECT
               tr.id,
@@ -256,37 +253,57 @@ export const ticketReviews = api<TicketReviewsRequest, TicketReviewsResponse>(
     let totalMarketCenter = 0;
     let countMarketCenter = 0;
 
-    const reviews: TicketReview[] = reviewsFound.map((row) => {
-      const overallRating = row.overall_rating
-        ? parseFloat(row.overall_rating)
-        : null;
-      const assigneeRating = row.assignee_rating
-        ? parseFloat(row.assignee_rating)
-        : null;
-      const marketCenterRating = row.market_center_rating
-        ? parseFloat(row.market_center_rating)
-        : null;
+    const validRows = (reviewsFound ?? []).filter(
+      (row): row is ReviewRow => !!row?.id
+    );
+    if (!validRows || !validRows.length) {
+      return {
+        reviews: [],
+        totalReviews: 0,
+        averageOverallRating: null,
+        averageAssigneeRating: null,
+        averageMarketCenterRating: null,
+      };
+    }
 
-      if (overallRating !== null) {
+    const reviews: TicketReview[] = validRows.map((row) => {
+      if (!row || !row.id) {
+        return {} as TicketReview;
+      }
+
+      const overallRating =
+        row?.overall_rating && row.overall_rating !== null
+          ? parseFloat(row.overall_rating)
+          : null;
+      const assigneeRating =
+        row?.assignee_rating && row.assignee_rating !== null
+          ? parseFloat(row.assignee_rating)
+          : null;
+      const marketCenterRating =
+        row?.market_center_rating && row.market_center_rating !== null
+          ? parseFloat(row.market_center_rating)
+          : null;
+
+      if (overallRating) {
         totalOverall += overallRating;
         countOverall++;
       }
-      if (assigneeRating !== null) {
+      if (assigneeRating) {
         totalAssignee += assigneeRating;
         countAssignee++;
       }
-      if (marketCenterRating !== null) {
+      if (marketCenterRating) {
         totalMarketCenter += marketCenterRating;
         countMarketCenter++;
       }
 
       return {
-        id: row.id,
-        ticketId: row.ticket_id,
-        ticketTitle: row.ticket_title,
-        surveyorName: row.surveyor_name ?? "Unknown",
-        assigneeName: row.assignee_name,
-        marketCenterName: row.market_center_name,
+        id: row?.id,
+        ticketId: row?.ticket_id,
+        ticketTitle: row?.ticket_title ?? "Ticket",
+        surveyorName: row?.surveyor_name ?? "Surveyor",
+        assigneeName: row?.assignee_name ?? "Assignee",
+        marketCenterName: row?.market_center_name ?? "Market Center",
         overallRating,
         assigneeRating,
         marketCenterRating,

@@ -24,9 +24,18 @@ const {
 }));
 
 // Mock encore.dev/api
-vi.mock("encore.dev/api", () => ({
-  api: vi.fn((config, handler) => handler),
-}));
+vi.mock("encore.dev/api", () => {
+  const api = Object.assign(
+    vi.fn((config, handler) => handler),
+    {
+      raw: vi.fn((options, handler) => handler),
+      streamOut: vi.fn((options, handler) => handler),
+    }
+  );
+  return {
+    api: api,
+  };
+});
 
 // Mock encore.dev/cron
 vi.mock("encore.dev/cron", () => ({
@@ -77,6 +86,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-2",
           category_id: "cat-1",
@@ -164,6 +174,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -198,6 +209,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2024-12-21T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: null,
@@ -221,6 +233,7 @@ describe("Auto-Close Cron Job Tests", () => {
           id: "ticket-1",
           title: "Test Ticket",
           creator_id: "user-1",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           assignee_id: null,
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -252,6 +265,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -297,6 +311,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-2",
           category_id: "cat-1",
@@ -333,6 +348,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-1", // Same as creator
           category_id: "cat-1",
@@ -369,6 +385,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Ticket 1",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -378,6 +395,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-2",
           title: "Ticket 2",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-2",
           assignee_id: null,
           category_id: "cat-1",
@@ -414,6 +432,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Failing Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -423,6 +442,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-2",
           title: "Successful Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-2",
           assignee_id: null,
           category_id: "cat-1",
@@ -463,6 +483,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -505,6 +526,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: null,
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -637,15 +659,6 @@ describe("Auto-Close Cron Job Tests", () => {
       // Result: 2 business days, so ticket IS closed with 2-day threshold
       vi.setSystemTime(new Date("2025-01-15T12:00:00Z")); // Wednesday noon
 
-      const mockMaintenanceTicket = {
-        id: "maintenance-ticket-123",
-        title: "Maintenance Request - 123 Main St",
-        creator_id: "agent-user-1",
-        assignee_id: "staff-user-1",
-        category_id: "maintenance-cat-1",
-        market_center_id: "mc-active-123",
-        status_changed_at: new Date("2025-01-13T09:00:00Z"), // Monday 9am
-      };
 
       const mockMarketCenter = {
         id: "mc-active-123",
@@ -658,7 +671,6 @@ describe("Auto-Close Cron Job Tests", () => {
         },
       };
 
-      mockDb.rawQueryAll.mockResolvedValue([mockMaintenanceTicket]);
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
@@ -679,6 +691,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-friday",
         title: "Maintenance Request - Weekend Test",
+        created_at: new Date("2025-01-13T08:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -716,6 +729,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-friday",
         title: "Maintenance Request - Weekend Test",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -771,6 +785,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockTicketNoHistory = {
         id: "maintenance-ticket-no-history",
         title: "Maintenance Request - No History",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -807,6 +822,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-123",
         title: "Maintenance Request - Settings Check",
+        created_at: new Date("2025-01-14T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -851,6 +867,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "debug-ticket",
         title: "Maintenance Request - Debug",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: null,
         category_id: "maintenance-cat-1",
@@ -898,6 +915,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",

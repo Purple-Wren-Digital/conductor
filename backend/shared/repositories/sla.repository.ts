@@ -82,7 +82,7 @@ export const slaRepository = {
   // ==================
 
   async findAllPolicies(): Promise<SlaPolicy[]> {
-    const rows = await db.query<SlaPolicyRow>`
+    const rows = await db.queryAll<SlaPolicyRow>`
       SELECT * FROM sla_policies ORDER BY urgency
     `;
     const allRows: SlaPolicyRow[] = [];
@@ -93,15 +93,17 @@ export const slaRepository = {
     return allRows.map(rowToSlaPolicy);
   },
 
-  async findActivePolicies(): Promise<SlaPolicy[]> {
-    const rows = await db.query<SlaPolicyRow>`
+  async findActivePolicies(): Promise<SlaPolicy[] | null> {
+    const rows = await db.queryAll<SlaPolicyRow>`
       SELECT * FROM sla_policies WHERE is_active = true ORDER BY urgency
     `;
     const allRows: SlaPolicyRow[] = [];
+    if (!rows) return null;
     for await (const row of rows) {
       allRows.push(row);
     }
-    return allRows.map(rowToSlaPolicy);
+
+    return allRows && allRows.length > 0 ? allRows.map(rowToSlaPolicy) : null;
   },
 
   async findPolicyByUrgency(urgency: Urgency): Promise<SlaPolicy | null> {
@@ -264,10 +266,7 @@ export const slaRepository = {
   // Ticket SLA Operations (Resolution)
   // ==================
 
-  async recordResolution(
-    ticketId: string,
-    resolvedAt: Date
-  ): Promise<void> {
+  async recordResolution(ticketId: string, resolvedAt: Date): Promise<void> {
     await db.exec`
       UPDATE tickets
       SET resolved_at = ${resolvedAt},
