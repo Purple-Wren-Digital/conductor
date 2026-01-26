@@ -19,6 +19,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import {
   Select,
   SelectContent,
@@ -29,10 +30,11 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import {
-  useFetchMarketCenter,
-  useFetchMarketCenterTickets,
-} from "@/hooks/use-market-center";
+  useFetchRatingsByMarketCenter,
+  useFetchStaffTickets,
+} from "@/hooks/use-tickets";
 import {
   Users,
   Plus,
@@ -65,8 +67,6 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
-import { CreateTicketForm } from "../ui/tickets/ticket-form/create-ticket-form";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function StaffLeaderDashboard() {
@@ -119,13 +119,23 @@ export function StaffLeaderDashboard() {
     });
     return queryParams;
   }, []);
-  const { data: ticketsData, isLoading: ticketsLoading } =
-    useFetchMarketCenterTickets({
-      marketCenterId,
-      queryParams,
-      queryKeyParams: null,
-    });
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
 
+  const staffTicketsQueryKey = useMemo(
+    () => ["staff-tickets-dashboard", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
+    {
+      queryParams,
+      staffTicketsQueryKey,
+      hydrated: true,
+    }
+  );
   const staffLeaderInvalidateTicketsQuery = () =>
     queryClient.invalidateQueries({
       queryKey: ["market-center-tickets", marketCenterId, queryParams],
@@ -172,9 +182,11 @@ export function StaffLeaderDashboard() {
     const ticketsByStatus = filteredTickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
         const statusKey =
-          ticket.status === "CREATED" && !!ticket?.assigneeId
+          ticket.status === "ASSIGNED" ||
+          (ticket.status === "CREATED" && !!ticket?.assigneeId)
             ? "ASSIGNED"
-            : ticket.status === "CREATED" && !ticket?.assigneeId
+            : ticket.status === "UNASSIGNED" ||
+                (ticket.status === "CREATED" && !ticket?.assigneeId)
               ? "UNASSIGNED"
               : ticket.status;
         acc[statusKey] = (acc[statusKey] || 0) + 1;
@@ -217,28 +229,26 @@ export function StaffLeaderDashboard() {
         acc: Record<string, { name: string; color: string; count: number }>,
         ticket: any
       ) => {
-        const assignee = teamMembers.find(
-          (u: any) => u.id === ticket.assigneeId
-        );
+        const assignee =
+          ticket.status !== "UNASSIGNED" ||
+          (ticket.status === "CREATED" && !ticket?.assigneeId)
+            ? teamMembers.find((u: any) => u.id === ticket.assigneeId)
+            : null;
 
-        const userId = assignee?.id || "unassigned";
-        const user = teamMembers.find((u: any) => u.id === userId);
-
-        const userName = user?.name || "Unassigned";
-
-        let color: string;
-        if (userName === "Unassigned") {
-          color = chartColors.grey;
-        } else {
-          if (!colorMap[userId]) {
-            colorMap[userId] = colorValues[colorIndex % colorValues.length];
-            colorIndex += 1;
-          }
-          color = colorMap[userId];
+        if (!assignee?.id) {
+          return acc;
         }
 
-        if (!acc[userId]) {
-          acc[userId] = { name: userName, color, count: 0 };
+        const userId = assignee.id;
+        const userName = assignee.name ?? assignee.id.slice(0, 8);
+
+        if (!colorMap[userId]) {
+          colorMap[userId] = colorValues[colorIndex % colorValues.length];
+          colorIndex += 1;
+        }
+
+        if (!acc[userId] && userId) {
+          acc[userId] = { name: userName, color: colorMap[userId], count: 0 };
         }
 
         acc[userId].count += 1;
@@ -692,12 +702,13 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="space-y-2 max-h-50 overflow-y-auto">
-                {!tickets && !tickets?.length && (
+                {!ticketsLoading && (!tickets || !tickets?.length) && (
                   <p className="text-sm font-medium text-muted-foreground">
                     No tickets found
                   </p>
                 )}
-                {tickets &&
+                {!ticketsLoading &&
+                  tickets &&
                   tickets?.length > 0 &&
                   tickets.slice(0, 10).map((ticket: any) => (
                     <div

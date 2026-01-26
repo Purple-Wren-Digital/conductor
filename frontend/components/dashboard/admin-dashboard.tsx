@@ -44,9 +44,9 @@ import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import {
-  useListAdminTickets,
-  useListAllRatings,
+  useFetchAdminTickets,
   useFetchRatingsByMarketCenter,
+  useListAllRatings,
 } from "@/hooks/use-tickets";
 import { useSlaMetrics } from "@/hooks/use-sla";
 import { getComplianceColor } from "@/lib/api/sla";
@@ -136,11 +136,14 @@ export function AdminDashboard() {
     [queryKeyParams]
   );
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useListAdminTickets({
-    role,
-    adminTicketsQueryKey,
-    queryParams,
-  });
+  const { data: ticketsData, isLoading: ticketsLoading } = useFetchAdminTickets(
+    {
+      role,
+      adminTicketsQueryKey,
+      queryParams,
+      hydrated: true,
+    }
+  );
   const tickets = useMemo(() => ticketsData?.tickets || [], [ticketsData]);
 
   const adminTicketsQueryInvalidator = () =>
@@ -238,9 +241,11 @@ export function AdminDashboard() {
     const ticketsByStatus = tickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
         const statusKey =
-          ticket.status === "CREATED" && !!ticket?.assigneeId
+          ticket.status === "ASSIGNED" ||
+          (ticket.status === "CREATED" && !!ticket?.assigneeId)
             ? "ASSIGNED"
-            : ticket.status === "CREATED" && !ticket?.assigneeId
+            : ticket.status === "UNASSIGNED" ||
+                (ticket.status === "CREATED" && !ticket?.assigneeId)
               ? "UNASSIGNED"
               : ticket.status;
         acc[statusKey] = (acc[statusKey] || 0) + 1;
@@ -264,28 +269,26 @@ export function AdminDashboard() {
         acc: Record<string, { name: string; color: string; count: number }>,
         ticket: any
       ) => {
-        const assignee = teamMembers.find(
-          (u: any) => u.id === ticket.assigneeId
-        );
+        const assignee =
+          ticket.status !== "UNASSIGNED" ||
+          (ticket.status === "CREATED" && !ticket?.assigneeId)
+            ? teamMembers.find((u: any) => u.id === ticket.assigneeId)
+            : null;
 
-        const userId = assignee?.id || "unassigned";
-        const user = teamMembers.find((u: any) => u.id === userId);
-
-        const userName = user?.name || "Unassigned";
-
-        let color: string;
-        if (userName === "Unassigned") {
-          color = chartColors.grey;
-        } else {
-          if (!colorMap[userId]) {
-            colorMap[userId] = colorValues[colorIndex % colorValues.length];
-            colorIndex += 1;
-          }
-          color = colorMap[userId];
+        if (!assignee?.id) {
+          return acc;
         }
 
-        if (!acc[userId]) {
-          acc[userId] = { name: userName, color, count: 0 };
+        const userId = assignee.id;
+        const userName = assignee.name ?? assignee.id.slice(0, 8);
+
+        if (!colorMap[userId]) {
+          colorMap[userId] = colorValues[colorIndex % colorValues.length];
+          colorIndex += 1;
+        }
+
+        if (!acc[userId] && userId) {
+          acc[userId] = { name: userName, color: colorMap[userId], count: 0 };
         }
 
         acc[userId].count += 1;
