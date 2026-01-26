@@ -553,69 +553,6 @@ export function StaffLeaderDashboard() {
               </div>
             </CardContent>
           </Card>
-          {/* TICKETS BY STATUS */}
-          <Card>
-            <CardHeader className="flex flex-row justify-between">
-              <div className="flex flex-col gap-1">
-                <CardTitle>Tickets by Status</CardTitle>
-                <CardDescription>
-                  {stats.totalTickets ?? "0"} total tickets
-                </CardDescription>
-              </div>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="space-y-2 h-[250px] md:h-[220px]">
-              <ChartContainer
-                config={ticketByStatusChartConfig}
-                className="w-[99%] md:w-full mx-auto"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={statusChartData}
-                    margin={{
-                      left: -30,
-                      bottom: 10,
-                    }}
-                  >
-                    <XAxis
-                      dataKey="status"
-                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-                      angle={window.innerWidth < 640 ? 0 : -15}
-                      tickMargin={10}
-                      tickFormatter={(value: StatusKey) =>
-                        STATUS_LABELS[value] || value
-                      }
-                    />
-                    <YAxis
-                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-                      allowDecimals={false}
-                      tickMargin={5}
-                    />
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                      labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v}
-                    />
-                    <Bar
-                      dataKey="count"
-                      isAnimationActive={true}
-                      radius={[4, 4, 0, 0]}
-                    >
-                      {statusChartData.map((entry, i) => (
-                        <Cell key={`status-cell-${i}`} fill={entry.fill} />
-                      ))}
-                      <LabelList
-                        dataKey="count"
-                        position="top"
-                        formatter={(v: number) => (v ?? 0).toString()}
-                        className="fill-foreground rounded-md"
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
           {/* TICKETS BY USER */}
           <Card>
             <CardHeader className="flex flex-row justify-between">
@@ -630,7 +567,7 @@ export function StaffLeaderDashboard() {
             <CardContent>
               <ChartContainer
                 config={ticketsByUserChartConfig}
-                className="h-[220px] w-[99%] md:w-full mx-auto"
+                className="h-[250px] md:h-[220px] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -688,6 +625,69 @@ export function StaffLeaderDashboard() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* TICKETS BY STATUS */}
+          <Card>
+            <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col gap-1">
+                <CardTitle>Tickets by Status</CardTitle>
+                <CardDescription>
+                  {stats.totalTickets ?? "0"} total tickets
+                </CardDescription>
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-2 ">
+              <ChartContainer
+                config={ticketByStatusChartConfig}
+                className="h-[250px] md:h-[220px] md:w-full mx-auto"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={statusChartData}
+                    margin={{
+                      left: -30,
+                      bottom: 10,
+                    }}
+                  >
+                    <XAxis
+                      dataKey="status"
+                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                      angle={window.innerWidth < 640 ? 0 : -15}
+                      tickMargin={10}
+                      tickFormatter={(value: StatusKey) =>
+                        STATUS_LABELS[value] || value
+                      }
+                    />
+                    <YAxis
+                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                      allowDecimals={false}
+                      tickMargin={5}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v}
+                    />
+                    <Bar
+                      dataKey="count"
+                      isAnimationActive={true}
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {statusChartData.map((entry, i) => (
+                        <Cell key={`status-cell-${i}`} fill={entry.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        formatter={(v: number) => (v ?? 0).toString()}
+                        className="fill-foreground rounded-md"
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </CardContent>
           </Card>
 

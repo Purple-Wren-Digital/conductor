@@ -653,7 +653,7 @@ export function AdminDashboard() {
             <CardContent>
               <ChartContainer
                 config={ticketsByUserChartConfig}
-                className="h-[220px] w-[99%] md:w-full mx-auto"
+                className="h-[250px] md:h-[220px] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
