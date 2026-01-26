@@ -106,14 +106,14 @@ export function AppSidebar({
   return (
     <Sidebar
       {...rest}
-      className={cn(className, "border-r border-b h-[calc(100vh-70px)]")}
+      className={cn(className, "border-r h-[calc(100vh-65px)]")}
     >
       <SidebarHeader>
-        <div className="border-b">
+        <div className="p-4 border-b">
           <SidebarMenuButton
             onClick={() => navigate("/dashboard/account")}
             disabled={isLoading || !currentUser}
-            className="flex items-center gap-2 h-[100px] "
+            className="flex items-center gap-2"
           >
             {isLoading && (
               <div className="flex flex-col gap-1 items-center w-full">

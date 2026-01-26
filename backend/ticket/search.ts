@@ -128,10 +128,9 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       title: r.title ?? "",
       description: r.description ?? "",
       status:
-        r.status === "ASSIGNED" || (r.status === "CREATED" && !!r?.assigneeId)
+        !r?.status || (r.status === "CREATED" && !!r?.assigneeId)
           ? ("ASSIGNED" as TicketStatus)
-          : r.status === "UNASSIGNED" ||
-              (r.status === "CREATED" && !r?.assigneeId)
+          : r.status === "CREATED" && !r?.assigneeId
             ? ("UNASSIGNED" as TicketStatus)
             : (r.status ?? "ASSIGNED"),
       urgency: r.urgency ?? ("MEDIUM" as Urgency),

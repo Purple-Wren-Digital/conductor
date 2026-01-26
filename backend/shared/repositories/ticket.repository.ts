@@ -388,23 +388,13 @@ export const ticketRepository = {
       const placeholders = params.marketCenterIds
         .map((_, i) => `$${paramIndex + i}`)
         .join(", ");
-      conditions.push(`
-        (
-          EXISTS (
-            SELECT 1 FROM ticket_categories tc2
-            WHERE tc2.id = t.category_id
-              AND tc2.market_center_id IN (${placeholders})
-          )
-          OR creator.market_center_id IN (${placeholders})
-          OR assignee.market_center_id IN (${placeholders})
-        )
-      `);
+      conditions.push(`tc.market_center_id IN (${placeholders})`);
       values.push(...params.marketCenterIds);
       paramIndex += params.marketCenterIds.length;
     }
     if (
       (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
-      (!params?.marketCenterIds || !params?.marketCenterIds.length) &&
+      (!params?.marketCenterIds || !params.marketCenterIds.length) &&
       params?.userId
     ) {
       conditions.push(
@@ -422,61 +412,26 @@ export const ticketRepository = {
       const placeholders = params.marketCenterIds
         .map((_, i) => `$${paramIndex + i}`)
         .join(", ");
-      conditions.push(`
-        (
-          EXISTS (
-            SELECT 1 FROM ticket_categories tc2
-            WHERE tc2.id = t.category_id
-              AND tc2.market_center_id IN (${placeholders})
-          )
-          OR creator.market_center_id IN (${placeholders})
-          OR assignee.market_center_id IN (${placeholders})
-        )
-      `);
+      conditions.push(`tc.market_center_id IN (${placeholders})`);
       values.push(...params.marketCenterIds);
       paramIndex += params.marketCenterIds.length;
     }
 
     // Filter conditions
     if (params.status && params.status.length > 0) {
-      const includeUnassigned = params.status.includes("UNASSIGNED");
-      const includeAssigned = params.status.includes("ASSIGNED");
+      const statuses =
+        params.status.includes("ASSIGNED") ||
+        params.status.includes("UNASSIGNED")
+          ? [...params.status, "CREATED"]
+          : params.status;
 
-      const statusConditions: string[] = [];
+      const placeholders = statuses
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
 
-      // UNASSIGNED (CREATED + no assignee)
-      if (includeUnassigned) {
-        statusConditions.push(`
-          t.status = 'UNASSIGNED'
-          OR (t.status = 'CREATED' AND t.assignee_id IS NULL)
-        `);
-      }
-
-      // ASSIGNED (CREATED + has assignee)
-      if (includeAssigned) {
-        statusConditions.push(`
-          t.status = 'ASSIGNED'
-          OR (t.status = 'CREATED' AND t.assignee_id IS NOT NULL)
-        `);
-      }
-
-      // Other statuses (anything besides ASSIGNED / UNASSIGNED)
-      const otherStatuses = params.status.filter(
-        (s) => s !== "ASSIGNED" && s !== "UNASSIGNED"
-      );
-
-      console.log("Ticket Search - OTHER STATUSES:", otherStatuses);
-      if (otherStatuses.length > 0) {
-        const placeholders = otherStatuses
-          .map((_, i) => `$${paramIndex + i}`)
-          .join(", ");
-        statusConditions.push(`t.status IN (${placeholders})`);
-        values.push(...otherStatuses);
-        paramIndex += otherStatuses.length;
-      }
-
-      // Combine all with OR
-      conditions.push(`(${statusConditions.join(" OR ")})`);
+      conditions.push(`t.status IN (${placeholders})`);
+      values.push(...statuses);
+      paramIndex += statuses.length;
     } else {
       // Default: exclude RESOLVED
       conditions.push(`t.status != 'RESOLVED'`);
@@ -492,15 +447,9 @@ export const ticketRepository = {
     }
 
     if (params.assigneeId !== undefined) {
-      // Only filter assigneeId directly if UNASSIGNED is not already in statuses
-      const statusIncludesUnassigned = params.status?.includes("UNASSIGNED");
-      if (
-        params.assigneeId === null ||
-        params.assigneeId === "Unassigned" ||
-        (!params.assigneeId && statusIncludesUnassigned)
-      ) {
+      if (params.assigneeId === null || params.assigneeId === "Unassigned") {
         conditions.push(`t.assignee_id IS NULL`);
-      } else if (params.assigneeId) {
+      } else {
         conditions.push(`t.assignee_id = $${paramIndex++}`);
         values.push(params.assigneeId);
       }

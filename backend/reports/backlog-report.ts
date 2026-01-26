@@ -61,26 +61,19 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
       req.categoryIds && req.categoryIds.length > 0 ? req.categoryIds : null;
 
     let marketCenterIds: string[] = [];
-
-    if (userContext.role === "ADMIN") {
-      if (
-        req?.marketCenterIds !== undefined &&
-        req.marketCenterIds.length > 0
-      ) {
+    if (
+      userContext.role === "ADMIN" &&
+      userContext?.marketCenterId &&
+      isActive
+    ) {
+      if (req.marketCenterIds && req.marketCenterIds.length > 0) {
         const filteredMCIds = req.marketCenterIds.filter((id) =>
           accessibleMarketCenterIds.includes(id)
         );
-        marketCenterIds.push(...filteredMCIds);
+        marketCenterIds = filteredMCIds;
       } else {
         marketCenterIds = accessibleMarketCenterIds;
       }
-    }
-
-    if (
-      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-      userContext?.marketCenterId
-    ) {
-      marketCenterIds = [userContext.marketCenterId];
     }
 
     // Parse date filters
@@ -137,7 +130,7 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
         }
         break;
       case "ADMIN":
-        if (marketCenterIds && marketCenterIds.length > 0) {
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
           ticketsFound = await db.queryAll<TicketRow>`
             SELECT DISTINCT t.id, t.status, t.created_at, t.updated_at, t.assignee_id
             FROM tickets t
@@ -194,15 +187,6 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
             (t.status === "CREATED" && !t?.assignee_id)
         ).length
       : 0;
-
-    console.log(
-      "Backlog Report - UNASSIGNED tickets",
-      ticketsFound.filter(
-        (t) =>
-          t.status === "UNASSIGNED" ||
-          (t.status === "CREATED" && !t?.assignee_id)
-      )
-    );
 
     return {
       created: unchangedCount,

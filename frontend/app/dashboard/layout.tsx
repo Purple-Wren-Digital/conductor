@@ -212,7 +212,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-8 flex items-center justify-center">
+                <div className="size-10 flex items-center justify-center">
                   <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
                 <div className="hidden md:flex flex-col leading-tight ">
