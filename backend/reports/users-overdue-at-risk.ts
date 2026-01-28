@@ -2,7 +2,7 @@ import { api, APIError, Query } from "encore.dev/api";
 import { db, subscriptionRepository } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
-import { getTicketSlaStatus } from "./utils";
+import { slaRepository } from "../shared/repositories";
 
 export interface UsersSLARequest {
   marketCenterIds?: Query<string[]>;
@@ -16,9 +16,15 @@ export interface UsersSLARequest {
 type UserSLAStats = {
   id: string;
   name: string;
-  atRisk: number;
-  overdue: number;
   ticketTotal: number;
+  response: {
+    atRisk: number;
+    overdue: number;
+  };
+  resolve: {
+    atRisk: number;
+    overdue: number;
+  };
 };
 
 export interface UsersSLAResponse {
@@ -27,13 +33,20 @@ export interface UsersSLAResponse {
   assigneeTotal: number;
 }
 
-interface TicketRow {
+interface SLAResponseTicketRow {
   id: string;
-  created_at: Date;
-  resolved_at: Date | null;
-  due_date: Date | null;
   assignee_id: string | null;
   assignee_name: string | null;
+  response_at_risk: number;
+  response_breached: number;
+}
+
+interface SLAResolutionTicketRow {
+  id: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  resolve_at_risk: number;
+  resolve_breached: number;
 }
 
 export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
@@ -50,7 +63,11 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
         userContext?.marketCenterId
       );
     if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
-      return { assignees: [], ticketTotal: 0, assigneeTotal: 0 };
+      return {
+        assignees: [] as UserSLAStats[],
+        ticketTotal: 0,
+        assigneeTotal: 0,
+      };
     }
     const subscription = await subscriptionRepository.findByMarketCenterId(
       userContext?.marketCenterId
@@ -93,34 +110,59 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
       if (!isNaN(to.getTime())) dateTo = to;
     }
 
-    let ticketsFound: TicketRow[] = [];
+    let responseTicketsFound: SLAResponseTicketRow[] = [];
+    let resolutionTicketsFound: SLAResolutionTicketRow[] = [];
 
     switch (userContext.role) {
       case "STAFF":
       case "STAFF_LEADER":
         if (!userContext.marketCenterId) {
-          ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.created_at, t.resolved_at, t.due_date,
-                   t.assignee_id, assignee.name as assignee_name
+          responseTicketsFound = await db.queryAll<SLAResponseTicketRow>`
+            SELECT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_breached = false AND (first_response_at IS NULL OR first_response_at > sla_response_due_at) THEN 1 END)::int as response_at_risk,
+              COUNT(CASE WHEN sla_breached = true THEN 1 END)::int as response_breached
             FROM tickets t
-            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            LEFT JOIN users u ON t.assignee_id = u.id
             WHERE t.assignee_id = ${userContext.userId}
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_response_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
+          `;
+          resolutionTicketsFound = await db.queryAll<SLAResolutionTicketRow>`
+            SELECT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_resolution_breached = false AND (resolved_at IS NULL OR resolved_at > sla_resolution_due_at) THEN 1 END)::int as resolve_at_risk,
+              COUNT(CASE WHEN sla_resolution_breached = true THEN 1 END)::int as resolve_breached
+            FROM tickets t
+            LEFT JOIN users u ON t.assignee_id = u.id
+            WHERE t.assignee_id = ${userContext.userId}
+              AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+              AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+              AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+              AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+              AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+              AND sla_resolution_due_at IS NOT NULL
           `;
         } else {
-          ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date,
-                   t.assignee_id, assignee.name as assignee_name
+          responseTicketsFound = await db.queryAll<SLAResponseTicketRow>`
+            SELECT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_breached = false AND (first_response_at IS NULL OR first_response_at > sla_response_due_at) THEN 1 END)::int as response_at_risk,
+              COUNT(CASE WHEN sla_breached = true THEN 1 END)::int as response_breached
             FROM tickets t
             LEFT JOIN ticket_categories tc ON t.category_id = tc.id
-            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            LEFT JOIN users u ON t.assignee_id = u.id
             WHERE (
               tc.market_center_id = ${userContext.marketCenterId}
-              OR assignee.market_center_id = ${userContext.marketCenterId}
+              OR u.market_center_id = ${userContext.marketCenterId}
               OR creator.market_center_id = ${userContext.marketCenterId}
             )
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
@@ -128,36 +170,103 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_response_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
           `;
-        }
-        break;
-      case "ADMIN":
-        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
-          ticketsFound = await db.queryAll<TicketRow>`
-            SELECT DISTINCT t.id, t.created_at, t.resolved_at, t.due_date,
-                   t.assignee_id, assignee.name as assignee_name
+          resolutionTicketsFound = await db.queryAll<SLAResolutionTicketRow>`
+            SELECT DISTINCT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_resolution_breached = false AND (resolved_at IS NULL OR resolved_at > sla_resolution_due_at) THEN 1 END)::int as resolve_at_risk,
+              COUNT(CASE WHEN sla_resolution_breached = true THEN 1 END)::int as resolve_breached
             FROM tickets t
-            LEFT JOIN users assignee ON t.assignee_id = assignee.id
-            WHERE assignee.market_center_id = ANY(${marketCenterIds})
+            LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+            LEFT JOIN users u ON t.assignee_id = u.id
+            WHERE (
+              tc.market_center_id = ${userContext.marketCenterId}
+              OR u.market_center_id = ${userContext.marketCenterId}
+              OR creator.market_center_id = ${userContext.marketCenterId}
+            )
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_resolution_due_at IS NOT NULL
+          `;
+        }
+        break;
+      case "ADMIN":
+        if (isActive && marketCenterIds && marketCenterIds.length > 0) {
+          responseTicketsFound = await db.queryAll<SLAResponseTicketRow>`
+            SELECT DISTINCT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_breached = false AND (first_response_at IS NULL OR first_response_at > sla_response_due_at) THEN 1 END)::int as response_at_risk,
+              COUNT(CASE WHEN sla_breached = true THEN 1 END)::int as response_breached
+            FROM tickets t
+            LEFT JOIN users u ON t.assignee_id = u.id
+            WHERE u.market_center_id = ANY(${marketCenterIds})
+            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_response_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
+          `;
+          resolutionTicketsFound = await db.queryAll<SLAResolutionTicketRow>`
+            SELECT DISTINCT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_resolution_breached = false AND (resolved_at IS NULL OR resolved_at > sla_resolution_due_at) THEN 1 END)::int as resolve_at_risk,
+              COUNT(CASE WHEN sla_resolution_breached = true THEN 1 END)::int as resolve_breached
+            FROM tickets t
+            LEFT JOIN users u ON t.assignee_id = u.id
+            WHERE u.market_center_id = ANY(${marketCenterIds})
+            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_resolution_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
           `;
         } else {
           // No subscription or inactive subscription - limit to own tickets
-          ticketsFound = await db.queryAll<TicketRow>`
-            SELECT t.id, t.created_at, t.resolved_at, t.due_date,
-                   t.assignee_id, assignee.name as assignee_name
+          responseTicketsFound = await db.queryAll<SLAResponseTicketRow>`
+            SELECT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_breached = false AND (first_response_at IS NULL OR first_response_at > sla_response_due_at) THEN 1 END)::int as response_at_risk,
+              COUNT(CASE WHEN sla_breached = true THEN 1 END)::int as response_breached
             FROM tickets t
-            LEFT JOIN users assignee ON t.assignee_id = assignee.id
+            LEFT JOIN users u ON t.assignee_id = u.id
             WHERE t.assignee_id = ${userContext.userId}
             AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
             AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
             AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
             AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
             AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_response_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
+          `;
+          resolutionTicketsFound = await db.queryAll<SLAResolutionTicketRow>`
+            SELECT
+              t.assignee_id,
+              u.name as assignee_name,
+              COUNT(CASE WHEN sla_resolution_breached = false AND (resolved_at IS NULL OR resolved_at > sla_resolution_due_at) THEN 1 END)::int as resolve_at_risk,
+              COUNT(CASE WHEN sla_resolution_breached = true THEN 1 END)::int as resolve_breached
+            FROM tickets t
+            LEFT JOIN users u ON t.assignee_id = u.id
+            WHERE t.assignee_id = ${userContext.userId}
+            AND (${assigneeIds}::text[] IS NULL OR t.assignee_id = ANY(${assigneeIds}))
+            AND (${statusList}::text[] IS NULL OR t.status = ANY(${statusList}))
+            AND (${categoryIds}::text[] IS NULL OR t.category_id = ANY(${categoryIds}))
+            AND (${dateFrom}::timestamp IS NULL OR t.created_at >= ${dateFrom})
+            AND (${dateTo}::timestamp IS NULL OR t.created_at <= ${dateTo})
+            AND sla_resolution_due_at IS NOT NULL
+            GROUP BY t.assignee_id, u.name
           `;
         }
         break;
@@ -166,53 +275,71 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
           "User not permitted to generate ticket reports"
         );
     }
-
+    const policies = await slaRepository.findActivePolicies();
+    if (!policies || policies.length === 0) {
+      return {
+        assignees: [] as UserSLAStats[],
+        ticketTotal: 0,
+        assigneeTotal: 0,
+      };
+    }
     const allUserStats: UserSLAStats[] = [];
 
-    for (const ticket of ticketsFound) {
-      const slaStatus = getTicketSlaStatus({
-        createdAt: ticket.created_at,
-        resolvedAt: ticket.resolved_at ? ticket.resolved_at : undefined,
-        dueDate: ticket.due_date ? ticket.due_date : undefined,
-      });
-      if (slaStatus === "compliant" || slaStatus === "onTrack") continue;
-
+    // Evaluate RESPONSE SLAs
+    for (const ticket of responseTicketsFound) {
       const assigneeId = ticket.assignee_id || "Unassigned";
       const assignee = allUserStats.find((user) => user.id === assigneeId);
 
       const assigneeName = ticket.assignee_id
         ? ticket.assignee_name || "No Name"
         : "Unassigned";
+      const total = ticket.response_at_risk + ticket.response_breached;
 
-      switch (slaStatus) {
-        case "atRisk":
-          if (assignee) {
-            assignee.atRisk += 1;
-            assignee.ticketTotal += 1;
-          } else {
-            allUserStats.push({
-              id: assigneeId,
-              name: assigneeName,
-              atRisk: 1,
-              overdue: 0,
-              ticketTotal: 1,
-            });
-          }
-          break;
-        case "overdue":
-          if (assignee) {
-            assignee.overdue += 1;
-            assignee.ticketTotal += 1;
-          } else {
-            allUserStats.push({
-              id: assigneeId,
-              name: assigneeName,
-              atRisk: 0,
-              overdue: 1,
-              ticketTotal: 1,
-            });
-          }
-          break;
+      if (assignee) {
+        assignee.response.atRisk += ticket.response_at_risk;
+        assignee.response.overdue += ticket.response_breached;
+        assignee.ticketTotal += total;
+        continue;
+      } else {
+        allUserStats.push({
+          id: assigneeId,
+          name: assigneeName,
+          response: {
+            atRisk: ticket.response_at_risk,
+            overdue: ticket.response_breached,
+          },
+          resolve: { atRisk: 0, overdue: 0 },
+          ticketTotal: total,
+        });
+      }
+    }
+
+    // Evaluate RESOLVE SLAs
+    for (const ticket of resolutionTicketsFound) {
+      const assigneeId = ticket.assignee_id || "Unassigned";
+      const assignee = allUserStats.find((user) => user.id === assigneeId);
+
+      const assigneeName = ticket.assignee_id
+        ? ticket.assignee_name || "No Name"
+        : "Unassigned";
+      const total = ticket.resolve_at_risk + ticket.resolve_breached;
+
+      if (assignee) {
+        assignee.resolve.atRisk += ticket.resolve_at_risk;
+        assignee.resolve.overdue += ticket.resolve_breached;
+        assignee.ticketTotal += total;
+        continue;
+      } else {
+        allUserStats.push({
+          id: assigneeId,
+          name: assigneeName,
+          response: { atRisk: 0, overdue: 0 },
+          resolve: {
+            atRisk: ticket.resolve_at_risk,
+            overdue: ticket.resolve_breached,
+          },
+          ticketTotal: total,
+        });
       }
     }
 

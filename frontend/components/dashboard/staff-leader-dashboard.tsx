@@ -19,6 +19,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import {
   Select,
   SelectContent,
@@ -29,10 +30,11 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
+import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import {
-  useFetchMarketCenter,
-  useFetchMarketCenterTickets,
-} from "@/hooks/use-market-center";
+  useFetchRatingsByMarketCenter,
+  useFetchStaffTickets,
+} from "@/hooks/use-tickets";
 import {
   Users,
   Plus,
@@ -65,8 +67,6 @@ import {
   YAxis,
   LabelList,
 } from "recharts";
-import { useFetchRatingsByMarketCenter } from "@/hooks/use-tickets";
-import { CreateTicketForm } from "../ui/tickets/ticket-form/create-ticket-form";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function StaffLeaderDashboard() {
@@ -119,13 +119,23 @@ export function StaffLeaderDashboard() {
     });
     return queryParams;
   }, []);
-  const { data: ticketsData, isLoading: ticketsLoading } =
-    useFetchMarketCenterTickets({
-      marketCenterId,
-      queryParams,
-      queryKeyParams: null,
-    });
+  const queryKeyParams = useMemo(
+    () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
+    [queryParams]
+  );
 
+  const staffTicketsQueryKey = useMemo(
+    () => ["staff-tickets-dashboard", queryKeyParams] as const,
+    [queryKeyParams]
+  );
+
+  const { data: ticketsData, isLoading: ticketsLoading } = useFetchStaffTickets(
+    {
+      queryParams,
+      staffTicketsQueryKey,
+      hydrated: true,
+    }
+  );
   const staffLeaderInvalidateTicketsQuery = () =>
     queryClient.invalidateQueries({
       queryKey: ["market-center-tickets", marketCenterId, queryParams],
@@ -172,9 +182,11 @@ export function StaffLeaderDashboard() {
     const ticketsByStatus = filteredTickets.reduce(
       (acc: Record<string, number>, ticket: Ticket) => {
         const statusKey =
-          ticket.status === "CREATED" && !!ticket?.assigneeId
+          ticket.status === "ASSIGNED" ||
+          (ticket.status === "CREATED" && !!ticket?.assigneeId)
             ? "ASSIGNED"
-            : ticket.status === "CREATED" && !ticket?.assigneeId
+            : ticket.status === "UNASSIGNED" ||
+                (ticket.status === "CREATED" && !ticket?.assigneeId)
               ? "UNASSIGNED"
               : ticket.status;
         acc[statusKey] = (acc[statusKey] || 0) + 1;
@@ -217,28 +229,26 @@ export function StaffLeaderDashboard() {
         acc: Record<string, { name: string; color: string; count: number }>,
         ticket: any
       ) => {
-        const assignee = teamMembers.find(
-          (u: any) => u.id === ticket.assigneeId
-        );
+        const assignee =
+          ticket.status !== "UNASSIGNED" ||
+          (ticket.status === "CREATED" && !ticket?.assigneeId)
+            ? teamMembers.find((u: any) => u.id === ticket.assigneeId)
+            : null;
 
-        const userId = assignee?.id || "unassigned";
-        const user = teamMembers.find((u: any) => u.id === userId);
-
-        const userName = user?.name || "Unassigned";
-
-        let color: string;
-        if (userName === "Unassigned") {
-          color = chartColors.grey;
-        } else {
-          if (!colorMap[userId]) {
-            colorMap[userId] = colorValues[colorIndex % colorValues.length];
-            colorIndex += 1;
-          }
-          color = colorMap[userId];
+        if (!assignee?.id) {
+          return acc;
         }
 
-        if (!acc[userId]) {
-          acc[userId] = { name: userName, color, count: 0 };
+        const userId = assignee.id;
+        const userName = assignee.name ?? assignee.id.slice(0, 8);
+
+        if (!colorMap[userId]) {
+          colorMap[userId] = colorValues[colorIndex % colorValues.length];
+          colorIndex += 1;
+        }
+
+        if (!acc[userId] && userId) {
+          acc[userId] = { name: userName, color: colorMap[userId], count: 0 };
         }
 
         acc[userId].count += 1;
@@ -543,69 +553,6 @@ export function StaffLeaderDashboard() {
               </div>
             </CardContent>
           </Card>
-          {/* TICKETS BY STATUS */}
-          <Card>
-            <CardHeader className="flex flex-row justify-between">
-              <div className="flex flex-col gap-1">
-                <CardTitle>Tickets by Status</CardTitle>
-                <CardDescription>
-                  {stats.totalTickets ?? "0"} total tickets
-                </CardDescription>
-              </div>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="space-y-2 h-[250px] md:h-[220px]">
-              <ChartContainer
-                config={ticketByStatusChartConfig}
-                className="w-[99%] md:w-full mx-auto"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={statusChartData}
-                    margin={{
-                      left: -30,
-                      bottom: 10,
-                    }}
-                  >
-                    <XAxis
-                      dataKey="status"
-                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-                      angle={window.innerWidth < 640 ? 0 : -15}
-                      tickMargin={10}
-                      tickFormatter={(value: StatusKey) =>
-                        STATUS_LABELS[value] || value
-                      }
-                    />
-                    <YAxis
-                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
-                      allowDecimals={false}
-                      tickMargin={5}
-                    />
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                      labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v}
-                    />
-                    <Bar
-                      dataKey="count"
-                      isAnimationActive={true}
-                      radius={[4, 4, 0, 0]}
-                    >
-                      {statusChartData.map((entry, i) => (
-                        <Cell key={`status-cell-${i}`} fill={entry.fill} />
-                      ))}
-                      <LabelList
-                        dataKey="count"
-                        position="top"
-                        formatter={(v: number) => (v ?? 0).toString()}
-                        className="fill-foreground rounded-md"
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
           {/* TICKETS BY USER */}
           <Card>
             <CardHeader className="flex flex-row justify-between">
@@ -620,7 +567,7 @@ export function StaffLeaderDashboard() {
             <CardContent>
               <ChartContainer
                 config={ticketsByUserChartConfig}
-                className="h-[220px] w-[99%] md:w-full mx-auto"
+                className="h-[250px] md:h-[220px] md:w-full mx-auto"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -681,6 +628,69 @@ export function StaffLeaderDashboard() {
             </CardContent>
           </Card>
 
+          {/* TICKETS BY STATUS */}
+          <Card>
+            <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col gap-1">
+                <CardTitle>Tickets by Status</CardTitle>
+                <CardDescription>
+                  {stats.totalTickets ?? "0"} total tickets
+                </CardDescription>
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-2 ">
+              <ChartContainer
+                config={ticketByStatusChartConfig}
+                className="h-[250px] md:h-[220px] md:w-full mx-auto"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={statusChartData}
+                    margin={{
+                      left: -30,
+                      bottom: 10,
+                    }}
+                  >
+                    <XAxis
+                      dataKey="status"
+                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                      angle={window.innerWidth < 640 ? 0 : -15}
+                      tickMargin={10}
+                      tickFormatter={(value: StatusKey) =>
+                        STATUS_LABELS[value] || value
+                      }
+                    />
+                    <YAxis
+                      tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                      allowDecimals={false}
+                      tickMargin={5}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      labelFormatter={(v: StatusKey) => STATUS_LABELS[v] || v}
+                    />
+                    <Bar
+                      dataKey="count"
+                      isAnimationActive={true}
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {statusChartData.map((entry, i) => (
+                        <Cell key={`status-cell-${i}`} fill={entry.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        formatter={(v: number) => (v ?? 0).toString()}
+                        className="fill-foreground rounded-md"
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
           {/* RECENT ACTIVITY */}
           <Card>
             <CardHeader className="flex flex-row flex-wrap justify-between">
@@ -692,12 +702,13 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="space-y-2 max-h-50 overflow-y-auto">
-                {!tickets && !tickets?.length && (
+                {!ticketsLoading && (!tickets || !tickets?.length) && (
                   <p className="text-sm font-medium text-muted-foreground">
                     No tickets found
                   </p>
                 )}
-                {tickets &&
+                {!ticketsLoading &&
+                  tickets &&
                   tickets?.length > 0 &&
                   tickets.slice(0, 10).map((ticket: any) => (
                     <div

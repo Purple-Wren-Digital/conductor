@@ -20,13 +20,23 @@ const {
   },
   mockNotificationRepository: {
     create: vi.fn(),
+    sendNotification: vi.fn(),
   },
 }));
 
 // Mock encore.dev/api
-vi.mock("encore.dev/api", () => ({
-  api: vi.fn((config, handler) => handler),
-}));
+vi.mock("encore.dev/api", () => {
+  const api = Object.assign(
+    vi.fn((config, handler) => handler),
+    {
+      raw: vi.fn((options, handler) => handler),
+      streamOut: vi.fn((options, handler) => handler),
+    }
+  );
+  return {
+    api: api,
+  };
+});
 
 // Mock encore.dev/cron
 vi.mock("encore.dev/cron", () => ({
@@ -45,10 +55,21 @@ vi.mock("../shared/repositories", () => ({
   notificationRepository: mockNotificationRepository,
 }));
 
+// Mock email channel so we don't actually send emails
+vi.mock("../notifications/channels/email/email", () => ({
+  sendEmailNotification: vi.fn().mockResolvedValue({
+    data: { id: "mock-email-id" },
+    error: null,
+  }),
+}));
+
 // Import after mocks
 import { checkAutoClose } from "./auto-close.cron";
+import * as emailModule from "../notifications/channels/email/email";
 
 describe("Auto-Close Cron Job Tests", () => {
+  const mockedSendEmail = vi.mocked(emailModule.sendEmailNotification);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset Date to a fixed point for consistent testing
@@ -77,6 +98,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-2",
           category_id: "cat-1",
@@ -101,7 +123,6 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
 
       const result = await checkAutoClose();
 
@@ -164,6 +185,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -198,6 +220,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2024-12-21T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: null,
@@ -221,6 +244,7 @@ describe("Auto-Close Cron Job Tests", () => {
           id: "ticket-1",
           title: "Test Ticket",
           creator_id: "user-1",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           assignee_id: null,
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -239,8 +263,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // Default is 2 business days, and 5 have passed
@@ -252,6 +280,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -275,8 +304,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       expect(mockNotificationRepository.create).toHaveBeenCalledWith({
@@ -297,6 +330,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-2",
           category_id: "cat-1",
@@ -320,12 +354,16 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Should be called twice - once for creator, once for assignee
-      expect(mockNotificationRepository.create).toHaveBeenCalledTimes(2);
+      expect(mockedSendEmail).toHaveBeenCalledTimes(2);
     });
 
     it("should not send duplicate notification when creator is assignee", async () => {
@@ -333,6 +371,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: "user-1", // Same as creator
           category_id: "cat-1",
@@ -356,12 +395,16 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Should only be called once since creator === assignee
-      expect(mockNotificationRepository.create).toHaveBeenCalledTimes(1);
+      expect(mockedSendEmail).toHaveBeenCalledTimes(1);
     });
 
     it("should cache market center settings for multiple tickets", async () => {
@@ -369,6 +412,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Ticket 1",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -378,6 +422,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-2",
           title: "Ticket 2",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-2",
           assignee_id: null,
           category_id: "cat-1",
@@ -401,8 +446,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       // Market center should only be fetched once due to caching
@@ -414,6 +463,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Failing Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -423,6 +473,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-2",
           title: "Successful Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-2",
           assignee_id: null,
           category_id: "cat-1",
@@ -449,8 +500,12 @@ describe("Auto-Close Cron Job Tests", () => {
         .mockResolvedValueOnce(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsChecked).toBe(2);
@@ -463,6 +518,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test Ticket",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -492,8 +548,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.findById.mockResolvedValue(mockTicket);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -505,6 +565,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: null,
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -528,8 +589,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       await checkAutoClose();
 
       expect(mockNotificationRepository.create).toHaveBeenCalledWith(
@@ -582,8 +647,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -644,8 +713,9 @@ describe("Auto-Close Cron Job Tests", () => {
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
         market_center_id: "mc-active-123",
-        status_changed_at: new Date("2025-01-13T09:00:00Z"), // Monday 9am
+        status_changed_at: new Date("2025-01-13T17:00:00Z"), // Monday 5pm
       };
+      mockDb.rawQueryAll.mockResolvedValue([mockMaintenanceTicket]);
 
       const mockMarketCenter = {
         id: "mc-active-123",
@@ -658,12 +728,15 @@ describe("Auto-Close Cron Job Tests", () => {
         },
       };
 
-      mockDb.rawQueryAll.mockResolvedValue([mockMaintenanceTicket]);
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -679,6 +752,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-friday",
         title: "Maintenance Request - Weekend Test",
+        created_at: new Date("2025-01-13T08:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -716,6 +790,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-friday",
         title: "Maintenance Request - Weekend Test",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -738,8 +813,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // Should close - 2 business days have passed (Friday + Monday)
@@ -771,6 +850,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockTicketNoHistory = {
         id: "maintenance-ticket-no-history",
         title: "Maintenance Request - No History",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -807,6 +887,7 @@ describe("Auto-Close Cron Job Tests", () => {
       const mockMaintenanceTicket = {
         id: "maintenance-ticket-123",
         title: "Maintenance Request - Settings Check",
+        created_at: new Date("2025-01-14T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
@@ -830,8 +911,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
@@ -846,11 +931,12 @@ describe("Auto-Close Cron Job Tests", () => {
 
     it("should debug: log which condition is failing for a non-closing ticket", async () => {
       // This test helps diagnose why a specific ticket might not be closing
-      const consoleSpy = vi.spyOn(console, "log");
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
       const mockMaintenanceTicket = {
         id: "debug-ticket",
         title: "Maintenance Request - Debug",
+        created_at: new Date("2025-01-01T12:00:00Z"),
         creator_id: "agent-user-1",
         assignee_id: null,
         category_id: "maintenance-cat-1",
@@ -873,8 +959,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       // This should close since 2 business days have passed and threshold is 2
@@ -898,6 +988,7 @@ describe("Auto-Close Cron Job Tests", () => {
         {
           id: "ticket-1",
           title: "Test",
+          created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
           assignee_id: null,
           category_id: "cat-1",
@@ -920,8 +1011,12 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
-      mockNotificationRepository.create.mockResolvedValue({});
-
+      mockedSendEmail.mockResolvedValue({
+        data: {
+          id: "mock-email-id",
+        },
+        error: null,
+      });
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);

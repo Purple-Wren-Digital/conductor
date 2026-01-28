@@ -11,10 +11,31 @@ import { complianceByUsersDefaultValues } from "@/components/reports/users-ticke
 type UserSLAStats = {
   id: string;
   name: string;
-  atRisk: number;
-  overdue: number;
   ticketTotal: number;
+  response: {
+    atRisk: number;
+    overdue: number;
+  };
+  resolve: {
+    atRisk: number;
+    overdue: number;
+  };
 };
+
+export interface SLAOverviewData {
+  response: {
+    compliant: number;
+    onTrack: number;
+    atRisk: number;
+    overdue: number;
+  };
+  resolve: {
+    compliant: number;
+    onTrack: number;
+    atRisk: number;
+    overdue: number;
+  };
+}
 
 // SLA Compliance - Resolved Ticket by Compliance Status
 export function useFetchSlaComplianceReport({
@@ -30,12 +51,7 @@ export function useFetchSlaComplianceReport({
 
   return useQuery({
     queryKey: ticketsReportQueryKey,
-    queryFn: async (): Promise<{
-      compliant: number;
-      onTrack: number;
-      atRisk: number;
-      overdue: number;
-    }> => {
+    queryFn: async (): Promise<SLAOverviewData> => {
       try {
         const token = await getToken();
         if (!token) {
@@ -54,7 +70,7 @@ export function useFetchSlaComplianceReport({
         );
         if (!res.ok) throw new Error("Failed to fetch SLA compliance report");
         const data = await res.json();
-        return data;
+        return data as SLAOverviewData;
       } catch {
         return reportDefaultValues;
       }

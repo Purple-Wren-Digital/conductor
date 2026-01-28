@@ -102,8 +102,12 @@ export default function TicketListStaff() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { permissions } = useUserRole();
+  const { role, permissions } = useUserRole();
   const { currentUser } = useStore();
+
+  const defaultAssigneeId = useMemo(() => {
+    return role === "STAFF" && currentUser?.id ? currentUser.id : "all";
+  }, [role, currentUser?.id]);
 
   const [hydrated, setHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -129,9 +133,8 @@ export default function TicketListStaff() {
 
   const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
 
-  const [selectedAssignee, setSelectedAssignee] = useState<string>(
-    currentUser?.id ? currentUser.id : "all"
-  );
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<string>(defaultAssigneeId);
   const [selectedCreator, setSelectedCreator] = useState<string>("all");
 
   const [dateFrom, setDateFrom] = useState<Date>();
@@ -166,7 +169,11 @@ export default function TicketListStaff() {
         );
         setSelectedUrgencies(savedFilters.selectedUrgencies || []);
         setSelectedCategory(savedFilters.selectedCategory || "all");
-        setSelectedAssignee(savedFilters.selectedAssignee || "all");
+        setSelectedAssignee(
+          savedFilters?.selectedAssignee
+            ? savedFilters.selectedAssignee
+            : defaultAssigneeId
+        );
         setSelectedCreator(savedFilters.selectedCreator || "all");
         setDateFrom(
           savedFilters.dateFrom ? new Date(savedFilters.dateFrom) : undefined
@@ -186,7 +193,7 @@ export default function TicketListStaff() {
       }
     }
     setHydrated(true);
-  }, []);
+  }, [defaultAssigneeId]);
 
   // Handle filter query param from dashboard navigation
   useEffect(() => {
@@ -699,8 +706,8 @@ export default function TicketListStaff() {
     setSelectedStatuses(defaultActiveStatuses);
     setSelectedUrgencies([]);
     setSelectedCategory("all");
+    setSelectedAssignee(defaultAssigneeId);
     if (marketCenterId) {
-      setSelectedAssignee("all");
       setSelectedCreator("all");
     }
     setDateFrom(undefined);
@@ -711,7 +718,7 @@ export default function TicketListStaff() {
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
-  }, [marketCenterId]);
+  }, [defaultAssigneeId, marketCenterId]);
 
   const saveFilters = useCallback(() => {
     localStorage.setItem(
@@ -763,7 +770,7 @@ export default function TicketListStaff() {
       selectedStatuses.length !== defaultActiveStatuses.length ||
       selectedUrgencies.length > 0 ||
       selectedCategory !== "all" ||
-      selectedAssignee !== "all" ||
+      selectedAssignee !== defaultAssigneeId ||
       selectedCreator !== "all" ||
       !!dateFrom ||
       !!dateTo ||
@@ -776,6 +783,7 @@ export default function TicketListStaff() {
       selectedUrgencies,
       selectedCategory,
       selectedAssignee,
+      defaultAssigneeId,
       selectedCreator,
       dateFrom,
       dateTo,

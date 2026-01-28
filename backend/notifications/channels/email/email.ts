@@ -1,12 +1,11 @@
 import * as React from "react";
 import { Resend } from "resend";
 import { secret } from "encore.dev/config";
-// import { formatEmailNotification } from "./utils";
 import {
   renderCustomizedEmailTemplate,
   renderDefaultEmailTemplate,
 } from "./customization-renderer";
-import type { CreateEmailResponse } from "resend";
+import type { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import type { Notification } from "../../types";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");

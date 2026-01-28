@@ -1,41 +1,67 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog/base-dialog";
 import { ReportProps } from "@/components/reports/reports-dashboard";
-import { useFetchSlaComplianceReport } from "@/hooks/use-reports";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  SLAOverviewData,
+  useFetchSlaComplianceReport,
+} from "@/hooks/use-reports";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useSlaPolicies } from "@/hooks/use-sla";
+import { formatSlaDuration } from "@/lib/api/sla";
+import { InfoIcon, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   LabelList,
   ResponsiveContainer,
   XAxis,
   YAxis,
 } from "recharts";
-import { InfoIcon } from "lucide-react";
-import { ToolTip } from "../ui/tooltip/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
-// TODO: Update the at-risk calculation based on market center's SLA policy
 
-export const reportDefaultValues = {
-  compliant: 0,
-  onTrack: 0,
-  atRisk: 0,
-  overdue: 0,
+export const reportDefaultValues: SLAOverviewData = {
+  response: {
+    compliant: 0,
+    onTrack: 0,
+    atRisk: 0,
+    overdue: 0,
+  },
+  resolve: {
+    compliant: 0,
+    onTrack: 0,
+    atRisk: 0,
+    overdue: 0,
+  },
 };
 
 export default function SlaComplianceReport({
   isSelected,
   filters,
 }: ReportProps) {
+  const [slaInfoOpen, setSlaInfoOpen] = useState(false);
   const isMobile = useIsMobile();
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -68,20 +94,62 @@ export default function SlaComplianceReport({
   });
 
   const totalTickets = useMemo(() => {
-    return (
-      (reportData?.compliant ?? 0) +
-      (reportData?.onTrack ?? 0) +
-      (reportData?.atRisk ?? 0) +
-      (reportData?.overdue ?? 0)
-    );
+    const totalResponse =
+      (reportData?.response?.compliant ?? 0) +
+      (reportData?.response?.onTrack ?? 0) +
+      (reportData?.response?.atRisk ?? 0) +
+      (reportData?.response?.overdue ?? 0);
+    const totalResolve =
+      (reportData?.resolve?.compliant ?? 0) +
+      (reportData?.resolve?.onTrack ?? 0) +
+      (reportData?.resolve?.atRisk ?? 0) +
+      (reportData?.resolve?.overdue ?? 0);
+    return totalResponse + totalResolve;
   }, [reportData]);
 
   const ticketsBySlaStatus = useMemo(() => {
+    if (!reportData) return [];
     return [
-      { label: "Compliant", value: reportData?.compliant ?? 0 },
-      { label: "On Track", value: reportData?.onTrack ?? 0 },
-      { label: "At Risk", value: reportData?.atRisk ?? 0 },
-      { label: "Overdue", value: reportData?.overdue ?? 0 },
+      {
+        label: "Compliant",
+        value:
+          (reportData?.response?.compliant ?? 0) +
+          (reportData?.resolve?.compliant ?? 0),
+        responseLabel: "Response",
+        responseValue: reportData?.response?.compliant ?? 0,
+        resolveLabel: "Resolve",
+        resolveValue: reportData?.resolve?.compliant ?? 0,
+      },
+      {
+        label: "On Track",
+        value:
+          (reportData?.response?.onTrack ?? 0) +
+          (reportData?.resolve?.onTrack ?? 0),
+        responseLabel: "Response",
+        responseValue: reportData?.response?.onTrack ?? 0,
+        resolveLabel: "Resolve",
+        resolveValue: reportData?.resolve?.onTrack ?? 0,
+      },
+      {
+        label: "At Risk",
+        value:
+          (reportData?.response?.atRisk ?? 0) +
+          (reportData?.resolve?.atRisk ?? 0),
+        responseLabel: "Response",
+        responseValue: reportData?.response?.atRisk ?? 0,
+        resolveLabel: "Resolve",
+        resolveValue: reportData?.resolve?.atRisk ?? 0,
+      },
+      {
+        label: "Breached",
+        value:
+          (reportData?.response?.overdue ?? 0) +
+          (reportData?.resolve?.overdue ?? 0),
+        responseLabel: "Response",
+        responseValue: reportData?.response?.overdue ?? 0,
+        resolveLabel: "Resolve",
+        resolveValue: reportData?.resolve?.overdue ?? 0,
+      },
     ];
   }, [reportData]);
 
@@ -90,91 +158,206 @@ export default function SlaComplianceReport({
     return Object.fromEntries(
       ticketsBySlaStatus.map((entry) => [
         entry.label,
-        { label: entry.label, value: entry.value, color: "#6D1C24" },
+        {
+          label: entry.label,
+          value: entry.value,
+          responseValue: entry.responseValue,
+          resolveValue: entry.resolveValue,
+        },
       ])
     ) as ChartConfig;
   }, [ticketsBySlaStatus]);
 
+  const { data: policiesData, isLoading: policiesLoading } = useSlaPolicies();
+
+  const policies = useMemo(() => policiesData?.policies || [], [policiesData]);
+
   return (
-    <div
-      className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
-    >
-      <div className="flex flex-wrap justify-between items-center px-4">
-        <div>
-          <h2 className="text-xl font-semibold text-[#6D1C24]">
-            SLA Compliance: Overview
-          </h2>
-          <p>Determined by a ticket&apos;s status and due date</p>
+    <>
+      <div
+        className={`grid gap-4 auto-cols-[minmax(0,2fr)] place-content-evenly ${!isSelected ? "hidden" : ""}`}
+      >
+        <div className="flex flex-wrap justify-between items-center px-4 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-[#6D1C24]">
+              SLA Compliance: Overview
+            </h2>
+            <p>
+              Determined by the pre-set SLA standards for response and
+              resolution times
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="px-2 py-1">
+              Total Tickets: {totalTickets}
+            </Badge>
+
+            <Button
+              onClick={() => setSlaInfoOpen(true)}
+              variant="ghost"
+              size={"icon"}
+              className="size-4.5"
+            >
+              <InfoIcon className="size-4.5" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="px-2 py-1">
-            Total Tickets: {totalTickets}
-          </Badge>
-          <ToolTip
-            trigger={<InfoIcon className="size-4.5" />}
-            content={`If no due date is provided, expected resolution time is 2 weeks from the created date. At-risk tickets are tickets due within 6 hours that are not yet resolved.`}
-          />
+        {/* REPORT CONTENT */}
+        <ChartContainer config={slaComplianceChartConfig}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={ticketsBySlaStatus}
+              margin={{
+                top: isMobile ? 0 : 15,
+                right: 30,
+                left: isMobile ? 0 : 20,
+                bottom: isMobile ? 10 : 20,
+              }}
+              barSize={30}
+              aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
+            >
+              <CartesianGrid strokeDasharray="7 7" />
+              <XAxis
+                dataKey="label"
+                aria-label="X-Axis Label: Compliance Status"
+                label={{
+                  value: "Compliance Status",
+                  angle: 0,
+                  position: "insideBottom",
+                  dy: 10,
+                }}
+              />
+              <YAxis
+                dataKey="value"
+                aria-label="Y-Axis Label: Amount of Tickets"
+                label={{
+                  value: "Amount of Tickets",
+                  angle: -90,
+                  position: isMobile ? "" : "insideLeft",
+                  dx: isMobile ? -5 : 5,
+                }}
+              />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                labelFormatter={(value) => value}
+              />
+              <Bar
+                dataKey="responseValue"
+                name="Response SLA"
+                label="Response SLA"
+                fill="#F59E0B"
+                stroke="#B45309"
+                strokeWidth={0.75}
+                isAnimationActive={true}
+                radius={[4, 4, 0, 0]}
+              >
+                <LabelList
+                  dataKey="responseValue"
+                  aria-label="Amount of tickets that are or are not compliant with response SLA"
+                  position="top"
+                  formatter={(value: number) => (value ?? 0).toString()}
+                  className="fill-foreground rounded-md"
+                />
+              </Bar>
+              <Bar
+                dataKey="resolveValue"
+                name="Resolve SLA"
+                label="Resolve SLA"
+                fill="#DC2626"
+                stroke="#7F1D1D"
+                strokeWidth={0.75}
+                radius={[4, 4, 0, 0]}
+              >
+                <LabelList
+                  dataKey="resolveValue"
+                  aria-label="Amount of tickets that are or are not compliant with resolve SLA"
+                  position="top"
+                  formatter={(value: number) => (value ?? 0).toString()}
+                  className="fill-foreground"
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+
+        {/* POLICIES */}
+        <div className="space-y-3 text-sm text-muted-foreground align-center w-[80%] mx-auto mt-4">
+          <p className="text-center text-primary text-md font-semibold">
+            SLA Policies
+          </p>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b-4">
+                <TableHead className="text-primary">Urgency</TableHead>
+                <TableHead className="text-primary">Active</TableHead>
+                <TableHead className="text-primary">Respond</TableHead>
+                <TableHead className="text-primary">Resolve</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="space-y-4">
+              {policiesLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    <Loader2 className="animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!policiesLoading &&
+                policies.length > 0 &&
+                policies.map((policy) => (
+                  <TableRow key={policy.id}>
+                    <TableCell>
+                      {" "}
+                      <span className="capitalize">
+                        {policy.urgency.toLowerCase()}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <span>{policy.isActive ? "Active" : "Inactive"}</span>
+                    </TableCell>
+
+                    <TableCell>
+                      <span>
+                        {formatSlaDuration(policy.responseTimeMinutes)}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <span>
+                        {formatSlaDuration(policy.resolutionTimeMinutes)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
-      {/* REPORT CONTENT */}
-      <ChartContainer config={slaComplianceChartConfig}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={ticketsBySlaStatus}
-            margin={{
-              top: isMobile ? 0 : 15,
-              right: 30,
-              left: isMobile ? 0 : 20,
-              bottom: isMobile ? 10 : 20,
-            }}
-            barSize={isMobile ? 50 : 75}
-            aria-label="Bar chart showing the amount of tickets by their SLA compliance status"
-          >
-            <CartesianGrid strokeDasharray="7 7" />
-            <XAxis
-              dataKey="label"
-              aria-label="X-Axis Label: Compliance Status"
-              label={{
-                value: "Compliance Status",
-                angle: 0,
-                position: "insideBottom",
-                dy: 10,
-              }}
-            />
-            <YAxis
-              dataKey="value"
-              aria-label="Y-Axis Label: Amount of Tickets"
-              label={{
-                value: "Amount of Tickets",
-                angle: -90,
-                position: isMobile ? "" : "insideLeft",
-                dx: isMobile ? -5 : 5,
-              }}
-            />
-            <ChartTooltip
-              content={<ChartTooltipContent />}
-              labelFormatter={(value) => value}
-            />
-            <Bar dataKey="value" isAnimationActive={true} radius={[4, 4, 0, 0]}>
-              {ticketsBySlaStatus.map((entry, i) => (
-                <Cell
-                  key={`status-cell-${i}`}
-                  name={entry.label}
-                  fill="#6D1C24"
-                  stroke="#4B1D22"
-                  strokeWidth={0.75}
-                />
-              ))}
-              <LabelList
-                dataKey="value"
-                position="top"
-                formatter={(value: number) => (value ?? 0).toString()}
-                className="fill-foreground rounded-md"
-              />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartContainer>
-    </div>
+
+      <Dialog open={slaInfoOpen} onOpenChange={setSlaInfoOpen}>
+        <DialogContent>
+          <DialogHeader className="absolute left-5.75 top-4">
+            <DialogTitle
+              className="text-muted-foreground"
+              aria-label="Tooltip information modal"
+            >
+              <InfoIcon className="size-4" />
+            </DialogTitle>
+          </DialogHeader>
+          <p className="flex flex-col  gap-2 mt-6 space-y-4 text-sm text-muted-foreground">
+            <span>
+              <strong>Response SLA:</strong> The clock starts when a ticket is
+              created and stops when a staff member first responds (either by
+              being assigned or leaving a comment).
+            </span>
+            <span>
+              <strong>Resolution SLA:</strong> The clock starts when a ticket is
+              created and stops when the ticket status is changed to Resolved.
+            </span>
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

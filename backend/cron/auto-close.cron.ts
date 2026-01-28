@@ -4,9 +4,9 @@ import { db } from "../ticket/db";
 import {
   ticketRepository,
   marketCenterRepository,
-  notificationRepository,
 } from "../shared/repositories";
 import type { MarketCenterSettings } from "../settings/types";
+import { sendNotification } from "../notifications/create";
 
 /**
  * Auto-Close Cron Job
@@ -26,6 +26,7 @@ interface AutoCloseResult {
 interface AwaitingTicketRow {
   id: string;
   title: string | null;
+  created_at: Date;
   creator_id: string;
   assignee_id: string | null;
   category_id: string | null;
@@ -38,9 +39,9 @@ interface AwaitingTicketRow {
  */
 function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
   let count = 0;
-  const current = new Date(startDate);
 
-  while (current < endDate) {
+  while (startDate.setHours(0, 0, 0, 0) < endDate.setHours(0, 0, 0, 0)) {
+    const current = new Date(startDate);
     const dayOfWeek = current.getDay();
     // Skip Saturday (6) and Sunday (0)
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -57,12 +58,14 @@ function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
  * and associated market center
  */
 async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
-  // Get tickets in AWAITING_RESPONSE status with the timestamp of when they entered this status
+  // Get tickets in AWAITING_RESPONSE status
+  // with the timestamp of when they entered this status from ticket_history
   const rows = await db.rawQueryAll<AwaitingTicketRow>(
     `
     SELECT
       t.id,
       t.title,
+      t.created_at,
       t.creator_id,
       t.assignee_id,
       t.category_id,
@@ -176,32 +179,68 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
           changedById: SYSTEM_USER_ID,
         });
 
+        const notificationTitle = "Ticket Automatically Closed";
+        const notificationBody = `Ticket automatically closed after ${autoCloseConfig.days} business days without a response.`;
+
         // Send notification to ticket creator
         if (ticket.creator_id) {
-          await notificationRepository.create({
+          await sendNotification({
             userId: ticket.creator_id,
-            channel: "IN_APP",
-            category: "ACTIVITY",
+            templateName: "Ticket Updated",
             type: "Ticket Updated",
-            title: `Ticket "${ticket.title || "Untitled"}" has been auto-closed`,
-            body: `This ticket was automatically closed after ${autoCloseConfig.days} business days without a response.`,
+            category: "ACTIVITY",
+            priority: "HIGH",
+            email: { title: notificationTitle, body: notificationBody },
+            inApp: { title: notificationTitle, body: notificationBody },
             data: {
               ticketId: ticket.id,
+              updatedTicket: {
+                ticketNumber: ticket.id,
+                ticketTitle: ticket.title ?? "",
+                createdOn: ticket.created_at,
+                updatedOn: now,
+                editorName: "System",
+                editorId: SYSTEM_USER_ID,
+                changedDetails: [
+                  {
+                    label: "Auto-Close",
+                    originalValue: "AWAITING_RESPONSE",
+                    newValue: "RESOLVED",
+                  },
+                ],
+                userName: "",
+              },
             },
           });
         }
-
         // Notify assignee if different from creator
         if (ticket.assignee_id && ticket.assignee_id !== ticket.creator_id) {
-          await notificationRepository.create({
+          await sendNotification({
             userId: ticket.assignee_id,
-            channel: "IN_APP",
-            category: "ACTIVITY",
+            templateName: "Ticket Updated",
             type: "Ticket Updated",
-            title: `Ticket "${ticket.title || "Untitled"}" has been auto-closed`,
-            body: `This ticket was automatically closed after ${autoCloseConfig.days} business days without a response.`,
+            category: "ACTIVITY",
+            priority: "HIGH",
+            email: { title: notificationTitle, body: notificationBody },
+            inApp: { title: notificationTitle, body: notificationBody },
             data: {
               ticketId: ticket.id,
+              updatedTicket: {
+                ticketNumber: ticket.id,
+                ticketTitle: ticket.title ?? "",
+                createdOn: ticket.created_at,
+                updatedOn: now,
+                editorName: "System",
+                editorId: SYSTEM_USER_ID,
+                changedDetails: [
+                  {
+                    label: "Auto-Close",
+                    originalValue: "AWAITING_RESPONSE",
+                    newValue: "RESOLVED",
+                  },
+                ],
+                userName: "",
+              },
             },
           });
         }

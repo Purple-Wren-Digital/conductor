@@ -488,7 +488,7 @@ export const resendInvitation = api<
       );
     }
 
-    if (invitation.status !== "PENDING" && invitation.status !== "EXPIRED") {
+    if (invitation.status === "ACCEPTED" || invitation.status === "CANCELLED") {
       throw APIError.failedPrecondition(
         `Cannot resend invitation with status: ${invitation.status}`
       );

@@ -76,7 +76,7 @@ export function useFetchStaffTickets({
         }
 
         const response = await fetch(
-          `${API_BASE}/tickets/search?${queryParams ? `${queryParams.toString()}` : ""}`,
+          `${API_BASE}/tickets/search${queryParams ? `?${queryParams.toString()}` : ""}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
