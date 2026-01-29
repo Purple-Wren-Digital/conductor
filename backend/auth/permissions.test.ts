@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockTicketRepository, mockSubscriptionRepository } = vi.hoisted(() => ({
+const { mockTicketRepository, mockSubscriptionRepository, mockMarketCenterRepository } = vi.hoisted(() => ({
   mockTicketRepository: {
     findById: vi.fn(),
     findByIdWithRelations: vi.fn(),
@@ -12,11 +12,15 @@ const { mockTicketRepository, mockSubscriptionRepository } = vi.hoisted(() => ({
     findByMarketCenterId: vi.fn(),
     getSubscriptionById: vi.fn(),
   },
+  mockMarketCenterRepository: {
+    findAll: vi.fn(),
+  },
 }));
 
 // Mock ticket/db
 vi.mock("../ticket/db", () => ({
   ticketRepository: mockTicketRepository,
+  marketCenterRepository: mockMarketCenterRepository,
 }));
 
 // Mock shared/repositories
@@ -84,6 +88,7 @@ import {
   getUserScopeFilter,
   marketCenterScopeFilter,
   getAccessibleMarketCenterIds,
+  isSuperuserProtected,
 } from "./permissions";
 import type { UserContext } from "./user-context";
 import { fail } from "assert";
@@ -97,6 +102,7 @@ function createUserContext(overrides: Partial<UserContext> = {}): UserContext {
     role: "AGENT",
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
     ...overrides,
   };
 }
@@ -1088,6 +1094,144 @@ describe("Permissions", () => {
         const result = await getAccessibleMarketCenterIds(userContext);
 
         expect(result).toEqual(["mc-123"]);
+      });
+
+      it("should return all market centers for superuser", async () => {
+        mockMarketCenterRepository.findAll.mockResolvedValue([
+          { id: "mc-123" },
+          { id: "mc-456" },
+          { id: "mc-789" },
+        ]);
+
+        const userContext = createUserContext({
+          role: "AGENT",
+          isSuperuser: true,
+        });
+
+        const result = await getAccessibleMarketCenterIds(userContext);
+
+        expect(result).toEqual(["mc-123", "mc-456", "mc-789"]);
+        expect(mockMarketCenterRepository.findAll).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("Superuser", () => {
+    it("requireRole should not throw for superuser regardless of role", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      await expect(requireRole(userContext, ["ADMIN"])).resolves.not.toThrow();
+    });
+
+    it("canAccessTicket should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(await canAccessTicket(userContext, "any-ticket")).toBe(true);
+    });
+
+    it("canModifyTicket should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(await canModifyTicket(userContext, "any-ticket")).toBe(true);
+    });
+
+    it("canReassignTicket should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(
+        await canReassignTicket({ userContext, newAssigneeId: "user-456" })
+      ).toBe(true);
+    });
+
+    it("canManageTeam should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(await canManageTeam(userContext)).toBe(true);
+    });
+
+    it("canChangeUserRoles should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(await canChangeUserRoles(userContext)).toBe(true);
+    });
+
+    it("canManageMarketCenters should return true for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      expect(await canManageMarketCenters(userContext)).toBe(true);
+    });
+
+    it("marketCenterScopeFilter should grant access to any market center for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      const result = await marketCenterScopeFilter(userContext, "mc-999");
+      expect(result).toEqual({ id: "mc-999" });
+    });
+
+    it("getTicketScopeFilter should return empty filter for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      const result = await getTicketScopeFilter(userContext);
+      expect(result).toEqual({});
+    });
+
+    it("getUserScopeFilter should return empty filter for superuser", async () => {
+      const userContext = createUserContext({
+        role: "AGENT",
+        isSuperuser: true,
+      });
+
+      const result = await getUserScopeFilter(userContext);
+      expect(result).toEqual({});
+    });
+
+    describe("isSuperuserProtected", () => {
+      it("should return true when target is superuser and acting user is not", () => {
+        const targetUser = { isSuperuser: true };
+        const actingUser = createUserContext({ isSuperuser: false, role: "ADMIN" });
+
+        expect(isSuperuserProtected(targetUser, actingUser)).toBe(true);
+      });
+
+      it("should return false when both are superusers", () => {
+        const targetUser = { isSuperuser: true };
+        const actingUser = createUserContext({ isSuperuser: true });
+
+        expect(isSuperuserProtected(targetUser, actingUser)).toBe(false);
+      });
+
+      it("should return false when target is not a superuser", () => {
+        const targetUser = { isSuperuser: false };
+        const actingUser = createUserContext({ isSuperuser: false, role: "ADMIN" });
+
+        expect(isSuperuserProtected(targetUser, actingUser)).toBe(false);
       });
     });
   });

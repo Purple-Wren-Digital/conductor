@@ -33,7 +33,38 @@ export interface UserPermissions {
   canTakeTicketSurvey: boolean;
 }
 
-export function getUserPermissions(role: UserRole): UserPermissions {
+export function getUserPermissions(role: UserRole, isSuperuser?: boolean): UserPermissions {
+  if (isSuperuser) {
+    return {
+      canCreateTicket: true,
+      canEditAnyTicket: true,
+      canDeleteTicket: true,
+      canReassignTicket: true,
+      canUnassignTicket: true,
+      canChangeTicketCreator: true,
+      canBulkUpdate: true,
+      canViewAllTickets: true,
+      canViewInternalComments: true,
+      canCreateInternalComments: true,
+      canCreateUsers: true,
+      canManageAllUsers: true,
+      canCreateTeam: true,
+      canManageTeam: true,
+      canChangeUserRoles: true,
+      canManageAllMarketCenters: true,
+      canDeactivateMarketCenters: true,
+      canDeactivateUsers: true,
+      canAccessSettings: true,
+      canAccessReports: true,
+      canManageSubscription: true,
+      canManageMarketCenterCategories: true,
+      canManageNotificationTemplateSettings: true,
+      canManageTicketTemplateSettings: true,
+      canManageMCNotificationSettings: true,
+      canTakeTicketSurvey: true,
+    };
+  }
+
   switch (role) {
     case "ADMIN":
       return {
@@ -220,14 +251,16 @@ export function useUserRole() {
     staleTime: 5 * 60 * 1000,
   });
   const role = PrismaUser?.role as UserRole | undefined;
-  const permissions = role ? getUserPermissions(role) : null;
+  const isSuperuser = PrismaUser?.isSuperuser ?? false;
+  const permissions = role ? getUserPermissions(role, isSuperuser) : null;
 
   return {
     role,
     permissions,
+    isSuperuser,
     isLoading: !isLoaded || userLoading,
     error,
-    isAdmin: role === "ADMIN",
+    isAdmin: role === "ADMIN" || isSuperuser,
     isStaff: role === "STAFF" || role === "STAFF_LEADER",
     isAgent: role === "AGENT",
   };

@@ -3,7 +3,7 @@ import { userRepository, marketCenterRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import type { MarketCenter } from "../marketCenters/types";
 import { getUserContext } from "../auth/user-context";
-import { canManageTeam } from "../auth/permissions";
+import { canManageTeam, isSuperuserProtected } from "../auth/permissions";
 import {
   updateClerkUserEmail,
   updateClerkUserName,
@@ -57,6 +57,11 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       throw APIError.permissionDenied(
         "Insufficient permissions to update other users"
       );
+    }
+
+    // Protect superusers from being modified by non-superusers
+    if (!isEditingSelf && isSuperuserProtected(existingUser, userContext)) {
+      throw APIError.permissionDenied("Cannot modify a superuser account");
     }
 
     // Build update data object + user history

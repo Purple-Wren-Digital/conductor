@@ -231,6 +231,7 @@ export interface PrismaUser {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+  isSuperuser?: boolean;
   comments: Comment[];
 
   defaultForCategories?: TicketCategory[];

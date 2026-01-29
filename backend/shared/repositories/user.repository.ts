@@ -27,6 +27,7 @@ interface UserRow {
   updated_at: Date;
   deleted_at: Date | null;
   is_active: boolean;
+  is_superuser: boolean;
   market_center_id: string | null;
   clerk_id: string;
 }
@@ -60,6 +61,7 @@ function rowToUser(row: UserRow): User {
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
     isActive: row.is_active,
+    isSuperuser: row.is_superuser,
     marketCenterId: row.market_center_id,
     clerkId: row.clerk_id,
   };
@@ -288,6 +290,7 @@ export const userRepository = {
       clerkId: string;
       marketCenterId: string | null;
       isActive: boolean;
+      isSuperuser: boolean;
     }>
   ): Promise<User | null> {
     // Build dynamic update query
@@ -318,6 +321,10 @@ export const userRepository = {
     if (data.isActive !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
       values.push(data.isActive);
+    }
+    if (data.isSuperuser !== undefined) {
+      updates.push(`is_superuser = $${paramIndex++}`);
+      values.push(data.isSuperuser);
     }
 
     values.push(id);

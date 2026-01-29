@@ -2,7 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { userRepository, ticketRepository, settingsAuditRepository } from "./db";
 import { UpdateMemberRequest } from "./types";
 import { getUserContext } from "../auth/user-context";
-import { canChangeUserRoles } from "../auth/permissions";
+import { canChangeUserRoles, isSuperuserProtected } from "../auth/permissions";
 
 export const updateMemberRole = api(
   { method: "PUT", path: "/settings/team/members/:id/role", auth: true },
@@ -29,9 +29,17 @@ export const updateMemberRole = api(
     // Get the user to update - check they are in the same market center
     const userToUpdate = await userRepository.findById(id);
 
-    if (!userToUpdate ||
-        userToUpdate.marketCenterId !== user.marketCenterId ||
-        !userToUpdate.isActive) {
+    if (!userToUpdate || !userToUpdate.isActive) {
+      throw APIError.notFound("User not found");
+    }
+
+    // Protect superusers from being modified by non-superusers
+    if (isSuperuserProtected(userToUpdate, userContext)) {
+      throw APIError.permissionDenied("Cannot modify a superuser account");
+    }
+
+    // Non-superusers can only modify users in their own market center
+    if (!userContext.isSuperuser && userToUpdate.marketCenterId !== user.marketCenterId) {
       throw APIError.notFound("User not found or not in your market center");
     }
 

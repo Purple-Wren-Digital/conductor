@@ -31,6 +31,7 @@ export interface UserContext {
   role: UserRole;
   marketCenterId: string | null;
   clerkId: string;
+  isSuperuser: boolean;
 }
 
 export async function getUserContext(): Promise<UserContext> {
@@ -149,5 +150,6 @@ export async function getUserContext(): Promise<UserContext> {
     role: user.role as UserRole,
     marketCenterId: user.marketCenterId,
     clerkId: authData.userID,
+    isSuperuser: user.isSuperuser ?? false,
   };
 }

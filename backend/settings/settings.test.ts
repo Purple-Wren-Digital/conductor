@@ -80,6 +80,7 @@ vi.mock("../auth/permissions", () => ({
   canChangeUserRoles: vi.fn(() => Promise.resolve(true)),
   canManageTeam: vi.fn(() => Promise.resolve(true)),
   getUserScopeFilter: vi.fn(() => ({})),
+  isSuperuserProtected: vi.fn(() => false),
 }));
 
 // Import after mocks

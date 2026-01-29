@@ -110,6 +110,65 @@ describe("getUserPermissions", () => {
     });
   });
 
+  describe("Superuser", () => {
+    it("should grant all permissions when isSuperuser is true regardless of role", () => {
+      const permissions = getUserPermissions("AGENT", true);
+
+      expect(permissions.canCreateTicket).toBe(true);
+      expect(permissions.canEditAnyTicket).toBe(true);
+      expect(permissions.canDeleteTicket).toBe(true);
+      expect(permissions.canReassignTicket).toBe(true);
+      expect(permissions.canUnassignTicket).toBe(true);
+      expect(permissions.canChangeTicketCreator).toBe(true);
+      expect(permissions.canBulkUpdate).toBe(true);
+      expect(permissions.canViewAllTickets).toBe(true);
+      expect(permissions.canViewInternalComments).toBe(true);
+      expect(permissions.canCreateInternalComments).toBe(true);
+      expect(permissions.canCreateUsers).toBe(true);
+      expect(permissions.canManageAllUsers).toBe(true);
+      expect(permissions.canCreateTeam).toBe(true);
+      expect(permissions.canManageTeam).toBe(true);
+      expect(permissions.canChangeUserRoles).toBe(true);
+      expect(permissions.canManageAllMarketCenters).toBe(true);
+      expect(permissions.canDeactivateMarketCenters).toBe(true);
+      expect(permissions.canDeactivateUsers).toBe(true);
+      expect(permissions.canAccessSettings).toBe(true);
+      expect(permissions.canAccessReports).toBe(true);
+      expect(permissions.canManageSubscription).toBe(true);
+      expect(permissions.canManageMarketCenterCategories).toBe(true);
+      expect(permissions.canManageNotificationTemplateSettings).toBe(true);
+      expect(permissions.canManageTicketTemplateSettings).toBe(true);
+      expect(permissions.canManageMCNotificationSettings).toBe(true);
+      expect(permissions.canTakeTicketSurvey).toBe(true);
+    });
+
+    it("should grant all permissions for superuser STAFF role", () => {
+      const permissions = getUserPermissions("STAFF", true);
+
+      expect(permissions.canManageAllMarketCenters).toBe(true);
+      expect(permissions.canManageAllUsers).toBe(true);
+      expect(permissions.canAccessSettings).toBe(true);
+      expect(permissions.canAccessReports).toBe(true);
+    });
+
+    it("should use role-based permissions when isSuperuser is false", () => {
+      const permissions = getUserPermissions("AGENT", false);
+
+      expect(permissions.canCreateTicket).toBe(true);
+      expect(permissions.canEditAnyTicket).toBe(false);
+      expect(permissions.canManageAllMarketCenters).toBe(false);
+      expect(permissions.canAccessSettings).toBe(false);
+    });
+
+    it("should use role-based permissions when isSuperuser is undefined", () => {
+      const permissions = getUserPermissions("AGENT");
+
+      expect(permissions.canCreateTicket).toBe(true);
+      expect(permissions.canEditAnyTicket).toBe(false);
+      expect(permissions.canManageAllMarketCenters).toBe(false);
+    });
+  });
+
   describe("canChangeTicketCreator permission", () => {
     it("should allow ADMIN to change ticket creator", () => {
       const permissions = getUserPermissions("ADMIN");

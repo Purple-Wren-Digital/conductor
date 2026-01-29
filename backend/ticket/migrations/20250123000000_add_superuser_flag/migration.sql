@@ -1,0 +1,1 @@
+ALTER TABLE "public"."users" ADD COLUMN "is_superuser" BOOLEAN NOT NULL DEFAULT FALSE;

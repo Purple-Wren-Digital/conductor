@@ -4,11 +4,15 @@ import { ticketRepository } from "../ticket/db";
 import type { UserRole } from "../user/types";
 import { subscriptionRepository } from "../shared/repositories";
 import { checkCanCreateMarketCenter } from "./subscription-check";
+import { marketCenterRepository } from "../ticket/db";
 
 export async function requireRole(
   userContext: UserContext,
   requiredRoles: string[]
 ): Promise<void> {
+  if (userContext.isSuperuser) {
+    return;
+  }
   if (!requiredRoles.includes(userContext.role)) {
     throw APIError.permissionDenied(
       `User does not have required role. Required: ${requiredRoles.join(
@@ -22,6 +26,9 @@ export async function canAccessTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
+  if (userContext.isSuperuser) {
+    return true;
+  }
   if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
     return true;
   }
@@ -57,6 +64,9 @@ export async function canModifyTicket(
   userContext: UserContext,
   ticketId: string
 ): Promise<boolean> {
+  if (userContext.isSuperuser) {
+    return true;
+  }
   if (userContext.role === "ADMIN") {
     return true;
   }
@@ -100,7 +110,13 @@ export async function canReassignTicket({
   userContext: UserContext;
   newAssigneeId?: string;
 }): Promise<boolean> {
-  if (!newAssigneeId || !userContext?.role || userContext?.role === "AGENT") {
+  if (!newAssigneeId) {
+    return false;
+  }
+  if (userContext.isSuperuser) {
+    return true;
+  }
+  if (!userContext?.role || userContext?.role === "AGENT") {
     return false;
   }
   if (userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER") {
@@ -120,13 +136,14 @@ export async function canReassignTicket({
 export async function canChangeTicketCreator(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER";
+  return userContext.isSuperuser || userContext.role === "ADMIN" || userContext.role === "STAFF_LEADER";
 }
 
 export async function canViewInternalComments(
   userContext: UserContext
 ): Promise<boolean> {
   return (
+    userContext.isSuperuser ||
     userContext.role === "STAFF" ||
     userContext.role === "STAFF_LEADER" ||
     userContext.role === "ADMIN"
@@ -158,6 +175,7 @@ export async function canCreateInternalComments(
   userContext: UserContext
 ): Promise<boolean> {
   return (
+    userContext.isSuperuser ||
     userContext.role === "STAFF" ||
     userContext.role === "STAFF_LEADER" ||
     userContext.role === "ADMIN"
@@ -169,6 +187,9 @@ export async function canManageTeam(
   userId?: string,
   marketCenterId?: string
 ): Promise<boolean> {
+  if (userContext.isSuperuser) {
+    return true;
+  }
   if (userContext?.role === "ADMIN") {
     return true;
   }
@@ -192,13 +213,16 @@ export async function canManageTeam(
 export async function canChangeUserRoles(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN";
+  return userContext.isSuperuser || userContext.role === "ADMIN";
 }
 
 export async function getTicketScopeFilter(
   userContext: UserContext,
   marketCenterId?: string
 ) {
+  if (userContext.isSuperuser) {
+    return {};
+  }
   if (userContext.role === "ADMIN" && !marketCenterId) {
     return {};
   }
@@ -276,6 +300,9 @@ export async function getTicketScopeFilter(
 
 // USERS
 export async function getUserScopeFilter(userContext: UserContext) {
+  if (userContext.isSuperuser) {
+    return {};
+  }
   if (userContext.role === "ADMIN") {
     return {};
   }
@@ -300,20 +327,24 @@ export async function canModifyOwnProfile(
 export async function canModifyUsers(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN";
+  return userContext.isSuperuser || userContext.role === "ADMIN";
 }
 
 export async function canDeactivateUsers(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN";
+  return userContext.isSuperuser || userContext.role === "ADMIN";
 }
 
 // MARKET CENTERS
 export async function canCreateMarketCenters(
   primaryMarketCenterId: string,
-  role?: UserRole
+  role?: UserRole,
+  isSuperuser?: boolean
 ): Promise<boolean> {
+  if (isSuperuser) {
+    return true;
+  }
   if (!role || role !== "ADMIN") {
     return false;
   }
@@ -324,19 +355,24 @@ export async function canCreateMarketCenters(
 export async function canManageMarketCenters(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN";
+  return userContext.isSuperuser || userContext.role === "ADMIN";
 }
 
 export async function canDeleteMarketCenters(
   userContext: UserContext
 ): Promise<boolean> {
-  return userContext.role === "ADMIN";
+  return userContext.isSuperuser || userContext.role === "ADMIN";
 }
 
 export async function marketCenterScopeFilter(
   userContext: UserContext,
   marketCenterId: string
 ) {
+  // Superuser: Access any market center
+  if (userContext.isSuperuser) {
+    return { id: marketCenterId };
+  }
+
   // Admin: Check subscription-based access
   // - Admin without Enterprise: Only their own market center
   // - Admin with Enterprise: All market centers under the same subscription
@@ -371,6 +407,12 @@ export async function marketCenterScopeFilter(
 export async function getAccessibleMarketCenterIds(
   userContext: UserContext
 ): Promise<string[]> {
+  // Superuser: Access all market centers in the system
+  if (userContext.isSuperuser) {
+    const allMarketCenters = await marketCenterRepository.findAll();
+    return allMarketCenters.map((mc) => mc.id);
+  }
+
   if (!userContext.marketCenterId) {
     return [];
   }
@@ -388,6 +430,9 @@ export async function canModifyTicketTemplate(
   userContext: UserContext,
   marketCenterId?: string
 ): Promise<boolean> {
+  if (userContext.isSuperuser) {
+    return true;
+  }
   if (userContext.role === "ADMIN") {
     return true;
   }
@@ -402,4 +447,15 @@ export async function canModifyTicketTemplate(
   }
 
   return false;
+}
+
+/**
+ * Check if the target user is a superuser and the acting user is not.
+ * Used to protect superusers from being modified by non-superusers.
+ */
+export function isSuperuserProtected(
+  targetUser: { isSuperuser?: boolean },
+  actingUserContext: UserContext
+): boolean {
+  return !!targetUser.isSuperuser && !actingUserContext.isSuperuser;
 }

@@ -59,7 +59,8 @@ export const create = api<
 
     const canCreate = await canCreateMarketCenters(
       userContext?.marketCenterId,
-      userContext?.role
+      userContext?.role,
+      userContext?.isSuperuser
     );
 
     if (!canCreate) {
