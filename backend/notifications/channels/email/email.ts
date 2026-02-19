@@ -59,11 +59,19 @@ export async function sendEmailNotification({
     }
 
     const resendClient = getResendClient();
+
+    // Build replyTo address if notification is ticket-related
+    const ticketId = notification.data?.ticketId;
+    const replyTo = ticketId
+      ? `ticket-${ticketId}@reply.conductortickets.com`
+      : undefined;
+
     const response: CreateEmailResponse = await resendClient.emails.send({
-      from: "Conductor Ticketing <noreply@reply.conductorticket.com>",
+      from: "Conductor Ticketing <noreply@reply.conductortickets.com>",
       to: [userEmail],
       subject: `Conductor: ${notification.title}`,
       react: emailContent,
+      ...(replyTo && { replyTo }),
     });
 
     if (response.error) {
@@ -76,21 +84,3 @@ export async function sendEmailNotification({
   }
 }
 
-// TODO:
-// from: "Conductor Ticketing <notification@conductor.com>",
-
-// replyTo: "<reply>@<conductor.com>",
-
-// scheduledAt: "", // https://resend.com/docs/dashboard/emails/schedule-email
-
-// attachments: [
-//   { // https://resend.com/docs/dashboard/emails/attachments
-//    path: 'https://resend.com/static/sample/invoice.pdf',
-//    filename: 'invoice.pdf',
-//   },
-//   { // https://resend.com/docs/dashboard/emails/embed-inline-images
-//     path: "https://resend.com/static/sample/logo.png",
-//     filename: "logo.png",
-//     content_id: "logo-image",
-//   },
-// ],

@@ -264,9 +264,8 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
 });
 
 // Run every 6 hours
-// TODO: Re-enable once test hang is resolved - CronJob instantiation prevents Node from exiting during tests
-// const _ = new CronJob("auto-close-awaiting-tickets", {
-//   title: "Auto-close tickets in Awaiting Response status",
-//   every: "6h",
-//   endpoint: checkAutoClose,
-// });
+const _ = new CronJob("auto-close-awaiting-tickets", {
+  title: "Auto-close tickets in Awaiting Response status",
+  every: "6h",
+  endpoint: checkAutoClose,
+});

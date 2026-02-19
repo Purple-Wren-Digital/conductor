@@ -70,7 +70,7 @@ async function createTestNotification() {
     console.log('');
     console.log('📬 Next steps:');
     console.log(`1. Check ${userEmail} for the notification email`);
-    console.log(`2. The email should have reply-to: ticket-${ticketId}@reply.conductorticket.com`);
+    console.log(`2. The email should have reply-to: ticket-${ticketId}@reply.conductortickets.com`);
     console.log('3. Reply to the email to test the inbound webhook');
     console.log('4. Or run: npx tsx email/test-webhook.ts ' + ticketId + ' ' + userEmail);
 
@@ -102,9 +102,9 @@ async function testDirectEmail() {
     const resend = new Resend(apiKey);
 
     const result = await resend.emails.send({
-      from: 'Conductor Ticketing <noreply@conductorticket.com>',
+      from: 'Conductor Ticketing <noreply@conductortickets.com>',
       to: [userEmail],
-      replyTo: `ticket-${ticketId}@reply.conductorticket.com`,
+      replyTo: `ticket-${ticketId}@reply.conductortickets.com`,
       subject: `[Ticket #${ticketId}] Test Email from Conductor`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -118,13 +118,13 @@ async function testDirectEmail() {
           <p style="color: #666; font-size: 12px;">
             This email was sent from Conductor Ticketing System<br>
             Ticket ID: ${ticketId}<br>
-            Reply-To: ticket-${ticketId}@reply.conductorticket.com
+            Reply-To: ticket-${ticketId}@reply.conductortickets.com
           </p>
         </div>
       `,
       headers: {
         'X-Ticket-ID': ticketId,
-        'X-Entity-Ref': `ticket-${ticketId}@conductorticket.com`,
+        'X-Entity-Ref': `ticket-${ticketId}@conductortickets.com`,
       },
     });
 

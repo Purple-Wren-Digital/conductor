@@ -48,7 +48,7 @@ curl -X POST "http://localhost:4000/email/inbound" \
   -d '{
     "type": "email.received",
     "data": {
-      "to": ["ticket-'$TICKET_ID'@reply.conductorticket.com"],
+      "to": ["ticket-'$TICKET_ID'@reply.conductortickets.com"],
       "from": "'$USER_EMAIL'",
       "subject": "Re: Ticket #'$TICKET_ID'",
       "text": "This is a test reply from email.",

@@ -19,9 +19,9 @@ async function sendTestEmail() {
 
   try {
     const result = await resend.emails.send({
-      from: 'Conductor Ticketing <noreply@reply.conductorticket.com>',
+      from: 'Conductor Ticketing <noreply@reply.conductortickets.com>',
       to: [EMAIL],
-      replyTo: `ticket-${TICKET_ID}@reply.conductorticket.com`,
+      replyTo: `ticket-${TICKET_ID}@reply.conductortickets.com`,
       subject: `[Ticket #${TICKET_ID}] Test Email - Contract deadline for 123 Maple St`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -43,13 +43,13 @@ async function sendTestEmail() {
           <div style="color: #999; font-size: 12px;">
             <p>Conductor Ticketing System<br>
             Ticket #${TICKET_ID}<br>
-            Reply to: ticket-${TICKET_ID}@reply.conductorticket.com</p>
+            Reply to: ticket-${TICKET_ID}@reply.conductortickets.com</p>
           </div>
         </div>
       `,
       headers: {
         'X-Ticket-ID': TICKET_ID,
-        'Message-ID': `<ticket-${TICKET_ID}@conductorticket.com>`,
+        'Message-ID': `<ticket-${TICKET_ID}@conductortickets.com>`,
       },
     });
 

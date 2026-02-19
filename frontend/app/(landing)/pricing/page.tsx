@@ -39,7 +39,7 @@ export default function PricingPage() {
             <Link
               href={
                 plan.monthlyPrice === null
-                  ? "mailto:tony@conductorticket.com?subject=Enterprise%20Inquiry"
+                  ? "mailto:admin@conductortickets.com?subject=Enterprise%20Inquiry"
                   : "/dashboard/subscription"
               }
               className="absolute inset-0"

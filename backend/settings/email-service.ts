@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { secret } from 'encore.dev/config';
 
 const RESEND_API_KEY = secret('RESEND_API_KEY');
-const EMAIL_FROM_ADDRESS = 'noreply@conductor.app'; // Can be made configurable via Encore config if needed
+const EMAIL_FROM_ADDRESS = 'noreply@reply.conductortickets.com';
 const EMAIL_FROM_NAME = 'Conductor'; // Can be made configurable via Encore config if needed
 
 interface EmailConfig {

@@ -270,9 +270,8 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
 });
 
 // Run every 5 minutes
-// TODO: Re-enable once test hang is resolved - CronJob instantiation prevents Node from exiting during tests
-// const _ = new CronJob("sla-status-check", {
-//   title: "Check SLA status for warnings and breaches",
-//   every: "5m",
-//   endpoint: checkSlaStatus,
-// });
+const _ = new CronJob("sla-status-check", {
+  title: "Check SLA status for warnings and breaches",
+  every: "5m",
+  endpoint: checkSlaStatus,
+});

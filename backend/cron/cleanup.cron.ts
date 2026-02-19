@@ -15,9 +15,8 @@ export const cleanupNotifications = api({}, async () => {
   `;
 });
 
-// TODO: Re-enable once test hang is resolved - CronJob instantiation prevents Node from exiting during tests
-// const _ = new CronJob("cleanup-old-notifications", {
-//   title: "Cleanup old read notifications",
-//   every: "24h", // Daily Max
-//   endpoint: cleanupNotifications,
-// });
+const _ = new CronJob("cleanup-old-notifications", {
+  title: "Cleanup old read notifications",
+  every: "24h",
+  endpoint: cleanupNotifications,
+});
