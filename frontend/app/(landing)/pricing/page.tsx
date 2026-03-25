@@ -21,7 +21,7 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="flex gap-4 justify-center items-stretch">
+      <div className="flex flex-col md:flex-row gap-4 justify-center items-stretch px-4">
         {plans.map((plan) => (
           <Card
             key={plan.name}
@@ -45,7 +45,7 @@ export default function PricingPage() {
               className="absolute inset-0"
             />
 
-            <CardHeader className="min-w-60">
+            <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
               <CardDescription>
                 {plan.monthlyPrice !== null ? (
