@@ -9,7 +9,11 @@ const EMAIL = process.argv[2] || 'calebmcquaid+1@gmail.com';
 const TICKET_ID = process.argv[3] || '395fb995-bb76-4954-8a32-ecd4b87e5f35';
 
 async function sendTestEmail() {
-  const apiKey = process.env.RESEND_API_KEY || "re_fDikV7Vh_38cGMBCYAXk7JPv64Cafd6Bi";
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY environment variable is required");
+    process.exit(1);
+  }
 
   console.log('📧 Sending test email to:', EMAIL);
   console.log('🎫 Ticket ID:', TICKET_ID);
