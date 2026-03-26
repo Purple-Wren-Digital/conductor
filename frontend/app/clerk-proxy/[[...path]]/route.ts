@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 
 async function handler(req: NextRequest) {
-  const path = req.nextUrl.pathname.replace("/api/__clerk", "");
+  const path = req.nextUrl.pathname.replace("/clerk-proxy", "");
   const search = req.nextUrl.search;
   const url = `${CLERK_FAPI}${path}${search}`;
 
   const headers = new Headers(req.headers);
-  headers.set("Clerk-Proxy-Url", `${req.nextUrl.origin}/api/__clerk`);
+  headers.set("Clerk-Proxy-Url", `${req.nextUrl.origin}/__clerk`);
   headers.set("Clerk-Secret-Key", process.env.CLERK_SECRET_KEY!);
   headers.set("X-Forwarded-For", req.headers.get("x-forwarded-for") || "127.0.0.1");
 
