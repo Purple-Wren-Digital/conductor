@@ -8,12 +8,21 @@ const nextConfig: NextConfig = {
   ],
 
   async rewrites() {
-    return [
-      {
-        source: "/api/((?!__clerk).*)",
-        destination: "http://127.0.0.1:4000/:path*", // Proxy to Encore
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: "/api/__clerk/:path*",
+          destination: "/api/__clerk/:path*", // Let Next.js handle Clerk proxy
+        },
+      ],
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: "http://127.0.0.1:4000/:path*", // Proxy to Encore
+        },
+      ],
+    };
   },
 };
 
