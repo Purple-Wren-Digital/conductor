@@ -21,7 +21,7 @@ async function clerkProxy(req: NextRequest) {
   headers.set("Clerk-Proxy-Url", `${req.nextUrl.origin}/__clerk`);
   headers.set("Clerk-Secret-Key", process.env.CLERK_SECRET_KEY!);
   headers.set("X-Forwarded-For", req.headers.get("x-forwarded-for") || "127.0.0.1");
-  headers.delete("host");
+  headers.set("Host", "clerk.conductortickets.com");
 
   const res = await fetch(url, {
     method: req.method,
