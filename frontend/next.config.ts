@@ -9,11 +9,7 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
-      {
-        source: "/__clerk/:path*",
-        destination: "/clerk-proxy/:path*", // Clerk FAPI proxy
-      },
-      {
+{
         source: "/api/:path*",
         destination: "http://127.0.0.1:4000/:path*", // Proxy to Encore
       },
