@@ -26,7 +26,7 @@ const EditUserProfile = ({
 }) => {
   const prefilledData = {
     firstName: user && user?.name ? user.name.split(" ")[0] : "",
-    lastName: user && user?.name ? user.name.split(" ")[1] : "",
+    lastName: user && user?.name ? user.name.split(" ").slice(1).join(" ") : "",
     email: user && user?.email ? user.email : "",
   };
   const [formData, setFormData] = useState(prefilledData);
@@ -48,7 +48,7 @@ const EditUserProfile = ({
   const handleResetForm = (userData: PrismaUser) => {
     setFormData({
       firstName: userData?.name ? userData?.name.split(" ")[0] : "",
-      lastName: userData?.name ? userData?.name.split(" ")[1] : "",
+      lastName: userData?.name ? userData?.name.split(" ").slice(1).join(" ") : "",
       email: userData?.email,
     });
     setFormErrors({});
