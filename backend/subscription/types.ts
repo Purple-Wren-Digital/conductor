@@ -13,9 +13,8 @@ export enum SubscriptionStatus {
 }
 
 export enum SubscriptionPlan {
-  STARTER = "STARTER",
-  TEAM = "TEAM",
-  BUSINESS = "BUSINESS",
+  EARLY_BIRD = "EARLY_BIRD",
+  STANDARD = "STANDARD",
   ENTERPRISE = "ENTERPRISE"
 }
 

@@ -12,7 +12,7 @@ export interface SubscriptionData {
     | "PAUSED"
     | "TRIALING"
     | "UNPAID";
-  planType: "STARTER" | "TEAM" | "BUSINESS" | "ENTERPRISE";
+  planType: "EARLY_BIRD" | "STANDARD" | "ENTERPRISE";
   includedSeats: number;
   additionalSeats: number;
   totalSeats: number;
@@ -119,9 +119,8 @@ export function useIsEnterprise() {
   return {
     isEnterprise: subscription?.planType === "ENTERPRISE",
     isStandard:
-      subscription?.planType === "STARTER" ||
-      subscription?.planType === "TEAM" ||
-      subscription?.planType === "BUSINESS",
+      subscription?.planType === "EARLY_BIRD" ||
+      subscription?.planType === "STANDARD",
     isLoading,
   };
 }

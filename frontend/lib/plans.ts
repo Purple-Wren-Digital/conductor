@@ -1,7 +1,7 @@
 export const plans = [
   {
     name: "Early Bird",
-    planType: "BUSINESS" as const,
+    planType: "EARLY_BIRD" as const,
     description: "Limited time pricing for early adopters",
     monthlyPrice: 399,
     includedSeats: 50,
@@ -22,13 +22,13 @@ export const plans = [
       apiAccess: true,
       advancedReporting: true,
     },
-    stripeProductId: "prod_RsP4IJeES8hBDu", // Update with actual Stripe IDs
-    stripePriceId: "price_1SX2iKBTrvJyFPSJvvyUAjUR",
+    stripeProductId: "prod_UFzalLJetAlABw",
+    stripePriceId: "price_1THTb23o7cHR3Cbv2eCwsYFF",
     popular: true,
   },
   {
     name: "Standard",
-    planType: "BUSINESS" as const,
+    planType: "STANDARD" as const,
     description: "Full-featured plan for your market center",
     monthlyPrice: 499,
     includedSeats: 50,
@@ -49,12 +49,13 @@ export const plans = [
       apiAccess: true,
       advancedReporting: true,
     },
-    stripeProductId: "prod_RsP2eL9TWCTqFR", // Update with actual Stripe IDs
-    stripePriceId: "price_1SXTrABTrvJyFPSJGkmOeY7z",
+    stripeProductId: "prod_UFzgUEcj5Unm7n",
+    stripePriceId: "price_1THThI3o7cHR3CbvxyLObRXp",
   },
   {
     name: "Enterprise",
     planType: "ENTERPRISE" as const,
+
     description: "For organizations with multiple market centers",
     monthlyPrice: null, // Contact for pricing
     includedSeats: null, // Unlimited
@@ -77,8 +78,8 @@ export const plans = [
       apiAccess: true,
       advancedReporting: true,
     },
-    stripeProductId: "prod_RsP19mrNfkIeXG", // Update with actual Stripe IDs
-    stripePriceId: "price_1SXTrSBTrvJyFPSJF3xW6den",
+    stripeProductId: "prod_UFzi1TDzaRv17B",
+    stripePriceId: "price_1THTj83o7cHR3CbvNxlmxmyb",
   },
 ] as const;
 

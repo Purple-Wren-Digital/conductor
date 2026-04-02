@@ -17,39 +17,25 @@ const stripe = new Stripe(stripeSecretKey());
 
 // Pricing configuration (seat-based)
 export const PRICING_PLANS = {
-  STARTER: {
-    name: "Starter",
-    priceId: "price_1SX2iKBTrvJyFPSJvvyUAjUR", // TODO: Replace with your actual Stripe PRICE ID (not product ID)
-    includedSeats: 5,
-    monthlyPrice: 50,
-    additionalSeatPrice: 10,
-    features: {
-      maxTicketsPerMonth: 100,
-      prioritySupport: false,
-      customCategories: 5,
-      apiAccess: false,
-      advancedReporting: false,
-    },
-  },
-  TEAM: {
-    name: "Team",
-    priceId: "price_1SXTrABTrvJyFPSJGkmOeY7z", // TODO: Replace with your actual Stripe PRICE ID (not product ID)
-    includedSeats: 15,
-    monthlyPrice: 150,
-    additionalSeatPrice: 8,
-    features: {
-      maxTicketsPerMonth: 500,
-      prioritySupport: true,
-      customCategories: 20,
-      apiAccess: true,
-      advancedReporting: false,
-    },
-  },
-  BUSINESS: {
-    name: "Business",
-    priceId: "price_1SXTrSBTrvJyFPSJF3xW6den", // TODO: Replace with your actual Stripe PRICE ID (not product ID)
+  EARLY_BIRD: {
+    name: "Early Bird",
+    priceId: "price_1THTb23o7cHR3Cbv2eCwsYFF",
     includedSeats: 50,
-    monthlyPrice: 400,
+    monthlyPrice: 399,
+    additionalSeatPrice: 6,
+    features: {
+      maxTicketsPerMonth: -1, // Unlimited
+      prioritySupport: true,
+      customCategories: -1, // Unlimited
+      apiAccess: true,
+      advancedReporting: true,
+    },
+  },
+  STANDARD: {
+    name: "Standard",
+    priceId: "price_1THThI3o7cHR3CbvxyLObRXp",
+    includedSeats: 50,
+    monthlyPrice: 499,
     additionalSeatPrice: 6,
     features: {
       maxTicketsPerMonth: -1, // Unlimited
@@ -61,8 +47,8 @@ export const PRICING_PLANS = {
   },
   ENTERPRISE: {
     name: "Enterprise",
-    priceId: "price_enterprise", // Custom pricing
-    includedSeats: -1, // Custom
+    priceId: "price_1THTj83o7cHR3CbvNxlmxmyb",
+    includedSeats: -1, // Unlimited
     monthlyPrice: -1, // Custom
     additionalSeatPrice: -1, // Custom
     features: {
@@ -111,7 +97,7 @@ function getPlanTypeFromPriceId(priceId: string): SubscriptionPlan {
       return key as SubscriptionPlan;
     }
   }
-  return SubscriptionPlan.STARTER; // Default
+  return SubscriptionPlan.EARLY_BIRD; // Default
 }
 
 // Handle Stripe webhook events
@@ -324,7 +310,7 @@ export const webhookHandler = api.raw(
 );
 
 interface CreateCheckoutSessionParams {
-  planType: "STARTER" | "TEAM" | "BUSINESS";
+  planType: "EARLY_BIRD" | "STANDARD";
   additionalSeats?: number;
   organizationName?: string; // Optional - for when creating a new organization
 }
