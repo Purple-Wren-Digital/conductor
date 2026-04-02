@@ -21,13 +21,14 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const hasChecked = useRef(false);
+  const lastGrantedPath = useRef<string | null>(null);
 
   useEffect(() => {
     // Skip check for subscription-free routes
     if (SUBSCRIPTION_FREE_ROUTES.some((route) => pathname.startsWith(route))) {
       setIsChecking(false);
       setHasAccess(true);
+      lastGrantedPath.current = null; // Don't cache free route access
       return;
     }
 
@@ -41,9 +42,12 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       return;
     }
 
-    // Only check once per mount
-    if (hasChecked.current) return;
-    hasChecked.current = true;
+    // If we already verified subscription access, don't re-check on every navigation
+    if (lastGrantedPath.current && hasAccess) return;
+
+    // Reset state for new check
+    setIsChecking(true);
+    setHasAccess(false);
 
     const checkSubscription = async () => {
       try {
@@ -64,6 +68,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         if (userResponse.ok) {
           const user = await userResponse.json();
           if (user.isSuperuser) {
+            lastGrantedPath.current = pathname;
             setHasAccess(true);
             setIsChecking(false);
             return;
@@ -83,6 +88,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             subscription.status === "ACTIVE" ||
             subscription.status === "TRIALING"
           ) {
+            lastGrantedPath.current = pathname;
             setHasAccess(true);
             setIsChecking(false);
             return;
@@ -104,6 +110,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             const user = await userResponse.json();
             if (user.marketCenterId) {
               // Invited user with market center - allow access
+              lastGrantedPath.current = pathname;
               setHasAccess(true);
               setIsChecking(false);
               return;
