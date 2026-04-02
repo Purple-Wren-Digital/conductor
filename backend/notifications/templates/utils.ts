@@ -156,7 +156,7 @@ export const notificationTemplatesDefault = [
     channel: "IN_APP" as NotificationChannel,
     type: "Ticket Assignment",
     subject: "Ticket Assignment Update",
-    body: `"{{ticket_title}}" has been {{user_update}} to/from your queue`,
+    body: `"{{ticket_title}}" has been {{update_type}} to/from your queue`,
     variables: NotificationTemplateVariables.AssignedTicketNotificationProps,
     isDefault: true,
     isActive: true,

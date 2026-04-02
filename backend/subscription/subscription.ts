@@ -460,7 +460,7 @@ export const createCheckoutSession = api(
       customer: stripeCustomerId,
       line_items: lineItems,
       mode: "subscription",
-      success_url: `${frontendUrl()}/dashboard/subscription?success=true`,
+      success_url: `${frontendUrl()}/dashboard`,
       cancel_url: `${frontendUrl()}/dashboard/subscription?canceled=true`,
       subscription_data: {
         metadata: {

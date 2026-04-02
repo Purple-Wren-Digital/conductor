@@ -54,6 +54,22 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           return;
         }
 
+        // Check if user is a superuser (bypass subscription)
+        const userResponse = await fetch(`${API_BASE}/users/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (userResponse.ok) {
+          const user = await userResponse.json();
+          if (user.isSuperuser) {
+            setHasAccess(true);
+            setIsChecking(false);
+            return;
+          }
+        }
+
         // First check subscription
         const subResponse = await fetch(`${API_BASE}/subscription/current`, {
           headers: {
