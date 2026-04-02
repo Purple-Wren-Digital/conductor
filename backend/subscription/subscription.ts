@@ -19,7 +19,7 @@ const stripe = new Stripe(stripeSecretKey());
 export const PRICING_PLANS = {
   EARLY_BIRD: {
     name: "Early Bird",
-    priceId: "price_1THTb23o7cHR3Cbv2eCwsYFF",
+    priceId: "price_1THsCy3o7cHR3Cbv9L9iBuNk",
     includedSeats: 50,
     monthlyPrice: 399,
     additionalSeatPrice: 6,

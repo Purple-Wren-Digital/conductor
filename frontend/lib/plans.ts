@@ -22,8 +22,8 @@ export const plans = [
       apiAccess: true,
       advancedReporting: true,
     },
-    stripeProductId: "prod_UFzalLJetAlABw",
-    stripePriceId: "price_1THTb23o7cHR3Cbv2eCwsYFF",
+    stripeProductId: "prod_UGP13ZOXGBR5t1",
+    stripePriceId: "price_1THsCy3o7cHR3Cbv9L9iBuNk",
     popular: true,
   },
   {
