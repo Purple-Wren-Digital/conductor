@@ -65,7 +65,8 @@ export default function CreateUser({
   const [copied, setCopied] = useState(false);
 
   const { isEnterprise } = useIsEnterprise();
-  const { permissions } = useUserRole();
+  const { permissions, isSuperuser } = useUserRole();
+  const canBypassLimits = isEnterprise || isSuperuser;
   const fetchWithAuth = useFetchWithAuth();
 
   const { data: subscription, isLoading: isSubscriptionLoading } =
@@ -84,14 +85,14 @@ export default function CreateUser({
     const filledSeats = activeSubscription ? subscription.usedSeats : 0;
     const hasAvailableSeats = filledSeats < totalSeats;
 
-    if (!isEnterprise && !hasAvailableSeats) {
+    if (!canBypassLimits && !hasAvailableSeats) {
       setFormData((prev) => ({
         ...prev,
         role: prev.role === "AGENT" ? "AGENT" : "",
       }));
     }
     return { activeSubscription, totalSeats, filledSeats, hasAvailableSeats };
-  }, [subscription, isEnterprise]);
+  }, [subscription, canBypassLimits]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -108,7 +109,7 @@ export default function CreateUser({
     if (!formData.role) {
       errors.role = "Role is required";
     } else if (
-      !isEnterprise &&
+      !canBypassLimits &&
       formData.role !== "AGENT" &&
       !seats?.hasAvailableSeats
     ) {
@@ -296,13 +297,13 @@ export default function CreateUser({
               </label>
               <ToolTip
                 content={
-                  !!isEnterprise || (!isEnterprise && seats?.hasAvailableSeats)
+                  !!canBypassLimits || (!canBypassLimits && seats?.hasAvailableSeats)
                     ? "You have available seats. All roles can be assigned."
                     : "Upgrade your subscription to assign the admin, staff leader or staff role."
                 }
                 trigger={
                   <p className="text-xs text-muted-foreground">
-                    {!!isEnterprise
+                    {!!canBypassLimits
                       ? "Unlimited seats"
                       : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
                     used`}
@@ -327,7 +328,7 @@ export default function CreateUser({
               <SelectContent>
                 {roleOptions.map((role) => {
                   if (
-                    !isEnterprise &&
+                    !canBypassLimits &&
                     !seats?.hasAvailableSeats &&
                     role !== "AGENT"
                   ) {

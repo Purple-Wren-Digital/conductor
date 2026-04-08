@@ -110,17 +110,18 @@ export default function AdminTicketList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { role } = useUserRole();
+  const { role, isSuperuser } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
   const { currentUser } = useStore();
+  const canViewAllMCs = isEnterprise || isSuperuser;
 
   const defaultSelectedMarketCenterId = useMemo(() => {
-    if (isEnterprise) {
+    if (canViewAllMCs) {
       return "all";
     } else {
       return currentUser?.marketCenterId || "all";
     }
-  }, [isEnterprise, currentUser]);
+  }, [canViewAllMCs, currentUser]);
 
   const defaultSelectedCategory: CategoryOption = useMemo(
     () => ({ label: "all", ids: [] }),
@@ -955,7 +956,7 @@ export default function AdminTicketList() {
           </div>
 
           <div className="flex flex-col-reverse w-full items-center gap-4 sm:flex-row sm:w-fit">
-            {isEnterprise && (
+            {canViewAllMCs && (
               <div className="flex items-center gap-2">
                 <ToolTip
                   content="Filter by each market center team's tickets with the team's defined ticket categories (not global categories)"
@@ -1090,7 +1091,7 @@ export default function AdminTicketList() {
                                         .join(" ")
                                         .toLowerCase()
                                     : "No role"}
-                                  {isEnterprise &&
+                                  {canViewAllMCs &&
                                     marketCenters &&
                                     marketCenters.length > 0 &&
                                     ` • ${findMarketCenterName(
@@ -1140,7 +1141,7 @@ export default function AdminTicketList() {
                                         .join(" ")
                                         .toLowerCase()
                                     : "No role"}{" "}
-                                  {isEnterprise &&
+                                  {canViewAllMCs &&
                                     marketCenters &&
                                     marketCenters.length > 0 &&
                                     ` • ${findMarketCenterName(

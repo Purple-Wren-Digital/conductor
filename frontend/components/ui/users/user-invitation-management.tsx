@@ -100,10 +100,12 @@ const getStatusIcon = (status: string) => {
 export default function UserInvitationManagement() {
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
+  const { isSuperuser } = useUserRole();
+  const canViewAllMCs = isEnterprise || isSuperuser;
 
   const defaultMarketCenterId = useMemo(
-    () => (isEnterprise ? "all" : (currentUser?.marketCenterId ?? "all")),
-    [isEnterprise, currentUser?.marketCenterId]
+    () => (canViewAllMCs ? "all" : (currentUser?.marketCenterId ?? "all")),
+    [canViewAllMCs, currentUser?.marketCenterId]
   );
 
   const [showFilters, setShowFilters] = useState(false);
@@ -175,9 +177,9 @@ export default function UserInvitationManagement() {
 
   const hasActiveFilters = useMemo(
     () =>
-      (isEnterprise && selectedMarketCenterId !== "all") ||
+      (canViewAllMCs && selectedMarketCenterId !== "all") ||
       statusFilter !== "All",
-    [isEnterprise, selectedMarketCenterId, statusFilter]
+    [canViewAllMCs, selectedMarketCenterId, statusFilter]
   );
 
   const handleResendInvitation = async (token: string) => {

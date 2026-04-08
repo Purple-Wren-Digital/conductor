@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/app/dashboard/app-sidebar";
 import { useUser, useAuth } from "@clerk/nextjs";
 import AllNotifications from "@/components/notifications/notifications-list";
@@ -148,49 +148,54 @@ export default function DashboardLayout({
     },
   });
 
+  const invalidateNotificationsRef = useRef(invalidateFetchAllUserNotifications);
+  invalidateNotificationsRef.current = invalidateFetchAllUserNotifications;
+
   useEffect(() => {
     if (!clerkUser?.id) return;
 
     let stream: any = null;
-    let isConnecting = false;
+    let cancelled = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     const connectToStream = async () => {
-      if (isConnecting) return;
-      isConnecting = true;
+      if (cancelled) return;
 
       try {
         const token = await getToken();
-        if (!token) {
-          return;
-        }
+        if (!token || cancelled) return;
 
         const client = getEncoreClient(token);
-
-        // Connect to the notification stream
         stream = await client.notifications.notificationStream();
 
-        // Listen for notifications
+        retryCount = 0; // Reset on successful connection
+
         for await (const notification of stream) {
+          if (cancelled) break;
           toast.info(`${notification?.title}`);
           setNewestNotification(notification);
-          await invalidateFetchAllUserNotifications();
+          await invalidateNotificationsRef.current();
         }
       } catch {
-        // Stream error - will reconnect
-      } finally {
-        isConnecting = false;
+        // Stream disconnected — retry with backoff up to MAX_RETRIES
+        if (!cancelled && retryCount < MAX_RETRIES) {
+          retryCount++;
+          const delay = Math.min(1000 * 2 ** retryCount, 30000);
+          setTimeout(connectToStream, delay);
+        }
       }
     };
 
-    // Handle stream errors and reconnection
     connectToStream();
 
     return () => {
+      cancelled = true;
       if (stream) {
         stream.close();
       }
     };
-  }, [clerkUser?.id, invalidateFetchAllUserNotifications, getToken]);
+  }, [clerkUser?.id, getToken]);
 
   return (
     <>

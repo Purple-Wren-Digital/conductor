@@ -84,7 +84,8 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
 
   const { isEnterprise } = useIsEnterprise();
   const { currentUser, setCurrentUser } = useStore();
-  const { role, permissions } = useUserRole();
+  const { role, permissions, isSuperuser } = useUserRole();
+  const canBypassLimits = isEnterprise || isSuperuser;
 
   const { data: subscription, isLoading: isSubscriptionLoading } =
     useSubscription();
@@ -448,14 +449,14 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <Label className="text-sm font-medium">Role *</Label>
                 <ToolTip
                   content={
-                    !!isEnterprise ||
-                    (!isEnterprise && seats?.hasAvailableSeats)
+                    !!canBypassLimits ||
+                    (!canBypassLimits && seats?.hasAvailableSeats)
                       ? "You have available seats. All roles can be assigned."
                       : "Upgrade your subscription to assign the admin, staff leader or staff role."
                   }
                   trigger={
                     <p className="text-xs text-muted-foreground">
-                      {!!isEnterprise
+                      {!!canBypassLimits
                         ? "Unlimited seats"
                         : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
                     used`}
@@ -490,7 +491,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!isEnterprise &&
+                      (!canBypassLimits &&
                         !seats?.hasAvailableSeats &&
                         role !== "AGENT") ||
                       ((role === "STAFF" || role === "STAFF_LEADER") &&
@@ -612,14 +613,14 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <Label className="text-sm font-medium">Role *</Label>
                 <ToolTip
                   content={
-                    !!isEnterprise ||
-                    (!isEnterprise && seats?.hasAvailableSeats)
+                    !!canBypassLimits ||
+                    (!canBypassLimits && seats?.hasAvailableSeats)
                       ? "You have available seats. All roles can be assigned."
                       : "Upgrade your subscription to assign the admin, staff leader or staff role."
                   }
                   trigger={
                     <p className="text-xs text-muted-foreground">
-                      {!!isEnterprise
+                      {!!canBypassLimits
                         ? "Unlimited seats"
                         : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
                     used`}
@@ -648,7 +649,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!isEnterprise &&
+                      (!canBypassLimits &&
                         !seats?.hasAvailableSeats &&
                         role !== "AGENT") ||
                       ((role === "STAFF" || role === "STAFF_LEADER") &&

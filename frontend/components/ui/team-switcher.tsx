@@ -31,9 +31,10 @@ export function TeamSwitcher({
   setMarketCenters,
   unassigned,
 }: TeamSwitcherProps) {
-  const { role } = useUserRole();
+  const { role, isSuperuser } = useUserRole();
   const { data, isLoading } = useFetchAllMarketCenters(role);
   const { isEnterprise } = useIsEnterprise();
+  const canViewAllMCs = isEnterprise || isSuperuser;
 
   const marketCenters: MarketCenter[] = useMemo(
     () => data?.marketCenters ?? [],
@@ -64,7 +65,7 @@ export function TeamSwitcher({
     <Select
       value={selectedMarketCenterId}
       onValueChange={(value) => {
-        if (!isEnterprise && !unassigned) return;
+        if (!canViewAllMCs && !unassigned) return;
         setSelectedMarketCenterId(value);
         const selectedMarketCenter = marketCenters.find((mc) => mc.id == value);
         handleMarketCenterSelected &&
@@ -76,7 +77,7 @@ export function TeamSwitcher({
         <SelectValue placeholder="Select a team" />
       </SelectTrigger>
       <SelectContent>
-        {isEnterprise && canViewAllTeams && (
+        {canViewAllMCs && canViewAllTeams && (
           <SelectItem value="all">
             <Building2 className="h-4 w-4" />
             All Teams

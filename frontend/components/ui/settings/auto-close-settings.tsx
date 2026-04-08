@@ -61,7 +61,7 @@ export default function AutoCloseSettings() {
   const { getToken } = useAuth();
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
-  const { role } = useUserRole();
+  const { role, isSuperuser } = useUserRole();
 
   const { data: marketCentersData, isLoading: isLoadingMarketCenters } =
     useFetchAllMarketCenters(role);
@@ -75,9 +75,9 @@ export default function AutoCloseSettings() {
     const prefillMarketCenter = (defaultMarketCenterId: string) => {
       setSelectedMarketCenterId(defaultMarketCenterId);
     };
-    if (isEnterprise || !currentUser?.marketCenterId) return;
+    if (isEnterprise || isSuperuser || !currentUser?.marketCenterId) return;
     prefillMarketCenter(currentUser.marketCenterId);
-  }, [isEnterprise, currentUser?.marketCenterId]);
+  }, [isEnterprise, isSuperuser, currentUser?.marketCenterId]);
 
   const {
     data: autoCloseData,

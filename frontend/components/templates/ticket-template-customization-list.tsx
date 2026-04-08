@@ -64,13 +64,12 @@ export default function TicketTemplateCustomizationList() {
   const { getToken } = useAuth();
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
+  const { role, isSuperuser } = useUserRole();
 
   useEffect(() => {
-    if (isEnterprise || !currentUser?.marketCenterId) return;
+    if (isEnterprise || isSuperuser || !currentUser?.marketCenterId) return;
     setSelectedMarketCenterId(currentUser.marketCenterId);
-  }, [isEnterprise, currentUser?.marketCenterId]);
-
-  const { role } = useUserRole();
+  }, [isEnterprise, isSuperuser, currentUser?.marketCenterId]);
   const canAccess = role === "ADMIN" || role === "STAFF_LEADER";
 
   // Fetch market centers

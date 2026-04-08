@@ -78,21 +78,22 @@ export default function UserManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { role, permissions } = useUserRole();
+  const { role, permissions, isSuperuser } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
+  const canViewAllMCs = isEnterprise || isSuperuser;
   const { currentUser, setCurrentUser } = useStore();
 
   const defaultMarketCenterId = useMemo(
     () =>
-      ((role === "ADMIN" && !isEnterprise) ||
+      ((role === "ADMIN" && !canViewAllMCs) ||
         role === "STAFF" ||
         role === "STAFF_LEADER") &&
       currentUser?.marketCenterId
         ? currentUser.marketCenterId
-        : role === "ADMIN" && isEnterprise
+        : (role === "ADMIN" && canViewAllMCs) || isSuperuser
           ? "all"
           : "Unassigned",
-    [currentUser?.marketCenterId, role, isEnterprise]
+    [currentUser?.marketCenterId, role, canViewAllMCs, isSuperuser]
   );
 
   const [showFilters, setShowFilters] = useState(false);
@@ -178,13 +179,13 @@ export default function UserManagement() {
     if (selectedMarketCenterId === "Unassigned") {
       params.append("marketCenterId", "Unassigned");
     } else if (
-      isEnterprise &&
+      canViewAllMCs &&
       selectedMarketCenterId !== "all" &&
       selectedMarketCenterId !== "Unassigned"
     ) {
       params.append("marketCenterId", selectedMarketCenterId);
     } else if (
-      !isEnterprise &&
+      !canViewAllMCs &&
       defaultMarketCenterId &&
       selectedMarketCenterId === defaultMarketCenterId
     ) {
@@ -195,7 +196,7 @@ export default function UserManagement() {
     params.append("offset", String((currentPage - 1) * itemsPerPage));
     return params;
   }, [
-    isEnterprise,
+    canViewAllMCs,
     debouncedSearchQuery,
     selectedRole,
     selectedUserStatus,
@@ -816,7 +817,7 @@ export default function UserManagement() {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {isEnterprise && (
+                        {canViewAllMCs && (
                           <SelectItem value="all">All</SelectItem>
                         )}
 
@@ -1097,14 +1098,14 @@ export default function UserManagement() {
                 <label className="text-sm font-medium">Role *</label>
                 <ToolTip
                   content={
-                    !!isEnterprise ||
-                    (!isEnterprise && seats?.hasAvailableSeats)
+                    !!canViewAllMCs ||
+                    (!canViewAllMCs && seats?.hasAvailableSeats)
                       ? "You have available seats. All roles can be assigned."
                       : "Upgrade your subscription to assign the admin, staff leader or staff role."
                   }
                   trigger={
                     <p className="text-xs text-muted-foreground">
-                      {!!isEnterprise
+                      {!!canViewAllMCs
                         ? "Unlimited seats"
                         : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
                     used`}
@@ -1132,7 +1133,7 @@ export default function UserManagement() {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!isEnterprise &&
+                      (!canViewAllMCs &&
                         !seats?.hasAvailableSeats &&
                         role !== "AGENT") ||
                       ((role === "STAFF" || role === "STAFF_LEADER") &&

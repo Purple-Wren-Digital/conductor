@@ -85,8 +85,9 @@ export function AdminDashboard() {
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const { currentUser } = useStore();
-  const { role } = useUserRole();
+  const { role, isSuperuser } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
+  const canViewAllMCs = isEnterprise || isSuperuser;
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -117,15 +118,15 @@ export function AdminDashboard() {
       params.append("status", option);
     });
 
-    if (isEnterprise && selectedMarketCenter?.id !== "all") {
+    if (canViewAllMCs && selectedMarketCenter?.id !== "all") {
       params.append("marketCenterId", selectedMarketCenter.id);
     }
-    if (!isEnterprise && currentUser?.marketCenterId) {
+    if (!canViewAllMCs && currentUser?.marketCenterId) {
       params.append("marketCenterId", currentUser.marketCenterId);
     }
 
     return params;
-  }, [isEnterprise, selectedMarketCenter, currentUser]);
+  }, [canViewAllMCs, selectedMarketCenter, currentUser]);
 
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
@@ -170,7 +171,7 @@ export function AdminDashboard() {
     const allUsers: ConductorUser[] = usersData?.users || [];
     if (
       !!allUsers &&
-      isEnterprise &&
+      canViewAllMCs &&
       selectedMarketCenter &&
       selectedMarketCenter?.id !== "all"
     ) {
@@ -179,7 +180,7 @@ export function AdminDashboard() {
       );
     }
     return allUsers;
-  }, [usersData, isEnterprise, selectedMarketCenter]);
+  }, [usersData, canViewAllMCs, selectedMarketCenter]);
 
   const { data: globalAverages } = useListAllRatings(
     ["admin-dashboard-global-ratings", role ?? "AGENT"],
@@ -400,7 +401,7 @@ export function AdminDashboard() {
                   </span>
                 ))}
             </p>
-            {isEnterprise && marketCenters && marketCenters.length > 1 && (
+            {canViewAllMCs && marketCenters && marketCenters.length > 1 && (
               <Select
                 value={selectedMarketCenter?.id || ""}
                 onValueChange={(value) => {

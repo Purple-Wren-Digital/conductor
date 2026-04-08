@@ -70,7 +70,7 @@ export function AppSidebar({
   const { closeSidebar } = useSidebar();
   const router = useRouter();
   const { className, ...rest } = props;
-  const { role, permissions, isLoading } = useUserRole();
+  const { role, permissions, isSuperuser, isLoading } = useUserRole();
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
 
@@ -213,8 +213,8 @@ export function AppSidebar({
                 </SidebarMenuItem>
               )}
 
-              {/* ENTERPRISE - ADMIN - MARKET CENTERS MANAGEMENT */}
-              {isEnterprise && permissions?.canManageAllMarketCenters && (
+              {/* ENTERPRISE / SUPERUSER - ADMIN - MARKET CENTERS MANAGEMENT */}
+              {(isEnterprise || isSuperuser) && permissions?.canManageAllMarketCenters && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => navigate("/dashboard/marketCenters")}
@@ -228,6 +228,7 @@ export function AppSidebar({
 
               {/* NON-ENTERPRISE - ADMIN, STAFF LEADER, STAFF - MARKET CENTER MANAGEMENT */}
               {!isEnterprise &&
+                !isSuperuser &&
                 !!currentUser?.marketCenterId &&
                 permissions?.canManageTeam && (
                   <SidebarMenuItem>
