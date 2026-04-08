@@ -17,10 +17,19 @@ import type {
   MarketCenterForm,
   MarketCenterNotificationCallback,
   ConductorUser,
+  UserRole,
 } from "@/lib/types";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-select-dropdown";
+import { X } from "lucide-react";
 import { useStore } from "@/context/store-provider";
 import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
 import { useIsEnterprise } from "@/hooks/useSubscription";
@@ -91,16 +100,34 @@ export default function CreateMarketCenter({
     }));
   };
 
+  const handleUserRoleChange = (userId: string, newRole: UserRole) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedUsers: prev.selectedUsers.map((user) =>
+        user.id === userId ? { ...user, role: newRole } : user
+      ),
+    }));
+  };
+
+  const handleRemoveUser = (userId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedUsers: prev.selectedUsers.filter((user) => user.id !== userId),
+    }));
+  };
+
+  const roleOptions: UserRole[] = ["STAFF_LEADER", "STAFF", "AGENT"];
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!canCreateMC)
       errors.general = "Upgrade to Enterprise to add a market center";
     if (!formData?.name.trim()) errors.name = "Name is required";
     if (
-      !formData?.selectedUsers.length ||
+      formData?.selectedUsers.length > 0 &&
       !formData.selectedUsers.find((user) => user.role === "STAFF_LEADER")
     )
-      errors.users = "At least one staff leader must be assigned";
+      errors.users = "At least one staff leader must be assigned when adding users";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -141,6 +168,7 @@ export default function CreateMarketCenter({
           : "Failed to create market center";
         if (
           errorMessage.includes("At least one staff leader must be assigned")
+          || errorMessage.includes("staff leader")
         ) {
           setFormErrors({
             ...formErrors,
@@ -247,17 +275,48 @@ export default function CreateMarketCenter({
                 }
               />
             </div>
-            <div className="space-y-2 space-x-2 w-full">
-              {formData &&
-                formData.selectedUsers.length > 0 &&
-                formData.selectedUsers.map((selectedUser, index) => {
-                  return (
-                    <Badge key={index} variant="secondary">
-                      <p className="text-md">{selectedUser.name}</p>
-                    </Badge>
-                  );
-                })}
-            </div>
+            {formData.selectedUsers.length > 0 && (
+              <div className="space-y-2 w-full">
+                {formData.selectedUsers.map((selectedUser) => (
+                  <div
+                    key={selectedUser.id}
+                    className="flex items-center gap-2 p-2 border rounded-md bg-muted/30"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {selectedUser.name || selectedUser.email}
+                      </p>
+                    </div>
+                    <Select
+                      value={selectedUser.role}
+                      onValueChange={(value: UserRole) =>
+                        handleUserRoleChange(selectedUser.id, value)
+                      }
+                    >
+                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            <span className="capitalize">
+                              {role.split("_").join(" ").toLowerCase()}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveUser(selectedUser.id)}
+                      className="text-muted-foreground hover:text-destructive p-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <UserMultiSelectDropdown
               type="editing"

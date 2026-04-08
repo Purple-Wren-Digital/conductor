@@ -69,13 +69,14 @@ export const create = api<
       );
     }
 
+    // If users are provided, at least one must be a staff leader
     if (
-      !Array.isArray(req?.users) ||
-      !req.users.length ||
+      Array.isArray(req?.users) &&
+      req.users.length > 0 &&
       !req.users.find((user) => user.role === "STAFF_LEADER")
     ) {
       throw APIError.invalidArgument(
-        "At least one staff leader must be assigned"
+        "At least one staff leader must be assigned when adding users"
       );
     }
 
@@ -152,11 +153,57 @@ export const create = api<
       snapshot?: any;
       changedById?: string | null;
     }> = [];
+
+    // Auto-assign the creator as ADMIN of the new market center
+    // Skip for superusers — they manage multiple MCs and shouldn't be reassigned
+    if (!userContext.isSuperuser) {
+      const creator = await userRepository.findById(userContext.userId);
+      if (creator) {
+        await db.exec`
+          UPDATE users
+          SET market_center_id = ${createdMarketCenter.id},
+              role = 'ADMIN',
+              updated_at = NOW()
+          WHERE id = ${userContext.userId}
+        `;
+
+        marketCenterHistoryLogs.push({
+          marketCenterId: createdMarketCenter.id,
+          action: "ADD",
+          field: "team member (creator)",
+          changedById: userContext.userId,
+          newValue: JSON.stringify({
+            id: creator.id,
+            name: creator?.name ?? "Name not set",
+            role: "ADMIN",
+          }),
+          previousValue: null,
+        });
+
+        userHistoryLogs.push({
+          userId: userContext.userId,
+          marketCenterId: createdMarketCenter.id,
+          action: "ADD",
+          field: "market center",
+          newValue: JSON.stringify({
+            id: createdMarketCenter.id,
+            name: createdMarketCenter.name,
+          }),
+          previousValue: creator?.marketCenterId
+            ? JSON.stringify({ id: creator.marketCenterId })
+            : null,
+          changedById: userContext.userId,
+        });
+      }
+    }
+
     if (req?.users !== undefined && req?.users.length > 0) {
       for (const user of req.users) {
         await db.exec`
           UPDATE users
-          SET market_center_id = ${createdMarketCenter.id}, updated_at = NOW()
+          SET market_center_id = ${createdMarketCenter.id},
+              role = ${user.role},
+              updated_at = NOW()
           WHERE id = ${user.id}
         `;
 
