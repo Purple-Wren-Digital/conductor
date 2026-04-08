@@ -1,11 +1,5 @@
 import { api, APIError, Query } from "encore.dev/api";
-import {
-  db,
-  withTransaction,
-  fromTimestamp,
-  toJson,
-  userMarketCenterRepository,
-} from "../ticket/db";
+import { db, withTransaction, fromTimestamp, toJson } from "../ticket/db";
 import { MarketCenter } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -53,20 +47,19 @@ export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
     const result = await withTransaction(async (tx) => {
       // Remove users from market center: delete junction row, reassign active MC
       for (const user of req.users) {
-        await userMarketCenterRepository.removeUserFromMarketCenter(
-          user.id,
-          req.id,
-          tx
-        );
-        const nextMcId =
-          await userMarketCenterRepository.getNextMarketCenterId(
-            user.id,
-            req.id,
-            tx
-          );
+        await tx.exec`
+          DELETE FROM user_market_centers
+          WHERE user_id = ${user.id} AND market_center_id = ${req.id}
+        `;
+        const nextMc = await tx.queryRow<{ market_center_id: string }>`
+          SELECT market_center_id FROM user_market_centers
+          WHERE user_id = ${user.id} AND market_center_id != ${req.id}
+          ORDER BY created_at ASC
+          LIMIT 1
+        `;
         await tx.exec`
           UPDATE users
-          SET market_center_id = ${nextMcId},
+          SET market_center_id = ${nextMc?.market_center_id ?? null},
               updated_at = NOW()
           WHERE id = ${user.id}
         `;

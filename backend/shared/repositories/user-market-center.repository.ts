@@ -1,17 +1,16 @@
 /**
  * User Market Center Repository - Junction table for many-to-many user <-> market center
+ *
+ * For transaction-aware writes, use tx.exec directly in the caller
+ * (Encore's compiler requires static db usage — no dynamic conn dispatch).
  */
 
 import { db } from "../../ticket/db";
-import type { Transaction } from "../../ticket/db";
 
 interface MarketCenterRef {
   id: string;
   name: string;
 }
-
-// Connection type: either a transaction or the global db
-type Conn = Pick<typeof db, "exec" | "queryRow" | "queryAll">;
 
 export const userMarketCenterRepository = {
   async findMarketCentersByUserId(userId: string): Promise<MarketCenterRef[]> {
@@ -38,11 +37,9 @@ export const userMarketCenterRepository = {
 
   async addUserToMarketCenter(
     userId: string,
-    marketCenterId: string,
-    conn?: Conn
+    marketCenterId: string
   ): Promise<void> {
-    const c = conn ?? db;
-    await c.exec`
+    await db.exec`
       INSERT INTO user_market_centers (user_id, market_center_id)
       VALUES (${userId}, ${marketCenterId})
       ON CONFLICT (user_id, market_center_id) DO NOTHING
@@ -51,11 +48,9 @@ export const userMarketCenterRepository = {
 
   async removeUserFromMarketCenter(
     userId: string,
-    marketCenterId: string,
-    conn?: Conn
+    marketCenterId: string
   ): Promise<void> {
-    const c = conn ?? db;
-    await c.exec`
+    await db.exec`
       DELETE FROM user_market_centers
       WHERE user_id = ${userId} AND market_center_id = ${marketCenterId}
     `;
@@ -63,11 +58,9 @@ export const userMarketCenterRepository = {
 
   async getNextMarketCenterId(
     userId: string,
-    excludeMarketCenterId: string,
-    conn?: Conn
+    excludeMarketCenterId: string
   ): Promise<string | null> {
-    const c = conn ?? db;
-    const row = await c.queryRow<{ market_center_id: string }>`
+    const row = await db.queryRow<{ market_center_id: string }>`
       SELECT market_center_id FROM user_market_centers
       WHERE user_id = ${userId} AND market_center_id != ${excludeMarketCenterId}
       ORDER BY created_at ASC

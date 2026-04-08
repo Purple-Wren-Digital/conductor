@@ -1,11 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import {
-  db,
-  withTransaction,
-  fromTimestamp,
-  toJson,
-  userMarketCenterRepository,
-} from "../ticket/db";
+import { db, withTransaction, fromTimestamp, toJson } from "../ticket/db";
 import { MarketCenter, TicketCategory } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -188,32 +182,31 @@ export const update = api<
             SET market_center_id = ${req.id}, updated_at = NOW()
             WHERE id = ${user.id}
           `;
-          await userMarketCenterRepository.addUserToMarketCenter(
-            user.id,
-            req.id,
-            tx
-          );
+          await tx.exec`
+            INSERT INTO user_market_centers (user_id, market_center_id)
+            VALUES (${user.id}, ${req.id})
+            ON CONFLICT (user_id, market_center_id) DO NOTHING
+          `;
         }
       }
 
       // Remove users from market center
       if (removedUsers.length > 0) {
         for (const user of removedUsers) {
-          await userMarketCenterRepository.removeUserFromMarketCenter(
-            user.id,
-            req.id,
-            tx
-          );
+          await tx.exec`
+            DELETE FROM user_market_centers
+            WHERE user_id = ${user.id} AND market_center_id = ${req.id}
+          `;
           // Reassign active MC to next remaining, or NULL
-          const nextMcId =
-            await userMarketCenterRepository.getNextMarketCenterId(
-              user.id,
-              req.id,
-              tx
-            );
+          const nextMc = await tx.queryRow<{ market_center_id: string }>`
+            SELECT market_center_id FROM user_market_centers
+            WHERE user_id = ${user.id} AND market_center_id != ${req.id}
+            ORDER BY created_at ASC
+            LIMIT 1
+          `;
           await tx.exec`
             UPDATE users
-            SET market_center_id = ${nextMcId},
+            SET market_center_id = ${nextMc?.market_center_id ?? null},
                 updated_at = NOW()
             WHERE id = ${user.id}
           `;
