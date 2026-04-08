@@ -1,5 +1,4 @@
-import { clientSideEnv } from "@/lib/env/client-side";
-import { Environment, Local, PreviewEnv } from "./encore-client";
+import { API_BASE } from "./utils";
 
 export interface BusinessHours {
   monday: { start: string; end: string; isOpen: boolean };
@@ -128,19 +127,6 @@ export interface UpdateAutoCloseSettingsRequest {
   awaitingResponseDays?: number;
 }
 
-// Get the correct encore environment
-let environment = Local;
-if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
-  environment = Environment("staging");
-} else if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "preview") {
-  if (!clientSideEnv.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID) {
-    throw new Error("NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID is not set");
-  }
-  environment = PreviewEnv(
-    clientSideEnv.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID
-  );
-}
-
 // Note: Token must be passed from components that use useAuth() hook
 async function fetchApi(
   path: string,
@@ -150,7 +136,7 @@ async function fetchApi(
   if (!token) {
     throw new Error("User is not authenticated");
   }
-  const response = await fetch(`${environment}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

@@ -2,10 +2,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ReportFilters, DEFAULT_FILTERS, ReportFiltersState } from "./report-filters";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { PrismaUser } from "@/lib/types";
+import type { ConductorUser } from "@/lib/types";
 
 // Mock the store provider
-const mockCurrentUser: Partial<PrismaUser> = {
+const mockCurrentUser: Partial<ConductorUser> = {
   id: "user-1",
   role: "STAFF_LEADER",
   marketCenterId: "mc-123",
@@ -59,7 +59,7 @@ describe("ReportFilters", () => {
           id: "user-1",
           role: "STAFF_LEADER",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -89,7 +89,7 @@ describe("ReportFilters", () => {
           id: "user-2",
           role: "STAFF",
           marketCenterId: "mc-456",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -119,7 +119,7 @@ describe("ReportFilters", () => {
           id: "user-3",
           role: "AGENT",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -149,7 +149,7 @@ describe("ReportFilters", () => {
           id: "user-admin",
           role: "ADMIN",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -177,7 +177,7 @@ describe("ReportFilters", () => {
           id: "user-no-mc",
           role: "STAFF_LEADER",
           marketCenterId: null,
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -205,7 +205,7 @@ describe("ReportFilters", () => {
           id: "user-1",
           role: "STAFF_LEADER",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -238,7 +238,7 @@ describe("ReportFilters", () => {
           id: "user-1",
           role: "STAFF_LEADER",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 
@@ -268,7 +268,7 @@ describe("ReportFilters", () => {
           id: "user-admin",
           role: "ADMIN",
           marketCenterId: "mc-123",
-        } as PrismaUser,
+        } as ConductorUser,
         setCurrentUser: vi.fn(),
       });
 

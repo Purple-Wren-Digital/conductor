@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useStore } from "@/context/store-provider";
 import { useFetchAllUserNotifications } from "@/hooks/use-user-notifications";
 import { API_BASE } from "@/lib/api/utils";
-import type { Notification, PrismaUser } from "@/lib/types";
+import type { Notification, ConductorUser } from "@/lib/types";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -68,7 +68,7 @@ export default function DashboardLayout({
         if (!response.ok) throw new Error("User not found");
         const data = await response.json();
         if (data) {
-          setCurrentUser(data as PrismaUser);
+          setCurrentUser(data as ConductorUser);
         } else {
           throw new Error("User not found");
         }

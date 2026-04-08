@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { MarketCenter, PrismaUser } from "@/lib/types";
+import { MarketCenter, ConductorUser } from "@/lib/types";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,7 +30,7 @@ type AddTeamMemberProps = {
   disabled: boolean;
   getRoleIcon: (role: string) => JSX.Element;
   sendUserUpdateNotification: (
-    data: PrismaUser,
+    data: ConductorUser,
     userUpdate: "added" | "removed"
   ) => Promise<void>;
 };
@@ -43,9 +43,9 @@ export default function AddTeamMember({
 }: AddTeamMemberProps) {
   const queryClient = useQueryClient();
 
-  const [unassignedUsers, setUnassignedUsers] = useState<PrismaUser[]>([]);
+  const [unassignedUsers, setUnassignedUsers] = useState<ConductorUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<PrismaUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ConductorUser | null>(null);
   const [formError, setFormError] = useState<string>("");
 
   const { permissions } = useUserRole();
@@ -71,9 +71,9 @@ export default function AddTeamMember({
       });
 
       if (!response.ok) throw new Error("Failed to fetch users");
-      const data: { users: PrismaUser[] } = await response.json();
+      const data: { users: ConductorUser[] } = await response.json();
 
-      const needsAssignment: PrismaUser[] = data.users.filter((user) => {
+      const needsAssignment: ConductorUser[] = data.users.filter((user) => {
         if (!user?.marketCenterId) return user;
       });
       setUnassignedUsers(needsAssignment || []);
@@ -95,7 +95,7 @@ export default function AddTeamMember({
   };
 
   const addUserMutation = useMutation({
-    mutationFn: async (user: PrismaUser) => {
+    mutationFn: async (user: ConductorUser) => {
       if (!marketCenter?.id) throw new Error("Missing Market Center ID");
 
       const token = await getToken();

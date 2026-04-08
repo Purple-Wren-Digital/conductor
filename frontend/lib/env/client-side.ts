@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 const clientSideEnvSchema = z.object({
-	NEXT_PUBLIC_VERCEL_ENV: z.enum(["development", "preview", "production"]),
+	NEXT_PUBLIC_VERCEL_ENV: z.enum(["development", "preview", "production"]).default("development"),
 	NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID: z
 		.string()
-		.transform((v) => (v === "" ? undefined : v)), // Treat an empty string as undefined
+		.optional()
+		.transform((v) => (v === "" ? undefined : v)),
 });
 
 /**

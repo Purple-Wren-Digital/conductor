@@ -34,7 +34,7 @@ import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { useUserRole } from "@/hooks/use-user-role";
 import {
   MarketCenter,
-  PrismaUser,
+  ConductorUser,
   UserEditFormData,
   UserRole,
 } from "@/lib/types";
@@ -51,7 +51,7 @@ export default function UserProfileLayout() {
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: currentUser?.id,
   });
-  const user: PrismaUser = userData ?? ({} as PrismaUser);
+  const user: ConductorUser = userData ?? ({} as ConductorUser);
   const marketCenter: MarketCenter = userData?.marketCenter ?? {};
 
   const [showEditUserForm, setShowEditUserForm] = useState(false);

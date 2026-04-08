@@ -79,7 +79,7 @@ import type {
   Ticket,
   TicketStatus,
   Urgency,
-  PrismaUser,
+  ConductorUser,
   OrderBy,
   TicketSortBy,
   TicketsResponse,
@@ -249,7 +249,7 @@ export default function TicketListStaff() {
     refetch: refetchMarketCenter,
   } = useFetchMarketCenter(currentUser?.role, marketCenterId);
 
-  const teamMembers: PrismaUser[] = useMemo(
+  const teamMembers: ConductorUser[] = useMemo(
     () =>
       marketCenter?.users && marketCenter?.users.length > 0
         ? marketCenter?.users.sort(sortByRoleThenName)
@@ -257,7 +257,7 @@ export default function TicketListStaff() {
     [marketCenter?.users]
   );
 
-  const staffTeamMembers: PrismaUser[] = useMemo(() => {
+  const staffTeamMembers: ConductorUser[] = useMemo(() => {
     return teamMembers
       .filter((user) => user?.role && user.role !== "AGENT")
       .sort(sortByRoleThenName);
@@ -972,7 +972,7 @@ export default function TicketListStaff() {
                               </SelectItem>
                               {staffTeamMembers &&
                                 staffTeamMembers.length > 0 &&
-                                staffTeamMembers.map((user: PrismaUser) => (
+                                staffTeamMembers.map((user: ConductorUser) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     <span className="font-medium">
                                       {user.name}:
@@ -1023,7 +1023,7 @@ export default function TicketListStaff() {
                                 All Team Members
                               </SelectItem>
                               {teamMembers &&
-                                teamMembers.map((user: PrismaUser) => (
+                                teamMembers.map((user: ConductorUser) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     <span className="font-medium">
                                       {user.name}:
@@ -1449,7 +1449,7 @@ export default function TicketListStaff() {
               <SelectContent>
                 {staffTeamMembers &&
                   staffTeamMembers.length &&
-                  staffTeamMembers.map((user: PrismaUser) => (
+                  staffTeamMembers.map((user: ConductorUser) => (
                     <SelectItem key={user.id} value={user.id}>
                       <span className="font-medium">{user.name}:</span>
                       <span className="hidden md:flex text-muted-foreground capitalize">

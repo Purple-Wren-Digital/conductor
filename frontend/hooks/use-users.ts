@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
-import { PrismaUser, UserRole, UserWithStats } from "@/lib/types";
+import { ConductorUser, UserRole, UserWithStats } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 
@@ -42,7 +42,7 @@ export function useFetchAllUsers({
         if (!data || !data?.users || !data?.total)
           throw new Error("Failed to fetch users");
         const usersWithStats: UserWithStats[] = data.users.map(
-          (user: PrismaUser) => ({
+          (user: ConductorUser) => ({
             ...user,
             createdAt: new Date(user.createdAt),
             ticketsAssigned: 0,
@@ -95,7 +95,7 @@ export function useFetchUsersWithinMarketCenter({
         if (!data || !data?.users || !data?.total)
           throw new Error("Failed to fetch users");
         const usersWithStats: UserWithStats[] = data.users.map(
-          (user: PrismaUser) => ({
+          (user: ConductorUser) => ({
             ...user,
             createdAt: new Date(user.createdAt),
             ticketsAssigned: 0,

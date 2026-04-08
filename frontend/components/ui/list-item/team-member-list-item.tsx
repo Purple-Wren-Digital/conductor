@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ListItem } from "./base-list-item";
-import type { PrismaUser } from "@/lib/types";
+import type { ConductorUser } from "@/lib/types";
 import { Mail, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -12,7 +12,7 @@ export function TeamMemberListItem({
   onEdit,
   onDelete,
 }: {
-  user: PrismaUser & { ticketsAssigned?: number; ticketsCreated?: number };
+  user: ConductorUser & { ticketsAssigned?: number; ticketsCreated?: number };
   onEdit: () => void;
   onDelete: () => void;
 }) {

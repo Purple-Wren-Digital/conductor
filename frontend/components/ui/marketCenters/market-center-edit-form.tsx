@@ -24,7 +24,7 @@ import type {
   MarketCenter,
   MarketCenterForm,
   MarketCenterNotificationCallback,
-  PrismaUser,
+  ConductorUser,
   UsersToNotify,
 } from "@/lib/types";
 import { arraysEqualById } from "@/lib/utils";
@@ -63,7 +63,7 @@ export default function EditMarketCenter({
   const { isEnterprise } = useIsEnterprise();
   const canBypassLimits = isEnterprise || isSuperuser;
 
-  const assignedUsers: PrismaUser[] = useMemo(() => {
+  const assignedUsers: ConductorUser[] = useMemo(() => {
     return editingMarketCenter?.users ?? [];
   }, [editingMarketCenter]);
 
@@ -115,18 +115,18 @@ export default function EditMarketCenter({
     marketCenterId: "Unassigned",
   });
 
-  const unassignedUsers: PrismaUser[] = useMemo(() => {
+  const unassignedUsers: ConductorUser[] = useMemo(() => {
     let unAssigned = unassignedUsersData?.users ?? [];
     if (!canBypassLimits && !seats?.hasAvailableSeats) {
       unAssigned =
         unAssigned && unAssigned.length > 0
-          ? unAssigned.filter((user: PrismaUser) => user.role === "AGENT")
+          ? unAssigned.filter((user: ConductorUser) => user.role === "AGENT")
           : [];
     }
     return unAssigned;
   }, [unassignedUsersData, canBypassLimits, seats]);
 
-  const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
+  const handleSetSelectedOptions = (newSelected: ConductorUser[]) => {
     setFormData({
       ...formData,
       selectedUsers: newSelected,

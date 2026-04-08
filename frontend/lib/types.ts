@@ -18,8 +18,8 @@ import { AutoCloseSettings } from "./api/settings";
 
 // CONTEXT
 export type AppContext = {
-  currentUser: PrismaUser | null;
-  setCurrentUser: Dispatch<SetStateAction<PrismaUser | null>>;
+  currentUser: ConductorUser | null;
+  setCurrentUser: Dispatch<SetStateAction<ConductorUser | null>>;
 };
 
 // TICKETS
@@ -46,8 +46,8 @@ export interface Ticket {
   resolvedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  creator?: PrismaUser;
-  assignee?: PrismaUser | null;
+  creator?: ConductorUser;
+  assignee?: ConductorUser | null;
   category?: TicketCategory | null;
   commentCount?: number | null;
   attachmentCount?: number | null;
@@ -73,8 +73,8 @@ export interface Todo {
   updatedAt?: Date;
 
   ticket?: Ticket;
-  createdBy?: { id: string; name?: string } | PrismaUser;
-  updatedBy?: { id: string; name?: string } | PrismaUser;
+  createdBy?: { id: string; name?: string } | ConductorUser;
+  updatedBy?: { id: string; name?: string } | ConductorUser;
 }
 
 export interface Attachment {
@@ -87,7 +87,7 @@ export interface Attachment {
   uploadedBy: string;
   createdAt: Date;
   updatedAt: Date;
-  uploader?: PrismaUser;
+  uploader?: ConductorUser;
   uploaderName?: string;
 }
 export interface TicketCategory {
@@ -98,7 +98,7 @@ export interface TicketCategory {
   defaultAssigneeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  defaultAssignee?: PrismaUser | null;
+  defaultAssignee?: ConductorUser | null;
   marketCenter?: MarketCenter;
   ticketCount?: number;
 }
@@ -112,7 +112,7 @@ export interface TicketHistory {
   snapshot?: {}; // Ticket as it was in this moment
   changedAt: Date;
   changedById: string;
-  changedBy?: PrismaUser;
+  changedBy?: ConductorUser;
   ticket?: Ticket;
 }
 
@@ -174,14 +174,14 @@ export interface Survey {
   updatedAt?: Date;
   ticket?: Ticket;
   surveyor?:
-    | PrismaUser
+    | ConductorUser
     | {
         id: string;
         name: string;
         email: string;
       };
   assignee?:
-    | PrismaUser
+    | ConductorUser
     | {
         id: string;
         name: string;
@@ -213,13 +213,13 @@ export interface Comment {
   metadata: any;
   createdAt: Date;
   updatedAt?: Date;
-  user?: PrismaUser;
+  user?: ConductorUser;
 }
 
 // USER
 export type UserRole = "AGENT" | "STAFF" | "STAFF_LEADER" | "ADMIN";
 
-export interface PrismaUser {
+export interface ConductorUser {
   id: string;
   clerkId: string;
   // auth0Id: string;
@@ -291,7 +291,7 @@ export interface UserEditFormData {
   marketCenterId?: string;
 }
 
-export interface UserWithStats extends PrismaUser {
+export interface UserWithStats extends ConductorUser {
   ticketsAssigned?: number;
   ticketsCreated?: number;
   lastActive?: Date;
@@ -304,7 +304,7 @@ export interface UserSettings {
   notificationPreferences: NotificationPreferences[];
   createdAt: Date;
   updatedAt: Date;
-  user: PrismaUser;
+  user: ConductorUser;
 }
 export interface NotificationPreferences {
   id: string;
@@ -349,7 +349,7 @@ export interface MarketCenter {
   primaryStripeCustomerId: string | null;
   primaryStripeSubscriptionId: string | null;
 
-  users?: PrismaUser[];
+  users?: ConductorUser[];
   totalTickets?: number;
   totalUsers?: number;
   staffLeaderIds?: string[];
@@ -394,12 +394,12 @@ export interface MarketCenterHistory {
   changedAt: Date;
   changedById: string;
   marketCenter?: MarketCenter;
-  changedBy?: PrismaUser;
+  changedBy?: ConductorUser;
 }
 
 export type MarketCenterForm = {
   name: string;
-  selectedUsers: PrismaUser[];
+  selectedUsers: ConductorUser[];
   ticketCategories?: any[];
 };
 
@@ -433,7 +433,7 @@ export interface MarketCenterSettings {
     language: string;
     autoAssignment: boolean;
   };
-  teamMembers: PrismaUser[];
+  teamMembers: ConductorUser[];
 }
 export interface BusinessHours {
   monday: { start: string; end: string; isOpen: boolean };
@@ -465,7 +465,7 @@ export interface SettingsAuditLog {
   newValue?: {};
   createdAt: Date;
   marketCenter: MarketCenter;
-  user: PrismaUser;
+  user: ConductorUser;
 }
 
 export interface SettingsAuditLogEntry {
@@ -504,7 +504,7 @@ export interface TeamInvitation {
 export type OrderBy = "asc" | "desc";
 
 export type UserSortBy = "updatedAt" | "createdAt" | "name" | "role";
-export type UsersResponse = { users: PrismaUser[]; total: number };
+export type UsersResponse = { users: ConductorUser[]; total: number };
 
 export type TicketSortBy = "updatedAt" | "createdAt" | "urgency" | "status";
 export type TicketWithUpdatedAt = Ticket & { updatedAt?: string | Date };
@@ -548,7 +548,7 @@ export type NotificationTypes =
 export interface Notification {
   id: string;
   userId: string;
-  user?: PrismaUser;
+  user?: ConductorUser;
   channel?: NotificationChannel;
   category: NotificationCategory;
   priority: Urgency;

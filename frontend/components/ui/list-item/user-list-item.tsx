@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ListItem } from "./base-list-item";
-import type { MarketCenter, PrismaUser } from "@/lib/types";
+import type { MarketCenter, ConductorUser } from "@/lib/types";
 import {
   Mail,
   CalendarIcon,
@@ -29,7 +29,7 @@ export function UserListItem({
   onDelete,
   onClick,
 }: {
-  user: PrismaUser & { ticketsAssigned?: number; ticketsCreated?: number };
+  user: ConductorUser & { ticketsAssigned?: number; ticketsCreated?: number };
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;

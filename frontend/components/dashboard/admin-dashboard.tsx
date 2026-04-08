@@ -59,7 +59,7 @@ import {
   statusOptions,
   ticketByStatusChartConfig,
 } from "@/lib/utils";
-import type { MarketCenter, PrismaUser, Ticket } from "@/lib/types";
+import type { MarketCenter, ConductorUser, Ticket } from "@/lib/types";
 import { calculateStaffStats } from "@/lib/utils/staff-stats";
 import { useIsEnterprise } from "@/hooks/useSubscription";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
@@ -166,8 +166,8 @@ export function AdminDashboard() {
     },
     enabled: !!clerkUser,
   });
-  const teamMembers: PrismaUser[] = useMemo(() => {
-    const allUsers: PrismaUser[] = usersData?.users || [];
+  const teamMembers: ConductorUser[] = useMemo(() => {
+    const allUsers: ConductorUser[] = usersData?.users || [];
     if (
       !!allUsers &&
       isEnterprise &&

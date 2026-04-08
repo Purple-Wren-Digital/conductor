@@ -10,7 +10,7 @@ import {
 import {
   MarketCenter,
   OrderBy,
-  PrismaUser,
+  ConductorUser,
   TicketSortBy,
   TicketStatus,
   Urgency,
@@ -79,8 +79,8 @@ export const ROLE_ORDER: Record<UserRole, number> = {
 };
 
 export const sortByRoleThenName = (
-  a: Partial<PrismaUser>,
-  b: Partial<PrismaUser>
+  a: Partial<ConductorUser>,
+  b: Partial<ConductorUser>
 ) => {
   const roleA = a.role ?? "AGENT";
   const roleB = b.role ?? "AGENT";

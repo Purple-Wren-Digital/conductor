@@ -34,7 +34,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
-  PrismaUser,
+  ConductorUser,
   TicketCategory,
   Urgency,
 } from "@/lib/types";
@@ -123,7 +123,7 @@ export default function TicketTemplateEditor({
       : [];
   }, [selectedMarketCenter, isMarketCentersLoading]);
 
-  const marketCenterUsers: PrismaUser[] = useMemo(() => {
+  const marketCenterUsers: ConductorUser[] = useMemo(() => {
     return !isMarketCentersLoading &&
       selectedMarketCenter &&
       selectedMarketCenter?.users

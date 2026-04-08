@@ -47,7 +47,7 @@ import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
 import type {
   MarketCenterNotificationCallback,
   OrderBy,
-  PrismaUser,
+  ConductorUser,
   UserRole,
   UserSortBy,
 } from "@/lib/types";
@@ -119,7 +119,7 @@ export default function MarketCenterUsers({
   const [itemsPerPage] = useState(10);
 
   const [showRemoveUserForm, setShowRemoveUserForm] = useState(false);
-  const [userToRemove, setUserToRemove] = useState<PrismaUser | null>(null);
+  const [userToRemove, setUserToRemove] = useState<ConductorUser | null>(null);
 
   const { currentUser } = useStore();
   const { permissions } = useUserRole();
@@ -231,7 +231,7 @@ export default function MarketCenterUsers({
       marketCenterId: marketCenterId,
     });
 
-  const teamMembers: PrismaUser[] = useMemo(
+  const teamMembers: ConductorUser[] = useMemo(
     () => usersData?.users ?? [],
     [usersData]
   );
@@ -275,13 +275,13 @@ export default function MarketCenterUsers({
     return <Icon className="h-4 w-4" />;
   }, []);
   // REMOVAL
-  const openRemoveUserModal = useCallback((user: PrismaUser) => {
+  const openRemoveUserModal = useCallback((user: ConductorUser) => {
     setUserToRemove(user);
     setShowRemoveUserForm(true);
   }, []);
 
   const removeUserMutation = useMutation({
-    mutationFn: async (user: PrismaUser) => {
+    mutationFn: async (user: ConductorUser) => {
       if (!marketCenterId) throw new Error("Missing Market Center ID");
 
       const token = await getToken();
@@ -315,7 +315,7 @@ export default function MarketCenterUsers({
       }
       return user;
     },
-    onSuccess: async (user: PrismaUser) => {
+    onSuccess: async (user: ConductorUser) => {
       toast.success(`${user?.name} was removed`);
       await handleSendMarketCenterNotifications({
         templateName: "Market Center Assignment",
@@ -336,7 +336,7 @@ export default function MarketCenterUsers({
           },
         },
       });
-      setUserToRemove({} as PrismaUser);
+      setUserToRemove({} as ConductorUser);
       setShowRemoveUserForm(false);
     },
     onError: (error) => {
@@ -349,7 +349,7 @@ export default function MarketCenterUsers({
     },
   });
 
-  const handleRemoveUser = async (user: PrismaUser | null) => {
+  const handleRemoveUser = async (user: ConductorUser | null) => {
     if (!user) throw new Error("User data is missing");
     setIsLoading(true);
     removeUserMutation.mutate(user);

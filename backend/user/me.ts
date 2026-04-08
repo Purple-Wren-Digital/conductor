@@ -8,6 +8,7 @@ export interface GetCurrentUserResponse {
   name: string;
   role: string;
   isActive: boolean;
+  isSuperuser: boolean;
   marketCenterId: string | null;
   marketCenter?: {
     id: string;
@@ -37,6 +38,7 @@ export const me = api<void, GetCurrentUserResponse>(
       name: user.name ?? "",
       role: user.role,
       isActive: user.isActive,
+      isSuperuser: user.isSuperuser ?? false,
       marketCenterId: user.marketCenterId,
       marketCenter: user.marketCenter
         ? {

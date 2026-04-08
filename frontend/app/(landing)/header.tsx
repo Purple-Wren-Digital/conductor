@@ -9,7 +9,7 @@ import {
   useAuth,
 } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { PrismaUser } from "@/lib/types";
+import { ConductorUser } from "@/lib/types";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/context/store-provider";
@@ -51,7 +51,7 @@ export function Header() {
         if (response.ok) {
           const data = await response.json();
           if (data) {
-            setCurrentUser(data as PrismaUser);
+            setCurrentUser(data as ConductorUser);
             return;
           }
         }

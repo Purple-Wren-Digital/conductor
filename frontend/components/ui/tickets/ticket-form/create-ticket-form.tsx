@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import type {
   FormErrors,
-  PrismaUser,
+  ConductorUser,
   Ticket,
   TicketTemplate,
   Urgency,
@@ -149,7 +149,7 @@ export function CreateTicketForm({
   }) => {
     const title = ticket?.title ?? "";
     const dueDate = ticket?.dueDate ? ticket.dueDate : undefined;
-    const creator = ticket?.creator as PrismaUser;
+    const creator = ticket?.creator as ConductorUser;
     const notifyCreator = userToNotify.updateType === "created";
     const notifyAssignee = userToNotify.updateType === "added";
     try {

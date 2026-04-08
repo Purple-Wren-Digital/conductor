@@ -57,7 +57,7 @@ import {
 import { format } from "date-fns";
 import type {
   Ticket,
-  PrismaUser,
+  ConductorUser,
   TicketStatus,
   Urgency,
   TicketHistory,
@@ -90,7 +90,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [attachmentTotal, setAttachmentTotal] = useState(0);
   const [commentTotal, setCommentTotal] = useState(0);
-  const [users, setUsers] = useState<PrismaUser[]>([]);
+  const [users, setUsers] = useState<ConductorUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -147,7 +147,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         fetch(`${API_BASE}/users`, { headers, cache: "no-store" }),
       ]);
 
-      const usersData = await parseJsonSafe<{ users: PrismaUser[] }>(usersRes);
+      const usersData = await parseJsonSafe<{ users: ConductorUser[] }>(usersRes);
       const ticketData = await ticketRes.json();
       setAttachmentTotal(ticketData?.attachmentCount || 0);
       setCommentTotal(ticketData?.commentCount || 0);

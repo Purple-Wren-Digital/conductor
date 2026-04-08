@@ -17,7 +17,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import type {
   MarketCenter,
   MarketCenterNotificationCallback,
-  PrismaUser,
+  ConductorUser,
 } from "@/lib/types";
 import { toast } from "sonner";
 import { useStore } from "@/context/store-provider";
@@ -101,7 +101,7 @@ export default function DeleteMarketCenter({
         marketCenterToDelete?.users.length > 0
       ) {
         await Promise.all(
-          marketCenterToDelete?.users.map(async (user: PrismaUser) => {
+          marketCenterToDelete?.users.map(async (user: ConductorUser) => {
             await handleSendMarketCenterNotifications({
               templateName: "Market Center Assignment",
               trigger: "Market Center Assignment",

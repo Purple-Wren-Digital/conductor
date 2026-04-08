@@ -33,7 +33,7 @@ import type {
   MarketCenterForm,
   MarketCenterNotificationCallback,
   OrderBy,
-  PrismaUser,
+  ConductorUser,
   TicketCategory,
   UserSortBy,
 } from "@/lib/types";
@@ -101,7 +101,7 @@ export default function MarketCenterManagement() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryOption>(
     defaultSelectedCategory
   );
-  const [selectedUsers, setSelectedUsers] = useState<PrismaUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<ConductorUser[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
@@ -244,8 +244,8 @@ export default function MarketCenterManagement() {
     [totalMarketCenters, itemsPerPage]
   );
 
-  const assignedUsers: PrismaUser[] = useMemo(() => {
-    let users: PrismaUser[] = [];
+  const assignedUsers: ConductorUser[] = useMemo(() => {
+    let users: ConductorUser[] = [];
     marketCenters.forEach((mc) => {
       if (mc.users && mc.users.length > 0) {
         users.push(...mc?.users);
@@ -533,7 +533,7 @@ export default function MarketCenterManagement() {
                     formFieldName={"Users"}
                     options={assignedUsers}
                     selectedOptions={selectedUsers}
-                    handleSetSelectedOptions={(newSelected: PrismaUser[]) => {
+                    handleSetSelectedOptions={(newSelected: ConductorUser[]) => {
                       setSelectedUsers(newSelected);
                     }}
                     error={null}

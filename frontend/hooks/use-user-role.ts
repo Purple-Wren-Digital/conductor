@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUser, useAuth } from "@clerk/nextjs";
-import type { PrismaUser, UserRole } from "@/lib/types";
+import type { ConductorUser, UserRole } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 // FE Permissions Here
 
@@ -219,10 +219,10 @@ export function useUserRole() {
   const { getToken } = useAuth();
 
   const {
-    data: PrismaUser,
+    data: ConductorUser,
     isLoading: userLoading,
     error,
-  } = useQuery<PrismaUser>({
+  } = useQuery<ConductorUser>({
     queryKey: ["CurrentUser"],
     queryFn: async () => {
       const token = await getToken();
@@ -245,13 +245,13 @@ export function useUserRole() {
       if (!data) {
         throw new Error("Failed to fetch user data");
       }
-      return data as PrismaUser;
+      return data as ConductorUser;
     },
     enabled: isLoaded,
     staleTime: 5 * 60 * 1000,
   });
-  const role = PrismaUser?.role as UserRole | undefined;
-  const isSuperuser = PrismaUser?.isSuperuser ?? false;
+  const role = ConductorUser?.role as UserRole | undefined;
+  const isSuperuser = ConductorUser?.isSuperuser ?? false;
   const permissions = role ? getUserPermissions(role, isSuperuser) : null;
 
   return {

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { TableCell, TableRow } from "@/components/ui/table";
-import type { PrismaUser, UserRole } from "@/lib/types";
+import type { ConductorUser, UserRole } from "@/lib/types";
 import { getCategoryStyle, ROLE_ICONS } from "@/lib/utils";
 import { CircleMinus, TicketIcon, User } from "lucide-react";
 import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
@@ -19,7 +19,7 @@ export default function MarketCenterUserTable({
   onDelete,
   onClick,
 }: {
-  user: PrismaUser;
+  user: ConductorUser;
   selected?: boolean;
   onSelect?: (checked: boolean) => void;
   onEdit: (e: React.MouseEvent) => void;

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/api/utils";
-import { PrismaUser, SurveyResults } from "@/lib/types";
+import { ConductorUser, SurveyResults } from "@/lib/types";
 import { Edit, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ const EditUserProfile = ({
   invalidateUserQuery,
   userRatingsData,
 }: {
-  user: PrismaUser;
+  user: ConductorUser;
   isCurrentUserProfile: boolean;
   invalidateUserQuery: Promise<void>;
   userRatingsData?: SurveyResults;
@@ -45,7 +45,7 @@ const EditUserProfile = ({
     }
   };
 
-  const handleResetForm = (userData: PrismaUser) => {
+  const handleResetForm = (userData: ConductorUser) => {
     setFormData({
       firstName: userData?.name ? userData?.name.split(" ")[0] : "",
       lastName: userData?.name ? userData?.name.split(" ").slice(1).join(" ") : "",
@@ -88,7 +88,7 @@ const EditUserProfile = ({
     return Object.keys(errors).length === 0;
   };
 
-  const updateUserMutation = useMutation<PrismaUser, Error, { userId: string }>(
+  const updateUserMutation = useMutation<ConductorUser, Error, { userId: string }>(
     {
       mutationFn: async ({ userId }) => {
         if (!isCurrentUserProfile || !userId)
@@ -120,9 +120,9 @@ const EditUserProfile = ({
         const data = await response.json();
         if (!data || !data?.user)
           throw new Error("Prisma - Updated data was not found");
-        return data.user as PrismaUser;
+        return data.user as ConductorUser;
       },
-      onSuccess: async (data: PrismaUser) => {
+      onSuccess: async (data: ConductorUser) => {
         handleResetForm(data);
         setCurrentUser(data);
         toast.success("Profile updated");

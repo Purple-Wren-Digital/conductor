@@ -24,7 +24,7 @@ import { format } from "date-fns";
 import type {
   FormErrors,
   MarketCenter,
-  PrismaUser,
+  ConductorUser,
   TicketCategory,
   TicketTemplate,
   Urgency,
@@ -119,7 +119,7 @@ export function BaseTicketForm({
       : [];
   }, [selectedMarketCenter]);
 
-  const marketCenterAssignees: PrismaUser[] = useMemo(() => {
+  const marketCenterAssignees: ConductorUser[] = useMemo(() => {
     return !isMarketCentersLoading &&
       selectedMarketCenter &&
       selectedMarketCenter?.users

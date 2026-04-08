@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { TicketCategory, PrismaUser } from "@/lib/types";
+import type { TicketCategory, ConductorUser } from "@/lib/types";
 
 /**
  * These tests verify the category selection logic in BaseTicketForm.
@@ -15,7 +15,7 @@ import type { TicketCategory, PrismaUser } from "@/lib/types";
  */
 
 // Mock data
-const mockAdminUser: PrismaUser = {
+const mockAdminUser: ConductorUser = {
   id: "admin-1",
   clerkId: "clerk-admin",
   email: "admin@example.com",
@@ -62,7 +62,7 @@ function handleCategoryChange(
   categoryId: string,
   role: string,
   categories: TicketCategory[],
-  assignees: PrismaUser[]
+  assignees: ConductorUser[]
 ): { categoryId: string; assigneeId?: string } {
   // Only auto-assign based on category default if user is not an Agent
   if (role !== "AGENT") {

@@ -16,7 +16,7 @@ import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenterForm,
   MarketCenterNotificationCallback,
-  PrismaUser,
+  ConductorUser,
 } from "@/lib/types";
 import { toast } from "sonner";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
@@ -71,7 +71,7 @@ export default function CreateMarketCenter({
     marketCenterId: "Unassigned",
   });
 
-  const unassignedUsers: PrismaUser[] = useMemo(() => {
+  const unassignedUsers: ConductorUser[] = useMemo(() => {
     return unassignedUsersData?.users ?? [];
   }, [unassignedUsersData]);
 
@@ -84,7 +84,7 @@ export default function CreateMarketCenter({
     setShowCreateMCForm(false);
   }, [setFormData, setShowCreateMCForm]);
 
-  const handleSetSelectedUserOptions = (newSelected: PrismaUser[]) => {
+  const handleSetSelectedUserOptions = (newSelected: ConductorUser[]) => {
     setFormData((prev) => ({
       ...prev,
       selectedUsers: newSelected,
@@ -160,7 +160,7 @@ export default function CreateMarketCenter({
         );
         if (data?.marketCenter?.users && data?.marketCenter?.users.length > 0) {
           await Promise.all(
-            data?.marketCenter?.users.map(async (user: PrismaUser) => {
+            data?.marketCenter?.users.map(async (user: ConductorUser) => {
               await handleSendMarketCenterNotifications({
                 templateName: "Market Center Assignment",
                 trigger: "Market Center Assignment",

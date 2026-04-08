@@ -11,7 +11,7 @@ import {
 import { StarRating } from "@/components/ui/ratingInput/star-rating-static";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { getRoleDescription, ROLE_ICONS } from "@/lib/utils";
-import { PrismaUser, SurveyResults, UserRole } from "@/lib/types";
+import { ConductorUser, SurveyResults, UserRole } from "@/lib/types";
 import { Building, Hash, InfoIcon, Mail, User } from "lucide-react";
 
 export default function UserInformation({
@@ -19,7 +19,7 @@ export default function UserInformation({
   marketCenterName,
   userRatingsData,
 }: {
-  user: PrismaUser;
+  user: ConductorUser;
   marketCenterName?: string;
   userRatingsData?: SurveyResults;
 }) {

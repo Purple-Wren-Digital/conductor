@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommentList } from "./comment-list";
-import { Comment, PrismaUser } from "@/lib/types";
+import { Comment, ConductorUser } from "@/lib/types";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock current user
-const mockCurrentUser: PrismaUser = {
+const mockCurrentUser: ConductorUser = {
   id: "current-user-id",
   clerkId: "clerk-current",
   email: "current@example.com",
@@ -24,7 +24,7 @@ const mockCurrentUser: PrismaUser = {
   },
 };
 
-const otherUser: PrismaUser = {
+const otherUser: ConductorUser = {
   id: "other-user-id",
   clerkId: "clerk-other",
   email: "other@example.com",

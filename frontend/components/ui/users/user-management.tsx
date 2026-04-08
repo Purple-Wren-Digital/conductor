@@ -6,7 +6,7 @@ import { useStore } from "@/context/store-provider";
 import type {
   MarketCenter,
   OrderBy,
-  PrismaUser,
+  ConductorUser,
   UserEditFormData,
   UserNotificationCallback,
   UserRole,
@@ -305,7 +305,7 @@ export default function UserManagement() {
 
   const userNameForm = useMemo(
     () =>
-      `${editUserFormData?.firstName.trim()} ${editUserFormData?.lastName.trim()}`,
+      `${editUserFormData?.firstName?.trim() ?? ""} ${editUserFormData?.lastName?.trim() ?? ""}`,
     [editUserFormData]
   );
 
@@ -322,7 +322,7 @@ export default function UserManagement() {
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!editUserFormData?.firstName || !editUserFormData?.firstName.trim()) {
-      errors.name = "First name is required";
+      errors.firstName = "First name is required";
     }
     if (!editUserFormData?.lastName || !editUserFormData?.lastName.trim()) {
       errors.lastName = "Last name is required";
@@ -378,7 +378,7 @@ export default function UserManagement() {
   );
 
   const updateUserMutation = useMutation<
-    PrismaUser,
+    ConductorUser,
     Error,
     { userId?: string }
   >({
@@ -420,9 +420,9 @@ export default function UserManagement() {
         throw new Error("Prisma - Updated data was not found");
       }
 
-      return data.user as PrismaUser;
+      return data.user as ConductorUser;
     },
-    onSuccess: async (data: PrismaUser) => {
+    onSuccess: async (data: ConductorUser) => {
       toast.success(`${userToDelete?.name || "User"} was updated`);
       if (currentUser?.id === data?.id) {
         setCurrentUser(data);
@@ -530,7 +530,7 @@ export default function UserManagement() {
         throw new Error("No response data found");
       }
 
-      return data?.user as PrismaUser;
+      return data?.user as ConductorUser;
     },
     onSuccess: async (data) => {
       toast.success(`${data?.name || "User"} was reactivated!`);
@@ -611,7 +611,7 @@ export default function UserManagement() {
       if (!data || !data?.user) {
         throw new Error("No response data found");
       }
-      return data.user as PrismaUser;
+      return data.user as ConductorUser;
     },
     onSuccess: async (data) => {
       toast.success(`${userToDelete?.name || "User"} was removed`);

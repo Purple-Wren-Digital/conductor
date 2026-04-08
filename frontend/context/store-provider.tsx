@@ -1,17 +1,17 @@
 "use client";
 
-import { AppContext, PrismaUser } from "@/lib/types";
+import { AppContext, ConductorUser } from "@/lib/types";
 import { createContext, useContext, useMemo, useState } from "react";
 
 export const StoreContext = createContext({
-  currentUser: {} as PrismaUser | null,
-  setCurrentUser: (currentUser: PrismaUser | null) => {},
+  currentUser: {} as ConductorUser | null,
+  setCurrentUser: (currentUser: ConductorUser | null) => {},
 });
 
 export const useStore = () => useContext(StoreContext);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<PrismaUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<ConductorUser | null>(null);
   const value: AppContext = useMemo(() => {
     return {
       currentUser,

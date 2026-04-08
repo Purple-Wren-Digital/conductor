@@ -30,7 +30,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
   MarketCenter,
-  PrismaUser,
+  ConductorUser,
   UserEditFormData,
   UserNotificationCallback,
   UserRole,
@@ -64,7 +64,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: id,
   });
-  const user: PrismaUser = useMemo(() => userData?.user ?? {}, [userData]);
+  const user: ConductorUser = useMemo(() => userData?.user ?? {}, [userData]);
   const marketCenter: MarketCenter = useMemo(
     () => user?.marketCenter ?? ({} as MarketCenter),
     [user]
@@ -183,7 +183,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     [getToken]
   );
   const updateUserMutation = useMutation<
-    PrismaUser,
+    ConductorUser,
     Error,
     { userId: string; quickEdit: boolean }
   >({
@@ -227,9 +227,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
         throw new Error("Updated data was not found");
       }
 
-      return data.user as PrismaUser;
+      return data.user as ConductorUser;
     },
-    onSuccess: async (data: PrismaUser) => {
+    onSuccess: async (data: ConductorUser) => {
       toast.success(`${data?.name || "User"} was updated`);
       if (currentUser?.id === data?.id) {
         setCurrentUser(data);

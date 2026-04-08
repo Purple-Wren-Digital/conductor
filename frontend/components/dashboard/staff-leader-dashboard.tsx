@@ -44,7 +44,7 @@ import {
   InfoIcon,
 } from "lucide-react";
 import Link from "next/link";
-import type { PrismaUser, SurveyResults, Ticket } from "@/lib/types";
+import type { ConductorUser, SurveyResults, Ticket } from "@/lib/types";
 import { calculateStaffStats } from "@/lib/utils/staff-stats";
 import {
   chartColors,
@@ -106,7 +106,7 @@ export function StaffLeaderDashboard() {
     return ratingsData;
   }, [ratingsData]);
 
-  const teamMembers: PrismaUser[] = useMemo(() => {
+  const teamMembers: ConductorUser[] = useMemo(() => {
     return marketCenter?.users && marketCenter?.users.length > 0
       ? marketCenter?.users.sort(sortByRoleThenName)
       : [];

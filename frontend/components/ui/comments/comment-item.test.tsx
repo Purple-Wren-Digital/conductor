@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommentItem } from "./comment-item";
-import { Comment, PrismaUser } from "@/lib/types";
+import { Comment, ConductorUser } from "@/lib/types";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock the tiptap editor
@@ -61,7 +61,7 @@ vi.mock("sonner", () => ({
 }));
 
 // Mock the store
-const mockCurrentUser: PrismaUser = {
+const mockCurrentUser: ConductorUser = {
   id: "user-1",
   clerkId: "clerk-1",
   email: "test@example.com",

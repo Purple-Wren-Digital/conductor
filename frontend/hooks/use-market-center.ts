@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api/utils";
-import { MarketCenter, PrismaUser, UserRole } from "@/lib/types";
+import { MarketCenter, ConductorUser, UserRole } from "@/lib/types";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 
@@ -259,7 +259,7 @@ type UpdateMarketCenterProps = {
   role: UserRole | undefined;
   marketCenterId?: string;
   name?: string;
-  users?: PrismaUser[];
+  users?: ConductorUser[];
 };
 
 // UPDATE MARKET CENTER

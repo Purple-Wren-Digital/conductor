@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 // import { cn } from "@/lib/cn";
-import { PrismaUser } from "@/lib/types";
+import { ConductorUser } from "@/lib/types";
 import { ChevronDownIcon } from "lucide-react";
 
 type UserMultiSelectDropdown = {
@@ -12,9 +12,9 @@ type UserMultiSelectDropdown = {
   marketCenterId: string | null;
   placeholder: string;
   formFieldName: string;
-  options: PrismaUser[];
-  selectedOptions: PrismaUser[];
-  handleSetSelectedOptions: (newSelected: PrismaUser[]) => void;
+  options: ConductorUser[];
+  selectedOptions: ConductorUser[];
+  handleSetSelectedOptions: (newSelected: ConductorUser[]) => void;
   error: string | null;
 };
 
@@ -34,7 +34,7 @@ export default function UserMultiSelectDropdown({
 
   const handleSelection = (
     event: React.ChangeEvent<HTMLInputElement>,
-    selection: PrismaUser
+    selection: ConductorUser
   ) => {
     const isChecked = event.target.checked;
     const selectedOptionSet = new Set(selectedOptions);

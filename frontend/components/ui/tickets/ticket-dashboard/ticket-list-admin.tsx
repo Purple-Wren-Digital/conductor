@@ -81,7 +81,7 @@ import type {
   Ticket,
   TicketStatus,
   Urgency,
-  PrismaUser,
+  ConductorUser,
   OrderBy,
   TicketSortBy,
   TicketsResponse,
@@ -363,12 +363,12 @@ export default function AdminTicketList() {
     role: role,
   });
 
-  const users: PrismaUser[] = useMemo(
+  const users: ConductorUser[] = useMemo(
     () => usersData?.users.sort(sortByRoleThenName) ?? [],
     [usersData]
   );
 
-  const staffTeamMembers: PrismaUser[] = useMemo(() => {
+  const staffTeamMembers: ConductorUser[] = useMemo(() => {
     return users
       .filter((user) => user?.role && user.role !== "AGENT")
       .sort(sortByRoleThenName);
@@ -1077,7 +1077,7 @@ export default function AdminTicketList() {
                         <SelectItem value="Unassigned">Unassigned</SelectItem>
                         {!usersLoading &&
                           staffTeamMembers.length > 0 &&
-                          staffTeamMembers.map((user: PrismaUser) => {
+                          staffTeamMembers.map((user: ConductorUser) => {
                             return (
                               <SelectItem key={user.id} value={user.id}>
                                 <span className="font-medium">
@@ -1127,7 +1127,7 @@ export default function AdminTicketList() {
                           {usersLoading ? "Loading..." : "All Team Members"}
                         </SelectItem>
                         {!usersLoading &&
-                          users.map((user: PrismaUser) => {
+                          users.map((user: ConductorUser) => {
                             return (
                               <SelectItem key={user.id} value={user.id}>
                                 <span className="font-medium">
@@ -1533,7 +1533,7 @@ export default function AdminTicketList() {
                 <SelectItem value="unassigned">Unassigned</SelectItem>
                 {staffTeamMembers &&
                   staffTeamMembers.length > 0 &&
-                  staffTeamMembers.map((user: PrismaUser) => (
+                  staffTeamMembers.map((user: ConductorUser) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
                     </SelectItem>

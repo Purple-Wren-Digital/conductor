@@ -40,15 +40,18 @@ export const update = api<
     }
 
     // Check subscription-based access to this market center
-    const canAccess = await subscriptionRepository.canAccessMarketCenter(
-      userContext.marketCenterId,
-      req.id
-    );
-
-    if (!canAccess) {
-      throw APIError.permissionDenied(
-        "You do not have permission to update this market center"
+    // Superusers can access any market center
+    if (!userContext.isSuperuser) {
+      const canAccess = await subscriptionRepository.canAccessMarketCenter(
+        userContext.marketCenterId,
+        req.id
       );
+
+      if (!canAccess) {
+        throw APIError.permissionDenied(
+          "You do not have permission to update this market center"
+        );
+      }
     }
 
     // Fetch existing market center with users

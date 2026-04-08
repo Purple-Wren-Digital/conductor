@@ -13,7 +13,7 @@ import {
 import UserTicketHistoryTable from "@/components/history-tables/user/history-table-user-tickets";
 import UserHistoryTable from "@/components/history-tables/user/history-table-user";
 import { useFetchOneUser } from "@/hooks/use-users";
-import { PrismaUser } from "@/lib/types";
+import { ConductorUser } from "@/lib/types";
 import { BellRing, History, UserCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,7 +29,7 @@ export default function AccountLayout() {
   const { data: userData, isLoading: userLoading } = useFetchOneUser({
     id: currentUser?.id,
   });
-  const user: PrismaUser = userData?.user ?? {};
+  const user: ConductorUser = userData?.user ?? {};
 
   const isCurrentUserProfile =
     currentUser?.email === user?.email && clerkUser?.id === user?.clerkId;

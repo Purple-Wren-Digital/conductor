@@ -40,7 +40,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import type {
   MarketCenter,
   MarketCenterNotificationCallback,
-  PrismaUser,
+  ConductorUser,
   TicketCategory,
   UsersToNotify,
 } from "@/lib/types";
@@ -82,10 +82,10 @@ export default function MarketCenterTicketCategories({
 
   const router = useRouter();
 
-  const teamMembers: PrismaUser[] =
+  const teamMembers: ConductorUser[] =
     marketCenter && marketCenter?.users
       ? marketCenter.users
-      : ([] as PrismaUser[]);
+      : ([] as ConductorUser[]);
 
   const ticketCategories: TicketCategory[] =
     marketCenter?.ticketCategories ?? ([] as TicketCategory[]);
