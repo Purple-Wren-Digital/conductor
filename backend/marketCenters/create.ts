@@ -51,14 +51,14 @@ export const create = api<
   async (req) => {
     const userContext = await getUserContext();
 
-    if (!userContext?.marketCenterId) {
+    if (!userContext?.marketCenterId && !userContext?.isSuperuser) {
       throw APIError.invalidArgument(
         "Missing primary market center ID under current subscription"
       );
     }
 
     const canCreate = await canCreateMarketCenters(
-      userContext?.marketCenterId,
+      userContext?.marketCenterId ?? "",
       userContext?.role,
       userContext?.isSuperuser
     );
@@ -79,9 +79,11 @@ export const create = api<
       );
     }
 
-    const subscription = await subscriptionRepository.findByMarketCenterId(
-      userContext?.marketCenterId
-    );
+    const subscription = userContext?.marketCenterId
+      ? await subscriptionRepository.findByMarketCenterId(
+          userContext.marketCenterId
+        )
+      : null;
     const createdMarketCenter = await marketCenterRepository.create({
       name: req.name,
       stripeSubscriptionId:
@@ -97,10 +99,16 @@ export const create = api<
     if (!createdMarketCenter) {
       throw APIError.internal("Failed to create market center");
     }
-    const availableMarketCenters =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext.marketCenterId
-      );
+    let availableMarketCenters: string[];
+    if (userContext?.marketCenterId) {
+      availableMarketCenters =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext.marketCenterId
+        );
+    } else {
+      // Superuser without a market center — the newly created one is valid
+      availableMarketCenters = [createdMarketCenter.id];
+    }
 
     if (
       !availableMarketCenters ||

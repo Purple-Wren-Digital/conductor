@@ -71,7 +71,7 @@ const defaultSelectedCategory: CategoryOption = { label: "all", ids: [] };
 export default function MarketCenterManagement() {
   const router = useRouter();
 
-  const { role } = useUserRole();
+  const { role, isSuperuser } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
 
   // FORM ACTIONS
@@ -383,7 +383,7 @@ export default function MarketCenterManagement() {
               Create and manage all market centers
             </p>
           </div>
-          {isEnterprise && (
+          {(isEnterprise || isSuperuser) && (
             <Button
               onClick={() => openCreateModal()}
               className="gap-2 w-full sm:w-fit"
@@ -392,7 +392,7 @@ export default function MarketCenterManagement() {
               Add Market Center
             </Button>
           )}
-          {!isEnterprise && permissions?.canManageSubscription && (
+          {!isEnterprise && !isSuperuser && permissions?.canManageSubscription && (
             <Link href="/dashboard/subscription">
               <div className="flex flex-col items-end gap-2">
                 <Button className="gap-2 w-full sm:w-fit" disabled>

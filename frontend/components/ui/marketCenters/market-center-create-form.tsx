@@ -24,6 +24,7 @@ import UserMultiSelectDropdown from "@/components/ui/multi-select/user-multi-sel
 import { useStore } from "@/context/store-provider";
 import { useFetchMarketCenterUsers } from "@/hooks/use-market-center";
 import { useIsEnterprise } from "@/hooks/useSubscription";
+import { useUserRole } from "@/hooks/use-user-role";
 import Link from "next/link";
 
 type CreateMarketCenterProps = {
@@ -53,6 +54,8 @@ export default function CreateMarketCenter({
 
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
+  const { isSuperuser } = useUserRole();
+  const canCreateMC = isEnterprise || isSuperuser;
 
   const {
     data: unassignedUsersData,
@@ -90,7 +93,7 @@ export default function CreateMarketCenter({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!isEnterprise)
+    if (!canCreateMC)
       errors.general = "Upgrade to Enterprise to add a market center";
     if (!formData?.name.trim()) errors.name = "Name is required";
     if (
@@ -231,13 +234,13 @@ export default function CreateMarketCenter({
               <label className="text-md font-medium">Team Assignments</label>
               <ToolTip
                 content={
-                  isEnterprise
+                  canCreateMC
                     ? "You have available seats. All roles can be assigned."
                     : "Upgrade your subscription to assign the admin, staff leader or staff role."
                 }
                 trigger={
                   <p className="text-xs text-muted-foreground">
-                    {isEnterprise
+                    {canCreateMC
                       ? "Unlimited seats available"
                       : "No seats available"}
                   </p>
@@ -284,7 +287,7 @@ export default function CreateMarketCenter({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            {!isEnterprise ||
+            {!canCreateMC ||
               (formErrors.general && (
                 <Link href="/dashboard/subscription">
                   <p className="text-xs text-destructive hover:text-red-900 hover:cursor-pointer">
@@ -300,7 +303,7 @@ export default function CreateMarketCenter({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !isEnterprise}>
+            <Button type="submit" disabled={isSubmitting || !canCreateMC}>
               {isSubmitting ? "Saving..." : "Submit"}
             </Button>
           </div>

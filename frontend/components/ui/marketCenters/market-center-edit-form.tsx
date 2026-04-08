@@ -58,9 +58,10 @@ export default function EditMarketCenter({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { getToken } = useAuth();
-  const { permissions } = useUserRole();
+  const { permissions, isSuperuser } = useUserRole();
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
+  const canBypassLimits = isEnterprise || isSuperuser;
 
   const assignedUsers: PrismaUser[] = useMemo(() => {
     return editingMarketCenter?.users ?? [];
@@ -85,11 +86,11 @@ export default function EditMarketCenter({
   const unassignedUsersQueryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append("marketCenterId", "Unassigned");
-    if (!isEnterprise && !seats?.hasAvailableSeats) {
+    if (!canBypassLimits && !seats?.hasAvailableSeats) {
       params.append("role", "AGENT");
     }
     return params;
-  }, [isEnterprise, seats]);
+  }, [canBypassLimits, seats]);
 
   const unassignedUsersQueryKeyParams = useMemo(
     () =>
@@ -116,14 +117,14 @@ export default function EditMarketCenter({
 
   const unassignedUsers: PrismaUser[] = useMemo(() => {
     let unAssigned = unassignedUsersData?.users ?? [];
-    if (!isEnterprise && !seats?.hasAvailableSeats) {
+    if (!canBypassLimits && !seats?.hasAvailableSeats) {
       unAssigned =
         unAssigned && unAssigned.length > 0
           ? unAssigned.filter((user: PrismaUser) => user.role === "AGENT")
           : [];
     }
     return unAssigned;
-  }, [unassignedUsersData, isEnterprise, seats]);
+  }, [unassignedUsersData, canBypassLimits, seats]);
 
   const handleSetSelectedOptions = (newSelected: PrismaUser[]) => {
     setFormData({
@@ -145,8 +146,8 @@ export default function EditMarketCenter({
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (
-      formData?.name.trim() !== editingMarketCenter?.name.trim() &&
-      !arraysEqualById(assignedUsers, formData.selectedUsers)
+      formData?.name.trim() === editingMarketCenter?.name.trim() &&
+      arraysEqualById(assignedUsers, formData.selectedUsers)
     ) {
       errors.general = "Please update at least one field to continue";
     }
@@ -155,12 +156,12 @@ export default function EditMarketCenter({
       errors.name = "Name is required";
     }
 
-    if (!isEnterprise && formData.selectedUsers.length > 0) {
+    if (!canBypassLimits && formData.selectedUsers.length > 0) {
       const selectedNonAgents = formData.selectedUsers.filter(
         (user) => user.role !== "AGENT"
       );
       const selectedUsersExceedSeats =
-        !isEnterprise && selectedNonAgents.length > seats.totalSeats;
+        !canBypassLimits && selectedNonAgents.length > seats.totalSeats;
 
       if (selectedUsersExceedSeats) {
         errors.users = `Please upgrade your subscription to add more than ${seats.totalSeats} admin and staff users`;
@@ -333,15 +334,15 @@ export default function EditMarketCenter({
               <label className="text-md font-medium">Team Assignments</label>
               <ToolTip
                 content={
-                  !!isEnterprise ||
-                  (!isEnterprise && seats?.hasAvailableSeats) ||
-                  (!isEnterprise && availableSeats === seats.totalSeats)
+                  !!canBypassLimits ||
+                  (!canBypassLimits && seats?.hasAvailableSeats) ||
+                  (!canBypassLimits && availableSeats === seats.totalSeats)
                     ? "You have available seats. All roles can be assigned."
                     : "Upgrade your subscription to assign the admin, staff leader or staff role."
                 }
                 trigger={
                   <p className="text-xs text-muted-foreground">
-                    {isEnterprise
+                    {canBypassLimits
                       ? "Unlimited seats"
                       : `${seats.filledSeats} out of ${seats.totalSeats} paid seats
                     used`}
