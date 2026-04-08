@@ -73,4 +73,5 @@ export {
   todoRepository,
   subscriptionRepository,
   settingsAuditRepository,
+  userMarketCenterRepository,
 } from "../shared/repositories";

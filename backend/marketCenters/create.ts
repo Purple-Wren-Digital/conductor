@@ -6,6 +6,7 @@ import {
   marketCenterRepository,
   subscriptionRepository,
   userRepository,
+  userMarketCenterRepository,
 } from "../ticket/db";
 import type { MarketCenter } from "./types";
 import type { User } from "../user/types";
@@ -166,6 +167,10 @@ export const create = api<
               updated_at = NOW()
           WHERE id = ${userContext.userId}
         `;
+        await userMarketCenterRepository.addUserToMarketCenter(
+          userContext.userId,
+          createdMarketCenter.id
+        );
 
         marketCenterHistoryLogs.push({
           marketCenterId: createdMarketCenter.id,
@@ -206,6 +211,10 @@ export const create = api<
               updated_at = NOW()
           WHERE id = ${user.id}
         `;
+        await userMarketCenterRepository.addUserToMarketCenter(
+          user.id,
+          createdMarketCenter.id
+        );
 
         marketCenterHistoryLogs.push({
           marketCenterId: createdMarketCenter.id,

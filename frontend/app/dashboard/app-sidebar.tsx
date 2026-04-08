@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Dispatch, SetStateAction, useMemo, useState } from "react";
+import React, { Dispatch, SetStateAction, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
@@ -21,6 +21,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useIsEnterprise } from "@/hooks/useSubscription";
 import { cn } from "@/lib/cn";
 import type { Notification } from "@/lib/types";
+import { MarketCenterSwitcher } from "@/components/ui/market-center-switcher";
 import {
   BellRing,
   BookMarked,
@@ -73,18 +74,6 @@ export function AppSidebar({
   const { role, permissions, isSuperuser, isLoading } = useUserRole();
   const { currentUser } = useStore();
   const { isEnterprise } = useIsEnterprise();
-
-  const marketCenterName = useMemo(() => {
-    if (!!isEnterprise && currentUser && currentUser?.role === "ADMIN") {
-      return "Enterprise";
-    }
-    if (currentUser && currentUser?.marketCenterId) {
-      return currentUser?.marketCenter?.name
-        ? currentUser.marketCenter.name
-        : `#${currentUser.marketCenterId.slice(0, 8)}`;
-    }
-    return "No Market Center Assigned";
-  }, [currentUser, isEnterprise]);
 
   const navigate = (href: string) => {
     router.push(href);
@@ -142,7 +131,12 @@ export function AppSidebar({
                 <p className="text-xs text-muted-foreground capitalize">
                   {currentUser?.role &&
                     currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
-                  • {marketCenterName}
+                  •{" "}
+                  {!!isEnterprise && currentUser?.role === "ADMIN" ? (
+                    "Enterprise"
+                  ) : (
+                    <MarketCenterSwitcher />
+                  )}
                 </p>
               </div>
             )}

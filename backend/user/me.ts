@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { userRepository } from "../ticket/db";
+import { userRepository, userMarketCenterRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface GetCurrentUserResponse {
@@ -14,6 +14,10 @@ export interface GetCurrentUserResponse {
     id: string;
     name: string;
   } | null;
+  marketCenters?: {
+    id: string;
+    name: string;
+  }[];
 }
 
 export const me = api<void, GetCurrentUserResponse>(
@@ -32,6 +36,10 @@ export const me = api<void, GetCurrentUserResponse>(
       throw APIError.notFound("User not found");
     }
 
+    // Fetch all market centers this user belongs to
+    const marketCenters =
+      await userMarketCenterRepository.findMarketCentersByUserId(user.id);
+
     return {
       id: user.id,
       email: user.email,
@@ -46,6 +54,7 @@ export const me = api<void, GetCurrentUserResponse>(
             name: user.marketCenter.name,
           }
         : null,
+      marketCenters,
     };
   }
 );

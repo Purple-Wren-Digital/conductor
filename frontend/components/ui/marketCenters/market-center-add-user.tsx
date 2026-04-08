@@ -73,10 +73,13 @@ export default function AddTeamMember({
       if (!response.ok) throw new Error("Failed to fetch users");
       const data: { users: ConductorUser[] } = await response.json();
 
-      const needsAssignment: ConductorUser[] = data.users.filter((user) => {
-        if (!user?.marketCenterId) return user;
-      });
-      setUnassignedUsers(needsAssignment || []);
+      const existingMemberIds = new Set(
+        (marketCenter.users || []).map((u) => u.id)
+      );
+      const availableUsers: ConductorUser[] = data.users.filter(
+        (user) => !existingMemberIds.has(user.id)
+      );
+      setUnassignedUsers(availableUsers || []);
     } catch (error) {
       console.error("Error fetching users", error);
     } finally {

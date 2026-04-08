@@ -1,5 +1,11 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, withTransaction, fromTimestamp, toJson } from "../ticket/db";
+import {
+  db,
+  withTransaction,
+  fromTimestamp,
+  toJson,
+  userMarketCenterRepository,
+} from "../ticket/db";
 import { MarketCenter } from "./types";
 import { User } from "../user/types";
 import { getUserContext } from "../auth/user-context";
@@ -45,11 +51,23 @@ export const removeUsers = api<RemoveUsersRequest, RemoveUsersResponse>(
     }
 
     const result = await withTransaction(async (tx) => {
-      // Remove users from market center by setting their market_center_id to NULL
+      // Remove users from market center: delete junction row, reassign active MC
       for (const user of req.users) {
+        await userMarketCenterRepository.removeUserFromMarketCenter(
+          user.id,
+          req.id,
+          tx
+        );
+        const nextMcId =
+          await userMarketCenterRepository.getNextMarketCenterId(
+            user.id,
+            req.id,
+            tx
+          );
         await tx.exec`
           UPDATE users
-          SET market_center_id = NULL, updated_at = NOW()
+          SET market_center_id = ${nextMcId},
+              updated_at = NOW()
           WHERE id = ${user.id}
         `;
       }

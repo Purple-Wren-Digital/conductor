@@ -1,6 +1,10 @@
 import { APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
-import { marketCenterRepository, userRepository } from "../ticket/db";
+import {
+  marketCenterRepository,
+  userRepository,
+  userMarketCenterRepository,
+} from "../ticket/db";
 import { defaultNotificationPreferences } from "../utils";
 import type { UserRole } from "../user/types";
 
@@ -77,6 +81,13 @@ export async function getUserContext(): Promise<UserContext> {
         });
         // Create notification preferences for new user
         await ensureNotificationPreferences(user.id);
+        // Add junction row for the invited market center
+        if (user.marketCenterId) {
+          await userMarketCenterRepository.addUserToMarketCenter(
+            user.id,
+            user.marketCenterId
+          );
+        }
         await userRepository.createHistory({
           userId: user.id,
           marketCenterId: user.marketCenterId,
