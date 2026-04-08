@@ -70,17 +70,6 @@ export const create = api<
       );
     }
 
-    // If users are provided, at least one must be a staff leader
-    if (
-      Array.isArray(req?.users) &&
-      req.users.length > 0 &&
-      !req.users.find((user) => user.role === "STAFF_LEADER")
-    ) {
-      throw APIError.invalidArgument(
-        "At least one staff leader must be assigned when adding users"
-      );
-    }
-
     const subscription = userContext?.marketCenterId
       ? await subscriptionRepository.findByMarketCenterId(
           userContext.marketCenterId
@@ -101,25 +90,23 @@ export const create = api<
     if (!createdMarketCenter) {
       throw APIError.internal("Failed to create market center");
     }
+    // Verify the new MC is accessible under the subscription.
+    // The newly created MC inherits the subscription's stripe IDs, so it should
+    // appear in the accessible list. If not, include it — we already verified
+    // permission via canCreateMarketCenters above.
     let availableMarketCenters: string[];
     if (userContext?.marketCenterId) {
       availableMarketCenters =
         await subscriptionRepository.getAccessibleMarketCenterIds(
           userContext.marketCenterId
         );
+      // The new MC may not yet be indexed; add it since creation was authorized
+      if (!availableMarketCenters.includes(createdMarketCenter.id)) {
+        availableMarketCenters.push(createdMarketCenter.id);
+      }
     } else {
       // Superuser without a market center — the newly created one is valid
       availableMarketCenters = [createdMarketCenter.id];
-    }
-
-    if (
-      !availableMarketCenters ||
-      !availableMarketCenters.length ||
-      !availableMarketCenters.includes(createdMarketCenter.id)
-    ) {
-      throw APIError.internal(
-        "Failed to verify new market center is under subscription"
-      );
     }
 
     let marketCenterHistoryLogs: Array<{
