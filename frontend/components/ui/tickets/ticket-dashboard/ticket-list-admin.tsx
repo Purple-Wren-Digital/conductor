@@ -1666,6 +1666,7 @@ export default function AdminTicketList() {
           setIsCreateOpen(false);
           await refetchAllData();
         }}
+        selectedMarketCenterId={selectedMarketCenterId !== "all" ? selectedMarketCenterId : undefined}
       />
     </>
   );

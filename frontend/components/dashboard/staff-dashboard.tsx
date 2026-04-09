@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
@@ -18,6 +18,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import {
@@ -55,11 +62,20 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export function StaffDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
 
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
   const { user: clerkUser } = useUser();
+
+  const hasMultipleMCs = currentUser?.marketCenters && currentUser.marketCenters.length > 1;
+
+  useEffect(() => {
+    if (currentUser?.marketCenterId && !selectedMarketCenterId) {
+      setSelectedMarketCenterId(currentUser.marketCenterId);
+    }
+  }, [currentUser?.marketCenterId]);
 
   const navigateToTicketsWithFilter = useCallback(
     (filterType: "active" | "new" | "overdue" | "resolved") => {
@@ -82,8 +98,8 @@ export function StaffDashboard() {
   }, [userRatingsData]);
 
   const marketCenterId = useMemo(
-    () => (currentUser?.marketCenterId ? currentUser?.marketCenterId : ""),
-    [currentUser?.marketCenterId]
+    () => selectedMarketCenterId || currentUser?.marketCenterId || "",
+    [selectedMarketCenterId, currentUser?.marketCenterId]
   );
 
   const { data: marketCenter, isLoading: marketCenterLoading } =
@@ -95,8 +111,9 @@ export function StaffDashboard() {
       queryParams.append("status", option);
     });
     currentUser?.id && queryParams.append("assigneeId", currentUser.id);
+    if (marketCenterId) queryParams.append("marketCenterId", marketCenterId);
     return queryParams;
-  }, [currentUser?.id]);
+  }, [currentUser?.id, marketCenterId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } =
     useFetchMarketCenterTickets({
@@ -248,6 +265,18 @@ export function StaffDashboard() {
               <Plus className="mr-2 h-4 w-4" /> Create Ticket
             </Button>
           </div>
+          {hasMultipleMCs && (
+            <Select value={selectedMarketCenterId} onValueChange={setSelectedMarketCenterId}>
+              <SelectTrigger className="md:max-w-[50%]">
+                <SelectValue placeholder="Select a market center" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentUser!.marketCenters!.map((mc) => (
+                  <SelectItem key={mc.id} value={mc.id}>{mc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground font-medium">
             <ToolTip
@@ -559,6 +588,7 @@ export function StaffDashboard() {
           setIsCreateOpen(false);
           await staffInvalidateTicketsQuery();
         }}
+        selectedMarketCenterId={marketCenterId || undefined}
       />
     </>
   );

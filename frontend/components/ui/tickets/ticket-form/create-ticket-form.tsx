@@ -23,6 +23,7 @@ type CreateTicketFormProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (created: Ticket | null) => void;
+  selectedMarketCenterId?: string;
 };
 
 const initialValues: TicketFormValues = {
@@ -39,6 +40,7 @@ export function CreateTicketForm({
   isOpen,
   onClose,
   onSuccess,
+  selectedMarketCenterId: externalMcId,
 }: CreateTicketFormProps) {
   const { user: clerkUser, isLoaded } = useUser();
   const [values, setValues] = useState<TicketFormValues>(initialValues);
@@ -82,13 +84,14 @@ export function CreateTicketForm({
       setSelectedTemplateId("");
     }
 
-    const userMarketCenterId = currentUser?.marketCenterId
-      ? currentUser.marketCenterId
-      : null;
+    const effectiveMcId =
+      externalMcId && externalMcId !== "all"
+        ? externalMcId
+        : currentUser?.marketCenterId ?? null;
 
-    setMarketCenterId(userMarketCenterId);
-    if (userMarketCenterId) {
-      fetchTemplates(userMarketCenterId);
+    setMarketCenterId(effectiveMcId);
+    if (effectiveMcId) {
+      fetchTemplates(effectiveMcId);
     } else {
       setTemplates([]);
     }
@@ -99,6 +102,7 @@ export function CreateTicketForm({
     role,
     currentUser,
     getToken,
+    externalMcId,
     marketCenterId,
   ]);
 

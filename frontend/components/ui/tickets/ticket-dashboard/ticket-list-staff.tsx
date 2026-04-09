@@ -131,7 +131,17 @@ export default function TicketListStaff() {
   const [selectedUrgencies, setSelectedUrgencies] = useState<Urgency[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  const [marketCenterId] = useState(currentUser?.marketCenterId ?? "");
+  const [marketCenterId, setMarketCenterId] = useState(currentUser?.marketCenterId ?? "");
+
+  const hasMultipleMCs = currentUser?.marketCenters && currentUser.marketCenters.length > 1;
+
+  const handleMarketCenterChange = useCallback((value: string) => {
+    setMarketCenterId(value);
+    setSelectedCategory("all");
+    setSelectedAssignee(defaultAssigneeId);
+    setSelectedCreator("all");
+    setCurrentPage(1);
+  }, [defaultAssigneeId]);
 
   const [selectedAssignee, setSelectedAssignee] =
     useState<string>(defaultAssigneeId);
@@ -272,9 +282,10 @@ export default function TicketListStaff() {
     if (selectedCategory !== "all")
       params.append("categoryId", selectedCategory);
 
-    if (currentUser?.marketCenterId && selectedAssignee !== "all")
+    if (marketCenterId) params.append("marketCenterId", marketCenterId);
+    if (selectedAssignee !== "all")
       params.append("assigneeId", selectedAssignee);
-    if (currentUser?.marketCenterId && selectedCreator !== "all")
+    if (selectedCreator !== "all")
       params.append("creatorId", selectedCreator);
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
@@ -288,7 +299,7 @@ export default function TicketListStaff() {
     selectedStatuses,
     selectedUrgencies,
     selectedCategory,
-    currentUser?.marketCenterId,
+    marketCenterId,
     selectedAssignee,
     selectedCreator,
     dateFrom,
@@ -862,6 +873,18 @@ export default function TicketListStaff() {
             </div>
 
             <div className="flex items-center gap-4 w-full sm:w-fit">
+              {hasMultipleMCs && (
+                <Select value={marketCenterId} onValueChange={handleMarketCenterChange}>
+                  <SelectTrigger className="w-full sm:w-[250px]">
+                    <SelectValue placeholder="Select a market center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentUser!.marketCenters!.map((mc) => (
+                      <SelectItem key={mc.id} value={mc.id}>{mc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {permissions?.canCreateTicket && (
                 <Button
                   className="gap-2 w-full sm:w-fit"
@@ -1581,6 +1604,7 @@ export default function TicketListStaff() {
           setIsCreateOpen(false);
           await refetchAllData();
         }}
+        selectedMarketCenterId={marketCenterId || undefined}
       />
     </>
   );

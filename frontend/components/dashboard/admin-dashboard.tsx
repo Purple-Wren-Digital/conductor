@@ -916,6 +916,7 @@ export function AdminDashboard() {
           setIsCreateOpen(false);
           await adminTicketsQueryInvalidator();
         }}
+        selectedMarketCenterId={selectedMarketCenter?.id !== "all" ? selectedMarketCenter.id : undefined}
       />
     </>
   );

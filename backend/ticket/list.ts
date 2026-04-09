@@ -4,6 +4,7 @@ import { ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { getAccessibleMarketCenterIds } from "../auth/permissions";
+import { userMarketCenterRepository } from "../shared/repositories/user-market-center.repository";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -58,11 +59,19 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
       }
     }
 
-    if (
-      (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") &&
-      userContext?.marketCenterId
-    ) {
-      marketCenterIds = [userContext.marketCenterId];
+    if (userContext.role === "STAFF" || userContext.role === "STAFF_LEADER") {
+      if (req.marketCenterId) {
+        const belongs = await userMarketCenterRepository.userBelongsToMarketCenter(
+          userContext.userId, req.marketCenterId
+        );
+        if (belongs) {
+          marketCenterIds = [req.marketCenterId];
+        } else if (userContext.marketCenterId) {
+          marketCenterIds = [userContext.marketCenterId];
+        }
+      } else if (userContext.marketCenterId) {
+        marketCenterIds = [userContext.marketCenterId];
+      }
     }
     // Use the search method which handles role-based filtering
     const { tickets, total } = await ticketRepository.search({

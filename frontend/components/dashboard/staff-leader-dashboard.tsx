@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
@@ -72,11 +72,20 @@ import { useQueryClient } from "@tanstack/react-query";
 export function StaffLeaderDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("All");
+  const [selectedMarketCenterId, setSelectedMarketCenterId] = useState("");
 
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
   const { user: clerkUser } = useUser();
+
+  const hasMultipleMCs = currentUser?.marketCenters && currentUser.marketCenters.length > 1;
+
+  useEffect(() => {
+    if (currentUser?.marketCenterId && !selectedMarketCenterId) {
+      setSelectedMarketCenterId(currentUser.marketCenterId);
+    }
+  }, [currentUser?.marketCenterId]);
 
   const navigateToTicketsWithFilter = useCallback(
     (filterType: "active" | "new" | "overdue" | "resolved") => {
@@ -85,9 +94,7 @@ export function StaffLeaderDashboard() {
     [router]
   );
 
-  const marketCenterId = currentUser?.marketCenterId
-    ? currentUser?.marketCenterId
-    : "";
+  const marketCenterId = selectedMarketCenterId || currentUser?.marketCenterId || "";
 
   const { data: marketCenter, isLoading: marketCenterLoading } =
     useFetchMarketCenter(currentUser?.role, marketCenterId);
@@ -117,8 +124,9 @@ export function StaffLeaderDashboard() {
     statusOptions.forEach((option) => {
       queryParams.append("status", option);
     });
+    if (marketCenterId) queryParams.append("marketCenterId", marketCenterId);
     return queryParams;
-  }, []);
+  }, [marketCenterId]);
   const queryKeyParams = useMemo(
     () => Object.fromEntries(queryParams.entries()) as Record<string, string>,
     [queryParams]
@@ -327,6 +335,18 @@ export function StaffLeaderDashboard() {
               </p>
             </div>
             <div className="flex flex-col-reverse gap-2 justify-between items-center w-full sm:w-fit sm:flex-row sm:gap-5">
+              {hasMultipleMCs && (
+                <Select value={selectedMarketCenterId} onValueChange={setSelectedMarketCenterId}>
+                  <SelectTrigger className="w-full sm:w-[250px]">
+                    <SelectValue placeholder="Select a market center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentUser!.marketCenters!.map((mc) => (
+                      <SelectItem key={mc.id} value={mc.id}>{mc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select
                 value={selectedTeamMemberId}
                 onValueChange={(value) => setSelectedTeamMemberId(value)}
@@ -764,6 +784,7 @@ export function StaffLeaderDashboard() {
           setIsCreateOpen(false);
           await staffLeaderInvalidateTicketsQuery();
         }}
+        selectedMarketCenterId={marketCenterId || undefined}
       />
     </>
   );
