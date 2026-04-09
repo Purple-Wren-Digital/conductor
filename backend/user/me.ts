@@ -1,5 +1,9 @@
 import { api, APIError } from "encore.dev/api";
-import { userRepository, userMarketCenterRepository } from "../ticket/db";
+import {
+  userRepository,
+  userMarketCenterRepository,
+  marketCenterRepository,
+} from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 
 export interface GetCurrentUserResponse {
@@ -36,9 +40,15 @@ export const me = api<void, GetCurrentUserResponse>(
       throw APIError.notFound("User not found");
     }
 
-    // Fetch all market centers this user belongs to
-    const marketCenters =
-      await userMarketCenterRepository.findMarketCentersByUserId(user.id);
+    // Superusers see all MCs; regular users see only their assigned ones
+    let marketCenters: { id: string; name: string }[];
+    if (user.isSuperuser) {
+      const allMCs = await marketCenterRepository.findAll();
+      marketCenters = allMCs.map((mc) => ({ id: mc.id, name: mc.name }));
+    } else {
+      marketCenters =
+        await userMarketCenterRepository.findMarketCentersByUserId(user.id);
+    }
 
     return {
       id: user.id,
