@@ -1,7 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, subscriptionRepository } from "../ticket/db";
+import { db } from "../ticket/db";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 import { slaRepository } from "../shared/repositories";
 
 export interface SLARequest {
@@ -56,10 +57,8 @@ export const slaCompliance = api<SLARequest, SLAResponse>(
       );
     }
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       throw APIError.internal("No accessible market centers found");
     }
     const policies = await slaRepository.findActivePolicies();

@@ -82,9 +82,21 @@ vi.mock("../ticket/db", () => ({
   subscriptionRepository: subscriptionRepository,
 }));
 
+// Mock shared repositories (used by get-ratings-all.ts)
+vi.mock("../shared/repositories", () => ({
+  subscriptionRepository: subscriptionRepository,
+}));
+
 // Mock user context
 vi.mock("../auth/user-context", () => ({
   getUserContext: vi.fn(() => Promise.resolve(mockUserContext)),
+}));
+
+// Mock auth/permissions to avoid importing Encore runtime
+vi.mock("../auth/permissions", () => ({
+  getAccessibleMarketCenterIds: vi.fn((...args: any[]) =>
+    subscriptionRepository.getAccessibleMarketCenterIds(...args)
+  ),
 }));
 
 // Import after mocks

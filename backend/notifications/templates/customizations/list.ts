@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../../auth/user-context";
-import { subscriptionRepository } from "../../../ticket/db";
+import { getAccessibleMarketCenterIds } from "../../../auth/permissions";
 import {
   emailTemplateCustomizationRepository,
   inAppTemplateCustomizationRepository,
@@ -44,16 +44,9 @@ export const listTemplateStatuses = api<
 
     // Check user has access to this market center
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await getAccessibleMarketCenterIds(userContext);
 
     if (
-      !accessibleMarketCenterIds ||
       !accessibleMarketCenterIds.length ||
       !accessibleMarketCenterIds.includes(req.marketCenterId)
     ) {

@@ -1,6 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, subscriptionRepository } from "../ticket/db";
+import { db } from "../ticket/db";
+import { subscriptionRepository } from "../shared/repositories";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export type Granularity = "daily" | "weekly" | "monthly";
 
@@ -38,10 +40,8 @@ export const createdByMonth = api<CreatedVolumeRequest, CreatedVolumeResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       return {
         ticketsCreated: [],
         total: 0,

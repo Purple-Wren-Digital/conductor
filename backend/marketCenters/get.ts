@@ -23,12 +23,15 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
     const userContext = await getUserContext();
 
     // Check if user can access this market center based on subscription
+    // - Superusers: Can access any market center
     // - Non-Admin roles: Can only access their own market center
     // - Admin without Enterprise: Can only access their own market center
     // - Admin with Enterprise: Can access all market centers under the same subscription
     let canAccess = false;
 
-    if (userContext.role === "ADMIN") {
+    if (userContext.isSuperuser) {
+      canAccess = true;
+    } else if (userContext.role === "ADMIN") {
       canAccess = await subscriptionRepository.canAccessMarketCenter(
         userContext.marketCenterId,
         req.id

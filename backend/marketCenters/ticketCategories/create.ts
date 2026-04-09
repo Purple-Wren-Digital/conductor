@@ -44,8 +44,9 @@ export const createCategory = api<
       throw APIError.invalidArgument("Missing ticket category information");
     }
 
-    // For Admin, verify subscription-based access to the target market center
-    if (userContext?.role === "ADMIN") {
+    // Verify subscription-based access to the target market center
+    // Superusers can access any market center
+    if (!userContext.isSuperuser && userContext?.role === "ADMIN") {
       const canAccess = await subscriptionRepository.canAccessMarketCenter(
         userContext.marketCenterId,
         marketCenterId

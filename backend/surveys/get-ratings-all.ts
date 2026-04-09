@@ -1,6 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, subscriptionRepository } from "../ticket/db";
+import { db } from "../ticket/db";
+import { subscriptionRepository } from "../shared/repositories";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 import type { SurveyResults } from "./types";
 
 interface SurveyAveragesRow {
@@ -30,11 +32,9 @@ export const getAllRatings = api<{}, SurveyResults>(
       );
     }
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (!accessibleMarketCenterIds.length) {
       return {
         totalSurveys: 0,
         overallAverageRating: 0,

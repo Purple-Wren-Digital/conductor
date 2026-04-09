@@ -38,10 +38,15 @@ export const deleteMarketCenter = api<
     }
 
     // Check subscription-based access to this market center
-    const canAccess = await subscriptionRepository.canAccessMarketCenter(
-      userContext.marketCenterId,
-      req.id
-    );
+    let canAccess = false;
+    if (userContext.isSuperuser) {
+      canAccess = true;
+    } else {
+      canAccess = await subscriptionRepository.canAccessMarketCenter(
+        userContext.marketCenterId,
+        req.id
+      );
+    }
 
     if (!canAccess) {
       throw APIError.permissionDenied(

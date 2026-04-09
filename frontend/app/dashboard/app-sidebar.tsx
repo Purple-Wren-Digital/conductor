@@ -132,11 +132,7 @@ export function AppSidebar({
                   {currentUser?.role &&
                     currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
                   •{" "}
-                  {!!isEnterprise && currentUser?.role === "ADMIN" ? (
-                    "Enterprise"
-                  ) : (
-                    <MarketCenterSwitcher />
-                  )}
+                  <MarketCenterSwitcher />
                 </p>
               </div>
             )}

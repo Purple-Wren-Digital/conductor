@@ -1,7 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { subscriptionRepository, ticketRepository } from "./db";
+import { ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export interface SearchTicketsRequest {
   query?: Query<string>;
@@ -41,14 +42,10 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
     if (
-      !accessibleMarketCenterIds ||
-      !accessibleMarketCenterIds.length ||
-      !userContext?.marketCenterId
+      !accessibleMarketCenterIds.length
     ) {
       return { tickets: [], total: 0 };
     }

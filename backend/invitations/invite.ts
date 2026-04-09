@@ -8,8 +8,8 @@ import {
   db,
   userRepository,
   marketCenterRepository,
-  subscriptionRepository,
 } from "../ticket/db";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 import { sendInvitationEmail } from "./email";
 import { defaultNotificationPreferences } from "../utils";
 import type { TeamInvitation, InvitationStatus } from "../marketCenters/types";
@@ -629,11 +629,9 @@ export const listInvitations = api<
     const offset = req?.offset ?? 0;
 
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (!accessibleMarketCenterIds.length) {
       return { invitations: [] };
     }
 

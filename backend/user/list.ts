@@ -1,8 +1,9 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
-import { subscriptionRepository, userRepository } from "../ticket/db";
+import { userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export interface ListUsersRequest {
   role?: Query<UserRole[]>;
@@ -51,16 +52,10 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
     // Determine market center filter based on subscription and role
 
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
     if (
-      !accessibleMarketCenterIds ||
-      !accessibleMarketCenterIds.length ||
-      !accessibleMarketCenterIds.find(
-        (id) => id === userContext?.marketCenterId
-      )
+      !accessibleMarketCenterIds.length
     ) {
       return { users: [] };
     }

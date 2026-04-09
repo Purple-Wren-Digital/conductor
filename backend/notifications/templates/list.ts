@@ -3,9 +3,9 @@ import {
   db,
   fromTimestamp,
   fromJson,
-  subscriptionRepository,
 } from "../../ticket/db";
 import { getUserContext } from "../../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../../auth/permissions";
 import type {
   NotificationTemplate,
   NotificationCategory,
@@ -54,15 +54,9 @@ export const listTemplates = api<
     const userContext = await getUserContext();
 
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await getAccessibleMarketCenterIds(userContext);
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (!accessibleMarketCenterIds.length) {
       throw APIError.permissionDenied(
         "User does not have access to any market centers."
       );

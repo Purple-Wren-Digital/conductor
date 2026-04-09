@@ -128,6 +128,13 @@ vi.mock("../auth/user-context", () => ({
   getUserContext: vi.fn(() => Promise.resolve(mockUserContext)),
 }));
 
+// Mock auth/permissions to avoid importing Encore runtime
+vi.mock("../auth/permissions", () => ({
+  getAccessibleMarketCenterIds: vi.fn((...args: any[]) =>
+    mockSubscriptionRepository.getAccessibleMarketCenterIds(...args)
+  ),
+}));
+
 // Import the modules under test
 import { slaService } from "./sla.service";
 import { getPolicies, updatePolicy } from "./policies";

@@ -1,8 +1,9 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, subscriptionRepository } from "../ticket/db";
+import { db } from "../ticket/db";
+import { subscriptionRepository, slaRepository } from "../shared/repositories";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
-import { slaRepository } from "../shared/repositories";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export interface UsersSLARequest {
   marketCenterIds?: Query<string[]>;
@@ -59,10 +60,8 @@ export const slaComplianceByUsers = api<UsersSLARequest, UsersSLAResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       return {
         assignees: [] as UserSLAStats[],
         ticketTotal: 0,

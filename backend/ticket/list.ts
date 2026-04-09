@@ -1,8 +1,9 @@
 import { api, APIError } from "encore.dev/api";
 import { Query } from "encore.dev/api";
-import { subscriptionRepository, ticketRepository } from "./db";
+import { ticketRepository } from "./db";
 import type { Ticket, TicketStatus, Urgency } from "./types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export interface ListTicketsRequest {
   status?: Query<TicketStatus[]>;
@@ -31,18 +32,10 @@ export const list = api<ListTicketsRequest, ListTicketsResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
     if (
-      !accessibleMarketCenterIds ||
-      !accessibleMarketCenterIds.length ||
-      !userContext?.marketCenterId ||
-      (userContext?.marketCenterId &&
-        !accessibleMarketCenterIds.includes(
-          req?.marketCenterId ?? userContext.marketCenterId
-        ))
+      !accessibleMarketCenterIds.length
     ) {
       return { tickets: [], total: 0 };
     }

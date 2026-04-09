@@ -5,8 +5,8 @@
 
 import { api, APIError, Query } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 import { marketCenterRepository, userRepository, db } from "../ticket/db";
-import { subscriptionRepository } from "../shared/repositories";
 import type { TicketCategory } from "../marketCenters/types";
 
 // ============================================================================
@@ -55,15 +55,9 @@ export const listSettingsCategories = api<void, ListSettingsCategoriesResponse>(
 
     // Get accessible market center IDs based on subscription
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await getAccessibleMarketCenterIds(userContext);
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (!accessibleMarketCenterIds.length) {
       return { categories: [] };
     }
 

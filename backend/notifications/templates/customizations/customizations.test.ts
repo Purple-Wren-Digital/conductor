@@ -91,6 +91,13 @@ vi.mock("../../../auth/user-context", () => ({
   getUserContext: vi.fn(() => Promise.resolve(mockUserContext)),
 }));
 
+// Mock auth/permissions to avoid importing Encore runtime
+vi.mock("../../../auth/permissions", () => ({
+  getAccessibleMarketCenterIds: vi.fn((...args: any[]) =>
+    mockSubscriptionRepository.getAccessibleMarketCenterIds(...args)
+  ),
+}));
+
 // Mock repositories
 vi.mock("../customization-repository", () => ({
   emailTemplateCustomizationRepository: mockEmailTemplateRepo,

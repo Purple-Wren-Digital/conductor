@@ -39,25 +39,34 @@ export const search = api<ListMarketCentersRequest, ListMarketCentersResponse>(
   async (req) => {
     const userContext = await getUserContext();
 
-    // Get accessible market center IDs based on user's subscription
-    // - Non-Admin roles: Only their own market center
-    // - Admin without Enterprise: Only their own market center
-    // - Admin with Enterprise: All market centers under the same subscription
-    const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+    // Superusers see ALL market centers regardless of subscription
+    let accessibleMarketCenterIds: string[];
+    if (userContext?.isSuperuser) {
+      const allMCs = await marketCenterRepository.findAll();
+      accessibleMarketCenterIds = allMCs.map((mc) => mc.id);
+    } else {
+      // Get accessible market center IDs based on user's subscription
+      // - Non-Admin roles: Only their own market center
+      // - Admin without Enterprise: Only their own market center
+      // - Admin with Enterprise: All market centers under the same subscription
+      accessibleMarketCenterIds =
+        await subscriptionRepository.getAccessibleMarketCenterIds(
+          userContext?.marketCenterId
+        );
+    }
 
     if (
-      !userContext?.marketCenterId ||
-      !accessibleMarketCenterIds ||
-      !accessibleMarketCenterIds.length
+      !userContext?.isSuperuser &&
+      (!userContext?.marketCenterId ||
+        !accessibleMarketCenterIds ||
+        !accessibleMarketCenterIds.length)
     ) {
       return { marketCenters: [], total: 0 };
     }
 
     // AGENT + STAFF + STAFF_LEADER: only return their market center
     if (
+      !userContext?.isSuperuser &&
       (userContext.role === "AGENT" ||
         userContext.role === "STAFF" ||
         userContext.role === "STAFF_LEADER") &&

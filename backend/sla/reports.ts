@@ -4,7 +4,8 @@
 
 import { api, APIError, Query } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
-import { slaRepository, subscriptionRepository } from "../shared/repositories";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
+import { slaRepository } from "../shared/repositories";
 import type { SlaReportRequest, SlaReportResponse, SlaMetrics } from "./types";
 
 interface GetMetricsRequest {
@@ -31,10 +32,8 @@ export const getMetrics = api<GetMetricsRequest, GetMetricsResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       return {
         metrics: {
           totalTickets: 0,
@@ -84,10 +83,8 @@ export const getReport = api<GetReportRequest, SlaReportResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       return {
         metrics: {
           totalTickets: 0,
@@ -192,14 +189,11 @@ export const exportReport = api<ExportReportRequest, ExportReportResponse>(
     const userContext = await getUserContext();
 
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
     // Only ADMIN can export SLA reports
     if (
       userContext.role !== "ADMIN" ||
-      !accessibleMarketCenterIds ||
       !accessibleMarketCenterIds.length
     ) {
       throw APIError.permissionDenied(

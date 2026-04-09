@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../../../auth/user-context";
-import { subscriptionRepository } from "../../../ticket/db";
+import { getAccessibleMarketCenterIds } from "../../../auth/permissions";
 import { inAppTemplateCustomizationRepository } from "../customization-repository";
 import {
   CustomizableTemplateType,
@@ -58,13 +58,7 @@ export const saveInAppTemplate = api<
 
     // Check user has access to this market center
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await getAccessibleMarketCenterIds(userContext);
 
     if (!accessibleMarketCenterIds.includes(req.marketCenterId)) {
       throw APIError.permissionDenied(
@@ -166,16 +160,9 @@ export const resetInAppTemplate = api<
 
     // Check user has access to this market center
     const accessibleMarketCenterIds =
-      userContext.role === "ADMIN"
-        ? await subscriptionRepository.getAccessibleMarketCenterIds(
-            userContext.marketCenterId
-          )
-        : userContext.marketCenterId
-          ? [userContext.marketCenterId]
-          : [];
+      await getAccessibleMarketCenterIds(userContext);
 
     if (
-      !accessibleMarketCenterIds ||
       !accessibleMarketCenterIds.length ||
       !accessibleMarketCenterIds.includes(req.marketCenterId)
     ) {

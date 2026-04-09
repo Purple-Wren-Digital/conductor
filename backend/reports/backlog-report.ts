@@ -1,7 +1,9 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { db, subscriptionRepository } from "../ticket/db";
+import { db } from "../ticket/db";
+import { subscriptionRepository } from "../shared/repositories";
 import type { TicketStatus } from "../ticket/types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 
 export interface BacklogRequest {
   marketCenterIds?: Query<string[]>;
@@ -42,10 +44,8 @@ export const backlog = api<BacklogRequest, BacklogResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      await getAccessibleMarketCenterIds(userContext);
+    if (!accessibleMarketCenterIds.length) {
       return { created: 0, unassigned: 0, total: 0 };
     }
 

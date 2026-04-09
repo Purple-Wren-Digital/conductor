@@ -1,8 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 import {
   marketCenterRepository,
-  subscriptionRepository,
 } from "../shared/repositories";
 import type { AutoCloseSettings, MarketCenterSettings } from "./types";
 
@@ -76,11 +76,9 @@ export const getAutoCloseSettings = api<
     // ⬇️ ONLY admins hit this
     else if (userContext.role === "ADMIN") {
       const accessibleMarketCenterIds =
-        await subscriptionRepository.getAccessibleMarketCenterIds(
-          userContext?.marketCenterId
-        );
+        await getAccessibleMarketCenterIds(userContext);
 
-      if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+      if (!accessibleMarketCenterIds.length) {
         throw APIError.permissionDenied(
           "You do not have access to this market center's settings"
         );
@@ -143,9 +141,7 @@ export const updateAutoCloseSettings = api<
 
     // Verify user has access to this market center
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        req.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
     let includesMarketCenterId = false;
     if (accessibleMarketCenterIds && accessibleMarketCenterIds.length > 0) {

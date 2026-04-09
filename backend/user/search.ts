@@ -1,7 +1,8 @@
 import { api, APIError, Query } from "encore.dev/api";
-import { subscriptionRepository, userRepository } from "../ticket/db";
+import { userRepository } from "../ticket/db";
 import type { User, UserRole } from "../user/types";
 import { getUserContext } from "../auth/user-context";
+import { getAccessibleMarketCenterIds } from "../auth/permissions";
 // TODO: Accessible market centers based on subscription - primary market center ID in params for ADMIN ENTERPRISE users
 
 export interface SearchUsersRequest {
@@ -37,11 +38,9 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
   async (req) => {
     const userContext = await getUserContext();
     const accessibleMarketCenterIds =
-      await subscriptionRepository.getAccessibleMarketCenterIds(
-        userContext?.marketCenterId
-      );
+      await getAccessibleMarketCenterIds(userContext);
 
-    if (!accessibleMarketCenterIds || !accessibleMarketCenterIds.length) {
+    if (!accessibleMarketCenterIds.length) {
       return { users: [], total: 0 };
     }
 
