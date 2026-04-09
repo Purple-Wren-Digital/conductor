@@ -3,6 +3,7 @@ import { db, fromTimestamp } from "../ticket/db";
 import { MarketCenter } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { subscriptionRepository } from "../shared/repositories";
+import { userMarketCenterRepository } from "../shared/repositories/user-market-center.repository";
 
 export interface GetMarketCenterRequest {
   id: string;
@@ -37,8 +38,9 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
         req.id
       );
     } else {
-      // Non-admin roles can only access their own market center
-      canAccess = userContext.marketCenterId === req.id;
+      // Non-admin roles can access their active MC or any MC they belong to via junction table
+      canAccess = userContext.marketCenterId === req.id ||
+        await userMarketCenterRepository.userBelongsToMarketCenter(userContext.userId, req.id);
     }
 
     if (!canAccess) {

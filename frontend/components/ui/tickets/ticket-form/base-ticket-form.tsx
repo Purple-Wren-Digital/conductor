@@ -40,7 +40,7 @@ import {
   findMarketCenter,
   urgencyOptions,
 } from "@/lib/utils";
-import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
+import { useFetchAllMarketCenters, useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -109,9 +109,17 @@ export function BaseTicketForm({
   const { data: marketCentersData, isLoading: isMarketCentersLoading } =
     useFetchAllMarketCenters(role);
 
+  // Fetch specific MC when one is passed via prop (for multi-MC staff/staff-leader)
+  const { data: specificMcData } = useFetchMarketCenter(role, marketCenterId ?? undefined);
+
   const marketCenters = useMemo(() => {
-    return marketCentersData?.marketCenters ?? [];
-  }, [marketCentersData]);
+    const allMCs = marketCentersData?.marketCenters ?? [];
+    // If a specific MC was fetched and isn't already in the list, include it
+    if (specificMcData && !allMCs.find((mc: MarketCenter) => mc.id === specificMcData.id)) {
+      return [...allMCs, specificMcData];
+    }
+    return allMCs;
+  }, [marketCentersData, specificMcData]);
 
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
     return selectedMarketCenter && selectedMarketCenter?.ticketCategories
