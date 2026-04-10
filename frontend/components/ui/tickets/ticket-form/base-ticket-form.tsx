@@ -190,7 +190,7 @@ export function BaseTicketForm({
           <p className="ml-1 text-xs text-muted-foreground">
             Create ticket templates in{" "}
             <Link
-              href="/dashboard/settings/ticket-templates"
+              href="/dashboard/ticket-templates"
               rel="noopener noreferrer"
               target="_blank"
               className="underline underline-offset-2"
