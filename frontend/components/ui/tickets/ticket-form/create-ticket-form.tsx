@@ -47,8 +47,6 @@ export function CreateTicketForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
-  const [marketCenterId, setMarketCenterId] = useState<string | null>(null);
-
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
@@ -56,16 +54,28 @@ export function CreateTicketForm({
   const { currentUser } = useStore();
   const { getToken } = useAuth();
 
-  useEffect(() => {
-    const fetchTemplates = async (mcId: string) => {
-      if (!isLoaded) return;
+  const marketCenterId =
+    externalMcId && externalMcId !== "all"
+      ? externalMcId
+      : currentUser?.marketCenterId ?? null;
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setValues(initialValues);
+    setErrors({});
+    setSelectedTemplateId("");
+
+    if (!marketCenterId || !isLoaded) {
+      setTemplates([]);
+      return;
+    }
+
+    const fetchTemplates = async () => {
       try {
         const token = await getToken();
-        if (!token) {
-          throw new Error("Failed to get authentication token");
-        }
-        const res = await fetch(`${API_BASE}/ticket-templates/${mcId}`, {
+        if (!token) throw new Error("Failed to get authentication token");
+        const res = await fetch(`${API_BASE}/ticket-templates/${marketCenterId}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
@@ -78,33 +88,8 @@ export function CreateTicketForm({
       }
     };
 
-    if (isOpen) {
-      setValues(initialValues);
-      setErrors({});
-      setSelectedTemplateId("");
-    }
-
-    const effectiveMcId =
-      externalMcId && externalMcId !== "all"
-        ? externalMcId
-        : currentUser?.marketCenterId ?? null;
-
-    setMarketCenterId(effectiveMcId);
-    if (effectiveMcId) {
-      fetchTemplates(effectiveMcId);
-    } else {
-      setTemplates([]);
-    }
-  }, [
-    isOpen,
-    isLoaded,
-    clerkUser,
-    role,
-    currentUser,
-    getToken,
-    externalMcId,
-    marketCenterId,
-  ]);
+    fetchTemplates();
+  }, [isOpen, isLoaded, marketCenterId, getToken]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);

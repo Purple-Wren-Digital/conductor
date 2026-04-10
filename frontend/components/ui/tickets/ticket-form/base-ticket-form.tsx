@@ -103,8 +103,6 @@ export function BaseTicketForm({
 }: BaseTicketFormProps) {
   const [selectedMarketCenter, setSelectedMarketCenter] =
     useState<MarketCenter>({} as MarketCenter);
-  const [manualMcId, setManualMcId] = useState<string | undefined>(undefined);
-
   const { currentUser } = useStore();
   const { role, permissions } = useUserRole();
   const { data: marketCentersData, isLoading: isMarketCentersLoading } =
@@ -122,11 +120,10 @@ export function BaseTicketForm({
     return allMCs;
   }, [marketCentersData, specificMcData]);
 
-  // Use manually selected MC, fall back to prop
-  const activeMcId = manualMcId ?? marketCenterId ?? undefined;
+  const activeMcId = selectedMarketCenter?.id ?? marketCenterId ?? currentUser?.marketCenterId ?? undefined;
 
   // Fetch categories directly from the dedicated endpoint
-  const { data: categoriesData } = useFetchMarketCenterCategories(activeMcId);
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useFetchMarketCenterCategories(activeMcId);
 
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
     // Prefer categories from the dedicated endpoint
@@ -213,6 +210,18 @@ export function BaseTicketForm({
     permissions?.canManageTicketTemplateSettings,
   ]);
 
+  if (!activeMcId || isCategoriesLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -237,7 +246,6 @@ export function BaseTicketForm({
               value={selectedMarketCenter?.id}
               onValueChange={(value) => {
                 setSelectedMarketCenter(findMarketCenter(marketCenters, value));
-                setManualMcId(value);
               }}
               disabled={role !== "ADMIN" || disabled}
             >
