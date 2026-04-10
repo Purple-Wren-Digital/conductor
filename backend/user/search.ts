@@ -49,12 +49,13 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
     }
     const isStaff =
       userContext.role === "STAFF" || userContext.role === "STAFF_LEADER";
-    const isAdmin = userContext.role === "ADMIN";
+    const isAdmin = userContext.role === "ADMIN" || userContext.isSuperuser;
 
     // Agents and staff without market center can only see themselves
     if (
-      userContext.role === "AGENT" ||
-      (isStaff && !userContext?.marketCenterId)
+      !userContext.isSuperuser &&
+      (userContext.role === "AGENT" ||
+      (isStaff && !userContext?.marketCenterId))
     ) {
       const user = await userRepository.findById(userContext.userId);
 

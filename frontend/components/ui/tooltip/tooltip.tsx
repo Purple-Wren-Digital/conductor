@@ -117,7 +117,7 @@ export function ToolTip({
     <Tooltip>
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipPortal>
-        <TooltipContent className={className}>{content}</TooltipContent>
+        <TooltipContent sideOffset={4}>{content}</TooltipContent>
       </TooltipPortal>
     </Tooltip>
   );

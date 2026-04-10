@@ -114,7 +114,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     setShowEditUserForm(false);
   };
   const userNameForm = useMemo(
-    () => `${formData?.firstName.trim()} ${formData?.lastName.trim()}`,
+    () => `${(formData?.firstName ?? "").trim()} ${(formData?.lastName ?? "").trim()}`,
     [formData]
   );
 
@@ -469,9 +469,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 onValueChange={(value: UserRole) => {
                   setFormData({
                     firstName:
-                      user && user?.name ? user?.name.split(" ")?.[0] : "",
+                      user && user?.name ? user?.name.split(" ")?.[0] ?? "" : "",
                     lastName:
-                      user && user?.name ? user?.name.split(" ")?.[1] : "",
+                      user && user?.name ? user?.name.split(" ")?.[1] ?? "" : "",
                     email: user?.email ?? "",
                     role: value,
                   });
