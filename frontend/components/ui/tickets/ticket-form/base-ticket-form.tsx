@@ -103,6 +103,7 @@ export function BaseTicketForm({
 }: BaseTicketFormProps) {
   const [selectedMarketCenter, setSelectedMarketCenter] =
     useState<MarketCenter>({} as MarketCenter);
+  const [manualMcId, setManualMcId] = useState<string | undefined>(undefined);
 
   const { currentUser } = useStore();
   const { role, permissions } = useUserRole();
@@ -121,10 +122,11 @@ export function BaseTicketForm({
     return allMCs;
   }, [marketCentersData, specificMcData]);
 
+  // Use manually selected MC, fall back to prop
+  const activeMcId = manualMcId ?? marketCenterId ?? undefined;
+
   // Fetch categories directly from the dedicated endpoint
-  const { data: categoriesData } = useFetchMarketCenterCategories(
-    selectedMarketCenter?.id ?? marketCenterId ?? undefined
-  );
+  const { data: categoriesData } = useFetchMarketCenterCategories(activeMcId);
 
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
     // Prefer categories from the dedicated endpoint
@@ -233,9 +235,10 @@ export function BaseTicketForm({
             </div>
             <Select
               value={selectedMarketCenter?.id}
-              onValueChange={(value) =>
-                setSelectedMarketCenter(findMarketCenter(marketCenters, value))
-              }
+              onValueChange={(value) => {
+                setSelectedMarketCenter(findMarketCenter(marketCenters, value));
+                setManualMcId(value);
+              }}
               disabled={role !== "ADMIN" || disabled}
             >
               <SelectTrigger
