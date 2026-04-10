@@ -123,11 +123,6 @@ export default function CreateMarketCenter({
     if (!canCreateMC)
       errors.general = "Upgrade to Enterprise to add a market center";
     if (!formData?.name.trim()) errors.name = "Name is required";
-    if (
-      formData?.selectedUsers.length > 0 &&
-      !formData.selectedUsers.find((user) => user.role === "STAFF_LEADER")
-    )
-      errors.users = "At least one staff leader must be assigned when adding users";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -166,15 +161,6 @@ export default function CreateMarketCenter({
         const errorMessage = errorData?.message
           ? errorData.message
           : "Failed to create market center";
-        if (
-          errorMessage.includes("At least one staff leader must be assigned")
-          || errorMessage.includes("staff leader")
-        ) {
-          setFormErrors({
-            ...formErrors,
-            users: errorMessage,
-          });
-        }
         throw new Error(
           errorData?.message
             ? errorData.message
