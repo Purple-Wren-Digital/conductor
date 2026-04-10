@@ -496,11 +496,13 @@ export default function MarketCenterTicketCategories({
                 ticketCategories.length > 0 &&
                 ticketCategories.map(
                   (category: TicketCategory, index: number) => {
+                    const hasAssignee = !!category?.defaultAssignee;
                     const deactivatedUser =
-                      !category?.defaultAssignee?.isActive;
+                      hasAssignee && !category.defaultAssignee!.isActive;
                     const wrongMarketCenter =
-                      category?.defaultAssignee?.marketCenterId !==
-                      marketCenter?.id;
+                      hasAssignee &&
+                      category.defaultAssignee!.marketCenterId !==
+                        marketCenter?.id;
                     const assignmentError =
                       deactivatedUser || wrongMarketCenter;
                     return (

@@ -123,7 +123,9 @@ export function BaseTicketForm({
 
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
     return selectedMarketCenter && selectedMarketCenter?.ticketCategories
-      ? selectedMarketCenter?.ticketCategories
+      ? selectedMarketCenter.ticketCategories.filter(
+          (c) => c.isActive !== false
+        )
       : [];
   }, [selectedMarketCenter]);
 

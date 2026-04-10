@@ -96,6 +96,8 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
       assignee_email: string | null;
       assignee_name: string | null;
       assignee_role: string | null;
+      assignee_is_active: boolean | null;
+      assignee_market_center_id: string | null;
       ticket_count: number;
     }>`
       SELECT
@@ -105,13 +107,15 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
         u.email as assignee_email,
         u.name as assignee_name,
         u.role as assignee_role,
+        u.is_active as assignee_is_active,
+        u.market_center_id as assignee_market_center_id,
         COUNT(t.id)::int as ticket_count
       FROM ticket_categories tc
       LEFT JOIN users u ON tc.default_assignee_id = u.id
       LEFT JOIN tickets t ON t.category_id = tc.id
       WHERE tc.market_center_id = ${req.id}
       GROUP BY tc.id, tc.name, tc.description, tc.market_center_id, tc.default_assignee_id,
-               tc.created_at, tc.updated_at, u.id, u.email, u.name, u.role
+               tc.created_at, tc.updated_at, u.id, u.email, u.name, u.role, u.is_active, u.market_center_id
       ORDER BY tc.name ASC
     `;
 
@@ -154,9 +158,9 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
           email: c.assignee_email ?? "",
           name: c.assignee_name ?? "",
           role: c.assignee_role as any,
-          clerkId: "", // Not fetched in this query
-          isActive: true,
-          marketCenterId: c.market_center_id ?? null,
+          clerkId: "",
+          isActive: c.assignee_is_active ?? true,
+          marketCenterId: c.assignee_market_center_id ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
         } : null,
