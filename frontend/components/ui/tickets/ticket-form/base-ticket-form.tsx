@@ -40,7 +40,7 @@ import {
   findMarketCenter,
   urgencyOptions,
 } from "@/lib/utils";
-import { useFetchAllMarketCenters, useFetchMarketCenter } from "@/hooks/use-market-center";
+import { useFetchAllMarketCenters, useFetchMarketCenter, useFetchMarketCenterCategories } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -121,13 +121,25 @@ export function BaseTicketForm({
     return allMCs;
   }, [marketCentersData, specificMcData]);
 
+  // Fetch categories directly from the dedicated endpoint
+  const { data: categoriesData } = useFetchMarketCenterCategories(
+    selectedMarketCenter?.id ?? marketCenterId ?? undefined
+  );
+
   const marketCenterTicketCategories: TicketCategory[] = useMemo(() => {
+    // Prefer categories from the dedicated endpoint
+    if (categoriesData?.categories && categoriesData.categories.length > 0) {
+      return categoriesData.categories.filter(
+        (c: TicketCategory) => c.isActive !== false
+      );
+    }
+    // Fallback to categories from market center object
     return selectedMarketCenter && selectedMarketCenter?.ticketCategories
       ? selectedMarketCenter.ticketCategories.filter(
           (c) => c.isActive !== false
         )
       : [];
-  }, [selectedMarketCenter]);
+  }, [categoriesData, selectedMarketCenter]);
 
   const marketCenterAssignees: ConductorUser[] = useMemo(() => {
     return !isMarketCentersLoading &&

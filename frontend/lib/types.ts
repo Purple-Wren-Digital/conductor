@@ -96,6 +96,7 @@ export interface TicketCategory {
   description: string | null;
   marketCenterId: string;
   defaultAssigneeId?: string | null;
+  isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
   defaultAssignee?: ConductorUser | null;

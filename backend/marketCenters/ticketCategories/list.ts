@@ -19,6 +19,7 @@ interface TicketCategoryRow {
   description: string | null;
   market_center_id: string;
   default_assignee_id: string | null;
+  is_active: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -86,6 +87,7 @@ export const listCategories = api<
       description: category.description ?? "",
       marketCenterId: category.market_center_id,
       defaultAssigneeId: category.default_assignee_id ?? undefined,
+      isActive: category.is_active ?? true,
       createdAt: category.created_at,
       updatedAt: category.updated_at,
     }));
