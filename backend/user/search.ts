@@ -111,7 +111,7 @@ export const search = api<SearchUsersRequest, SearchUsersResponse>(
       marketCenterIds.push(adminMarketCenterId);
     }
     if (isAdmin && !adminMarketCenterId && !isUnassigned) {
-      marketCenterIds = accessibleMarketCenterIds;
+      marketCenterIds = [...accessibleMarketCenterIds, "Unassigned"];
     }
     if (isStaff && staffMarketCenterId && !isUnassigned) {
       marketCenterIds.push(staffMarketCenterId);
