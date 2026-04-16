@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
+import type { ConductorUser } from "@/lib/types";
 import { toast } from "sonner";
 
 export function useSwitchMarketCenter() {
@@ -38,7 +39,7 @@ export function useSwitchMarketCenter() {
         setCurrentUser({
           ...currentUser,
           marketCenterId: data.marketCenterId,
-          marketCenter: data.marketCenter,
+          marketCenter: data.marketCenter as ConductorUser["marketCenter"],
         });
       }
 
