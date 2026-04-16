@@ -27,7 +27,6 @@ import type {
   ConductorUser,
   UsersToNotify,
 } from "@/lib/types";
-import { arraysEqualById } from "@/lib/utils";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -145,12 +144,6 @@ export default function EditMarketCenter({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (
-      formData?.name.trim() === editingMarketCenter?.name.trim() &&
-      arraysEqualById(assignedUsers, formData.selectedUsers)
-    ) {
-      errors.general = "Please update at least one field to continue";
-    }
 
     if (!formData?.name || !formData.name.trim()) {
       errors.name = "Name is required";
