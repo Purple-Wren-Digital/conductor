@@ -177,12 +177,10 @@ function extractContextFromNotification(
 /**
  * Generates the CTA button URL based on notification type and data
  */
-function getButtonUrl(
+export function getButtonUrl(
   notification: Notification,
   templateType: CustomizableTemplateType
 ): string {
-  let url = "";
-
   const ticketId =
     notification.data?.createdTicket?.ticketNumber ||
     notification.data?.updatedTicket?.ticketNumber ||
@@ -193,9 +191,9 @@ function getButtonUrl(
 
   if (ticketId) {
     if (templateType === "ticket_survey") {
-      url = `${APP_BASE_URL()}/dashboard/tickets/${ticketId}?survey=true`;
+      return `${APP_BASE_URL()}/dashboard/tickets/${ticketId}?survey=true`;
     }
-    url = `${APP_BASE_URL()}/dashboard/tickets/${ticketId}`;
+    return `${APP_BASE_URL()}/dashboard/tickets/${ticketId}`;
   }
 
   const marketCenterId =
@@ -203,12 +201,10 @@ function getButtonUrl(
     notification.data?.categoryAssignment?.marketCenterId;
 
   if (marketCenterId) {
-    url = `${APP_BASE_URL()}/dashboard/market-centers/${marketCenterId}`;
+    return `${APP_BASE_URL()}/dashboard/market-centers/${marketCenterId}`;
   }
 
-  url = `${APP_BASE_URL()}/dashboard`;
-
-  return url;
+  return `${APP_BASE_URL()}/dashboard`;
 }
 
 /**
