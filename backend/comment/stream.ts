@@ -37,6 +37,7 @@ export const commentStream = api.streamOut<
   },
   async ({ ticketId }, stream) => {
     let userId: string | null = null;
+    let eventHandler: ((event: CommentEvent) => Promise<void>) | null = null;
 
     try {
       // Get authenticated user data
@@ -71,7 +72,7 @@ export const commentStream = api.streamOut<
       ticketStreams.set(userId, { stream, active: true });
 
       // Set up event handler for this stream
-      const eventHandler = async (event: CommentEvent) => {
+      eventHandler = async (event: CommentEvent) => {
         // Only send events for the subscribed ticket
         if (event.ticketId === ticketId) {
           const entry = ticketStreams.get(userId!);
@@ -101,6 +102,13 @@ export const commentStream = api.streamOut<
     } catch (error) {
       throw error;
     } finally {
+      // Unsubscribe event handlers to prevent memory leaks
+      if (eventHandler) {
+        commentEventBus.unsubscribe("comment.created", eventHandler);
+        commentEventBus.unsubscribe("comment.updated", eventHandler);
+        commentEventBus.unsubscribe("comment.deleted", eventHandler);
+      }
+
       // Cleanup when stream ends
       if (userId && ticketId) {
         const ticketStreams = activeStreams.get(ticketId);

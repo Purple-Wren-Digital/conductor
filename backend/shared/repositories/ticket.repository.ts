@@ -119,40 +119,92 @@ export const ticketRepository = {
 
   // Find ticket by ID with relations
   async findByIdWithRelations(id: string): Promise<Ticket | null> {
-    const row = await db.queryRow<TicketRow>`
-      SELECT * FROM tickets WHERE id = ${id}
+    const row = await db.queryRow<
+      TicketRow & {
+        creator_email: string | null;
+        creator_name: string | null;
+        creator_role: UserRole | null;
+        creator_market_center_id: string | null;
+        creator_clerk_id: string | null;
+        creator_is_active: boolean | null;
+        creator_created_at: Date | null;
+        creator_updated_at: Date | null;
+        assignee_email: string | null;
+        assignee_name: string | null;
+        assignee_role: UserRole | null;
+        assignee_market_center_id: string | null;
+        assignee_clerk_id: string | null;
+        assignee_is_active: boolean | null;
+        assignee_created_at: Date | null;
+        assignee_updated_at: Date | null;
+        cat_name: string | null;
+        cat_description: string | null;
+        cat_market_center_id: string | null;
+        cat_default_assignee_id: string | null;
+        cat_created_at: Date | null;
+        cat_updated_at: Date | null;
+      }
+    >`
+      SELECT
+        t.*,
+        c.email as creator_email, c.name as creator_name, c.role as creator_role,
+        c.market_center_id as creator_market_center_id, c.clerk_id as creator_clerk_id,
+        c.is_active as creator_is_active, c.created_at as creator_created_at, c.updated_at as creator_updated_at,
+        a.email as assignee_email, a.name as assignee_name, a.role as assignee_role,
+        a.market_center_id as assignee_market_center_id, a.clerk_id as assignee_clerk_id,
+        a.is_active as assignee_is_active, a.created_at as assignee_created_at, a.updated_at as assignee_updated_at,
+        tc.name as cat_name, tc.description as cat_description,
+        tc.market_center_id as cat_market_center_id, tc.default_assignee_id as cat_default_assignee_id,
+        tc.created_at as cat_created_at, tc.updated_at as cat_updated_at
+      FROM tickets t
+      LEFT JOIN users c ON t.creator_id = c.id
+      LEFT JOIN users a ON t.assignee_id = a.id
+      LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+      WHERE t.id = ${id}
     `;
 
     if (!row) return null;
 
     const ticket = rowToTicket(row);
 
-    // Get creator
-    const creatorRow = await db.queryRow<UserRow>`
-      SELECT * FROM users WHERE id = ${row.creator_id}
-    `;
-    if (creatorRow) {
-      ticket.creator = rowToUser(creatorRow);
+    if (row.creator_email) {
+      ticket.creator = rowToUser({
+        id: row.creator_id,
+        email: row.creator_email,
+        name: row.creator_name,
+        role: row.creator_role!,
+        market_center_id: row.creator_market_center_id,
+        clerk_id: row.creator_clerk_id!,
+        is_active: row.creator_is_active!,
+        created_at: row.creator_created_at!,
+        updated_at: row.creator_updated_at!,
+      });
     }
 
-    // Get assignee
-    if (row.assignee_id) {
-      const assigneeRow = await db.queryRow<UserRow>`
-        SELECT * FROM users WHERE id = ${row.assignee_id}
-      `;
-      if (assigneeRow) {
-        ticket.assignee = rowToUser(assigneeRow);
-      }
+    if (row.assignee_id && row.assignee_email) {
+      ticket.assignee = rowToUser({
+        id: row.assignee_id,
+        email: row.assignee_email,
+        name: row.assignee_name,
+        role: row.assignee_role!,
+        market_center_id: row.assignee_market_center_id,
+        clerk_id: row.assignee_clerk_id!,
+        is_active: row.assignee_is_active!,
+        created_at: row.assignee_created_at!,
+        updated_at: row.assignee_updated_at!,
+      });
     }
 
-    // Get category
-    if (row.category_id) {
-      const categoryRow = await db.queryRow<CategoryRow>`
-        SELECT * FROM ticket_categories WHERE id = ${row.category_id}
-      `;
-      if (categoryRow) {
-        ticket.category = rowToCategory(categoryRow);
-      }
+    if (row.category_id && row.cat_name) {
+      ticket.category = rowToCategory({
+        id: row.category_id,
+        name: row.cat_name,
+        description: row.cat_description,
+        market_center_id: row.cat_market_center_id!,
+        default_assignee_id: row.cat_default_assignee_id,
+        created_at: row.cat_created_at!,
+        updated_at: row.cat_updated_at!,
+      });
     }
 
     return ticket;
@@ -569,12 +621,21 @@ export const ticketRepository = {
     );
     const total = countResult?.count ?? 0;
 
-    // Get tickets with relations
+    // Get tickets with relations via JOINs (no N+1)
     const sql = `
       SELECT
         t.*,
         (SELECT COUNT(*)::int FROM comments WHERE ticket_id = t.id) as comment_count,
-        (SELECT COUNT(*)::int FROM attachments WHERE ticket_id = t.id) as attachment_count
+        (SELECT COUNT(*)::int FROM attachments WHERE ticket_id = t.id) as attachment_count,
+        creator.email as creator_email, creator.name as creator_name, creator.role as creator_role,
+        creator.market_center_id as creator_market_center_id, creator.clerk_id as creator_clerk_id,
+        creator.is_active as creator_is_active, creator.created_at as creator_created_at, creator.updated_at as creator_updated_at,
+        assignee.email as assignee_email, assignee.name as assignee_name, assignee.role as assignee_role,
+        assignee.market_center_id as assignee_market_center_id, assignee.clerk_id as assignee_clerk_id,
+        assignee.is_active as assignee_is_active, assignee.created_at as assignee_created_at, assignee.updated_at as assignee_updated_at,
+        tc.name as cat_name, tc.description as cat_description,
+        tc.market_center_id as cat_market_center_id, tc.default_assignee_id as cat_default_assignee_id,
+        tc.created_at as cat_created_at, tc.updated_at as cat_updated_at
       FROM tickets t
       LEFT JOIN ticket_categories tc ON t.category_id = tc.id
       LEFT JOIN users creator ON t.creator_id = creator.id
@@ -585,38 +646,81 @@ export const ticketRepository = {
     `;
 
     const rows = await db.rawQueryAll<
-      TicketRow & { comment_count: number; attachment_count: number }
+      TicketRow & {
+        comment_count: number;
+        attachment_count: number;
+        creator_email: string | null;
+        creator_name: string | null;
+        creator_role: UserRole | null;
+        creator_market_center_id: string | null;
+        creator_clerk_id: string | null;
+        creator_is_active: boolean | null;
+        creator_created_at: Date | null;
+        creator_updated_at: Date | null;
+        assignee_email: string | null;
+        assignee_name: string | null;
+        assignee_role: UserRole | null;
+        assignee_market_center_id: string | null;
+        assignee_clerk_id: string | null;
+        assignee_is_active: boolean | null;
+        assignee_created_at: Date | null;
+        assignee_updated_at: Date | null;
+        cat_name: string | null;
+        cat_description: string | null;
+        cat_market_center_id: string | null;
+        cat_default_assignee_id: string | null;
+        cat_created_at: Date | null;
+        cat_updated_at: Date | null;
+      }
     >(sql, ...values);
 
-    // Fetch related data for each ticket
-    let tickets: Ticket[] = [];
-
-    for (const row of rows) {
+    const tickets: Ticket[] = rows.map((row) => {
       const ticket = rowToTicket(row);
       ticket.commentCount = row.comment_count;
       ticket.attachmentCount = row.attachment_count;
 
-      // Get creator
-      const creatorRow =
-        await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
-      if (creatorRow) ticket.creator = rowToUser(creatorRow);
-
-      // Get assignee
-      if (row.assignee_id) {
-        const assigneeRow =
-          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
-        if (assigneeRow) ticket.assignee = rowToUser(assigneeRow);
+      if (row.creator_email) {
+        ticket.creator = rowToUser({
+          id: row.creator_id,
+          email: row.creator_email,
+          name: row.creator_name,
+          role: row.creator_role!,
+          market_center_id: row.creator_market_center_id,
+          clerk_id: row.creator_clerk_id!,
+          is_active: row.creator_is_active!,
+          created_at: row.creator_created_at!,
+          updated_at: row.creator_updated_at!,
+        });
       }
 
-      // Get category
-      if (row.category_id) {
-        const categoryRow =
-          await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
-        if (categoryRow) ticket.category = rowToCategory(categoryRow);
+      if (row.assignee_id && row.assignee_email) {
+        ticket.assignee = rowToUser({
+          id: row.assignee_id,
+          email: row.assignee_email,
+          name: row.assignee_name,
+          role: row.assignee_role!,
+          market_center_id: row.assignee_market_center_id,
+          clerk_id: row.assignee_clerk_id!,
+          is_active: row.assignee_is_active!,
+          created_at: row.assignee_created_at!,
+          updated_at: row.assignee_updated_at!,
+        });
       }
 
-      tickets.push(ticket);
-    }
+      if (row.category_id && row.cat_name) {
+        ticket.category = rowToCategory({
+          id: row.category_id,
+          name: row.cat_name,
+          description: row.cat_description,
+          market_center_id: row.cat_market_center_id!,
+          default_assignee_id: row.cat_default_assignee_id,
+          created_at: row.cat_created_at!,
+          updated_at: row.cat_updated_at!,
+        });
+      }
+
+      return ticket;
+    });
 
     return { tickets, total };
   },
@@ -722,35 +826,82 @@ export const ticketRepository = {
     if (ids.length === 0) return [];
 
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
-    const sql = `SELECT * FROM tickets WHERE id IN (${placeholders})`;
-    const rows = await db.rawQueryAll<TicketRow>(sql, ...ids);
 
-    const tickets: Ticket[] = [];
+    const joins: string[] = [];
+    const selects: string[] = ["t.*"];
 
-    for (const row of rows) {
-      const ticket = rowToTicket(row);
-
-      if (options?.includeCreator) {
-        const creatorRow =
-          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.creator_id}`;
-        if (creatorRow) ticket.creator = rowToUser(creatorRow);
-      }
-
-      if (options?.includeAssignee && row.assignee_id) {
-        const assigneeRow =
-          await db.queryRow<UserRow>`SELECT * FROM users WHERE id = ${row.assignee_id}`;
-        if (assigneeRow) ticket.assignee = rowToUser(assigneeRow);
-      }
-
-      if (options?.includeCategory && row.category_id) {
-        const categoryRow =
-          await db.queryRow<CategoryRow>`SELECT * FROM ticket_categories WHERE id = ${row.category_id}`;
-        if (categoryRow) ticket.category = rowToCategory(categoryRow);
-      }
-
-      tickets.push(ticket);
+    if (options?.includeCreator) {
+      joins.push("LEFT JOIN users c ON t.creator_id = c.id");
+      selects.push(
+        "c.email as creator_email, c.name as creator_name, c.role as creator_role",
+        "c.market_center_id as creator_market_center_id, c.clerk_id as creator_clerk_id",
+        "c.is_active as creator_is_active, c.created_at as creator_created_at, c.updated_at as creator_updated_at"
+      );
+    }
+    if (options?.includeAssignee) {
+      joins.push("LEFT JOIN users a ON t.assignee_id = a.id");
+      selects.push(
+        "a.email as assignee_email, a.name as assignee_name, a.role as assignee_role",
+        "a.market_center_id as assignee_market_center_id, a.clerk_id as assignee_clerk_id",
+        "a.is_active as assignee_is_active, a.created_at as assignee_created_at, a.updated_at as assignee_updated_at"
+      );
+    }
+    if (options?.includeCategory) {
+      joins.push("LEFT JOIN ticket_categories tc ON t.category_id = tc.id");
+      selects.push(
+        "tc.name as cat_name, tc.description as cat_description",
+        "tc.market_center_id as cat_market_center_id, tc.default_assignee_id as cat_default_assignee_id",
+        "tc.created_at as cat_created_at, tc.updated_at as cat_updated_at"
+      );
     }
 
-    return tickets;
+    const sql = `SELECT ${selects.join(", ")} FROM tickets t ${joins.join(" ")} WHERE t.id IN (${placeholders})`;
+    const rows = await db.rawQueryAll<any>(sql, ...ids);
+
+    return rows.map((row: any) => {
+      const ticket = rowToTicket(row);
+
+      if (options?.includeCreator && row.creator_email) {
+        ticket.creator = rowToUser({
+          id: row.creator_id,
+          email: row.creator_email,
+          name: row.creator_name,
+          role: row.creator_role,
+          market_center_id: row.creator_market_center_id,
+          clerk_id: row.creator_clerk_id,
+          is_active: row.creator_is_active,
+          created_at: row.creator_created_at,
+          updated_at: row.creator_updated_at,
+        });
+      }
+
+      if (options?.includeAssignee && row.assignee_id && row.assignee_email) {
+        ticket.assignee = rowToUser({
+          id: row.assignee_id,
+          email: row.assignee_email,
+          name: row.assignee_name,
+          role: row.assignee_role,
+          market_center_id: row.assignee_market_center_id,
+          clerk_id: row.assignee_clerk_id,
+          is_active: row.assignee_is_active,
+          created_at: row.assignee_created_at,
+          updated_at: row.assignee_updated_at,
+        });
+      }
+
+      if (options?.includeCategory && row.category_id && row.cat_name) {
+        ticket.category = rowToCategory({
+          id: row.category_id,
+          name: row.cat_name,
+          description: row.cat_description,
+          market_center_id: row.cat_market_center_id,
+          default_assignee_id: row.cat_default_assignee_id,
+          created_at: row.cat_created_at,
+          updated_at: row.cat_updated_at,
+        });
+      }
+
+      return ticket;
+    });
   },
 };

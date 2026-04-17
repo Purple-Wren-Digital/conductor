@@ -64,6 +64,8 @@ export const updateNotificationPreferences = api<
           WHERE id = ${pref.id}
         `;
       }
+
+      await tx.commit();
     } catch (error) {
       throw APIError.internal("User settings not updated");
     }

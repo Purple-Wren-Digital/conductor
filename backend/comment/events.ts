@@ -34,6 +34,17 @@ class CommentEventBus {
     this.handlers.get(eventType)!.push(handler);
   }
 
+  // Unsubscribe a handler from comment events
+  unsubscribe(eventType: CommentEvent["type"], handler: (event: CommentEvent) => Promise<void>) {
+    const handlers = this.handlers.get(eventType);
+    if (handlers) {
+      const index = handlers.indexOf(handler);
+      if (index !== -1) {
+        handlers.splice(index, 1);
+      }
+    }
+  }
+
   // Publish comment events
   async publish(event: CommentEvent): Promise<void> {
     const handlers = this.handlers.get(event.type) || [];

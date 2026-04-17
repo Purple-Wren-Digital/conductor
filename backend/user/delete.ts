@@ -67,6 +67,8 @@ export const deleteUser = api<DeleteUserRequest, DeleteUserResponse>(
           ${toJson(user)}::jsonb
         )
       `;
+
+      await tx.commit();
     } catch (error) {
       throw APIError.aborted("User was not deactivated");
     }

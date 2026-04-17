@@ -80,6 +80,8 @@ export const resetNotificationPreferences = api<
           )
         `;
       }
+
+      await tx.commit();
     } catch (error) {
       throw APIError.aborted("Failed to reset notification preferences");
     }

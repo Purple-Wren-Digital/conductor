@@ -131,22 +131,59 @@ export const commentRepository = {
       orderBy?: "asc" | "desc";
     }
   ): Promise<(Comment & { user?: User })[]> {
-    const comments = await this.findByTicketId(ticketId, options);
+    const includeInternal = options?.includeInternal ?? true;
+    const orderBy = options?.orderBy?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
-    const result: (Comment & { user?: User })[] = [];
+    let sql: string;
+    const values: any[] = [ticketId];
 
-    for (const comment of comments) {
-      const userRow = await db.queryRow<UserRow>`
-        SELECT * FROM users WHERE id = ${comment.userId}
-      `;
+    const baseQuery = `
+      SELECT
+        c.*,
+        u.email as user_email, u.name as user_name, u.role as user_role,
+        u.market_center_id as user_market_center_id, u.clerk_id as user_clerk_id,
+        u.is_active as user_is_active, u.created_at as user_created_at, u.updated_at as user_updated_at
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.ticket_id = $1
+    `;
 
-      result.push({
-        ...comment,
-        user: userRow ? rowToUser(userRow) : undefined,
-      });
+    if (includeInternal) {
+      sql = `${baseQuery} ORDER BY c.created_at ${orderBy}`;
+    } else {
+      sql = `${baseQuery} AND c.internal = false ORDER BY c.created_at ${orderBy}`;
     }
 
-    return result;
+    const rows = await db.rawQueryAll<
+      CommentRow & {
+        user_email: string | null;
+        user_name: string | null;
+        user_role: UserRole | null;
+        user_market_center_id: string | null;
+        user_clerk_id: string | null;
+        user_is_active: boolean | null;
+        user_created_at: Date | null;
+        user_updated_at: Date | null;
+      }
+    >(sql, ...values);
+
+    return rows.map((row) => {
+      const comment = rowToComment(row);
+      if (row.user_email) {
+        comment.user = rowToUser({
+          id: row.user_id,
+          email: row.user_email,
+          name: row.user_name,
+          role: row.user_role!,
+          market_center_id: row.user_market_center_id,
+          clerk_id: row.user_clerk_id!,
+          is_active: row.user_is_active!,
+          created_at: row.user_created_at!,
+          updated_at: row.user_updated_at!,
+        });
+      }
+      return comment;
+    });
   },
 
   // Create a new comment
