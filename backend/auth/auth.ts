@@ -25,6 +25,17 @@ interface AuthData {
 const userCache = new Map<string, { data: AuthData; expiry: number }>();
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
+// Evict expired entries every 10 minutes to prevent unbounded growth
+const cacheCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of userCache) {
+    if (value.expiry <= now) {
+      userCache.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
+cacheCleanup.unref();
+
 export const myAuthHandler = authHandler(
   async (params: AuthParams): Promise<AuthData> => {
     // Enhanced logging to debug JWT issues

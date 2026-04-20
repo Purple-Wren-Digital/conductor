@@ -48,7 +48,7 @@ class CommentEventBus {
   // Publish comment events
   async publish(event: CommentEvent): Promise<void> {
     const handlers = this.handlers.get(event.type) || [];
-    await Promise.all(handlers.map(handler => handler(event)));
+    await Promise.allSettled(handlers.map(handler => handler(event)));
   }
 }
 

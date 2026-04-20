@@ -60,7 +60,8 @@ class RateLimiter {
 export const commentRateLimiter = new RateLimiter(10, 60 * 1000);
 
 // Clean up expired entries every 5 minutes
-// TODO: Re-enable once test hang is resolved - this global interval prevents Node from exiting
-// setInterval(() => {
-//   commentRateLimiter.cleanup();
-// }, 5 * 60 * 1000);
+// Use unref() so this interval doesn't prevent Node from exiting during tests
+const cleanupInterval = setInterval(() => {
+  commentRateLimiter.cleanup();
+}, 5 * 60 * 1000);
+cleanupInterval.unref();

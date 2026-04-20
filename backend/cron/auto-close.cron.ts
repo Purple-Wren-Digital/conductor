@@ -1,5 +1,6 @@
 import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
+import log from "encore.dev/log";
 import { db } from "../ticket/db";
 import {
   ticketRepository,
@@ -7,6 +8,7 @@ import {
 } from "../shared/repositories";
 import type { MarketCenterSettings } from "../settings/types";
 import { sendNotification } from "../notifications/create";
+import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
 
 /**
  * Auto-Close Cron Job
@@ -92,12 +94,15 @@ async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
  * Main auto-close check endpoint
  */
 export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
+  cronExecutions.with({ job: "auto-close" }).increment();
+
   const result: AutoCloseResult = {
     ticketsChecked: 0,
     ticketsClosed: 0,
     errors: 0,
   };
 
+  try {
   const now = new Date();
 
   // Get all tickets in AWAITING_RESPONSE status
@@ -248,17 +253,27 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
         result.ticketsClosed++;
       }
     } catch (error) {
-      console.error(
-        `Error processing ticket ${ticket.id} for auto-close:`,
-        error
-      );
+      log.error("error processing ticket for auto-close", {
+        ticketId: ticket.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       result.errors++;
     }
   }
 
-  console.log(
-    `Auto-close check complete: ${result.ticketsClosed}/${result.ticketsChecked} tickets closed, ${result.errors} errors`
-  );
+  log.info("auto-close check complete", {
+    ticketsClosed: result.ticketsClosed,
+    ticketsChecked: result.ticketsChecked,
+    errors: result.errors,
+  });
+
+  } catch (err) {
+    cronErrors.with({ job: "auto-close" }).increment();
+    caughtErrors.with({ source: "cron" }).increment();
+    log.error("auto-close cron failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return result;
 });
