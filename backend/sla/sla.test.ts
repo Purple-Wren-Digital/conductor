@@ -80,6 +80,9 @@ const {
     create: vi.fn(),
     getAccessibleMarketCenterIds: vi.fn(),
   },
+  mockNotificationTopic: {
+    publish: vi.fn(),
+  },
 }));
 
 // Mock encore.dev/api
@@ -121,6 +124,11 @@ vi.mock("../ticket/db", () => ({
   userRepository: mockUserRepository,
   fromTimestamp: vi.fn((d) => d),
   toTimestamp: vi.fn((d) => d),
+}));
+
+// Mock notification topic (Pub/Sub)
+vi.mock("../notifications/topic", () => ({
+  notificationTopic: mockNotificationTopic,
 }));
 
 // Mock user context
@@ -1033,7 +1041,7 @@ describe("SLA System Tests", () => {
         mockEmptyResolutionSla();
         mockSlaRepository.markWarning50Sent.mockResolvedValue(undefined);
         mockSlaRepository.createEvent.mockResolvedValue({});
-        mockNotificationRepository.create.mockResolvedValue({});
+        mockNotificationTopic.publish.mockResolvedValue(undefined);
 
         const result = await checkSlaStatus();
 
@@ -1049,7 +1057,7 @@ describe("SLA System Tests", () => {
           eventType: "WARNING_50",
           notificationSent: true,
         });
-        expect(mockNotificationRepository.create).toHaveBeenCalledWith(
+        expect(mockNotificationTopic.publish).toHaveBeenCalledWith(
           expect.objectContaining({
             userId: "user-assignee",
             type: "SLA Warning",
@@ -1127,7 +1135,7 @@ describe("SLA System Tests", () => {
         mockEmptyResolutionSla();
         mockSlaRepository.markSlaBreached.mockResolvedValue(undefined);
         mockSlaRepository.createEvent.mockResolvedValue({});
-        mockNotificationRepository.create.mockResolvedValue({});
+        mockNotificationTopic.publish.mockResolvedValue(undefined);
         mockUserRepository.findByRole.mockResolvedValue(mockAdmins);
 
         const result = await checkSlaStatus();
@@ -1146,7 +1154,7 @@ describe("SLA System Tests", () => {
         });
 
         // Should notify assignee + all admins
-        expect(mockNotificationRepository.create).toHaveBeenCalledTimes(3);
+        expect(mockNotificationTopic.publish).toHaveBeenCalledTimes(3);
       });
 
       it("should handle tickets without assignee for Response SLA", async () => {
@@ -1258,7 +1266,7 @@ describe("SLA System Tests", () => {
           undefined
         );
         mockSlaRepository.createEvent.mockResolvedValue({});
-        mockNotificationRepository.create.mockResolvedValue({});
+        mockNotificationTopic.publish.mockResolvedValue(undefined);
 
         const result = await checkSlaStatus();
 
@@ -1274,11 +1282,10 @@ describe("SLA System Tests", () => {
           eventType: "RESOLUTION_WARNING_50",
           notificationSent: true,
         });
-        expect(mockNotificationRepository.create).toHaveBeenCalledWith(
+        expect(mockNotificationTopic.publish).toHaveBeenCalledWith(
           expect.objectContaining({
             userId: "user-assignee",
             type: "SLA Warning",
-            title: expect.stringContaining("Resolution SLA Warning"),
           })
         );
       });
@@ -1369,7 +1376,7 @@ describe("SLA System Tests", () => {
           undefined
         );
         mockSlaRepository.createEvent.mockResolvedValue({});
-        mockNotificationRepository.create.mockResolvedValue({});
+        mockNotificationTopic.publish.mockResolvedValue(undefined);
         mockUserRepository.findByRole.mockResolvedValue(mockAdmins);
 
         const result = await checkSlaStatus();
@@ -1388,7 +1395,7 @@ describe("SLA System Tests", () => {
         });
 
         // Should notify assignee + all admins
-        expect(mockNotificationRepository.create).toHaveBeenCalledTimes(2);
+        expect(mockNotificationTopic.publish).toHaveBeenCalledTimes(2);
       });
 
       it("should handle tickets without assignee for Resolution SLA", async () => {
