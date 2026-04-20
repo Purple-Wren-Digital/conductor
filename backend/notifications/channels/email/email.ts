@@ -7,6 +7,8 @@ import {
 } from "./customization-renderer";
 import type { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import type { Notification } from "../../types";
+import { emailsSent, emailSendErrors } from "../../../shared/metrics";
+import log from "encore.dev/log";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");
 
@@ -75,11 +77,19 @@ export async function sendEmailNotification({
     });
 
     if (response.error) {
+      emailSendErrors.increment();
+      log.error("resend API returned error", { error: response.error.message, to: userEmail });
       throw new Error(response.error.message);
     }
 
+    emailsSent.increment();
     return response;
   } catch (err) {
+    emailSendErrors.increment();
+    log.error("email send failed", {
+      error: err instanceof Error ? err.message : String(err),
+      to: userEmail,
+    });
     throw err;
   }
 }

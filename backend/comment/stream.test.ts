@@ -43,6 +43,12 @@ vi.mock("../ticket/db", () => ({
   ticketRepository: mockTicketRepository,
 }));
 
+vi.mock("../shared/metrics", () => ({
+  activeCommentStreams: { set: vi.fn() },
+  streamDisconnects: { increment: vi.fn() },
+  caughtErrors: { with: vi.fn(() => ({ increment: vi.fn() })) },
+}));
+
 vi.mock("../auth/permissions", () => ({
   canAccessTicket: mockCanAccessTicket,
 }));

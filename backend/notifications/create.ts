@@ -15,6 +15,8 @@ import type {
 import { Urgency } from "../ticket/types";
 import { MarketCenterNotificationPreferences } from "../settings/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
+import { notificationsSent, notificationErrors, caughtErrors } from "../shared/metrics";
+import log from "encore.dev/log";
 
 export interface CreateNotificationRequest {
   userId: string;
@@ -146,26 +148,38 @@ export async function sendNotification(req: CreateNotificationRequest) {
         data: notification.data ?? undefined,
       };
 
-      switch (safeNotification.channel) {
-        case "EMAIL":
-          if (foundUser?.email) {
-            await sendEmailNotification({
-              userEmail: foundUser.email,
-              notification: {
-                ...safeNotification,
-                type: safeNotification?.type,
-                priority: safeNotification?.priority ?? undefined,
-                data: safeNotification?.data as NotificationData,
-              },
-              marketCenterId: foundUser.marketCenterId,
-              recipientName: foundUser.name ?? undefined,
-            });
-          }
-          break;
+      try {
+        switch (safeNotification.channel) {
+          case "EMAIL":
+            if (foundUser?.email) {
+              await sendEmailNotification({
+                userEmail: foundUser.email,
+                notification: {
+                  ...safeNotification,
+                  type: safeNotification?.type,
+                  priority: safeNotification?.priority ?? undefined,
+                  data: safeNotification?.data as NotificationData,
+                },
+                marketCenterId: foundUser.marketCenterId,
+                recipientName: foundUser.name ?? undefined,
+              });
+              notificationsSent.with({ channel: "EMAIL" }).increment();
+            }
+            break;
 
-        case "IN_APP":
-          await broadcastNotification(foundUser?.clerkId!, safeNotification);
-          break;
+          case "IN_APP":
+            await broadcastNotification(foundUser?.clerkId!, safeNotification);
+            notificationsSent.with({ channel: "IN_APP" }).increment();
+            break;
+        }
+      } catch (err) {
+        notificationErrors.with({ channel: safeNotification.channel ?? "UNKNOWN" }).increment();
+        caughtErrors.with({ source: "notification" }).increment();
+        log.error("failed to send notification", {
+          channel: safeNotification.channel,
+          userId: foundUser?.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     })
   );

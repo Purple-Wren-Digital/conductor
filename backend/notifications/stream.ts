@@ -1,6 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
+import log from "encore.dev/log";
 import { Notification } from "./types";
+import { activeNotificationStreams, streamDisconnects, caughtErrors } from "../shared/metrics";
 
 // Store active streams for broadcasting
 // Map key is clerkId, value is the stream instance and a flag to indicate if it's active
@@ -37,6 +39,7 @@ export const notificationStream = api.streamOut<Notification>(
 
       // Store the stream for broadcasting
       activeStreams.set(clerkId, { stream, active: true });
+      activeNotificationStreams.set(activeStreams.size);
 
       // Keep the stream alive by periodically checking if it's still active
       // The stream will automatically close when the client disconnects
@@ -45,11 +48,14 @@ export const notificationStream = api.streamOut<Notification>(
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
+      caughtErrors.with({ source: "stream" }).increment();
       throw error;
     } finally {
       // Cleanup when stream ends
       if (clerkId) {
         activeStreams.delete(clerkId);
+        activeNotificationStreams.set(activeStreams.size);
+        streamDisconnects.increment();
       }
     }
   }

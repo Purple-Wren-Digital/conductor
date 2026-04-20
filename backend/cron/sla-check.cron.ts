@@ -1,6 +1,8 @@
 import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
+import log from "encore.dev/log";
 import { slaRepository, notificationRepository, userRepository } from "../shared/repositories";
+import { cronExecutions, cronErrors, caughtErrors } from "../shared/metrics";
 
 /**
  * SLA Check Cron Job
@@ -19,6 +21,8 @@ interface SlaCheckResult {
 }
 
 export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
+  cronExecutions.with({ job: "sla-check" }).increment();
+
   const result: SlaCheckResult = {
     responseWarnings50Sent: 0,
     responseWarnings75Sent: 0,
@@ -28,6 +32,7 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     resolutionBreachesMarked: 0,
   };
 
+  try {
   // ==================
   // Response SLA Checks
   // ==================
@@ -264,6 +269,14 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
     }
 
     result.resolutionBreachesMarked++;
+  }
+
+  } catch (err) {
+    cronErrors.with({ job: "sla-check" }).increment();
+    caughtErrors.with({ source: "cron" }).increment();
+    log.error("sla-check cron failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return result;

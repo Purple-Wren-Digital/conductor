@@ -3,6 +3,7 @@ import { CommentEvent, commentEventBus } from "./events";
 import { getUserContext } from "../auth/user-context";
 import { ticketRepository } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";
+import { activeCommentStreams, streamDisconnects, caughtErrors } from "../shared/metrics";
 
 // Define handshake type to specify which ticket to subscribe to
 interface CommentStreamHandshake {
@@ -70,6 +71,9 @@ export const commentStream = api.streamOut<
       // Store the stream for this user and ticket
       const ticketStreams = activeStreams.get(ticketId)!;
       ticketStreams.set(userId, { stream, active: true });
+      activeCommentStreams.set(
+        Array.from(activeStreams.values()).reduce((sum, m) => sum + m.size, 0)
+      );
 
       // Set up event handler for this stream
       eventHandler = async (event: CommentEvent) => {
@@ -100,8 +104,10 @@ export const commentStream = api.streamOut<
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
+      caughtErrors.with({ source: "stream" }).increment();
       throw error;
     } finally {
+      streamDisconnects.increment();
       // Unsubscribe event handlers to prevent memory leaks
       if (eventHandler) {
         commentEventBus.unsubscribe("comment.created", eventHandler);
@@ -118,6 +124,9 @@ export const commentStream = api.streamOut<
             activeStreams.delete(ticketId);
           }
         }
+        activeCommentStreams.set(
+          Array.from(activeStreams.values()).reduce((sum, m) => sum + m.size, 0)
+        );
       }
     }
   }

@@ -1,11 +1,16 @@
 import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
+import log from "encore.dev/log";
 import { marketCenterRepository, userRepository } from "../ticket/db";
 import type { InvitationStatus } from "../marketCenters/types";
+import { cronExecutions, cronErrors, caughtErrors } from "../shared/metrics";
 // DOCS: https://encore.dev/docs/ts/primitives/cron-jobs?_gl=1*9ln59d*_gcl_au*MTI2NzYyODg1MS4xNzYxODgxNjMz
 // DEV/Testing:  cleanupOldNotifications.cfg.endpoint()
 
 export const updateInvitationStatus = api({}, async (): Promise<void> => {
+  cronExecutions.with({ job: "update-invite" }).increment();
+
+  try {
   const now = new Date();
 
   const existingInvitations =
@@ -67,6 +72,14 @@ export const updateInvitationStatus = api({}, async (): Promise<void> => {
         changedById: "SYSTEM",
       });
     }
+  }
+
+  } catch (err) {
+    cronErrors.with({ job: "update-invite" }).increment();
+    caughtErrors.with({ source: "cron" }).increment();
+    log.error("update-invite cron failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 

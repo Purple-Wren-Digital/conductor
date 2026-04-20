@@ -63,7 +63,7 @@ export const PRICING_PLANS = {
 
 // Helper function to extract the body from an incoming request
 function getBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const bodyParts: Uint8Array[] = [];
     req
       .on("data", (chunk) => {
@@ -71,6 +71,9 @@ function getBody(req: IncomingMessage): Promise<string> {
       })
       .on("end", () => {
         resolve(Buffer.concat(bodyParts).toString());
+      })
+      .on("error", (err) => {
+        reject(err);
       });
   });
 }
