@@ -174,16 +174,13 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
       });
     }
 
+    const notifiedIds = new Set(usersToNotify.map((u) => u.id));
+
     for (const comment of previousComments) {
       const commenter = comment?.user;
       if (!commenter) continue;
+      if (notifiedIds.has(commenter.id)) continue;
 
-      const alreadyNotified = usersToNotify.find(
-        (user) => user.id === commenter.id
-      );
-      if (alreadyNotified !== undefined) continue;
-
-      const canAccess = await canAccessTicket(userContext, req.ticketId);
       const canBeNotified = await canBeNotifiedAboutComments({
         userId: commenter.id,
         role: commenter.role,
@@ -191,15 +188,14 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
         currentUserId: userContext.userId,
       });
 
-      if (canAccess && canBeNotified && !alreadyNotified) {
+      if (canBeNotified) {
         usersToNotify.push({
           id: commenter.id,
           name: commenter.name || "A team member",
           email: commenter.email || "",
           updateType: "created",
         });
-      } else {
-        continue;
+        notifiedIds.add(commenter.id);
       }
     }
 
