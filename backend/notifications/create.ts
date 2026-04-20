@@ -140,7 +140,7 @@ export async function sendNotification(req: CreateNotificationRequest) {
     throw APIError.internal("Failed to create notification(s)");
   }
 
-  await Promise.all(
+  await Promise.allSettled(
     createdNotifications.map(async (notification) => {
       const safeNotification: Notification = {
         ...notification,

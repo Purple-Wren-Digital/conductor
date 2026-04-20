@@ -1,4 +1,18 @@
 import { db } from "../ticket/db";
+import log from "encore.dev/log";
+
+// Log unhandled rejections so we can see what's killing the process
+process.on("unhandledRejection", (reason, promise) => {
+  log.error("UNHANDLED PROMISE REJECTION - process will crash", {
+    reason: reason instanceof Error ? reason.stack || reason.message : String(reason),
+  });
+});
+
+process.on("uncaughtException", (error) => {
+  log.error("UNCAUGHT EXCEPTION - process will crash", {
+    error: error.stack || error.message,
+  });
+});
 
 // This runs when the service starts
 async function initialize() {
