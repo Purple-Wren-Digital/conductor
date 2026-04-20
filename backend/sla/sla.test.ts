@@ -9,6 +9,7 @@ const {
   mockTicketRepository,
   mockUserContext,
   mockSubscriptionRepository,
+  mockNotificationTopic,
 } = vi.hoisted(() => ({
   mockDb: {
     queryAll: vi.fn(),
