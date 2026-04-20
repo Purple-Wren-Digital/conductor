@@ -54,8 +54,8 @@ export async function getUserContext(): Promise<UserContext> {
       authData.emailAddress
     );
 
-    // If found, update with Clerk user ID
-    if (existingUser && existingUser.isActive === true) {
+    if (existingUser) {
+      // Update Clerk ID for existing user (whether active or not)
       await userRepository.update(existingUser.id, {
         clerkId: authData.userID,
       });

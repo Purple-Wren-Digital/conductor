@@ -1,5 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { CommentEvent, commentEventBus } from "./events";
+import type { CommentEvent } from "./events";
 import { getUserContext } from "../auth/user-context";
 import { ticketRepository } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";
@@ -25,7 +25,8 @@ const activeStreams = new Map<string, Map<string, StreamEntry>>();
 
 /**
  * Streaming endpoint for real-time comment events
- * Clients connect to this endpoint to receive live comment updates for a specific ticket
+ * Clients connect to this endpoint to receive live comment updates for a specific ticket.
+ * Events are delivered via Pub/Sub subscription (see topic.ts) calling broadcastCommentEvent().
  */
 export const commentStream = api.streamOut<
   CommentStreamHandshake,
@@ -38,7 +39,6 @@ export const commentStream = api.streamOut<
   },
   async ({ ticketId }, stream) => {
     let userId: string | null = null;
-    let eventHandler: ((event: CommentEvent) => Promise<void>) | null = null;
 
     try {
       // Get authenticated user data
@@ -54,7 +54,6 @@ export const commentStream = api.streamOut<
         throw APIError.notFound("Ticket not found");
       }
 
-      // Check permissions (user can see ticket if they created it, are assigned to it, or are STAFF/ADMIN)
       const hasAccess = await canAccessTicket(userContext, ticketId);
 
       if (!hasAccess) {
@@ -75,30 +74,6 @@ export const commentStream = api.streamOut<
         Array.from(activeStreams.values()).reduce((sum, m) => sum + m.size, 0)
       );
 
-      // Set up event handler for this stream
-      eventHandler = async (event: CommentEvent) => {
-        // Only send events for the subscribed ticket
-        if (event.ticketId === ticketId) {
-          const entry = ticketStreams.get(userId!);
-          if (entry && entry.active) {
-            try {
-              await entry.stream.send({ event });
-            } catch {
-              entry.active = false;
-              ticketStreams.delete(userId!);
-              if (ticketStreams.size === 0) {
-                activeStreams.delete(ticketId);
-              }
-            }
-          }
-        }
-      };
-
-      // Subscribe to all comment event types for this ticket
-      commentEventBus.subscribe("comment.created", eventHandler);
-      commentEventBus.subscribe("comment.updated", eventHandler);
-      commentEventBus.subscribe("comment.deleted", eventHandler);
-
       // Keep the stream alive by periodically checking if it's still active
       while (ticketStreams.get(userId)?.active) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -108,12 +83,6 @@ export const commentStream = api.streamOut<
       throw error;
     } finally {
       streamDisconnects.increment();
-      // Unsubscribe event handlers to prevent memory leaks
-      if (eventHandler) {
-        commentEventBus.unsubscribe("comment.created", eventHandler);
-        commentEventBus.unsubscribe("comment.updated", eventHandler);
-        commentEventBus.unsubscribe("comment.deleted", eventHandler);
-      }
 
       // Cleanup when stream ends
       if (userId && ticketId) {
@@ -133,8 +102,8 @@ export const commentStream = api.streamOut<
 );
 
 /**
- * Broadcast a comment event to all users watching a specific ticket
- * This is called internally when comments are created/updated/deleted
+ * Broadcast a comment event to all users watching a specific ticket.
+ * Called by the Pub/Sub subscription handler in topic.ts.
  */
 export async function broadcastCommentEvent(
   event: CommentEvent
@@ -159,7 +128,7 @@ export async function broadcastCommentEvent(
     }
   );
 
-  await Promise.all(broadcastPromises);
+  await Promise.allSettled(broadcastPromises);
 
   // Clean up if no streams left for this ticket
   if (ticketStreams.size === 0) {
@@ -169,7 +138,6 @@ export async function broadcastCommentEvent(
 
 /**
  * Get list of users currently watching a specific ticket
- * Useful for debugging and monitoring
  */
 export function getTicketWatchers(ticketId: string): string[] {
   const ticketStreams = activeStreams.get(ticketId);

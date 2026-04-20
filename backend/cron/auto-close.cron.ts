@@ -7,7 +7,7 @@ import {
   marketCenterRepository,
 } from "../shared/repositories";
 import type { MarketCenterSettings } from "../settings/types";
-import { sendNotification } from "../notifications/create";
+import { notificationTopic } from "../notifications/topic";
 import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
 
 /**
@@ -189,7 +189,7 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
 
         // Send notification to ticket creator
         if (ticket.creator_id) {
-          await sendNotification({
+          await notificationTopic.publish({
             userId: ticket.creator_id,
             templateName: "Ticket Updated",
             type: "Ticket Updated",
@@ -220,7 +220,7 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
         }
         // Notify assignee if different from creator
         if (ticket.assignee_id && ticket.assignee_id !== ticket.creator_id) {
-          await sendNotification({
+          await notificationTopic.publish({
             userId: ticket.assignee_id,
             templateName: "Ticket Updated",
             type: "Ticket Updated",

@@ -1,27 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * Tests for comment stream cleanup behavior.
- * Verifies that event handlers are unsubscribed when streams disconnect,
- * preventing the memory leak that caused crashes in production.
+ * Tests for comment stream behavior after Pub/Sub migration.
+ * The stream no longer subscribes to an in-memory event bus.
+ * Instead, broadcastCommentEvent() is called by the Pub/Sub subscription handler.
  */
 
 const {
   mockGetUserContext,
   mockTicketRepository,
   mockCanAccessTicket,
-  mockCommentEventBus,
 } = vi.hoisted(() => ({
   mockGetUserContext: vi.fn(),
   mockTicketRepository: {
     findById: vi.fn(),
   },
   mockCanAccessTicket: vi.fn(),
-  mockCommentEventBus: {
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-    publish: vi.fn(),
-  },
 }));
 
 vi.mock("encore.dev/api", () => ({
@@ -53,28 +47,12 @@ vi.mock("../auth/permissions", () => ({
   canAccessTicket: mockCanAccessTicket,
 }));
 
-vi.mock("./events", () => ({
-  commentEventBus: mockCommentEventBus,
-}));
-
-import { commentStream } from "./stream";
+import { broadcastCommentEvent } from "./stream";
 
 describe("Comment Stream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
-
-  const mockStream = {
-    send: vi.fn(),
-    close: vi.fn(),
-  };
-
-  const mockTicket = {
-    id: "ticket-123",
-    title: "Test Ticket",
-    status: "IN_PROGRESS",
-    creatorId: "user-123",
-  };
 
   const mockUserContext = {
     userId: "user-123",
@@ -84,120 +62,57 @@ describe("Comment Stream", () => {
     clerkId: "clerk-123",
   };
 
-  it("should subscribe to all three event types on connect", async () => {
-    mockGetUserContext.mockResolvedValue(mockUserContext);
-    mockTicketRepository.findById.mockResolvedValue(mockTicket);
-    mockCanAccessTicket.mockResolvedValue(true);
+  const mockTicket = {
+    id: "ticket-123",
+    title: "Test Ticket",
+    status: "IN_PROGRESS",
+    creatorId: "user-123",
+  };
 
-    const subscribedTypes: string[] = [];
-    let subscribeCalls = 0;
-    mockCommentEventBus.subscribe.mockImplementation((type: string) => {
-      subscribedTypes.push(type);
-      subscribeCalls++;
-      if (subscribeCalls === 3) {
-        throw new Error("force-exit");
-      }
+  describe("broadcastCommentEvent", () => {
+    it("should not throw when no streams are active for a ticket", async () => {
+      await expect(
+        broadcastCommentEvent({
+          type: "comment.created",
+          ticketId: "ticket-999",
+          comment: {} as any,
+        })
+      ).resolves.toBeUndefined();
     });
-
-    try {
-      await (commentStream as any)({ ticketId: "ticket-123" }, mockStream);
-    } catch {
-      // Expected: force-exit error
-    }
-
-    expect(subscribedTypes).toEqual([
-      "comment.created",
-      "comment.updated",
-      "comment.deleted",
-    ]);
   });
 
-  it("should unsubscribe all handlers in finally block on disconnect", async () => {
-    mockGetUserContext.mockResolvedValue(mockUserContext);
-    mockTicketRepository.findById.mockResolvedValue(mockTicket);
-    mockCanAccessTicket.mockResolvedValue(true);
+  describe("auth failures", () => {
+    it("should throw when user is not authenticated", async () => {
+      mockGetUserContext.mockResolvedValue(null);
 
-    let subscribeCalls = 0;
-    mockCommentEventBus.subscribe.mockImplementation(() => {
-      subscribeCalls++;
-      if (subscribeCalls === 3) {
-        throw new Error("force-exit");
-      }
+      const { commentStream } = await import("./stream");
+
+      await expect(
+        (commentStream as any)({ ticketId: "ticket-123" }, { send: vi.fn(), close: vi.fn() })
+      ).rejects.toThrow();
     });
 
-    try {
-      await (commentStream as any)({ ticketId: "ticket-123" }, mockStream);
-    } catch {
-      // Expected
-    }
+    it("should throw when ticket is not found", async () => {
+      mockGetUserContext.mockResolvedValue(mockUserContext);
+      mockTicketRepository.findById.mockResolvedValue(null);
 
-    expect(mockCommentEventBus.unsubscribe).toHaveBeenCalledTimes(3);
-    expect(mockCommentEventBus.unsubscribe).toHaveBeenCalledWith("comment.created", expect.any(Function));
-    expect(mockCommentEventBus.unsubscribe).toHaveBeenCalledWith("comment.updated", expect.any(Function));
-    expect(mockCommentEventBus.unsubscribe).toHaveBeenCalledWith("comment.deleted", expect.any(Function));
-  });
+      const { commentStream } = await import("./stream");
 
-  it("should unsubscribe the same handler references that were subscribed", async () => {
-    mockGetUserContext.mockResolvedValue(mockUserContext);
-    mockTicketRepository.findById.mockResolvedValue(mockTicket);
-    mockCanAccessTicket.mockResolvedValue(true);
-
-    const subscribedHandlers: Function[] = [];
-    const unsubscribedHandlers: Function[] = [];
-
-    let subscribeCalls = 0;
-    mockCommentEventBus.subscribe.mockImplementation((_type: string, handler: Function) => {
-      subscribedHandlers.push(handler);
-      subscribeCalls++;
-      if (subscribeCalls === 3) {
-        throw new Error("force-exit");
-      }
+      await expect(
+        (commentStream as any)({ ticketId: "nonexistent" }, { send: vi.fn(), close: vi.fn() })
+      ).rejects.toThrow();
     });
 
-    mockCommentEventBus.unsubscribe.mockImplementation((_type: string, handler: Function) => {
-      unsubscribedHandlers.push(handler);
+    it("should throw when user lacks permission", async () => {
+      mockGetUserContext.mockResolvedValue(mockUserContext);
+      mockTicketRepository.findById.mockResolvedValue(mockTicket);
+      mockCanAccessTicket.mockResolvedValue(false);
+
+      const { commentStream } = await import("./stream");
+
+      await expect(
+        (commentStream as any)({ ticketId: "ticket-123" }, { send: vi.fn(), close: vi.fn() })
+      ).rejects.toThrow();
     });
-
-    try {
-      await (commentStream as any)({ ticketId: "ticket-123" }, mockStream);
-    } catch {
-      // Expected
-    }
-
-    // All 3 subscribe calls use the same handler function
-    expect(subscribedHandlers[0]).toBe(subscribedHandlers[1]);
-    expect(subscribedHandlers[1]).toBe(subscribedHandlers[2]);
-
-    // Unsubscribe uses the exact same reference
-    expect(unsubscribedHandlers[0]).toBe(subscribedHandlers[0]);
-    expect(unsubscribedHandlers[1]).toBe(subscribedHandlers[0]);
-    expect(unsubscribedHandlers[2]).toBe(subscribedHandlers[0]);
-  });
-
-  it("should not unsubscribe if handler was never created (auth failure)", async () => {
-    mockGetUserContext.mockResolvedValue(null);
-
-    try {
-      await (commentStream as any)({ ticketId: "ticket-123" }, mockStream);
-    } catch {
-      // Expected: unauthenticated error
-    }
-
-    expect(mockCommentEventBus.subscribe).not.toHaveBeenCalled();
-    expect(mockCommentEventBus.unsubscribe).not.toHaveBeenCalled();
-  });
-
-  it("should not unsubscribe if handler was never created (ticket not found)", async () => {
-    mockGetUserContext.mockResolvedValue(mockUserContext);
-    mockTicketRepository.findById.mockResolvedValue(null);
-
-    try {
-      await (commentStream as any)({ ticketId: "nonexistent" }, mockStream);
-    } catch {
-      // Expected: not found error
-    }
-
-    expect(mockCommentEventBus.subscribe).not.toHaveBeenCalled();
-    expect(mockCommentEventBus.unsubscribe).not.toHaveBeenCalled();
   });
 });

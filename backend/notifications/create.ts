@@ -16,6 +16,7 @@ import { Urgency } from "../ticket/types";
 import { MarketCenterNotificationPreferences } from "../settings/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
 import { notificationsSent, notificationErrors, caughtErrors } from "./metrics";
+import { notificationTopic } from "./topic";
 import log from "encore.dev/log";
 
 export interface CreateNotificationRequest {
@@ -193,7 +194,9 @@ export const create = api<CreateNotificationRequest>(
     auth: true,
   },
   async (req) => {
-    await sendNotification(req);
+    // Publish to Pub/Sub for async processing with fault isolation.
+    // The subscription handler calls sendNotification() with retries.
+    await notificationTopic.publish(req);
     return { success: true };
   }
 );

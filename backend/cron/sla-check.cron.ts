@@ -1,8 +1,10 @@
 import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
 import log from "encore.dev/log";
-import { slaRepository, notificationRepository, userRepository } from "../shared/repositories";
+import { slaRepository, userRepository } from "../shared/repositories";
+import { notificationTopic } from "../notifications/topic";
 import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
+import type { NotificationData } from "../notifications/types";
 
 /**
  * SLA Check Cron Job
@@ -18,6 +20,24 @@ interface SlaCheckResult {
   resolutionWarnings50Sent: number;
   resolutionWarnings75Sent: number;
   resolutionBreachesMarked: number;
+}
+
+async function publishSlaNotification(
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  data: NotificationData,
+) {
+  await notificationTopic.publish({
+    userId,
+    category: "ACTIVITY",
+    type,
+    inApp: { title, body },
+    email: "Notifications deactivated",
+    data,
+    priority: "HIGH",
+  });
 }
 
 export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
@@ -47,23 +67,14 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Send notification to assignee (or admins if unassigned)
-    const notifyUserId = ticket.assignee_id;
-    if (notifyUserId) {
-      await notificationRepository.create({
-        userId: notifyUserId,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Warning',
-        title: `Response SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 50%`,
-        body: `This ${ticket.urgency} urgency ticket is approaching its response SLA deadline. Please respond soon.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'WARNING_50',
-          slaType: 'response',
-          urgency: ticket.urgency,
-        },
-      });
+    if (ticket.assignee_id) {
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Warning",
+        `Response SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 50%`,
+        `This ${ticket.urgency} urgency ticket is approaching its response SLA deadline. Please respond soon.`,
+        { ticketId: ticket.id, slaEventType: 'WARNING_50', slaType: 'response', urgency: ticket.urgency },
+      );
     }
 
     result.responseWarnings50Sent++;
@@ -79,23 +90,14 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Send notification to assignee
-    const notifyUserId = ticket.assignee_id;
-    if (notifyUserId) {
-      await notificationRepository.create({
-        userId: notifyUserId,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Warning',
-        title: `Urgent Response SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 75%`,
-        body: `This ${ticket.urgency} urgency ticket is close to breaching its response SLA. Immediate action required.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'WARNING_75',
-          slaType: 'response',
-          urgency: ticket.urgency,
-        },
-      });
+    if (ticket.assignee_id) {
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Warning",
+        `Urgent Response SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 75%`,
+        `This ${ticket.urgency} urgency ticket is close to breaching its response SLA. Immediate action required.`,
+        { ticketId: ticket.id, slaEventType: 'WARNING_75', slaType: 'response', urgency: ticket.urgency },
+      );
     }
 
     result.responseWarnings75Sent++;
@@ -111,42 +113,26 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Notify assignee
     if (ticket.assignee_id) {
-      await notificationRepository.create({
-        userId: ticket.assignee_id,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Breach',
-        title: `Response SLA Breached: Ticket "${ticket.title || 'Untitled'}"`,
-        body: `This ${ticket.urgency} urgency ticket has breached its response SLA time.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'BREACHED',
-          slaType: 'response',
-          urgency: ticket.urgency,
-        },
-      });
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Breach",
+        `Response SLA Breached: Ticket "${ticket.title || 'Untitled'}"`,
+        `This ${ticket.urgency} urgency ticket has breached its response SLA time.`,
+        { ticketId: ticket.id, slaEventType: 'BREACHED', slaType: 'response', urgency: ticket.urgency },
+      );
     }
 
     // Also notify admins about the breach
     const admins = await userRepository.findByRole('ADMIN');
     for (const admin of admins) {
-      await notificationRepository.create({
-        userId: admin.id,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Breach',
-        title: `Response SLA Breach Alert: Ticket "${ticket.title || 'Untitled'}"`,
-        body: `A ${ticket.urgency} urgency ticket has breached its response SLA time.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'BREACHED',
-          slaType: 'response',
-          urgency: ticket.urgency,
-          assigneeId: ticket.assignee_id,
-        },
-      });
+      await publishSlaNotification(
+        admin.id,
+        "SLA Breach",
+        `Response SLA Breach Alert: Ticket "${ticket.title || 'Untitled'}"`,
+        `A ${ticket.urgency} urgency ticket has breached its response SLA time.`,
+        { ticketId: ticket.id, slaEventType: 'BREACHED', slaType: 'response', urgency: ticket.urgency, assigneeId: ticket.assignee_id },
+      );
     }
 
     result.responseBreachesMarked++;
@@ -166,23 +152,14 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Send notification to assignee
-    const notifyUserId = ticket.assignee_id;
-    if (notifyUserId) {
-      await notificationRepository.create({
-        userId: notifyUserId,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Warning',
-        title: `Resolution SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 50%`,
-        body: `This ${ticket.urgency} urgency ticket is approaching its resolution SLA deadline. Please resolve soon.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'RESOLUTION_WARNING_50',
-          slaType: 'resolution',
-          urgency: ticket.urgency,
-        },
-      });
+    if (ticket.assignee_id) {
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Warning",
+        `Resolution SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 50%`,
+        `This ${ticket.urgency} urgency ticket is approaching its resolution SLA deadline. Please resolve soon.`,
+        { ticketId: ticket.id, slaEventType: 'RESOLUTION_WARNING_50', slaType: 'resolution', urgency: ticket.urgency },
+      );
     }
 
     result.resolutionWarnings50Sent++;
@@ -198,23 +175,14 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Send notification to assignee
-    const notifyUserId = ticket.assignee_id;
-    if (notifyUserId) {
-      await notificationRepository.create({
-        userId: notifyUserId,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Warning',
-        title: `Urgent Resolution SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 75%`,
-        body: `This ${ticket.urgency} urgency ticket is close to breaching its resolution SLA. Immediate resolution required.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'RESOLUTION_WARNING_75',
-          slaType: 'resolution',
-          urgency: ticket.urgency,
-        },
-      });
+    if (ticket.assignee_id) {
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Warning",
+        `Urgent Resolution SLA Warning: Ticket "${ticket.title || 'Untitled'}" is at 75%`,
+        `This ${ticket.urgency} urgency ticket is close to breaching its resolution SLA. Immediate resolution required.`,
+        { ticketId: ticket.id, slaEventType: 'RESOLUTION_WARNING_75', slaType: 'resolution', urgency: ticket.urgency },
+      );
     }
 
     result.resolutionWarnings75Sent++;
@@ -230,42 +198,26 @@ export const checkSlaStatus = api({}, async (): Promise<SlaCheckResult> => {
       notificationSent: true,
     });
 
-    // Notify assignee
     if (ticket.assignee_id) {
-      await notificationRepository.create({
-        userId: ticket.assignee_id,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Breach',
-        title: `Resolution SLA Breached: Ticket "${ticket.title || 'Untitled'}"`,
-        body: `This ${ticket.urgency} urgency ticket has breached its resolution SLA time.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'RESOLUTION_BREACHED',
-          slaType: 'resolution',
-          urgency: ticket.urgency,
-        },
-      });
+      await publishSlaNotification(
+        ticket.assignee_id,
+        "SLA Breach",
+        `Resolution SLA Breached: Ticket "${ticket.title || 'Untitled'}"`,
+        `This ${ticket.urgency} urgency ticket has breached its resolution SLA time.`,
+        { ticketId: ticket.id, slaEventType: 'RESOLUTION_BREACHED', slaType: 'resolution', urgency: ticket.urgency },
+      );
     }
 
     // Also notify admins about the breach
     const admins = await userRepository.findByRole('ADMIN');
     for (const admin of admins) {
-      await notificationRepository.create({
-        userId: admin.id,
-        channel: 'IN_APP',
-        category: 'ACTIVITY',
-        type: 'SLA Breach',
-        title: `Resolution SLA Breach Alert: Ticket "${ticket.title || 'Untitled'}"`,
-        body: `A ${ticket.urgency} urgency ticket has breached its resolution SLA time.`,
-        data: {
-          ticketId: ticket.id,
-          slaEventType: 'RESOLUTION_BREACHED',
-          slaType: 'resolution',
-          urgency: ticket.urgency,
-          assigneeId: ticket.assignee_id,
-        },
-      });
+      await publishSlaNotification(
+        admin.id,
+        "SLA Breach",
+        `Resolution SLA Breach Alert: Ticket "${ticket.title || 'Untitled'}"`,
+        `A ${ticket.urgency} urgency ticket has breached its resolution SLA time.`,
+        { ticketId: ticket.id, slaEventType: 'RESOLUTION_BREACHED', slaType: 'resolution', urgency: ticket.urgency, assigneeId: ticket.assignee_id },
+      );
     }
 
     result.resolutionBreachesMarked++;
