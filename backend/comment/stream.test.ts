@@ -43,7 +43,7 @@ vi.mock("../ticket/db", () => ({
   ticketRepository: mockTicketRepository,
 }));
 
-vi.mock("../shared/metrics", () => ({
+vi.mock("./metrics", () => ({
   activeCommentStreams: { set: vi.fn() },
   streamDisconnects: { increment: vi.fn() },
   caughtErrors: { with: vi.fn(() => ({ increment: vi.fn() })) },

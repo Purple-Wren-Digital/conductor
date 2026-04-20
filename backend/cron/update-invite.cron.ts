@@ -3,7 +3,7 @@ import { CronJob } from "encore.dev/cron";
 import log from "encore.dev/log";
 import { marketCenterRepository, userRepository } from "../ticket/db";
 import type { InvitationStatus } from "../marketCenters/types";
-import { cronExecutions, cronErrors, caughtErrors } from "../shared/metrics";
+import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
 // DOCS: https://encore.dev/docs/ts/primitives/cron-jobs?_gl=1*9ln59d*_gcl_au*MTI2NzYyODg1MS4xNzYxODgxNjMz
 // DEV/Testing:  cleanupOldNotifications.cfg.endpoint()
 

@@ -2,7 +2,7 @@ import { api } from "encore.dev/api";
 import { CronJob } from "encore.dev/cron";
 import log from "encore.dev/log";
 import { slaRepository, notificationRepository, userRepository } from "../shared/repositories";
-import { cronExecutions, cronErrors, caughtErrors } from "../shared/metrics";
+import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
 
 /**
  * SLA Check Cron Job

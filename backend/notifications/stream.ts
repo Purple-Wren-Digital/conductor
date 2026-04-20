@@ -2,7 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import log from "encore.dev/log";
 import { Notification } from "./types";
-import { activeNotificationStreams, streamDisconnects, caughtErrors } from "../shared/metrics";
+import { activeNotificationStreams, streamDisconnects, caughtErrors } from "./metrics";
 
 // Store active streams for broadcasting
 // Map key is clerkId, value is the stream instance and a flag to indicate if it's active

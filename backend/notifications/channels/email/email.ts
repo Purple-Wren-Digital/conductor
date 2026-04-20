@@ -7,7 +7,7 @@ import {
 } from "./customization-renderer";
 import type { CreateEmailResponse, CreateEmailResponseSuccess } from "resend";
 import type { Notification } from "../../types";
-import { emailsSent, emailSendErrors } from "../../../shared/metrics";
+import { emailsSent, emailSendErrors } from "../../metrics";
 import log from "encore.dev/log";
 
 const RESEND_API_KEY = secret("RESEND_API_KEY");

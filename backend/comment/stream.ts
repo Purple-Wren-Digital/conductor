@@ -3,7 +3,7 @@ import { CommentEvent, commentEventBus } from "./events";
 import { getUserContext } from "../auth/user-context";
 import { ticketRepository } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";
-import { activeCommentStreams, streamDisconnects, caughtErrors } from "../shared/metrics";
+import { activeCommentStreams, streamDisconnects, caughtErrors } from "./metrics";
 
 // Define handshake type to specify which ticket to subscribe to
 interface CommentStreamHandshake {

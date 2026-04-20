@@ -15,7 +15,7 @@ import type {
 import { Urgency } from "../ticket/types";
 import { MarketCenterNotificationPreferences } from "../settings/types";
 import { defaultMarketCenterNotificationPreferences } from "../marketCenters/notification-preferences/utils";
-import { notificationsSent, notificationErrors, caughtErrors } from "../shared/metrics";
+import { notificationsSent, notificationErrors, caughtErrors } from "./metrics";
 import log from "encore.dev/log";
 
 export interface CreateNotificationRequest {
