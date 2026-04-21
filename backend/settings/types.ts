@@ -26,23 +26,23 @@ export interface MarketCenterSettings {
   marketCenter?: MarketCenter;
   autoClose?: AutoCloseSettings;
 
-  // businessHours: BusinessHours;
-  // branding: BrandingSettings;
-  // holidays: string[];
-  // integrations: {
-  //   apiKeys: Record<string, string>;
-  //   webhooks: {
-  //     url: string;
-  //     events: string[];
-  //   }[];
-  // };
-  // general: {
-  //   name: string;
-  //   timezone: string;
-  //   language: string;
-  //   autoAssignment: boolean;
-  // };
-  // teamMembers: number;
+  businessHours?: BusinessHours;
+  branding?: BrandingSettings;
+  holidays?: string[];
+  integrations?: {
+    apiKeys: Record<string, string>;
+    webhooks: {
+      url: string;
+      events: string[];
+    }[];
+  };
+  general?: {
+    name: string;
+    timezone: string;
+    language: string;
+    autoAssignment: boolean;
+  };
+  teamMembers?: number;
 }
 
 export interface BusinessHours {

@@ -40,6 +40,7 @@ const {
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
   },
   mockUserRepository: {
     findById: vi.fn(),
@@ -450,6 +451,7 @@ describe("Survey Service Tests", () => {
         role: "STAFF" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-staff",
+        isSuperuser: false,
       });
 
       await expect(getAllRatings({})).rejects.toThrow(
@@ -529,6 +531,7 @@ describe("Survey Service Tests", () => {
         role: "STAFF" as const,
         marketCenterId: "user-mc-123",
         clerkId: "clerk-staff",
+        isSuperuser: false,
       });
 
       const mockAverages = {
@@ -580,6 +583,7 @@ describe("Survey Service Tests", () => {
         role: "STAFF" as const,
         marketCenterId: null,
         clerkId: "clerk-staff",
+        isSuperuser: false,
       });
 
       await expect(

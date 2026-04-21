@@ -76,6 +76,7 @@ const {
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
   },
   mockSubscriptionRepository: {
     create: vi.fn(),

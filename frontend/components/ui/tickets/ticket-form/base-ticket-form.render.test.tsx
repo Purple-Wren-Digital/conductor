@@ -225,8 +225,11 @@ describe("BaseTicketForm - Rendering", () => {
         categoryId: "cat-1",
         todos: [],
         marketCenterId: "mc-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        isActive: true,
+        createdById: null,
+        updatedById: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
     ];
 

@@ -25,6 +25,7 @@ const {
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
   },
   mockFromTimestamp: vi.fn((date: Date | null) => date),
   subscriptionRepository: {
@@ -233,6 +234,7 @@ describe.skip("Reports", () => {
         role: "STAFF" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-staff",
+        isSuperuser: false,
       });
 
       mockDb.queryAll.mockResolvedValueOnce([
@@ -252,6 +254,7 @@ describe.skip("Reports", () => {
         role: "AGENT" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-agent",
+        isSuperuser: false,
       });
 
       await expect(backlog({})).rejects.toThrow(
@@ -268,6 +271,7 @@ describe.skip("Reports", () => {
           role: "ADMIN" as const,
           marketCenterId: "mc-123",
           clerkId: "clerk-admin",
+          isSuperuser: false,
         });
 
         subscriptionRepository.findByMarketCenterId.mockResolvedValue({
@@ -303,6 +307,7 @@ describe.skip("Reports", () => {
           role: "STAFF" as const,
           marketCenterId: "mc-789",
           clerkId: "clerk-staff",
+          isSuperuser: false,
         });
 
         // Return only unassigned tickets that belong to mc-789
@@ -324,6 +329,7 @@ describe.skip("Reports", () => {
           role: "ADMIN" as const,
           marketCenterId: "mc-123",
           clerkId: "clerk-admin",
+          isSuperuser: false,
         });
 
         subscriptionRepository.findByMarketCenterId.mockResolvedValue({
@@ -355,6 +361,7 @@ describe.skip("Reports", () => {
           role: "STAFF_LEADER" as const,
           marketCenterId: "mc-100",
           clerkId: "clerk-leader",
+          isSuperuser: false,
         });
 
         subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
@@ -448,6 +455,7 @@ describe.skip("Reports", () => {
         role: "STAFF_LEADER" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-leader",
+        isSuperuser: false,
       });
 
       subscriptionRepository.getAccessibleMarketCenterIds.mockResolvedValue([
@@ -472,6 +480,7 @@ describe.skip("Reports", () => {
         role: "AGENT" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-agent",
+        isSuperuser: false,
       });
 
       await expect(createdByMonth({})).rejects.toThrow(
@@ -533,6 +542,7 @@ describe.skip("Reports", () => {
         role: "AGENT" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-agent",
+        isSuperuser: false,
       });
 
       await expect(resolvedByMonth({})).rejects.toThrow(
@@ -578,6 +588,7 @@ describe.skip("Reports", () => {
         role: "AGENT" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-agent",
+        isSuperuser: false,
       });
 
       await expect(slaCompliance({})).rejects.toThrow(
@@ -657,6 +668,7 @@ describe.skip("Reports", () => {
         role: "AGENT" as const,
         marketCenterId: "mc-123",
         clerkId: "clerk-agent",
+        isSuperuser: false,
       });
 
       await expect(slaComplianceByUsers({})).rejects.toThrow(

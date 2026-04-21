@@ -33,11 +33,13 @@ const {
     createMany: vi.fn(),
   },
   mockUserContext: {
+    name: "Test Admin",
     userId: "user-123",
     email: "user@test.com",
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
   },
 }));
 

@@ -138,7 +138,7 @@ describe("Transaction commit tests", () => {
       await updateNotificationPreferences({
         id: "user-123",
         notificationPreferences: [
-          { id: "pref-1", frequency: "INSTANT", email: true, push: false, inApp: true, sms: false },
+          { id: "pref-1", frequency: "INSTANT", category: "ACTIVITY", type: "General", userSettingsId: "settings-1", email: true, push: false, inApp: true, sms: false },
         ],
       });
 

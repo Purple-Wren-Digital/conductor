@@ -135,11 +135,11 @@ export const importMarketCenterSettings = api(
         finalSettings = {
           businessHours: { ...currentSettings.businessHours, ...data.settings.businessHours },
           branding: { ...currentSettings.branding, ...data.settings.branding },
-          holidays: data.settings.holidays.length > 0 ? data.settings.holidays : currentSettings.holidays,
+          holidays: (data.settings.holidays?.length ?? 0) > 0 ? data.settings.holidays : currentSettings.holidays,
           integrations: {
-            apiKeys: { ...currentSettings.integrations?.apiKeys, ...data.settings.integrations.apiKeys },
-            webhooks: data.settings.integrations.webhooks.length > 0
-              ? data.settings.integrations.webhooks
+            apiKeys: { ...currentSettings.integrations?.apiKeys, ...data.settings.integrations?.apiKeys },
+            webhooks: (data.settings.integrations?.webhooks?.length ?? 0) > 0
+              ? data.settings.integrations!.webhooks
               : currentSettings.integrations?.webhooks || []
           },
           general: { ...currentSettings.general, ...data.settings.general }

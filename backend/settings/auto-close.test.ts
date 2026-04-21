@@ -15,6 +15,7 @@ const { mockMarketCenterRepository, mockUserContext, subscriptionRepository } =
       role: "STAFF_LEADER" as const,
       marketCenterId: "mc-123",
       clerkId: "clerk-123",
+      isSuperuser: false,
     },
     subscriptionRepository: {
       getSubscriptionById: vi.fn(),

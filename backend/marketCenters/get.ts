@@ -131,6 +131,8 @@ export const get = api<GetMarketCenterRequest, GetMarketCenterResponse>(
       id: marketCenterRow.id,
       name: marketCenterRow.name,
       settings: marketCenterRow.settings,
+      primaryStripeCustomerId: null,
+      primaryStripeSubscriptionId: null,
       createdAt: fromTimestamp(marketCenterRow.created_at)!,
       updatedAt: fromTimestamp(marketCenterRow.updated_at)!,
       totalTickets: totalTicketsResult?.count ?? 0,

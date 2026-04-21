@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock hoisted values
-const { mockDb, mockWithTransaction, mockUserContext } = vi.hoisted(() => ({
+const { mockDb, mockWithTransaction, mockActivityTopic, mockUserContext } = vi.hoisted(() => ({
   mockDb: {
     queryRow: vi.fn(),
     queryAll: vi.fn(),
@@ -13,6 +13,9 @@ const { mockDb, mockWithTransaction, mockUserContext } = vi.hoisted(() => ({
     begin: vi.fn(),
   },
   mockWithTransaction: vi.fn(),
+  mockActivityTopic: {
+    publish: vi.fn(),
+  },
   mockUserContext: {
     name: "Admin User",
     userId: "admin-123",
@@ -20,6 +23,7 @@ const { mockDb, mockWithTransaction, mockUserContext } = vi.hoisted(() => ({
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-admin",
+    isSuperuser: false,
   },
 }));
 
@@ -62,6 +66,18 @@ vi.mock("../auth/permissions", () => ({
   canManageMarketCenters: vi.fn(() => Promise.resolve(true)),
 }));
 
+// Mock shared repositories (subscriptionRepository used by update.ts)
+vi.mock("../shared/repositories", () => ({
+  subscriptionRepository: {
+    canAccessMarketCenter: vi.fn(() => Promise.resolve(true)),
+  },
+}));
+
+// Mock activity topic
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: mockActivityTopic,
+}));
+
 import { update } from "./update";
 import { getUserContext } from "../auth/user-context";
 import { canManageMarketCenters } from "../auth/permissions";
@@ -73,6 +89,7 @@ describe("Market Center Update", () => {
     // Default admin user context
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
     vi.mocked(canManageMarketCenters).mockResolvedValue(true);
+    mockActivityTopic.publish.mockResolvedValue(undefined);
   });
 
   describe("User removal from market center", () => {
@@ -155,12 +172,10 @@ describe("Market Center Update", () => {
       // Expecting 2 remove calls (for user-2 and user-3)
       expect(removeUserCalls.length).toBeGreaterThanOrEqual(2);
 
-      // Verify usersToNotify includes removed users
-      expect(result.usersToNotify).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: "user-2", updateType: "removed" }),
-          expect.objectContaining({ id: "user-3", updateType: "removed" }),
-        ])
+      // Notifications now handled by activity topic
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "marketCenter.usersRemoved" })
       );
     });
 
@@ -204,10 +219,9 @@ describe("Market Center Update", () => {
       });
 
       expect(mockWithTransaction).toHaveBeenCalled();
-      expect(result.usersToNotify).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: "user-new", updateType: "added" }),
-        ])
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "marketCenter.usersAdded" })
       );
     });
 
@@ -249,10 +263,9 @@ describe("Market Center Update", () => {
         users: [],
       });
 
-      expect(result.usersToNotify).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: "user-1", updateType: "removed" }),
-        ])
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "marketCenter.usersRemoved" })
       );
     });
   });

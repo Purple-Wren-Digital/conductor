@@ -137,7 +137,7 @@ describe("CommentItem", () => {
     it("aligns other users' comments to the left", () => {
       const comment = createComment();
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const wrapper = container.querySelector(".mr-auto");
@@ -150,7 +150,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       const wrapper = container.querySelector(".ml-auto");
@@ -161,7 +161,7 @@ describe("CommentItem", () => {
     it("has max-width constraint for bubble styling", () => {
       const comment = createComment();
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const wrapper = container.querySelector('[class*="max-w-"]');
@@ -173,7 +173,7 @@ describe("CommentItem", () => {
     it("applies muted background for others' comments", () => {
       const comment = createComment();
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const bubble = container.querySelector(".bg-muted");
@@ -186,7 +186,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Check for the conductor color class
@@ -197,7 +197,7 @@ describe("CommentItem", () => {
     it("applies violet background for internal comments", () => {
       const comment = createComment({ internal: true });
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const bubble = container.querySelector(".bg-violet-100");
@@ -207,7 +207,7 @@ describe("CommentItem", () => {
     it("applies rounded-bl-sm for others' comments (left side)", () => {
       const comment = createComment();
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const bubble = container.querySelector(".rounded-bl-sm");
@@ -220,7 +220,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       const { container } = renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       const bubble = container.querySelector(".rounded-br-sm");
@@ -232,7 +232,7 @@ describe("CommentItem", () => {
     it("displays the commenter name", () => {
       const comment = createComment({ user: { ...mockCurrentUser, name: "Jane Doe" } });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       expect(screen.getByText("Jane Doe")).toBeInTheDocument();
@@ -241,7 +241,7 @@ describe("CommentItem", () => {
     it("displays 'Unknown User' when name is not available", () => {
       const comment = createComment({ user: undefined });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       expect(screen.getByText("Unknown User")).toBeInTheDocument();
@@ -250,7 +250,7 @@ describe("CommentItem", () => {
     it("displays the Internal badge for internal comments", () => {
       const comment = createComment({ internal: true });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       expect(screen.getByText("Internal")).toBeInTheDocument();
@@ -259,7 +259,7 @@ describe("CommentItem", () => {
     it("does not display Internal badge for non-internal comments", () => {
       const comment = createComment({ internal: false });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       expect(screen.queryByText("Internal")).not.toBeInTheDocument();
@@ -270,7 +270,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser, name: "John Smith" },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       expect(screen.getByText("JS")).toBeInTheDocument();
@@ -279,7 +279,7 @@ describe("CommentItem", () => {
     it("renders comment content using SafeHtml", () => {
       const comment = createComment({ content: "<p>Rich text content</p>" });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const safeHtml = screen.getByTestId("safe-html");
@@ -295,7 +295,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // The buttons are icon-only, so we look for the svg icons
@@ -306,7 +306,7 @@ describe("CommentItem", () => {
     it("does not show edit/delete buttons for others' comments", () => {
       const comment = createComment();
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={false} refreshAllData={vi.fn()} />
       );
 
       const buttons = screen.queryAllByRole("button");
@@ -320,7 +320,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       const buttons = screen.getAllByRole("button");
@@ -340,7 +340,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Enter edit mode
@@ -362,7 +362,7 @@ describe("CommentItem", () => {
         content: "Original content",
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Enter edit mode
@@ -396,7 +396,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Click delete button (second button)
@@ -416,7 +416,7 @@ describe("CommentItem", () => {
         content: "Comment to be deleted",
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Click delete button
@@ -435,7 +435,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Open dialog
@@ -458,7 +458,7 @@ describe("CommentItem", () => {
         user: { ...mockCurrentUser },
       });
       renderWithProviders(
-        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} />
+        <CommentItem comment={comment} ticketId="ticket-1" isOwn={true} refreshAllData={vi.fn()} />
       );
 
       // Open dialog

@@ -33,6 +33,7 @@ const {
       role: "ADMIN" as const,
       marketCenterId: "mc-austin",
       clerkId: "clerk-admin-123",
+      isSuperuser: false,
     },
     mockSubscriptionRepository: {
       getAccessibleMarketCenterIds: vi.fn(() => Promise.resolve(["mc-austin"])),
@@ -174,8 +175,8 @@ vi.mock("../../auth/user-context", () => ({
 
 // Mock auth/permissions to avoid importing Encore runtime
 vi.mock("../../auth/permissions", () => ({
-  getAccessibleMarketCenterIds: vi.fn((...args: any[]) =>
-    mockSubscriptionRepository.getAccessibleMarketCenterIds(...args)
+  getAccessibleMarketCenterIds: vi.fn((_userContext: any) =>
+    mockSubscriptionRepository.getAccessibleMarketCenterIds()
   ),
 }));
 

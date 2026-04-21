@@ -113,7 +113,7 @@ describe("CommentList", () => {
     it("shows loading skeleton when loading", () => {
       mockIsLoading = true;
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
@@ -123,7 +123,7 @@ describe("CommentList", () => {
   describe("Error state", () => {
     it("shows error message when there is an error", () => {
       mockError = new Error("Failed to load");
-      renderWithProviders(<CommentList ticketId="ticket-1" />);
+      renderWithProviders(<CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />);
 
       expect(screen.getByText("Error loading comments")).toBeInTheDocument();
       expect(screen.getByText("Try again")).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe("CommentList", () => {
   describe("Empty state", () => {
     it("shows empty message when no comments", () => {
       mockCommentsData = [];
-      renderWithProviders(<CommentList ticketId="ticket-1" />);
+      renderWithProviders(<CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />);
 
       expect(
         screen.getByText("No comments yet. Be the first to comment!")
@@ -145,7 +145,7 @@ describe("CommentList", () => {
     it("renders comments with correct isOwn prop for other users", () => {
       mockCommentsData = [createComment({ id: "comment-1" })];
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       // Other user's comment should be aligned left (mr-auto)
@@ -162,7 +162,7 @@ describe("CommentList", () => {
         }),
       ];
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       // Own comment should be aligned right (ml-auto)
@@ -186,7 +186,7 @@ describe("CommentList", () => {
         }),
       ];
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       // Should have one left-aligned and one right-aligned
@@ -211,7 +211,7 @@ describe("CommentList", () => {
         }),
       ];
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       // Both should be right-aligned
@@ -227,7 +227,7 @@ describe("CommentList", () => {
         createComment({ id: "comment-2" }),
       ];
       const { container } = renderWithProviders(
-        <CommentList ticketId="ticket-1" />
+        <CommentList ticketId="ticket-1" refreshAllData={vi.fn()} />
       );
 
       // Check for space-y-3 class on container

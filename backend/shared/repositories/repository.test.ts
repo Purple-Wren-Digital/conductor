@@ -857,7 +857,7 @@ describe.skip("Subscription Repository", () => {
       stripeCustomerId: "stripe-cus-123",
       marketCenterId: "mc-123",
       status: SubscriptionStatus.ACTIVE,
-      planType: SubscriptionPlan.TEAM,
+      planType: SubscriptionPlan.STANDARD,
       priceId: "price-123",
       currentPeriodStart: new Date("2024-01-01"),
       currentPeriodEnd: new Date("2024-02-01"),

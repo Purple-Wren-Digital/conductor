@@ -9,6 +9,7 @@ const {
   mockCommentRepository,
   mockMarketCenterRepository,
   mockSurveyRepository,
+  mockActivityTopic,
   mockUserContext,
 } = vi.hoisted(() => ({
   mockDb: {
@@ -47,6 +48,9 @@ const {
   mockSurveyRepository: {
     findOrCreate: vi.fn(),
   },
+  mockActivityTopic: {
+    publish: vi.fn(),
+  },
   mockUserContext: {
     name: "Test Admin",
     userId: "user-123",
@@ -54,6 +58,7 @@ const {
     role: "ADMIN" as const,
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
+    isSuperuser: false,
   },
 }));
 
@@ -129,6 +134,11 @@ vi.mock("../utils", () => ({
   mapHistorySnapshot: vi.fn((x) => x),
 }));
 
+// Mock activity topic
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: mockActivityTopic,
+}));
+
 // Import after mocks
 import { create } from "./create";
 import { get } from "./get";
@@ -145,6 +155,7 @@ import {
 describe("Ticket Service Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActivityTopic.publish.mockResolvedValue(undefined);
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
     vi.mocked(canCreateTicket).mockResolvedValue(true);
     vi.mocked(canReassignTicket).mockResolvedValue(true);
@@ -186,8 +197,10 @@ describe("Ticket Service Tests", () => {
 
       expect(result.ticket).toBeDefined();
       expect(result.ticket.title).toBe("Test Ticket");
-      expect(result.usersToNotify).toHaveLength(1);
-      expect(result.usersToNotify[0].updateType).toBe("created");
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.created" })
+      );
     });
 
     it("should create ticket with assignee", async () => {
@@ -230,8 +243,10 @@ describe("Ticket Service Tests", () => {
         assigneeId: "user-456",
       });
 
-      expect(result.usersToNotify).toHaveLength(2);
-      expect(result.usersToNotify[1].updateType).toBe("added");
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.created" })
+      );
     });
 
     it("should create ticket with todos", async () => {
@@ -417,8 +432,10 @@ describe("Ticket Service Tests", () => {
       const result = await assign({ id: "ticket-123", assigneeId: "user-456" });
 
       expect(result.ticket.assigneeId).toBe("user-456");
-      expect(result.usersToNotify).toHaveLength(1);
-      expect(result.usersToNotify[0].updateType).toBe("added");
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.assigned" })
+      );
     });
 
     it("should reassign a ticket from one user to another", async () => {
@@ -456,9 +473,10 @@ describe("Ticket Service Tests", () => {
 
       const result = await assign({ id: "ticket-123", assigneeId: "user-new" });
 
-      expect(result.usersToNotify).toHaveLength(2);
-      expect(result.usersToNotify[0].updateType).toBe("removed");
-      expect(result.usersToNotify[1].updateType).toBe("added");
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.assigned" })
+      );
     });
 
     it("should unassign a ticket", async () => {
@@ -493,8 +511,10 @@ describe("Ticket Service Tests", () => {
         assigneeId: "Unassigned",
       });
 
-      expect(result.usersToNotify).toHaveLength(1);
-      expect(result.usersToNotify[0].updateType).toBe("removed");
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.assigned" })
+      );
     });
 
     it("should throw not found when ticket does not exist", async () => {
@@ -611,8 +631,11 @@ describe("Ticket Service Tests", () => {
         expect.objectContaining({ creatorId: "new-creator-456" })
       );
       expect(mockTicketRepository.createManyHistory).toHaveBeenCalled();
-      // Should notify both old and new creator
-      expect(result.usersToNotify.length).toBeGreaterThanOrEqual(2);
+      // Notifications now handled by activity topic
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "ticket.updated" })
+      );
     });
 
     it("should throw permission denied when user cannot change creator", async () => {

@@ -59,11 +59,11 @@ export const get = api<GetTicketRequest, GetTicketResponse>(
         return {
           id: att.id,
           fileName: att.file_name,
-          fileType: att.file_type,
+          mimeType: att.file_type,
           fileSize: att.file_size,
-          fileKey: att.file_key,
+          bucketKey: att.file_key,
           ticketId: att.ticket_id,
-          uploaderId: att.uploader_id,
+          uploadedBy: att.uploader_id,
           createdAt: att.created_at,
           updatedAt: att.updated_at,
           uploader: uploader

@@ -12,7 +12,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    forceExit: true,
     alias: {
       "@": path.resolve(__dirname, "../frontend/packages/transactional"),
     },

@@ -72,13 +72,27 @@ export async function getUserContext(): Promise<UserContext> {
           userInvitation?.status === "CANCELLED");
 
       if (userInvitation && !isInvalid) {
-        user = await userRepository.create({
-          name: userInvitation?.name ? userInvitation.name : "Name Not Set",
-          email: authData.emailAddress,
-          clerkId: authData.userID,
-          role: userInvitation.role ?? "AGENT",
-          marketCenterId: userInvitation.marketCenterId,
-        });
+        try {
+          user = await userRepository.create({
+            name: userInvitation?.name ? userInvitation.name : "Name Not Set",
+            email: authData.emailAddress,
+            clerkId: authData.userID,
+            role: userInvitation.role ?? "AGENT",
+            marketCenterId: userInvitation.marketCenterId,
+          });
+        } catch (err: any) {
+          if (err?.cause?.code === "23505" || err?.message?.includes("duplicate key")) {
+            user = await userRepository.findByEmail(authData.emailAddress);
+            if (user) {
+              await userRepository.update(user.id, { clerkId: authData.userID });
+            }
+          } else {
+            throw err;
+          }
+        }
+        if (!user) {
+          throw APIError.internal("Failed to create or find user");
+        }
         // Create notification preferences for new user
         await ensureNotificationPreferences(user.id);
         // Add junction row for the invited market center
@@ -135,12 +149,26 @@ export async function getUserContext(): Promise<UserContext> {
       .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
 
-    user = await userRepository.create({
-      email: email,
-      clerkId: authData.userID,
-      role: "AGENT", // New users default to AGENT role
-      name: name ?? "Name Not Set",
-    });
+    try {
+      user = await userRepository.create({
+        email: email,
+        clerkId: authData.userID,
+        role: "AGENT", // New users default to AGENT role
+        name: name ?? "Name Not Set",
+      });
+    } catch (err: any) {
+      if (err?.cause?.code === "23505" || err?.message?.includes("duplicate key")) {
+        user = await userRepository.findByEmail(email);
+        if (user) {
+          await userRepository.update(user.id, { clerkId: authData.userID });
+        }
+      } else {
+        throw err;
+      }
+    }
+    if (!user) {
+      throw APIError.internal("Failed to create or find user");
+    }
     // Create notification preferences for new user
     await ensureNotificationPreferences(user.id);
 

@@ -72,6 +72,7 @@ const defaultFilters = {
   categoryIds: [],
   dateFrom: undefined,
   dateTo: undefined,
+  selectedPreset: undefined,
 };
 
 const renderWithProviders = (ui: React.ReactElement) => {
