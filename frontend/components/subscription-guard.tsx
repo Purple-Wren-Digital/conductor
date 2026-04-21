@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { API_BASE } from "@/lib/api/utils";
+import { API_BASE, fetchWithTimeout } from "@/lib/api/utils";
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;
@@ -59,15 +59,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         }
 
         // Check if user is a superuser (bypass subscription)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const userResponse = await fetch(`${API_BASE}/users/me`, {
+        const userResponse = await fetchWithTimeout(`${API_BASE}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          signal: controller.signal,
         });
-        clearTimeout(timeoutId);
 
         if (!userResponse.ok) {
           // /users/me failed — allow access to prevent lockout
@@ -85,15 +81,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         }
 
         // First check subscription
-        const subController = new AbortController();
-        const subTimeoutId = setTimeout(() => subController.abort(), 5000);
-        const subResponse = await fetch(`${API_BASE}/subscription/current`, {
+        const subResponse = await fetchWithTimeout(`${API_BASE}/subscription/current`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          signal: subController.signal,
         });
-        clearTimeout(subTimeoutId);
 
         if (subResponse.ok) {
           const subscription = await subResponse.json();

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUser, useAuth } from "@clerk/nextjs";
 import type { ConductorUser, UserRole } from "@/lib/types";
-import { API_BASE } from "@/lib/api/utils";
+import { API_BASE, fetchWithTimeout } from "@/lib/api/utils";
 // FE Permissions Here
 
 export interface UserPermissions {
@@ -230,7 +230,7 @@ export function useUserRole() {
         throw new Error("Failed to get authentication token");
       }
 
-      const response = await fetch(`${API_BASE}/users/me`, {
+      const response = await fetchWithTimeout(`${API_BASE}/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

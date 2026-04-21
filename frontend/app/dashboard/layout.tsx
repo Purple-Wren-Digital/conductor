@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useStore } from "@/context/store-provider";
 import { useFetchAllUserNotifications } from "@/hooks/use-user-notifications";
-import { API_BASE } from "@/lib/api/utils";
+import { API_BASE, fetchWithTimeout } from "@/lib/api/utils";
 import type { Notification, ConductorUser } from "@/lib/types";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -56,18 +56,14 @@ export default function DashboardLayout({
         }
 
         // Call /users/me which will auto-create the user if they don't exist
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch(`${API_BASE}/users/me`, {
+        const response = await fetchWithTimeout(`${API_BASE}/users/me`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           cache: "no-store",
-          signal: controller.signal,
         });
-        clearTimeout(timeoutId);
 
         if (!response.ok) throw new Error("User not found");
         const data = await response.json();

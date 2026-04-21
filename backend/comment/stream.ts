@@ -1,33 +1,55 @@
 import { api, APIError } from "encore.dev/api";
+import log from "encore.dev/log";
 import type { CommentEvent } from "./events";
 import { getUserContext } from "../auth/user-context";
 import { ticketRepository } from "../ticket/db";
 import { canAccessTicket } from "../auth/permissions";
 import { activeCommentStreams, streamDisconnects, caughtErrors } from "./metrics";
 
-// Define handshake type to specify which ticket to subscribe to
+// Max time a stream can stay open. Frontend auto-reconnects on close.
+const MAX_STREAM_LIFETIME_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 interface CommentStreamHandshake {
   ticketId: string;
 }
 
-// Wrapper interface for comment events to satisfy Encore's type requirements
 interface CommentStreamMessage {
   event: CommentEvent;
 }
 
-// Store active streams by ticketId
-// Each ticketId maps to a Map of userId -> stream entry
 interface StreamEntry {
   stream: { send: (msg: CommentStreamMessage) => Promise<void>; close: () => Promise<void> };
-  active: boolean;
+  connectedAt: number;
+  release: () => void;
 }
+
+// ticketId → (userId → StreamEntry)
 const activeStreams = new Map<string, Map<string, StreamEntry>>();
 
-/**
- * Streaming endpoint for real-time comment events
- * Clients connect to this endpoint to receive live comment updates for a specific ticket.
- * Events are delivered via Pub/Sub subscription (see topic.ts) calling broadcastCommentEvent().
- */
+function totalStreamCount(): number {
+  let count = 0;
+  for (const m of activeStreams.values()) count += m.size;
+  return count;
+}
+
+// One global reaper for all comment streams
+const reaper = setInterval(() => {
+  const now = Date.now();
+  const count = totalStreamCount();
+  if (count > 0) {
+    log.info("[comment-streams] reaper tick", { activeCount: count });
+  }
+  for (const [ticketId, ticketStreams] of activeStreams) {
+    for (const [userId, entry] of ticketStreams) {
+      if (now - entry.connectedAt > MAX_STREAM_LIFETIME_MS) {
+        log.info("[comment-streams] releasing — max lifetime", { ticketId, userId, ageMs: now - entry.connectedAt });
+        entry.release();
+      }
+    }
+  }
+}, 60_000);
+reaper.unref();
+
 export const commentStream = api.streamOut<
   CommentStreamHandshake,
   CommentStreamMessage
@@ -41,50 +63,52 @@ export const commentStream = api.streamOut<
     let userId: string | null = null;
 
     try {
-      // Get authenticated user data
       const userContext = await getUserContext();
       if (!userContext) {
         throw APIError.unauthenticated("User not authenticated");
       }
 
-      // Verify user has access to this ticket
       const ticket = await ticketRepository.findById(ticketId);
-
       if (!ticket) {
         throw APIError.notFound("Ticket not found");
       }
 
       const hasAccess = await canAccessTicket(userContext, ticketId);
-
       if (!hasAccess) {
         throw APIError.permissionDenied("You don't have access to this ticket");
       }
 
       userId = userContext.userId;
 
-      // Initialize ticket stream map if it doesn't exist
       if (!activeStreams.has(ticketId)) {
         activeStreams.set(ticketId, new Map());
       }
-
-      // Store the stream for this user and ticket
       const ticketStreams = activeStreams.get(ticketId)!;
-      ticketStreams.set(userId, { stream, active: true });
-      activeCommentStreams.set(
-        Array.from(activeStreams.values()).reduce((sum, m) => sum + m.size, 0)
-      );
 
-      // Keep the stream alive by periodically checking if it's still active
-      while (ticketStreams.get(userId)?.active) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Evict existing stream for this user on this ticket
+      const existing = ticketStreams.get(userId);
+      if (existing) {
+        log.info("[comment-streams] releasing — duplicate connection", { ticketId, userId });
+        existing.release();
       }
+
+      let release: () => void;
+      const closed = new Promise<void>((resolve) => { release = resolve; });
+
+      const entry: StreamEntry = { stream, connectedAt: Date.now(), release: release! };
+      ticketStreams.set(userId, entry);
+      activeCommentStreams.set(totalStreamCount());
+      log.info("[comment-streams] connected", { ticketId, userId, activeCount: totalStreamCount() });
+
+      // Block until released (send failure, duplicate eviction, reaper, or explicit disconnect)
+      await closed;
+      log.info("[comment-streams] released, cleaning up", { ticketId, userId });
     } catch (error) {
       caughtErrors.with({ source: "stream" }).increment();
       throw error;
     } finally {
       streamDisconnects.increment();
 
-      // Cleanup when stream ends
       if (userId && ticketId) {
         const ticketStreams = activeStreams.get(ticketId);
         if (ticketStreams) {
@@ -93,62 +117,43 @@ export const commentStream = api.streamOut<
             activeStreams.delete(ticketId);
           }
         }
-        activeCommentStreams.set(
-          Array.from(activeStreams.values()).reduce((sum, m) => sum + m.size, 0)
-        );
+        activeCommentStreams.set(totalStreamCount());
+        log.info("[comment-streams] cleaned up", { ticketId, userId, activeCount: totalStreamCount() });
       }
     }
   }
 );
 
 /**
- * Broadcast a comment event to all users watching a specific ticket.
- * Called by the Pub/Sub subscription handler in topic.ts.
+ * Broadcast a comment event to all users watching a ticket.
+ * Send failures release the dead stream handler immediately.
  */
 export async function broadcastCommentEvent(
   event: CommentEvent
 ): Promise<void> {
   const ticketStreams = activeStreams.get(event.ticketId);
+  if (!ticketStreams || ticketStreams.size === 0) return;
 
-  if (!ticketStreams || ticketStreams.size === 0) {
-    return;
-  }
-
-  // Broadcast to all users watching this ticket
-  const broadcastPromises = Array.from(ticketStreams.entries()).map(
-    async ([userId, entry]) => {
-      if (entry.active) {
-        try {
-          await entry.stream.send({ event });
-        } catch {
-          entry.active = false;
-          ticketStreams.delete(userId);
-        }
+  const promises = Array.from(ticketStreams.entries()).map(
+    async ([, entry]) => {
+      try {
+        await entry.stream.send({ event });
+      } catch (err) {
+        log.info("[comment-streams] releasing — send failed", { ticketId: event.ticketId, error: String(err) });
+        entry.release();
       }
     }
   );
 
-  await Promise.allSettled(broadcastPromises);
-
-  // Clean up if no streams left for this ticket
-  if (ticketStreams.size === 0) {
-    activeStreams.delete(event.ticketId);
-  }
+  await Promise.allSettled(promises);
 }
 
-/**
- * Get list of users currently watching a specific ticket
- */
 export function getTicketWatchers(ticketId: string): string[] {
   const ticketStreams = activeStreams.get(ticketId);
   if (!ticketStreams) return [];
   return Array.from(ticketStreams.keys());
 }
 
-/**
- * Get all active comment streams
- * Returns a map of ticketId to array of userIds
- */
 export function getAllActiveStreams(): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   for (const [ticketId, userMap] of activeStreams.entries()) {
