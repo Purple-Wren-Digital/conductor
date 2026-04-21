@@ -56,6 +56,8 @@ export default function DashboardLayout({
         }
 
         // Call /users/me which will auto-create the user if they don't exist
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         const response = await fetch(`${API_BASE}/users/me`, {
           method: "GET",
           headers: {
@@ -63,7 +65,9 @@ export default function DashboardLayout({
             Authorization: `Bearer ${token}`,
           },
           cache: "no-store",
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (!response.ok) throw new Error("User not found");
         const data = await response.json();

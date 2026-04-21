@@ -54,9 +54,11 @@ export const myAuthHandler = authHandler(
 
     // Verify JWT locally (no external API call)
     try {
+      console.log("[auth] verifyToken start");
       const payload = await verifyToken(token, {
         secretKey: CLERK_SECRET_KEY(),
       });
+      console.log("[auth] verifyToken done");
 
       const userId = payload.sub;
       if (!userId) {
@@ -66,12 +68,20 @@ export const myAuthHandler = authHandler(
       // Check cache first
       const cached = userCache.get(userId);
       if (cached && cached.expiry > Date.now()) {
+        console.log("[auth] cache hit");
         return cached.data;
       }
 
       // Cache miss or expired - fetch from Clerk API
-
-      const user = await clerkClient.users.getUser(userId);
+      console.log("[auth] cache miss, calling Clerk API");
+      const clerkTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Clerk API timeout")), 5000)
+      );
+      const user = await Promise.race([
+        clerkClient.users.getUser(userId),
+        clerkTimeout,
+      ]);
+      console.log("[auth] Clerk API done");
       const primaryEmail = user.emailAddresses.find(
         (e) => e.id === user.primaryEmailAddressId
       );

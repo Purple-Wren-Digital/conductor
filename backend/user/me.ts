@@ -32,9 +32,12 @@ export const me = api<void, GetCurrentUserResponse>(
     auth: true,
   },
   async () => {
+    console.log("[me] endpoint start");
     const userContext = await getUserContext();
+    console.log("[me] getUserContext done");
 
     const user = await userRepository.findByIdWithMarketCenter(userContext.userId);
+    console.log("[me] findByIdWithMarketCenter done");
 
     if (!user || !user?.id) {
       throw APIError.notFound("User not found");

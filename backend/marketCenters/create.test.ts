@@ -7,6 +7,7 @@ const {
   mockSubscriptionRepository,
   mockUserRepository,
   mockUserMarketCenterRepository,
+  mockActivityTopic,
 } = vi.hoisted(() => ({
   mockDb: {
     queryRow: vi.fn(),
@@ -38,6 +39,9 @@ const {
   mockUserMarketCenterRepository: {
     addUserToMarketCenter: vi.fn(),
   },
+  mockActivityTopic: {
+    publish: vi.fn(),
+  },
 }));
 
 vi.mock("encore.dev/api", () => ({
@@ -66,6 +70,10 @@ vi.mock("../auth/permissions", () => ({
   canCreateMarketCenters: vi.fn(() => Promise.resolve(true)),
 }));
 
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: mockActivityTopic,
+}));
+
 import { create } from "./create";
 import { getUserContext } from "../auth/user-context";
 
@@ -73,6 +81,7 @@ describe("Market Center Create", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getUserContext).mockResolvedValue({ ...mockUserContext });
+    mockActivityTopic.publish.mockResolvedValue(undefined);
   });
 
   const setupSuccessfulCreate = () => {
@@ -178,9 +187,10 @@ describe("Market Center Create", () => {
       ],
     });
 
-    expect(result.usersToNotify).toEqual([
-      expect.objectContaining({ id: "user-1", updateType: "added" }),
-    ]);
+    expect(result.usersToNotify).toHaveLength(0);
+    expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "marketCenter.usersAdded" })
+    );
   });
 
   it("should allow creating MC with agents only (no staff leader required)", async () => {

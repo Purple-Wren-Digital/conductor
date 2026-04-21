@@ -39,20 +39,24 @@ export interface UserContext {
 }
 
 export async function getUserContext(): Promise<UserContext> {
+  console.log("[getUserContext] start");
   const authData = await getAuthData();
-  // console.log("AUTH DATA - getUserContext()", authData);
   if (!authData) {
     throw APIError.unauthenticated("User not authenticated");
   }
 
   // Try to find user by Clerk ID
+  console.log("[getUserContext] findByClerkId start");
   let user = await userRepository.findByClerkId(authData.userID);
+  console.log("[getUserContext] findByClerkId done, found:", !!user);
 
   // If not found and we have an email, try to find by email
   if (!user && authData.emailAddress) {
+    console.log("[getUserContext] findByEmail start");
     const existingUser = await userRepository.findByEmail(
       authData.emailAddress
     );
+    console.log("[getUserContext] findByEmail done, found:", !!existingUser);
 
     if (existingUser) {
       // Update Clerk ID for existing user (whether active or not)
@@ -182,6 +186,7 @@ export async function getUserContext(): Promise<UserContext> {
     });
   }
 
+  console.log("[getUserContext] done, userId:", user.id);
   return {
     name: user.name || "Name Not Set",
     userId: user.id,

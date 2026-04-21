@@ -7,6 +7,7 @@ const {
   mockCommentRepository,
   mockNotificationRepository,
   mockUserContext,
+  mockActivityTopic,
 } = vi.hoisted(() => ({
   mockDb: {
     queryAll: vi.fn(),
@@ -40,6 +41,9 @@ const {
     marketCenterId: "mc-123",
     clerkId: "clerk-123",
     isSuperuser: false,
+  },
+  mockActivityTopic: {
+    publish: vi.fn(),
   },
 }));
 
@@ -107,6 +111,11 @@ vi.mock("./publisher", () => ({
   },
 }));
 
+// Mock activity topic
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: mockActivityTopic,
+}));
+
 // Import after mocks
 import { create } from "./create";
 import { list } from "./list";
@@ -120,11 +129,12 @@ import {
 
 describe("Comment Service Tests", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
     vi.mocked(canAccessTicket).mockResolvedValue(true);
     vi.mocked(canViewInternalComments).mockResolvedValue(true);
     vi.mocked(canCreateInternalComments).mockResolvedValue(true);
+    mockActivityTopic.publish.mockResolvedValue(undefined);
   });
 
   describe("create", () => {
@@ -270,7 +280,10 @@ describe("Comment Service Tests", () => {
         content: "New comment",
       });
 
-      expect(result.usersToNotify.length).toBeGreaterThan(0);
+      expect(result.usersToNotify).toHaveLength(0);
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "comment.created" })
+      );
     });
   });
 

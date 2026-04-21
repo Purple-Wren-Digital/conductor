@@ -59,28 +59,41 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         }
 
         // Check if user is a superuser (bypass subscription)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         const userResponse = await fetch(`${API_BASE}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
-        if (userResponse.ok) {
-          const user = await userResponse.json();
-          if (user.isSuperuser) {
-            lastGrantedPath.current = pathname;
-            setHasAccess(true);
-            setIsChecking(false);
-            return;
-          }
+        if (!userResponse.ok) {
+          // /users/me failed — allow access to prevent lockout
+          setHasAccess(true);
+          setIsChecking(false);
+          return;
+        }
+
+        const user = await userResponse.json();
+        if (user.isSuperuser) {
+          lastGrantedPath.current = pathname;
+          setHasAccess(true);
+          setIsChecking(false);
+          return;
         }
 
         // First check subscription
+        const subController = new AbortController();
+        const subTimeoutId = setTimeout(() => subController.abort(), 5000);
         const subResponse = await fetch(`${API_BASE}/subscription/current`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          signal: subController.signal,
         });
+        clearTimeout(subTimeoutId);
 
         if (subResponse.ok) {
           const subscription = await subResponse.json();
@@ -100,21 +113,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
         if (subResponse.status === 404) {
           // No subscription - check if user has market center (invited user)
-          const userResponse = await fetch(`${API_BASE}/users/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (userResponse.ok) {
-            const user = await userResponse.json();
-            if (user.marketCenterId) {
-              // Invited user with market center - allow access
-              lastGrantedPath.current = pathname;
-              setHasAccess(true);
-              setIsChecking(false);
-              return;
-            }
+          if (user.marketCenterId) {
+            lastGrantedPath.current = pathname;
+            setHasAccess(true);
+            setIsChecking(false);
+            return;
           }
 
           // No subscription and no market center - redirect
