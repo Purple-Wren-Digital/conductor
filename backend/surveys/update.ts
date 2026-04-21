@@ -1,7 +1,8 @@
 import { api, APIError } from "encore.dev/api";
-import { surveyRepository, userRepository } from "../ticket/db";
+import { surveyRepository, userRepository, ticketRepository } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface UpdateSurveyRequest {
   ticketId: string;
@@ -50,33 +51,19 @@ export const update = api<UpdateSurveyRequest, UpdateSurveyResponse>(
       completed: true,
     });
 
-    const usersToNotify: UsersToNotify[] = [];
-    if (survey?.assigneeId && survey?.assignee) {
-      usersToNotify.push({
-        id: survey.assigneeId,
-        name: survey.assignee?.name || "",
-        email: survey.assignee?.email || "",
-        updateType: "ticketSurveyResults",
-      });
-    }
-
+    // Publish activity event for backend notification dispatch
     if (survey?.marketCenterId) {
-      // Find staff leaders in the market center (excluding the assignee)
-      const staffLeaders = await userRepository.findByMarketCenterIdAndRole(
-        survey.marketCenterId,
-        "STAFF_LEADER"
-      );
-
-      staffLeaders.forEach((leader) => {
-        usersToNotify.push({
-          id: leader.id,
-          name: leader.name || "",
-          email: leader.email || "",
-          updateType: "ticketSurveyResults",
-        });
+      const ticket = await ticketRepository.findById(req.ticketId);
+      await activityTopic.publish({
+        type: "survey.completed",
+        ticketId: req.ticketId,
+        ticketTitle: ticket?.title || "Untitled Ticket",
+        assigneeId: survey.assigneeId ?? undefined,
+        marketCenterId: survey.marketCenterId,
+        staffName: userContext.name || "User",
       });
     }
 
-    return { success: true, usersToNotify: usersToNotify };
+    return { success: true, usersToNotify: [] };
   }
 );

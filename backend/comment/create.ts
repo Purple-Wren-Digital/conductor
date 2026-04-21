@@ -6,12 +6,12 @@ import { processCommentContent } from "./sanitize";
 import { getUserContext } from "../auth/user-context";
 import {
   canAccessTicket,
-  canBeNotifiedAboutComments,
   canCreateInternalComments,
 } from "../auth/permissions";
 import { CommentEventPublisher } from "./publisher";
 import type { UsersToNotify } from "../notifications/types";
 import { slaService } from "../sla/sla.service";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface CreateCommentRequest {
   ticketId: string;
@@ -135,73 +135,23 @@ export const create = api<CreateCommentRequest, CreateCommentResponse>(
     // Publish comment created event for real-time updates
     await CommentEventPublisher.publishCommentCreated(safeComment);
 
-    const usersToNotify: UsersToNotify[] = [];
-
-    if (
-      ticket?.assigneeId &&
-      ticket?.assignee &&
-      (await canBeNotifiedAboutComments({
-        userId: ticket.assigneeId,
-        role: ticket.assignee.role,
-        isInternal: req.internal || false,
-        currentUserId: userContext.userId,
-      }))
-    ) {
-      usersToNotify.push({
-        id: ticket.assigneeId,
-        name: ticket.assignee?.name || "The assigned staff member",
-        email: ticket.assignee?.email || "",
-        updateType: "created",
-      });
-    }
-
-    if (
-      (!ticket?.assigneeId || ticket?.assigneeId !== ticket?.creatorId) &&
-      ticket?.creatorId &&
-      ticket?.creator &&
-      (await canBeNotifiedAboutComments({
-        userId: ticket.creatorId,
-        role: ticket.creator.role,
-        isInternal: req.internal || false,
-        currentUserId: userContext.userId,
-      }))
-    ) {
-      usersToNotify.push({
-        id: ticket.creatorId,
-        name: ticket.creator?.name || "The ticket creator",
-        email: ticket.creator?.email || "",
-        updateType: "created",
-      });
-    }
-
-    const notifiedIds = new Set(usersToNotify.map((u) => u.id));
-
-    for (const comment of previousComments) {
-      const commenter = comment?.user;
-      if (!commenter) continue;
-      if (notifiedIds.has(commenter.id)) continue;
-
-      const canBeNotified = await canBeNotifiedAboutComments({
-        userId: commenter.id,
-        role: commenter.role,
-        isInternal: req.internal || false,
-        currentUserId: userContext.userId,
-      });
-
-      if (canBeNotified) {
-        usersToNotify.push({
-          id: commenter.id,
-          name: commenter.name || "A team member",
-          email: commenter.email || "",
-          updateType: "created",
-        });
-        notifiedIds.add(commenter.id);
-      }
-    }
+    // Publish activity event for backend notification dispatch
+    await activityTopic.publish({
+      type: "comment.created",
+      ticketId: req.ticketId,
+      ticketTitle: ticket?.title || "Untitled Ticket",
+      commentId: safeComment.id,
+      commenterId: userContext.userId,
+      commenterName: safeComment.user?.name || userContext.name || "User",
+      content: processCommentContent(req.content),
+      isInternal: req.internal || false,
+      assigneeId: ticket?.assigneeId ?? undefined,
+      creatorId: ticket?.creatorId || "",
+    });
 
     return {
       comment: safeComment,
-      usersToNotify: usersToNotify,
+      usersToNotify: [],
       ticketTitle: ticket?.title || "Untitled Ticket",
     };
   }

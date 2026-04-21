@@ -4,6 +4,7 @@ import { getUserContext } from "../auth/user-context";
 import { canModifyTicket } from "../auth/permissions";
 import { UsersToNotify } from "../notifications/types";
 import { slaService } from "../sla/sla.service";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface ReopenTicketRequest {
   ticketId: string;
@@ -29,8 +30,6 @@ export const reopen = api<ReopenTicketRequest, ReopenTicketResponse>(
         "You do not have permission to modify this ticket"
       );
     }
-
-    let usersToNotify: UsersToNotify[] = [];
 
     const ticket = await ticketRepository.findById(req.ticketId);
     if (!ticket) {
@@ -60,41 +59,19 @@ export const reopen = api<ReopenTicketRequest, ReopenTicketResponse>(
       previousValue: "RESOLVED",
       newValue: "IN_PROGRESS",
       snapshot: ticket,
-      changedById: userContext.userId, // TODO: Replace with actual user ID from userContext
+      changedById: userContext.userId,
     });
 
-    // Collect users to notify
-    if (ticket?.creatorId) {
-      const creator = await userRepository.findById(ticket.creatorId);
-      if (creator) {
-        usersToNotify.push({
-          id: creator.id,
-          name: creator?.name ? creator.name : creator.id,
-          email: creator?.email,
-          updateType: "unchanged",
-        });
-      }
-    } else if (ticket?.assigneeId && ticket?.assigneeId !== ticket?.creatorId) {
-      const assignee = await userRepository.findById(ticket.assigneeId);
-      if (assignee) {
-        usersToNotify.push({
-          id: assignee.id,
-          name: assignee?.name ? assignee.name : assignee.id,
-          email: assignee?.email,
-          updateType: "unchanged",
-        });
-      }
-    } else {
-      const currentUser = await userRepository.findById(userContext.userId);
+    // Publish activity event for backend notification dispatch
+    await activityTopic.publish({
+      type: "ticket.reopened",
+      ticketId: req.ticketId,
+      ticketTitle: ticket.title || "",
+      creatorId: ticket.creatorId ?? userContext.userId,
+      assigneeId: ticket.assigneeId ?? undefined,
+      editorId: userContext.userId,
+    });
 
-      usersToNotify.push({
-        id: userContext.userId,
-        name: currentUser?.name ? currentUser.name : userContext.userId,
-        email: currentUser?.email || "",
-        updateType: "unchanged",
-      });
-    }
-
-    return { usersToNotify };
+    return { usersToNotify: [] };
   }
 );

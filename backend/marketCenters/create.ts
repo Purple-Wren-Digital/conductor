@@ -11,6 +11,7 @@ import {
 import type { MarketCenter } from "./types";
 import type { User } from "../user/types";
 import type { UsersToNotify } from "../notifications/types";
+import { activityTopic } from "../notifications/activity-topic";
 
 export const defaultTicketCategories = [
   { name: "General", description: "General inquiries and support" },
@@ -236,12 +237,7 @@ export const create = api<
           changedById: userContext.userId,
         });
 
-        usersToNotify.push({
-          id: user.id,
-          email: user.email,
-          name: user?.name ?? "Name not set",
-          updateType: "added",
-        });
+        // User will be notified via activity topic below
       }
     }
 
@@ -301,11 +297,25 @@ export const create = api<
       }
     }
 
+    // Publish activity event for backend notification dispatch
+    if (req?.users && req.users.length > 0) {
+      const creator = await userRepository.findById(userContext.userId);
+      await activityTopic.publish({
+        type: "marketCenter.usersAdded",
+        marketCenterId: createdMarketCenter.id,
+        marketCenterName: createdMarketCenter.name,
+        userIds: req.users.map((u) => u.id),
+        editorId: userContext.userId,
+        editorName: creator?.name ?? userContext.name ?? "User",
+        editorEmail: userContext.email,
+      });
+    }
+
     return {
       marketCenter: marketCenterDefaultsAdded
         ? marketCenterDefaultsAdded
         : createdMarketCenter,
-      usersToNotify: usersToNotify,
+      usersToNotify: [],
     };
   }
 );

@@ -4,6 +4,7 @@ import type { Ticket } from "./types";
 import { getUserContext } from "../auth/user-context";
 import { canReassignTicket } from "../auth/permissions";
 import { UsersToNotify } from "../notifications/types";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface AssignTicketRequest {
   id: string;
@@ -74,46 +75,19 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
 
     try {
       const updateData: any = {};
-      let usersToNotify: UsersToNotify[] = [];
 
       if (unassignTicket && !!oldTicket?.assigneeId) {
         updateData.assigneeId = null;
         updateData.status = "UNASSIGNED";
-        usersToNotify.push({
-          id: oldTicket.assigneeId,
-          name: previousAssigneeName,
-          email: previousAssignee?.email ?? "N/a",
-          updateType: "removed",
-        });
       }
       if (assignTicket && !!oldTicket?.assigneeId && !!newAssignee?.id) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
-        usersToNotify.push(
-          {
-            id: oldTicket?.assigneeId,
-            name: previousAssigneeName,
-            email: previousAssignee?.email ?? "N/a",
-            updateType: "removed",
-          },
-          {
-            id: newAssignee.id,
-            name: newAssignee?.name ?? "No name listed",
-            email: newAssignee?.email ?? "N/a",
-            updateType: "added",
-          }
-        );
       }
 
       if (assignTicket && !oldTicket?.assigneeId && !!newAssignee?.id) {
         updateData.assigneeId = req.assigneeId;
         updateData.status = "ASSIGNED";
-        usersToNotify.push({
-          id: newAssignee.id!!,
-          name: newAssignee?.name ?? "No name listed",
-          email: newAssignee?.email ?? "N/a",
-          updateType: "added",
-        });
       }
 
       if (Object.keys(updateData).length === 0) {
@@ -173,9 +147,19 @@ export const assign = api<AssignTicketRequest, AssignTicketResponse>(
         commentCount,
       };
 
+      // Publish activity event for backend notification dispatch
+      await activityTopic.publish({
+        type: "ticket.assigned",
+        ticketId: req.id,
+        ticketTitle: oldTicket.title || "",
+        editorId: userContext.userId,
+        previousAssigneeId: oldTicket.assigneeId ?? undefined,
+        newAssigneeId: unassignTicket ? undefined : newAssignee?.id ?? undefined,
+      });
+
       return {
         ticket: ticketWithCommentCount,
-        usersToNotify: usersToNotify,
+        usersToNotify: [],
       } as AssignTicketResponse;
     } catch (error: any) {
       if (error.code === "P2025") {

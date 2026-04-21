@@ -6,6 +6,7 @@ import {
 } from "../ticket/db";
 import { getUserContext } from "../auth/user-context";
 import type { UsersToNotify } from "../notifications/types";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface CreateSurveyRequest {
   ticketId: string;
@@ -69,17 +70,17 @@ export const createSurvey = api<CreateSurveyRequest, CreateSurveyResponse>(
       marketCenterId: marketCenterId,
     });
 
-    const usersToNotify: UsersToNotify[] = [];
-
+    // Publish activity event for backend notification dispatch
     if (ticket?.creator && ticket?.creator?.id) {
-      usersToNotify.push({
-        id: ticket.creator.id,
-        name: ticket.creator.name || "",
-        email: ticket.creator.email,
-        updateType: "ticketSurvey",
+      await activityTopic.publish({
+        type: "survey.created",
+        ticketId: req.ticketId,
+        ticketTitle: ticket.title || "Untitled Ticket",
+        creatorId: ticket.creator.id,
+        surveyorName: ticket.creator.name || "User",
       });
     }
 
-    return { success: true, usersToNotify: usersToNotify };
+    return { success: true, usersToNotify: [] };
   }
 );

@@ -6,6 +6,7 @@ const {
   mockUserRepository,
   mockTicketRepository,
   mockCommentRepository,
+  mockActivityTopic,
 } = vi.hoisted(() => ({
   mockUserRepository: {
     findByEmail: vi.fn(),
@@ -16,6 +17,9 @@ const {
   },
   mockCommentRepository: {
     create: vi.fn(),
+  },
+  mockActivityTopic: {
+    publish: vi.fn(),
   },
 }));
 
@@ -36,6 +40,11 @@ vi.mock("../shared/repositories", () => ({
   userRepository: mockUserRepository,
   ticketRepository: mockTicketRepository,
   commentRepository: mockCommentRepository,
+}));
+
+// Mock activity topic
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: mockActivityTopic,
 }));
 
 import { inboundEmail, webhookHealth } from "./webhooks";
@@ -121,6 +130,7 @@ function makePayload(overrides?: Partial<any>) {
 describe("Email Webhook - inboundEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActivityTopic.publish.mockResolvedValue(undefined);
   });
 
   it("should process a valid email reply and create a comment", async () => {

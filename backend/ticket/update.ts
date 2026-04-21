@@ -18,6 +18,7 @@ import {
 import { ActivityUpdates } from "@/emails/types";
 import { UsersToNotify } from "../notifications/types";
 import { slaService } from "../sla/sla.service";
+import { activityTopic } from "../notifications/activity-topic";
 
 export function arrayToCommaSeparatedListWithConjunction(
   conjunction: "and" | "or",
@@ -190,26 +191,20 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
 
+      // Publish activity event for backend notification dispatch
+      await activityTopic.publish({
+        type: "ticket.closed",
+        ticketId: req.ticketId,
+        ticketTitle: closedTicket.title || "",
+        creatorId: closedTicket.creatorId || "",
+        creatorRole: closedTicket.creator?.role,
+        assigneeId: oldTicket.assigneeId ?? undefined,
+        surveyId: surveyId ?? undefined,
+      });
+
       return {
         ticket: closedTicket,
-        usersToNotify: [
-          {
-            id: closedTicket.creatorId,
-            name: closedTicket.creator?.name || "",
-            email: closedTicket.creator?.email || "",
-            updateType: surveyId ? "ticketSurvey" : "unchanged",
-          },
-          oldTicket?.assigneeId &&
-          oldTicket?.assignee &&
-          oldTicket.creatorId !== oldTicket?.assigneeId
-            ? {
-                id: oldTicket.assigneeId,
-                name: oldTicket.assignee?.name || "",
-                email: oldTicket.assignee?.email || "",
-                updateType: "unchanged",
-              }
-            : undefined,
-        ].filter(Boolean) as UsersToNotify[],
+        usersToNotify: [],
         changedDetails: [
           {
             label: "status",
@@ -243,8 +238,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
       snapshot: any;
       changedById: string;
     }> = [];
-    let usersToNotify: UsersToNotify[] = [];
-
     if (
       req?.status &&
       req.status !== "RESOLVED" &&
@@ -346,23 +339,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         changedById: userContext.userId,
       });
 
-      // Notify old creator that they are no longer the creator
-      if (oldTicket.creatorId) {
-        usersToNotify.push({
-          id: oldTicket.creatorId,
-          name: previousCreatorName,
-          email: oldTicket.creator?.email ?? "N/a",
-          updateType: "removed",
-        });
-      }
-
-      // Notify new creator
-      usersToNotify.push({
-        id: newCreator.id,
-        name: newCreator.name ?? "No name listed",
-        email: newCreator.email ?? "N/a",
-        updateType: "added",
-      });
     }
 
     // ASSIGNMENT CHANGES
@@ -379,12 +355,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     if (canAssign && unassignTicket && !!oldTicket?.assigneeId) {
       updateData.assigneeId = null;
       updateData.status = "UNASSIGNED";
-      usersToNotify.push({
-        id: oldTicket.assigneeId,
-        name: previousAssigneeName,
-        email: previousAssignee?.email ?? "N/a",
-        updateType: "removed",
-      });
 
       ticketHistoryData.push(
         {
@@ -410,26 +380,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
     if (canAssign && reassignTicket && !!newAssignee?.id) {
       updateData.assigneeId = req.assigneeId;
       updateData.status = "ASSIGNED";
-      usersToNotify.push(
-        {
-          id: previousAssignee?.id!!,
-          name: previousAssigneeName,
-          email: previousAssignee?.email ?? "N/a",
-          updateType: "removed",
-        },
-        {
-          id: newAssignee?.id,
-          name: newAssignee?.name ?? "No name listed",
-          email: newAssignee?.email ?? "N/a",
-          updateType: "added",
-        },
-        {
-          id: newAssignee?.id!!,
-          name: newAssignee?.name ?? "No name listed",
-          email: newAssignee?.email ?? "N/a",
-          updateType: "unchanged",
-        }
-      );
 
       ticketHistoryData.push(
         {
@@ -454,25 +404,6 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
 
       // Record first response for SLA tracking (assignment counts as first response)
       await slaService.recordFirstResponse(req.ticketId);
-    } else if (
-      canAssign &&
-      !unassignTicket &&
-      !reassignTicket &&
-      !!oldTicket?.assigneeId
-    ) {
-      usersToNotify.push({
-        id: oldTicket?.assigneeId,
-        name: oldTicket?.assignee?.name ?? "No name listed",
-        email: oldTicket?.assignee?.email ?? "N/a",
-        updateType: "unchanged",
-      });
-    } else {
-      usersToNotify.push({
-        id: oldTicket?.creatorId!,
-        name: oldTicket?.creator?.name ?? "No name listed",
-        email: oldTicket?.creator?.email ?? "N/a",
-        updateType: "unchanged",
-      });
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -522,30 +453,37 @@ export const update = api<UpdateTicketRequest, UpdateTicketResponse>(
         };
       });
 
-      if (!usersToNotify.length) {
-        usersToNotify.push({
-          id: ticket.creatorId!,
-          name: ticket.creator?.name || "",
-          email: ticket.creator?.email || "",
-          updateType: "unchanged",
+      // Publish activity events for backend notification dispatch
+      if (reassignTicket || unassignTicket) {
+        await activityTopic.publish({
+          type: "ticket.assigned",
+          ticketId: req.ticketId,
+          ticketTitle: oldTicket.title || "",
+          editorId: userContext.userId,
+          previousAssigneeId: oldTicket.assigneeId ?? undefined,
+          newAssigneeId: unassignTicket ? undefined : newAssignee?.id ?? undefined,
         });
-        if (
-          ticket?.assigneeId &&
-          ticket?.assignee &&
-          ticket.creatorId !== oldTicket?.assigneeId
-        ) {
-          usersToNotify.push({
-            id: ticket.assigneeId,
-            name: ticket.assignee?.name || "",
-            email: ticket.assignee?.email || "",
-            updateType: "unchanged",
-          });
-        }
+      }
+
+      if (allChanges.length > 0) {
+        await activityTopic.publish({
+          type: "ticket.updated",
+          ticketId: req.ticketId,
+          ticketTitle: oldTicket.title || "",
+          editorId: userContext.userId,
+          changedDetails: allChanges.map((c) => ({
+            label: c.label,
+            originalValue: c.originalValue ?? "",
+            newValue: c.newValue ?? "",
+          })),
+          creatorId: oldTicket.creatorId,
+          assigneeId: ticket.assigneeId ?? undefined,
+        });
       }
 
       return {
         ticket: ticket,
-        usersToNotify: usersToNotify,
+        usersToNotify: [],
         changedDetails: allChanges,
       };
     } catch (error: any) {

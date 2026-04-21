@@ -5,6 +5,7 @@ import type { UsersToNotify } from "../notifications/types";
 import type { TicketStatus } from "./types";
 import { canDeleteTicket } from "../auth/permissions";
 import { slaService } from "../sla/sla.service";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface CloseTicketRequest {
   ticketId: string;
@@ -106,25 +107,19 @@ export const closeTicket = api<CloseTicketRequest, CloseTicketResponse>(
       throw APIError.internal("Failed to retrieve updated ticket");
     }
 
+    // Publish activity event for backend notification dispatch
+    await activityTopic.publish({
+      type: "ticket.closed",
+      ticketId: req.ticketId,
+      ticketTitle: ticket.title || "",
+      creatorId: ticket.creatorId,
+      creatorRole: ticket.creator?.role,
+      assigneeId: ticket.assigneeId ?? undefined,
+      surveyId: surveyId,
+    });
+
     return {
-      usersToNotify: [
-        {
-          id: ticket.creatorId,
-          name: ticket.creator?.name || "",
-          email: ticket.creator?.email || "",
-          updateType: surveyId ? "ticketSurvey" : "unchanged",
-        },
-        ticket?.assigneeId &&
-        ticket?.assignee &&
-        ticket.creatorId !== ticket?.assigneeId
-          ? {
-              id: ticket.assigneeId,
-              name: ticket.assignee?.name || "",
-              email: ticket.assignee?.email || "",
-              updateType: "unchanged",
-            }
-          : undefined,
-      ].filter(Boolean) as UsersToNotify[],
+      usersToNotify: [],
     };
   }
 );

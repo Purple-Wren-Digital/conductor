@@ -7,6 +7,7 @@ import { canManageMarketCenters } from "../auth/permissions";
 import { subscriptionRepository } from "../shared/repositories";
 import { UsersToNotify } from "../notifications/types";
 import { AssignmentUpdateType } from "@/emails/types";
+import { activityTopic } from "../notifications/activity-topic";
 
 export interface UpdateMarketCenterRequest {
   id: string;
@@ -248,20 +249,29 @@ export const update = api<
       return { updatedMarketCenterRow };
     });
 
-    const usersToNotify: UsersToNotify[] = [
-      ...addedUsers.map((user: User) => ({
-        id: user.id,
-        name: user?.name ? user.name : "",
-        email: user?.email ? user.email : "",
-        updateType: "added" as AssignmentUpdateType,
-      })),
-      ...removedUsers.map((user: User) => ({
-        id: user.id,
-        name: user?.name ? user?.name : "",
-        email: user?.email ? user?.email : "",
-        updateType: "removed" as AssignmentUpdateType,
-      })),
-    ];
+    // Publish activity events for backend notification dispatch
+    if (addedUsers.length > 0) {
+      await activityTopic.publish({
+        type: "marketCenter.usersAdded",
+        marketCenterId: req.id,
+        marketCenterName: result.updatedMarketCenterRow!.name,
+        userIds: addedUsers.map((u) => u.id),
+        editorId: userContext.userId,
+        editorName: userContext.name ?? "User",
+        editorEmail: userContext.email,
+      });
+    }
+    if (removedUsers.length > 0) {
+      await activityTopic.publish({
+        type: "marketCenter.usersRemoved",
+        marketCenterId: req.id,
+        marketCenterName: result.updatedMarketCenterRow!.name,
+        userIds: removedUsers.map((u) => u.id),
+        editorId: userContext.userId,
+        editorName: userContext.name ?? "User",
+        editorEmail: userContext.email,
+      });
+    }
 
     const updatedMarketCenter: MarketCenter = {
       id: result.updatedMarketCenterRow!.id,
@@ -274,7 +284,7 @@ export const update = api<
 
     return {
       marketCenter: updatedMarketCenter,
-      usersToNotify: usersToNotify,
+      usersToNotify: [],
     };
   }
 );

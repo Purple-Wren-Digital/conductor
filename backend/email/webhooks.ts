@@ -144,6 +144,21 @@ export const inboundEmail = api.raw(
         },
       });
 
+      // Publish activity event so ticket participants get notified
+      const { activityTopic } = await import("../notifications/activity-topic");
+      await activityTopic.publish({
+        type: "comment.created",
+        ticketId,
+        ticketTitle: ticket.title || "",
+        commentId: comment.id,
+        commenterId: user.id,
+        commenterName: user.name || "Unknown",
+        content: content.substring(0, 200),
+        isInternal: false,
+        assigneeId: ticket.assigneeId || undefined,
+        creatorId: ticket.creatorId || "",
+      });
+
       // Update ticket status if it was resolved
       if (ticket.status === "RESOLVED") {
         await ticketRepository.update(ticketId, {

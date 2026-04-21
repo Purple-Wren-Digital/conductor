@@ -6,6 +6,7 @@ import { canCreateTicket } from "../auth/permissions";
 import { UsersToNotify } from "../notifications/types";
 import { checkCanCreateTicket } from "../auth/subscription-check";
 import { slaService } from "../sla/sla.service";
+import { activityTopic } from "../notifications/activity-topic";
 // Subscription usage tracking disabled - unlimited tickets allowed
 // import { trackUsage } from "../subscription/subscription";
 
@@ -109,23 +110,17 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
         assignee = await userRepository.findById(ticket.assigneeId);
       }
 
-      const usersToNotify: UsersToNotify[] = [
-        {
-          id: userContext?.userId,
-          name: creator?.name ?? "No name",
-          email: userContext.email,
-          updateType: "created",
-        },
-      ];
-
-      if (ticket.assigneeId && assignee) {
-        usersToNotify.push({
-          id: ticket.assigneeId,
-          name: assignee.name ?? "No name",
-          email: assignee.email,
-          updateType: "added",
-        });
-      }
+      // Publish activity event for backend notification dispatch
+      await activityTopic.publish({
+        type: "ticket.created",
+        ticketId: ticket.id,
+        creatorId: userContext.userId,
+        assigneeId: ticket.assigneeId ?? undefined,
+        ticketTitle: ticket.title || "",
+        urgency: req.urgency,
+        createdAt: ticket.createdAt.toISOString(),
+        dueDate: req.dueDate ? new Date(req.dueDate).toISOString() : undefined,
+      });
 
       // Get comment count
       const commentCount = 0; // New ticket has no comments
@@ -148,7 +143,7 @@ export const create = api<CreateTicketRequest, CreateTicketResponse>(
               }
             : null,
         },
-        usersToNotify: usersToNotify,
+        usersToNotify: [],
       } as CreateTicketResponse;
     } catch {
       throw new Error("Failed to create ticket");

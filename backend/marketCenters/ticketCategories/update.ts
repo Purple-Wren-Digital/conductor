@@ -8,6 +8,7 @@ import {
   toJson,
 } from "../../ticket/db";
 import { UsersToNotify } from "../../notifications/types";
+import { activityTopic } from "../../notifications/activity-topic";
 
 export interface UpdateCategoryRequest {
   id: string;
@@ -65,8 +66,6 @@ export const updateCategory = api<
       description: string | null;
       defaultAssigneeId: string | null;
     }> = {};
-    let usersToNotify: UsersToNotify[] = [];
-
     // NAME
     if (req?.name && req?.name !== oldTicketCategory.name) {
       updateCategoryData.name = req.name;
@@ -142,23 +141,6 @@ export const updateCategory = api<
         snapshot: oldTicketCategory,
       });
 
-      if (oldTicketCategory?.defaultAssigneeId && oldDefaultAssignee) {
-        usersToNotify.push({
-          id: oldTicketCategory.defaultAssigneeId,
-          name: oldDefaultAssignee?.name ? oldDefaultAssignee.name : "",
-          email: oldDefaultAssignee?.email ?? "",
-          updateType: "removed",
-        });
-      }
-
-      if (newDefaultAssignee?.id) {
-        usersToNotify.push({
-          id: newDefaultAssignee.id,
-          name: newDefaultAssignee?.name ?? "",
-          email: newDefaultAssignee?.email ?? "",
-          updateType: "added",
-        });
-      }
     }
 
     if (Object.keys(updateCategoryData).length === 0) {
@@ -175,6 +157,31 @@ export const updateCategory = api<
       throw APIError.notFound("Failed to update category");
     }
 
-    return { category: ticketCategory, usersToNotify: usersToNotify };
+    // Publish activity event for backend notification dispatch
+    if (
+      req?.defaultAssigneeId &&
+      req.defaultAssigneeId !== oldTicketCategory.defaultAssigneeId
+    ) {
+      const mc = await marketCenterRepository.findById(
+        oldTicketCategory.marketCenterId
+      );
+      const editor = await userRepository.findById(userContext.userId);
+      await activityTopic.publish({
+        type: "category.assignmentChanged",
+        categoryId: req.id,
+        categoryName: ticketCategory.name,
+        categoryDescription: ticketCategory.description ?? "",
+        marketCenterId: oldTicketCategory.marketCenterId,
+        marketCenterName: mc?.name ?? "",
+        oldAssigneeId: oldTicketCategory.defaultAssigneeId ?? undefined,
+        newAssigneeId:
+          req.defaultAssigneeId === "none" ? undefined : req.defaultAssigneeId,
+        editorId: userContext.userId,
+        editorName: editor?.name ?? userContext.name ?? "User",
+        editorEmail: editor?.email ?? userContext.email ?? "",
+      });
+    }
+
+    return { category: ticketCategory, usersToNotify: [] };
   }
 );
