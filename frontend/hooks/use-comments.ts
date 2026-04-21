@@ -2,13 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CommentResponse, createCommentApi } from "@/lib/api/comment-client";
-import type { Comment, UsersToNotify } from "@/lib/types";
+import type { Comment } from "@/lib/types";
 import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 import { realTimeService, CommentEvent } from "@/lib/realtime";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { createAndSendNotification } from "@/lib/utils/notifications";
-import { stripHtmlTags } from "@/lib/sanitize";
 
 interface CreateCommentParams {
   userId: string;
@@ -203,8 +201,6 @@ export function useCreateComment() {
     },
     onSuccess: async (response, { ticketId, onSubmitSuccess }, context) => {
       const newComment = response.comment;
-      const usersToNotify: UsersToNotify[] = response.usersToNotify ?? [];
-      const ticketTitle: string | undefined = response?.ticketTitle;
       queryClient.setQueryData<Comment[]>(["comments", ticketId], (old) => {
         if (!old) return [newComment];
         return old.map((comment) =>
@@ -222,36 +218,6 @@ export function useCreateComment() {
         onSubmitSuccess();
       }
       toast.success("Comment added successfully");
-
-      if (usersToNotify && usersToNotify.length > 0) {
-        await Promise.all(
-          usersToNotify.map(async (user: UsersToNotify) => {
-            await createAndSendNotification({
-              getToken: getToken,
-              trigger: "New Comments",
-              templateName: "New Comments",
-              receivingUser: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-              },
-              data: {
-                ticketId: newComment.ticketId,
-                newComment: {
-                  ticketNumber: newComment.ticketId,
-                  ticketTitle: ticketTitle || "Untitled Ticket",
-                  createdOn: newComment.createdAt,
-                  isInternal: newComment.internal,
-                  commenterId: newComment.userId,
-                  commenterName: newComment.user?.name || "A team member",
-                  comment: stripHtmlTags(newComment.content),
-                  userName: user.name,
-                },
-              },
-            });
-          })
-        );
-      }
     },
     onSettled: async (data, error, { ticketId }) => {
       await queryClient.invalidateQueries({ queryKey: ["comments", ticketId] });

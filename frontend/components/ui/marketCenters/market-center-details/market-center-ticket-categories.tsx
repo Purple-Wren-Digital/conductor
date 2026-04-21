@@ -42,7 +42,6 @@ import type {
   MarketCenterNotificationCallback,
   ConductorUser,
   TicketCategory,
-  UsersToNotify,
 } from "@/lib/types";
 import { createAndSendNotification } from "@/lib/utils/notifications";
 import { API_BASE } from "@/lib/api/utils";
@@ -211,39 +210,8 @@ export default function MarketCenterTicketCategories({
       }
       return data;
     },
-    onSuccess: async (data: {
-      category: TicketCategory;
-      usersToNotify: UsersToNotify[];
-    }) => {
+    onSuccess: async (data: { category: TicketCategory }) => {
       toast.success(`${categoryFormData?.name} updated`);
-      if (data?.usersToNotify && data?.usersToNotify.length > 0) {
-        await Promise.all(
-          data.usersToNotify.map(async (user) => {
-            await handleSendMarketCenterNotifications({
-              templateName: "Category Assignment",
-              trigger: "Category Assignment",
-              receivingUser: {
-                id: user?.id,
-                name: user?.name ?? "You",
-                email: user?.email ?? "",
-              },
-              data: {
-                categoryAssignment: {
-                  userUpdate: user?.updateType,
-                  userName: user?.name ?? "You",
-                  categoryName: data?.category?.name,
-                  categoryDescription: data?.category?.description ?? undefined,
-                  marketCenterId: data?.category?.marketCenterId,
-                  marketCenterName: data?.category?.marketCenter?.name,
-                  editorName: clerkUser?.fullName ?? "Another user",
-                  editorEmail:
-                    clerkUser?.emailAddresses[0]?.emailAddress ?? "N/A",
-                },
-              },
-            });
-          })
-        );
-      }
       setIsLoading(false);
       resetAndCloseForm();
     },

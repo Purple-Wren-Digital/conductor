@@ -16,8 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { API_BASE } from "@/lib/api/utils";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Survey, UsersToNotify } from "@/lib/types";
-import { createAndSendNotification } from "@/lib/utils/notifications";
+import { Survey } from "@/lib/types";
 
 export interface TicketSurveyFormProps {
   ticketId: string;
@@ -58,35 +57,6 @@ export default function TicketSurveyModal({
       prefillSurveyValues();
     }
   }, [showSurveyModal, survey, prefillSurveyValues]);
-
-  const handleSendSurveyNotifications = async ({
-    userToNotify,
-  }: {
-    userToNotify: UsersToNotify;
-  }) => {
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: "Ticket Survey Results",
-        trigger: "Ticket Survey Results",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          surveyResults: {
-            ticketNumber: ticketId,
-            ticketTitle: survey?.ticket?.title ?? "No title provided",
-            staffName: userToNotify?.name ?? "No name provided",
-            userName: userToNotify?.name ?? "",
-          },
-        },
-      });
-    } catch {
-      // Notification failed silently
-    }
-  };
 
   const validateSurveyInputs = (): boolean => {
     if (overAllRating < 0 || assigneeRating < 0 || marketCenterRating < 0) {
@@ -134,14 +104,7 @@ export default function TicketSurveyModal({
       const data = await response.json();
       return data;
     },
-    onSuccess: async (data) => {
-      if (data?.usersToNotify) {
-        await Promise.all(
-          data.usersToNotify.map(async (userToNotify: UsersToNotify) => {
-            await handleSendSurveyNotifications({ userToNotify });
-          })
-        );
-      }
+    onSuccess: async () => {
       toast.success(`Rating submitted successfully!`);
       setShowSurveyModal(false);
     },

@@ -23,11 +23,8 @@ import { API_BASE } from "@/lib/api/utils";
 import type {
   MarketCenter,
   MarketCenterForm,
-  MarketCenterNotificationCallback,
   ConductorUser,
-  UsersToNotify,
 } from "@/lib/types";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 
@@ -165,25 +162,6 @@ export default function EditMarketCenter({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSendMarketCenterNotifications = async ({
-    templateName,
-    trigger,
-    receivingUser,
-    data,
-  }: MarketCenterNotificationCallback) => {
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: templateName,
-        trigger: trigger,
-        receivingUser: receivingUser,
-        data: data,
-      });
-    } catch {
-      // Notification failed silently
-    }
-  };
-
   const updateMarketCenterMutation = useMutation({
     mutationFn: async () => {
       if (!editingMarketCenter?.id) throw new Error("Missing market center id");
@@ -219,40 +197,10 @@ export default function EditMarketCenter({
       const data = await response.json();
       return data;
     },
-    onSuccess: async (data: {
-      marketCenter: MarketCenter;
-      usersToNotify: UsersToNotify[];
-    }) => {
+    onSuccess: async (data: { marketCenter: MarketCenter }) => {
       toast.success(
         `${data?.marketCenter?.name ? data.marketCenter.name : "Market Center"} was updated`
       );
-
-      if (data?.usersToNotify && data?.usersToNotify.length > 0) {
-        await Promise.all(
-          data.usersToNotify.map(
-            async (user) =>
-              await handleSendMarketCenterNotifications({
-                templateName: "Market Center Assignment",
-                trigger: "Market Center Assignment",
-                receivingUser: {
-                  id: user.id,
-                  name: user.name ?? "You",
-                  email: user.email,
-                },
-                data: {
-                  marketCenterAssignment: {
-                    userUpdate: user.updateType,
-                    marketCenterId: editingMarketCenter?.id,
-                    marketCenterName: data.marketCenter?.name,
-                    userName: user.name ?? user.email,
-                    editorEmail: currentUser?.email ?? "N/A",
-                    editorName: currentUser?.name ?? "Another user",
-                  },
-                },
-              })
-          )
-        );
-      }
       setIsSubmitting(false);
       resetAndCloseForm();
     },

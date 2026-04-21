@@ -87,12 +87,9 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
-  UsersToNotify,
   MarketCenter,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createAndSendNotification } from "@/lib/utils/notifications";
-import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
 import { useFetchAllUsers } from "@/hooks/use-users";
 import { useIsEnterprise } from "@/hooks/useSubscription";
@@ -520,68 +517,6 @@ export default function AdminTicketList() {
     [displayedTickets]
   );
 
-  const handleSendTicketClosedNotifications = useCallback(
-    async ({
-      userToNotify,
-      ticket,
-    }: {
-      userToNotify: UsersToNotify;
-      ticket: { id: string; title: string; createdAt: Date };
-    }) => {
-      const notifyCreator = userToNotify.updateType === "unchanged";
-      const notifySurvey =
-        userToNotify?.updateType === "ticketSurvey" ||
-        userToNotify?.updateType === "ticketSurveyResults";
-      try {
-        const response = await createAndSendNotification({
-          getToken: getToken,
-          templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-          trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-          receivingUser: {
-            id: userToNotify?.id,
-            name: userToNotify?.name,
-            email: userToNotify?.email,
-          },
-          data: {
-            ticketSurvey:
-              notifySurvey && !notifyCreator
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    surveyorName: userToNotify?.name ?? "No name provided",
-                  }
-                : undefined,
-            updatedTicket:
-              !notifySurvey && notifyCreator
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    createdOn: ticket?.createdAt,
-                    updatedOn: new Date(),
-                    editorName: userToNotify?.name ?? "Unknown",
-                    editorId: userToNotify?.id ?? "",
-                    changedDetails: [
-                      {
-                        label: "Status",
-                        newValue: "RESOLVED",
-                        originalValue: "ASSIGNED",
-                      },
-                    ],
-                    userName: userToNotify?.name ?? "",
-                  }
-                : undefined,
-          },
-        });
-      } catch (error) {
-        console.error(
-          "TicketListAdmin - Unable to generate Survey notifications",
-          error
-        );
-      }
-    },
-    [getToken]
-  );
-
   const closeTicketMutation = useMutation({
     mutationFn: async (ticket: Ticket) => {
       setIsLoading(true);
@@ -602,30 +537,9 @@ export default function AdminTicketList() {
         body: JSON.stringify({ status: "RESOLVED" as TicketStatus }),
       });
       if (!res.ok) throw new Error("Failed to close ticket");
-      const data = await res.json();
-      if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
-        throw new Error("No data returned from close ticket");
-      return { ...data, ticket: ticket };
+      return res.json();
     },
-    onSuccess: async (data: {
-      usersToNotify: UsersToNotify[];
-      changedDetails: ActivityUpdates;
-      ticket: Ticket;
-    }) => {
-      const { usersToNotify, changedDetails, ticket } = data;
-      await Promise.all(
-        usersToNotify.map((user) =>
-          handleSendTicketClosedNotifications({
-            ticket: {
-              id: ticket.id,
-              title: ticket?.title ?? "No title provided",
-              createdAt: ticket.createdAt,
-            },
-            userToNotify: user,
-          })
-        )
-      );
-
+    onSuccess: async () => {
       toast.success("Ticket closed successfully.");
     },
     onError: (error) => {
@@ -644,72 +558,6 @@ export default function AdminTicketList() {
       closeTicketMutation.mutate(ticket);
     },
     [closeTicketMutation]
-  );
-  const handleSendTicketNotifications = useCallback(
-    async ({
-      ticket,
-      userToNotify,
-      changedDetails,
-    }: {
-      ticket: Ticket & { previousAssignment: string | null };
-      userToNotify: UsersToNotify;
-      changedDetails: ActivityUpdates[] | null;
-    }) => {
-      const title = ticket?.title ?? "";
-
-      const notifyAssigneeChanges =
-        userToNotify.updateType === "added" ||
-        userToNotify.updateType === "removed";
-
-      try {
-        const response = await createAndSendNotification({
-          getToken: getToken,
-          templateName: notifyAssigneeChanges
-            ? "Ticket Assignment"
-            : "Ticket Updated",
-          trigger: notifyAssigneeChanges
-            ? "Ticket Assignment"
-            : "Ticket Updated",
-          receivingUser: {
-            id: userToNotify?.id,
-            name: userToNotify?.name,
-            email: userToNotify?.email,
-          },
-          data: {
-            updatedTicket:
-              !notifyAssigneeChanges && changedDetails
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    createdOn: ticket?.createdAt,
-                    updatedOn: ticket?.updatedAt,
-                    editorName: currentUser?.name ?? "Unknown",
-                    editorId: currentUser?.id ?? "",
-                    changedDetails: changedDetails,
-                    userName: userToNotify?.name ?? "",
-                  }
-                : undefined,
-            ticketAssignment: notifyAssigneeChanges
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: title,
-                  createdOn: ticket?.createdAt,
-                  updatedOn: ticket?.createdAt,
-                  editorName: currentUser?.name ?? "Unknown",
-                  editorId: currentUser?.id ?? "",
-                  updateType: userToNotify.updateType,
-                  currentAssignment: ticket?.assignee?.name || "Unassigned",
-                  previousAssignment: ticket?.previousAssignment || null,
-                  userName: userToNotify?.name ?? "",
-                }
-              : undefined,
-          },
-        });
-      } catch {
-        // Notification failed silently
-      }
-    },
-    [getToken, currentUser]
   );
 
   const handleReopenTicket = useCallback(
@@ -738,46 +586,6 @@ export default function AdminTicketList() {
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to reopen ticket");
         }
-        const data = await response.json();
-
-        if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
-          const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-            (user: UsersToNotify) =>
-              user.updateType === "added" || user.updateType === "removed"
-          );
-
-          let previousAssignment = null;
-
-          if (assignmentChanges && assignmentChanges?.length > 0) {
-            const removedUser: UsersToNotify = data?.usersToNotify.find(
-              (user: UsersToNotify) => user.updateType === "removed"
-            );
-
-            if (removedUser && removedUser?.name) {
-              previousAssignment = removedUser.name;
-            } else if (!removedUser || !removedUser?.name) {
-              previousAssignment = "Unassigned";
-            }
-          }
-
-          await Promise.all(
-            data.usersToNotify.map(async (user: UsersToNotify) =>
-              handleSendTicketNotifications({
-                ticket: { ...ticket, previousAssignment } as Ticket & {
-                  previousAssignment: string | null;
-                },
-                userToNotify: user,
-                changedDetails: [
-                  {
-                    label: "Ticket Reopened",
-                    originalValue: "RESOLVED",
-                    newValue: "IN_PROGRESS",
-                  },
-                ],
-              })
-            )
-          );
-        }
       } catch (error) {
         toast.error("Error: Failed to reopen ticket");
         console.error("Reopen ticket error:", error);
@@ -786,7 +594,7 @@ export default function AdminTicketList() {
         setIsLoading(false);
       }
     },
-    [refetchAllData, getToken, handleSendTicketNotifications]
+    [refetchAllData, getToken]
   );
 
   const clearFilters = useCallback(() => {

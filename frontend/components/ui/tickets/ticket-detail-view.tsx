@@ -61,7 +61,6 @@ import type {
   TicketStatus,
   Urgency,
   TicketHistory,
-  UsersToNotify,
   UserRole,
   Survey,
 } from "@/lib/types";
@@ -76,10 +75,8 @@ import {
   urgencyOptions,
 } from "@/lib/utils";
 import { API_BASE } from "@/lib/api/utils";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 import { useFetchTicketHistory } from "@/hooks/use-history";
 import { useFetchTicketSurveyResults } from "@/hooks/use-tickets";
-import type { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -211,124 +208,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
 
   const canSurveyBeGenerated = ticket?.creator?.role === "AGENT";
 
-  const handleSendTicketNotifications = async ({
-    ticket,
-    userToNotify,
-    changedDetails,
-  }: {
-    ticket: Ticket & { previousAssignment: string | null };
-    userToNotify: UsersToNotify;
-    changedDetails: ActivityUpdates[] | null;
-  }) => {
-    const title = ticket?.title ?? "";
-
-    const notifyAssigneeChanges =
-      userToNotify.updateType === "added" ||
-      userToNotify.updateType === "removed";
-
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifyAssigneeChanges
-          ? "Ticket Assignment"
-          : "Ticket Updated",
-        trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          updatedTicket:
-            !notifyAssigneeChanges && changedDetails
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  createdOn: ticket?.createdAt,
-                  updatedOn: ticket?.updatedAt,
-                  editorName: currentUser?.name ?? "Unknown",
-                  editorId: currentUser?.id ?? "",
-                  changedDetails: changedDetails,
-                  userName: userToNotify?.name ?? "",
-                }
-              : undefined,
-          ticketAssignment: notifyAssigneeChanges
-            ? {
-                ticketNumber: ticket.id,
-                ticketTitle: title,
-                createdOn: ticket?.createdAt,
-                updatedOn: ticket?.createdAt,
-                editorName: currentUser?.name ?? "Unknown",
-                editorId: currentUser?.id ?? "",
-                updateType: userToNotify.updateType,
-                currentAssignment: ticket?.assignee?.name ?? "Unassigned",
-                previousAssignment: ticket.previousAssignment,
-                userName: userToNotify?.name ?? "",
-              }
-            : undefined,
-        },
-      });
-    } catch (error) {
-      console.error("Failed to send ticket notification:", error);
-    }
-  };
-
-  const handleSendTicketClosedNotifications = async ({
-    userToNotify,
-    ticket,
-  }: {
-    userToNotify: UsersToNotify;
-    ticket: Ticket;
-  }) => {
-    const notifyCreator = userToNotify.updateType === "unchanged";
-    const notifySurvey =
-      userToNotify?.updateType === "ticketSurvey" ||
-      userToNotify?.updateType === "ticketSurveyResults";
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          ticketSurvey:
-            notifySurvey && !notifyCreator
-              ? {
-                  ticketNumber: ticketId,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  surveyorName: userToNotify?.name ?? "No name provided",
-                }
-              : undefined,
-          updatedTicket:
-            !notifySurvey && notifyCreator
-              ? {
-                  ticketNumber: ticketId,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  createdOn: ticket?.createdAt,
-                  updatedOn: ticket?.updatedAt,
-                  editorName: userToNotify?.name ?? "Unknown",
-                  editorId: userToNotify?.id ?? "",
-                  changedDetails: [
-                    {
-                      label: "Status",
-                      newValue: "RESOLVED",
-                      originalValue: "ASSIGNED",
-                    },
-                  ],
-                  userName: userToNotify?.name ?? "",
-                }
-              : undefined,
-        },
-      });
-    } catch (error) {
-      console.error("Failed to send ticket closed notification:", error);
-    }
-  };
-
   const handleCloseTicket = async () => {
     setIsLoading(true);
     if (!ticket || !ticketId) {
@@ -355,18 +234,9 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       }
       const data = await response.json();
 
-      if (!data || !data?.usersToNotify || !data?.usersToNotify.length) {
+      if (!data) {
         throw new Error("No data returned from close ticket");
       }
-      await Promise.all(
-        data?.usersToNotify.map(
-          async (user: UsersToNotify) =>
-            await handleSendTicketClosedNotifications({
-              userToNotify: user,
-              ticket: ticket,
-            })
-        )
-      );
 
       toast.success("Ticket closed successfully.");
     } catch (error) {
@@ -394,7 +264,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
+      await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -403,43 +273,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         cache: "no-store",
         body: JSON.stringify({ [field]: value }),
       });
-      const data = await res.json();
-      if (
-        data &&
-        data?.ticket &&
-        data?.usersToNotify &&
-        data?.usersToNotify?.length > 0
-      ) {
-        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-          (user: UsersToNotify) =>
-            user.updateType === "added" || user.updateType === "removed"
-        );
-
-        let previousAssignment = null;
-
-        if (assignmentChanges && assignmentChanges?.length > 0) {
-          const removedUser: UsersToNotify = data?.usersToNotify.find(
-            (user: UsersToNotify) => user.updateType === "removed"
-          );
-
-          if (removedUser && removedUser?.name) {
-            previousAssignment = removedUser.name;
-          } else if (!removedUser || !removedUser?.name) {
-            previousAssignment = "Unassigned";
-          }
-        }
-        await Promise.all(
-          data.usersToNotify.map(async (user: UsersToNotify) => {
-            await handleSendTicketNotifications({
-              ticket: { ...data.ticket, previousAssignment } as Ticket & {
-                previousAssignment: string | null;
-              },
-              userToNotify: user,
-              changedDetails: data?.changedDetails ?? [],
-            });
-          })
-        );
-      }
     } catch {
       setTicket(prev);
     } finally {
@@ -477,7 +310,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      const res = await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
+      await fetch(`${API_BASE}/tickets/${ticket.id}/assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -486,44 +319,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         cache: "no-store",
         body: JSON.stringify({ assigneeId: newAssigneeId }),
       });
-      const data = await res.json();
-
-      if (
-        data &&
-        data?.ticket &&
-        data?.usersToNotify &&
-        data?.usersToNotify?.length > 0
-      ) {
-        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-          (user: UsersToNotify) =>
-            user.updateType === "added" || user.updateType === "removed"
-        );
-
-        let previousAssignment = null;
-
-        if (assignmentChanges && assignmentChanges?.length > 0) {
-          const removedUser: UsersToNotify = data?.usersToNotify.find(
-            (user: UsersToNotify) => user.updateType === "removed"
-          );
-
-          if (removedUser && removedUser?.name) {
-            previousAssignment = removedUser.name;
-          } else if (!removedUser || !removedUser?.name) {
-            previousAssignment = "Unassigned";
-          }
-        }
-        await Promise.all(
-          data.usersToNotify.map(async (user: UsersToNotify) => {
-            await handleSendTicketNotifications({
-              ticket: { ...data.ticket, previousAssignment } as Ticket & {
-                previousAssignment: string | null;
-              },
-              userToNotify: user,
-              changedDetails: null,
-            });
-          })
-        );
-      }
     } catch {
       toast.error("Error: Failed to update ticket");
       setTicket(prev);
@@ -563,7 +358,7 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      const res = await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
+      await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -572,26 +367,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
         cache: "no-store",
         body: JSON.stringify({ creatorId: newCreatorId }),
       });
-      const data = await res.json();
-
-      if (
-        data &&
-        data?.ticket &&
-        data?.usersToNotify &&
-        data?.usersToNotify?.length > 0
-      ) {
-        await Promise.all(
-          data.usersToNotify.map(async (user: UsersToNotify) => {
-            await handleSendTicketNotifications({
-              ticket: { ...data.ticket, previousAssignment: null } as Ticket & {
-                previousAssignment: string | null;
-              },
-              userToNotify: user,
-              changedDetails: data?.changedDetails ?? [],
-            });
-          })
-        );
-      }
       toast.success("Creator updated successfully");
     } catch {
       toast.error("Error: Failed to update ticket creator");
@@ -624,44 +399,6 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to reopen ticket");
-      }
-      const data = await response.json();
-      if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
-        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-          (user: UsersToNotify) =>
-            user.updateType === "added" || user.updateType === "removed"
-        );
-
-        let previousAssignment = null;
-
-        if (assignmentChanges && assignmentChanges?.length > 0) {
-          const removedUser: UsersToNotify = data?.usersToNotify.find(
-            (user: UsersToNotify) => user.updateType === "removed"
-          );
-
-          if (removedUser && removedUser?.name) {
-            previousAssignment = removedUser.name;
-          } else if (!removedUser || !removedUser?.name) {
-            previousAssignment = "Unassigned";
-          }
-        }
-        await Promise.all(
-          data.usersToNotify.map(async (user: UsersToNotify) =>
-            handleSendTicketNotifications({
-              ticket: { ...ticket, previousAssignment } as Ticket & {
-                previousAssignment: string | null;
-              },
-              userToNotify: user,
-              changedDetails: [
-                {
-                  label: "Ticket Reopened",
-                  originalValue: "RESOLVED",
-                  newValue: "IN_PROGRESS",
-                },
-              ],
-            })
-          )
-        );
       }
     } catch (error) {
       toast.error("Error: Failed to reopen ticket");

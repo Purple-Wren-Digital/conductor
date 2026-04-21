@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import type {
   FormErrors,
-  ConductorUser,
   Ticket,
   TicketTemplate,
   Urgency,
-  UsersToNotify,
 } from "@/lib/types";
 import {
   BaseTicketForm,
@@ -17,7 +15,6 @@ import {
 import { API_BASE } from "@/lib/api/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 
 type CreateTicketFormProps = {
   isOpen: boolean;
@@ -129,66 +126,6 @@ export function CreateTicketForm({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSendTicketNotifications = async ({
-    ticket,
-    userToNotify,
-  }: {
-    ticket: Ticket;
-    userToNotify: UsersToNotify;
-  }) => {
-    const title = ticket?.title ?? "";
-    const dueDate = ticket?.dueDate ? ticket.dueDate : undefined;
-    const creator = ticket?.creator as ConductorUser;
-    const notifyCreator = userToNotify.updateType === "created";
-    const notifyAssignee = userToNotify.updateType === "added";
-    try {
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
-        trigger: notifyAssignee ? "Ticket Assignment" : "Ticket Created",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          createdTicket: notifyCreator
-            ? {
-                ticketNumber: ticket.id,
-                ticketTitle: title,
-                creatorName: creator?.name ?? "Unknown",
-                creatorId: creator?.id,
-                createdOn: ticket?.createdAt,
-                dueDate: dueDate,
-                assigneeId: ticket?.assigneeId ? ticket.assigneeId : undefined,
-                assigneeName:
-                  ticket?.assignee && ticket?.assignee?.name
-                    ? ticket.assignee.name
-                    : undefined,
-                userName: userToNotify?.name,
-              }
-            : undefined,
-          ticketAssignment: notifyAssignee
-            ? {
-                ticketNumber: ticket.id,
-                ticketTitle: title,
-                createdOn: ticket?.createdAt,
-                updatedOn: ticket?.createdAt,
-                editorName: creator?.name ?? "Unknown",
-                editorId: creator?.id,
-                updateType: userToNotify.updateType,
-                currentAssignment: userToNotify?.name,
-                previousAssignment: null,
-                userName: userToNotify?.name,
-              }
-            : undefined,
-        },
-      });
-    } catch (error) {
-      console.error("CreateTicketForm - Notifications - Response:", error);
-    }
-  };
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -215,21 +152,6 @@ export function CreateTicketForm({
       });
       if (!res.ok) throw new Error("Failed to create ticket");
       const data = await res.json();
-      if (data && data?.ticket) {
-        const ticket: Ticket = data.ticket;
-        const usersToNotify: UsersToNotify[] = data?.usersToNotify;
-
-        if (usersToNotify && usersToNotify?.length > 0) {
-          await Promise.all(
-            usersToNotify.map(async (user: UsersToNotify) => {
-              await handleSendTicketNotifications({
-                ticket: ticket,
-                userToNotify: user,
-              });
-            })
-          );
-        }
-      }
       onSuccess(data?.ticket ?? null);
       onClose();
     } catch (err) {

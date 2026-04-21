@@ -52,7 +52,6 @@ import {
   statusOptions,
   urgencyOptions,
 } from "@/lib/utils";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 import {
   ArrowDown,
   ArrowDownUp,
@@ -77,10 +76,8 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
-  UsersToNotify,
   UserRole,
 } from "@/lib/types";
-import { ActivityUpdates } from "@/packages/transactional/emails/types";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToolTip } from "@/components/ui/tooltip/tooltip";
@@ -427,68 +424,6 @@ export default function AgentTicketList() {
     setIsEditOpen(true);
   };
 
-  const handleSendTicketClosedNotifications = useCallback(
-    async ({
-      userToNotify,
-      ticket,
-    }: {
-      userToNotify: UsersToNotify;
-      ticket: { id: string; title: string; createdAt: Date };
-    }) => {
-      const notifyCreator = userToNotify.updateType === "unchanged";
-      const notifySurvey =
-        userToNotify?.updateType === "ticketSurvey" ||
-        userToNotify?.updateType === "ticketSurveyResults";
-      try {
-        const response = await createAndSendNotification({
-          getToken: getToken,
-          templateName: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-          trigger: notifySurvey ? "Ticket Survey" : "Ticket Updated",
-          receivingUser: {
-            id: userToNotify?.id,
-            name: userToNotify?.name,
-            email: userToNotify?.email,
-          },
-          data: {
-            ticketSurvey:
-              notifySurvey && !notifyCreator
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    surveyorName: userToNotify?.name ?? "No name provided",
-                  }
-                : undefined,
-            updatedTicket:
-              !notifySurvey && notifyCreator
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    createdOn: ticket?.createdAt,
-                    updatedOn: new Date(),
-                    editorName: userToNotify?.name ?? "Unknown",
-                    editorId: userToNotify?.id ?? "",
-                    changedDetails: [
-                      {
-                        label: "Status",
-                        newValue: "RESOLVED",
-                        originalValue: "ASSIGNED",
-                      },
-                    ],
-                    userName: userToNotify?.name ?? "",
-                  }
-                : undefined,
-          },
-        });
-      } catch (error) {
-        console.error(
-          "TicketListAgent - Unable to generate Survey notifications",
-          error
-        );
-      }
-    },
-    [getToken]
-  );
-
   const closeTicketMutation = useMutation({
     mutationFn: async (ticket: Ticket) => {
       setIsLoading(true);
@@ -510,29 +445,10 @@ export default function AgentTicketList() {
       });
       if (!res.ok) throw new Error("Failed to close ticket");
       const data = await res.json();
-      if (!data || !data?.usersToNotify || !data?.usersToNotify.length)
-        throw new Error("No data returned from close ticket");
+      if (!data) throw new Error("No data returned from close ticket");
       return { ...data, ticket: ticket };
     },
-    onSuccess: async (data: {
-      usersToNotify: UsersToNotify[];
-      changedDetails: ActivityUpdates;
-      ticket: Ticket;
-    }) => {
-      const { usersToNotify, changedDetails, ticket } = data;
-      await Promise.all(
-        usersToNotify.map((user) =>
-          handleSendTicketClosedNotifications({
-            ticket: {
-              id: ticket.id,
-              title: ticket?.title ?? "No title provided",
-              createdAt: ticket.createdAt,
-            },
-            userToNotify: user,
-          })
-        )
-      );
-
+    onSuccess: async () => {
       toast.success("Ticket closed successfully.");
     },
     onError: (error) => {
@@ -551,73 +467,6 @@ export default function AgentTicketList() {
       closeTicketMutation.mutate(ticket);
     },
     [closeTicketMutation]
-  );
-
-  const handleSendTicketNotifications = useCallback(
-    async ({
-      ticket,
-      userToNotify,
-      changedDetails,
-    }: {
-      ticket: Ticket & { previousAssignment: string | null };
-      userToNotify: UsersToNotify;
-      changedDetails: ActivityUpdates[] | null;
-    }) => {
-      const title = ticket?.title ?? "";
-
-      const notifyAssigneeChanges =
-        userToNotify.updateType === "added" ||
-        userToNotify.updateType === "removed";
-
-      try {
-        const response = await createAndSendNotification({
-          getToken: getToken,
-          templateName: notifyAssigneeChanges
-            ? "Ticket Assignment"
-            : "Ticket Updated",
-          trigger: notifyAssigneeChanges
-            ? "Ticket Assignment"
-            : "Ticket Updated",
-          receivingUser: {
-            id: userToNotify?.id,
-            name: userToNotify?.name,
-            email: userToNotify?.email,
-          },
-          data: {
-            updatedTicket:
-              !notifyAssigneeChanges && changedDetails
-                ? {
-                    ticketNumber: ticket.id,
-                    ticketTitle: ticket?.title ?? "No title provided",
-                    createdOn: ticket?.createdAt,
-                    updatedOn: ticket?.updatedAt,
-                    editorName: currentUser?.name ?? "Unknown",
-                    editorId: currentUser?.id ?? "",
-                    changedDetails: changedDetails,
-                    userName: userToNotify?.name ?? "",
-                  }
-                : undefined,
-            ticketAssignment: notifyAssigneeChanges
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: title,
-                  createdOn: ticket?.createdAt,
-                  updatedOn: ticket?.updatedAt,
-                  editorName: currentUser?.name ?? "Unknown",
-                  editorId: currentUser?.id ?? "",
-                  updateType: userToNotify.updateType,
-                  currentAssignment: ticket?.assignee?.name ?? "Unassigned",
-                  previousAssignment: ticket?.previousAssignment,
-                  userName: userToNotify?.name ?? "",
-                }
-              : undefined,
-          },
-        });
-      } catch {
-        // Notification failed silently
-      }
-    },
-    [getToken, currentUser]
   );
 
   const handleReopenTicket = useCallback(
@@ -646,44 +495,6 @@ export default function AgentTicketList() {
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to reopen ticket");
         }
-        const data = await response.json();
-        if (data && data?.usersToNotify && data?.usersToNotify.length > 0) {
-          const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-            (user: UsersToNotify) =>
-              user.updateType === "added" || user.updateType === "removed"
-          );
-
-          let previousAssignment = null;
-
-          if (assignmentChanges && assignmentChanges?.length > 0) {
-            const removedUser: UsersToNotify = data?.usersToNotify.find(
-              (user: UsersToNotify) => user.updateType === "removed"
-            );
-
-            if (removedUser && removedUser?.name) {
-              previousAssignment = removedUser.name;
-            } else if (!removedUser || !removedUser?.name) {
-              previousAssignment = "Unassigned";
-            }
-          }
-          await Promise.all(
-            data.usersToNotify.map(async (user: UsersToNotify) =>
-              handleSendTicketNotifications({
-                ticket: { ...ticket, previousAssignment } as Ticket & {
-                  previousAssignment: string | null;
-                },
-                userToNotify: user,
-                changedDetails: [
-                  {
-                    label: "Ticket Reopened",
-                    originalValue: "RESOLVED",
-                    newValue: "IN_PROGRESS",
-                  },
-                ],
-              })
-            )
-          );
-        }
       } catch (error) {
         toast.error("Error: Failed to reopen ticket");
         console.error("Reopen ticket error:", error);
@@ -692,7 +503,7 @@ export default function AgentTicketList() {
         setIsLoading(false);
       }
     },
-    [getToken, handleSendTicketNotifications, agentTicketsQueryInvalidator]
+    [getToken, agentTicketsQueryInvalidator]
   );
 
   const stats = useMemo(() => {

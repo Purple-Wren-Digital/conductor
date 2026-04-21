@@ -7,14 +7,11 @@ import type {
   Ticket,
   TicketTemplate,
   Urgency,
-  UsersToNotify,
 } from "@/lib/types";
 import { API_BASE } from "@/lib/api/utils";
 import { BaseTicketForm, type TicketFormValues } from "./base-ticket-form";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useStore } from "@/context/store-provider";
-import { ActivityUpdates } from "@/packages/transactional/emails/types";
-import { createAndSendNotification } from "@/lib/utils/notifications";
 import { toast } from "sonner";
 
 type EditTicketFormProps = {
@@ -151,75 +148,6 @@ export function EditTicketForm({
     return Object.keys(next).length === 0;
   };
 
-  const handleSendTicketNotifications = async ({
-    ticket,
-    userToNotify,
-    changedDetails,
-  }: {
-    ticket: Ticket & { previousAssignment: string | null };
-    userToNotify: UsersToNotify;
-    changedDetails: ActivityUpdates[] | null;
-  }) => {
-    const title = ticket?.title ?? "";
-    const notifySomeone = userToNotify.updateType === "unchanged";
-    const notifyAssigneeChanges =
-      userToNotify.updateType === "added" ||
-      userToNotify.updateType === "removed";
-
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Failed to get authentication token");
-      }
-      const response = await createAndSendNotification({
-        getToken: getToken,
-        templateName: notifyAssigneeChanges
-          ? "Ticket Assignment"
-          : "Ticket Updated",
-        trigger: notifyAssigneeChanges ? "Ticket Assignment" : "Ticket Updated",
-        receivingUser: {
-          id: userToNotify?.id,
-          name: userToNotify?.name,
-          email: userToNotify?.email,
-        },
-        data: {
-          updatedTicket:
-            notifySomeone && changedDetails
-              ? {
-                  ticketNumber: ticket.id,
-                  ticketTitle: ticket?.title ?? "No title provided",
-                  createdOn: ticket?.createdAt,
-                  updatedOn: ticket?.updatedAt,
-                  editorName: currentUser?.name ?? "Unknown",
-                  editorId: currentUser?.id ?? "",
-                  changedDetails: changedDetails,
-                  userName: userToNotify?.name,
-                }
-              : undefined,
-          ticketAssignment: notifyAssigneeChanges
-            ? {
-                ticketNumber: ticket.id,
-                ticketTitle: title,
-                createdOn: ticket?.createdAt,
-                updatedOn: ticket?.createdAt,
-                editorName: currentUser?.name ?? "Unknown",
-                editorId: currentUser?.id ?? "",
-                updateType: userToNotify.updateType,
-                currentAssignment: ticket?.assignee?.name ?? "Unassigned",
-                previousAssignment: ticket?.previousAssignment,
-                userName: userToNotify?.name,
-              }
-            : undefined,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "TicketDetailView - Unable to generate notifications",
-        error
-      );
-    }
-  };
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -272,44 +200,6 @@ export function EditTicketForm({
         throw new Error(`Failed to edit ticket (${res.status}): ${text}`);
       }
       const data = await res.json();
-      if (
-        data &&
-        data?.ticket &&
-        data?.usersToNotify &&
-        data?.usersToNotify?.length > 0
-      ) {
-        const assignmentChanges: UsersToNotify[] = data?.usersToNotify.map(
-          (user: UsersToNotify) =>
-            user.updateType === "added" || user.updateType === "removed"
-        );
-
-        let previousAssignment = null;
-
-        if (assignmentChanges && assignmentChanges?.length > 0) {
-          const removedUser: UsersToNotify = data?.usersToNotify.find(
-            (user: UsersToNotify) => user.updateType === "removed"
-          );
-
-          if (removedUser && removedUser?.name) {
-            previousAssignment = removedUser.name;
-          } else if (!removedUser || !removedUser?.name) {
-            previousAssignment = "Unassigned";
-          }
-        }
-
-        await Promise.all(
-          data.usersToNotify.map(async (user: UsersToNotify) => {
-            await handleSendTicketNotifications({
-              ticket: { ...data.ticket, previousAssignment } as Ticket & {
-                previousAssignment: string | null;
-              },
-              userToNotify: user,
-              changedDetails: data?.changedDetails ?? [],
-            });
-          })
-        );
-      }
-
       onSuccess(data ? data?.ticket : null);
       onClose();
     } catch (err) {
