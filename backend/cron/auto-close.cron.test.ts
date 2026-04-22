@@ -67,8 +67,7 @@ vi.mock("../notifications/channels/email/email", () => ({
 import { checkAutoClose } from "./auto-close.cron";
 import * as emailModule from "../notifications/channels/email/email";
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Auto-Close Cron Job Tests", () => {
+describe("Auto-Close Cron Job Tests", () => {
   const mockedSendEmail = vi.mocked(emailModule.sendEmailNotification);
 
   beforeEach(() => {

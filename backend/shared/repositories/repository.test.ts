@@ -67,8 +67,7 @@ beforeEach(() => {
 });
 
 // ==================== USER REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("User Repository", () => {
+describe("User Repository", () => {
   const mockUserRow = {
     id: "user-123",
     email: "test@example.com",
@@ -160,8 +159,7 @@ describe.skip("User Repository", () => {
 });
 
 // ==================== TICKET REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Ticket Repository", () => {
+describe("Ticket Repository", () => {
   const mockTicketRow = {
     id: "ticket-123",
     title: "Test Ticket",
@@ -242,8 +240,7 @@ describe.skip("Ticket Repository", () => {
 });
 
 // ==================== COMMENT REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Comment Repository", () => {
+describe("Comment Repository", () => {
   const mockCommentRow = {
     id: "comment-123",
     content: "Test comment",
@@ -322,8 +319,7 @@ describe.skip("Comment Repository", () => {
 });
 
 // ==================== NOTIFICATION REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Notification Repository", () => {
+describe("Notification Repository", () => {
   const mockNotificationRow = {
     id: "notif-123",
     user_id: "user-123",
@@ -425,8 +421,7 @@ describe.skip("Notification Repository", () => {
 });
 
 // ==================== MARKET CENTER REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Market Center Repository", () => {
+describe("Market Center Repository", () => {
   const mockMarketCenterRow = {
     id: "mc-123",
     name: "Test Market Center",
@@ -558,8 +553,7 @@ describe.skip("Market Center Repository", () => {
 });
 
 // ==================== SURVEY REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Survey Repository", () => {
+describe("Survey Repository", () => {
   const mockSurveyRow = {
     id: "survey-123",
     ticket_id: "ticket-123",
@@ -667,8 +661,7 @@ describe.skip("Survey Repository", () => {
 });
 
 // ==================== TODO REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Todo Repository", () => {
+describe("Todo Repository", () => {
   const mockTodoRow = {
     id: "todo-123",
     title: "Complete task",
@@ -772,8 +765,7 @@ describe.skip("Todo Repository", () => {
 });
 
 // ==================== SUBSCRIPTION REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Subscription Repository", () => {
+describe("Subscription Repository", () => {
   const mockSubscriptionRow = {
     id: "sub-123",
     stripe_subscription_id: "stripe-sub-123",
@@ -1093,8 +1085,7 @@ describe.skip("Subscription Repository", () => {
 });
 
 // ==================== SETTINGS AUDIT REPOSITORY TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Settings Audit Repository", () => {
+describe("Settings Audit Repository", () => {
   const mockAuditRow = {
     id: "audit-123",
     market_center_id: "mc-123",
@@ -1211,8 +1202,7 @@ describe.skip("Settings Audit Repository", () => {
 });
 
 // ==================== DATABASE UTILITIES TESTS ====================
-// TODO: Re-enable once test hang is resolved
-describe.skip("Database Utilities", () => {
+describe("Database Utilities", () => {
   it("should properly convert timestamps", async () => {
     const { fromTimestamp, toTimestamp } = await import("../../ticket/db");
 

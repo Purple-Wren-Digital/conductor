@@ -142,8 +142,7 @@ const ticket = (overrides: Partial<TicketRow>) => ({
   ...overrides,
 });
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Reports", () => {
+describe("Reports", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserContext).mockResolvedValue(mockUserContext);
@@ -677,8 +676,7 @@ describe.skip("Reports", () => {
     });
   });
 });
-// TODO: Re-enable once test hang is resolved
-describe.skip("ticketReviews", () => {
+describe("ticketReviews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();

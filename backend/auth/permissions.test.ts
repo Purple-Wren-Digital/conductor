@@ -129,8 +129,7 @@ function createTicketWithRelations(overrides: any = {}) {
   };
 }
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Permissions", () => {
+describe("Permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

@@ -171,8 +171,7 @@ function createMarketCenter(overrides: any = {}) {
   };
 }
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Invitation System", () => {
+describe("Invitation System", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

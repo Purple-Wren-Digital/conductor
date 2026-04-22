@@ -49,8 +49,7 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Category Auto-Routing Integration", () => {
+describe("Category Auto-Routing Integration", () => {
   it("should assign ticket to category default assignee when available", async () => {
     // Mock category lookup
     mockDb.queryRow
@@ -128,8 +127,7 @@ describe.skip("Category Auto-Routing Integration", () => {
   });
 });
 
-// TODO: Re-enable once test hang is resolved
-describe.skip("Category Management API Integration", () => {
+describe("Category Management API Integration", () => {
   it("should create category and immediately be available for auto-routing", async () => {
     // Mock category lookup with default assignee
     mockDb.queryRow

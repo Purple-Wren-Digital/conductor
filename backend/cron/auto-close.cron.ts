@@ -39,13 +39,15 @@ interface AwaitingTicketRow {
 /**
  * Calculate business days between two dates (excludes weekends)
  */
-function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
+function getBusinessDaysBetween(start: Date, end: Date): number {
   let count = 0;
+  const current = new Date(start);
+  current.setHours(0, 0, 0, 0);
+  const endMidnight = new Date(end);
+  endMidnight.setHours(0, 0, 0, 0);
 
-  while (startDate.setHours(0, 0, 0, 0) < endDate.setHours(0, 0, 0, 0)) {
-    const current = new Date(startDate);
+  while (current < endMidnight) {
     const dayOfWeek = current.getDay();
-    // Skip Saturday (6) and Sunday (0)
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       count++;
     }
@@ -104,10 +106,12 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
 
   try {
   const now = new Date();
+  log.info("[auto-close] starting", { time: now.toISOString() });
 
   // Get all tickets in AWAITING_RESPONSE status
   const awaitingTickets = await findAwaitingResponseTickets();
   result.ticketsChecked = awaitingTickets.length;
+  log.info("[auto-close] found awaiting tickets", { count: awaitingTickets.length });
 
   // Cache market center settings to avoid repeated lookups
   const marketCenterSettingsCache: Map<
@@ -250,6 +254,11 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
           });
         }
 
+        log.info("[auto-close] closed ticket", {
+          ticketId: ticket.id,
+          businessDays,
+          threshold: autoCloseConfig.days,
+        });
         result.ticketsClosed++;
       }
     } catch (error) {
