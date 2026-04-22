@@ -14,14 +14,38 @@ process.on("uncaughtException", (error) => {
   });
 });
 
+// DB keepalive — prevents the Encore Rust proxy's connections to RDS from going
+// stale due to AWS NAT Gateway idle TCP timeout (~350s).
+// Runs every 4 minutes (well under the 350s threshold).
+let consecutiveHeartbeatFailures = 0;
+
+const dbHeartbeat = setInterval(async () => {
+  const start = Date.now();
+  try {
+    await db.queryRow`SELECT 1 as heartbeat`;
+    const ms = Date.now() - start;
+    consecutiveHeartbeatFailures = 0;
+    if (ms > 1000) {
+      log.warn("[db-heartbeat] slow", { durationMs: ms });
+    }
+  } catch (err) {
+    consecutiveHeartbeatFailures++;
+    log.error("[db-heartbeat] failed", {
+      error: err instanceof Error ? err.message : String(err),
+      consecutiveFailures: consecutiveHeartbeatFailures,
+    });
+  }
+}, 4 * 60 * 1000); // 4 minutes
+dbHeartbeat.unref();
+
 // This runs when the service starts
 async function initialize() {
-  console.log("🚀 Initializing Conductor backend...");
+  console.log("Initializing Conductor backend...");
 
   try {
     // Test database connection with a simple query
     await db.queryRow`SELECT 1 as test`;
-    console.log("✅ Database connected");
+    console.log("Database connected");
 
     // Check if database has data
     const userCountResult = await db.queryRow<{ count: number }>`
@@ -34,26 +58,12 @@ async function initialize() {
     `;
     const ticketCount = ticketCountResult?.count ?? 0;
 
-    console.log(`📊 Database status: ${userCount} users, ${ticketCount} tickets`);
+    log.info("Database status", { userCount, ticketCount });
+    log.info("DB heartbeat active — interval 4m");
 
-    if (userCount === 0) {
-      console.log("⚠️  No users found. Run /seed endpoint after startup to populate initial data.");
-    }
-
-    // Log environment info
-    const env = process.env.NODE_ENV || 'development';
-    console.log(`🌍 Environment: ${env}`);
-
-    if (env === 'production') {
-      console.log("📌 Production Reminders:");
-      console.log("   1. Update Resend webhook URL to production endpoint");
-      console.log("   2. Verify DNS records are pointing correctly");
-      console.log("   3. Check all secrets are configured");
-    }
-
-    console.log("✅ Initialization complete");
+    console.log("Initialization complete");
   } catch (error) {
-    console.error("❌ Initialization failed:", error);
+    console.error("Initialization failed:", error);
     // Don't crash the app, just log the error
   }
 }

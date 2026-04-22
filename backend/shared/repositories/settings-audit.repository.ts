@@ -80,11 +80,8 @@ export const settingsAuditRepository = {
       LIMIT $${paramIndex++} OFFSET $${paramIndex}
     `;
 
-    const rows = await db.rawQuery<SettingsAuditLogRow>(sql, ...params);
-    const logs = [];
-    for await (const row of rows) {
-      logs.push(rowToSettingsAuditLog(row));
-    }
+    const rows = await db.rawQueryAll<SettingsAuditLogRow>(sql, ...params);
+    const logs = rows.map(rowToSettingsAuditLog);
 
     return { logs, total };
   },

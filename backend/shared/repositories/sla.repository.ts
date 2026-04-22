@@ -85,25 +85,14 @@ export const slaRepository = {
     const rows = await db.queryAll<SlaPolicyRow>`
       SELECT * FROM sla_policies ORDER BY urgency
     `;
-    const allRows: SlaPolicyRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-
-    return allRows.map(rowToSlaPolicy);
+    return rows.map(rowToSlaPolicy);
   },
 
   async findActivePolicies(): Promise<SlaPolicy[] | null> {
     const rows = await db.queryAll<SlaPolicyRow>`
       SELECT * FROM sla_policies WHERE is_active = true ORDER BY urgency
     `;
-    const allRows: SlaPolicyRow[] = [];
-    if (!rows) return null;
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-
-    return allRows && allRows.length > 0 ? allRows.map(rowToSlaPolicy) : null;
+    return rows.length > 0 ? rows.map(rowToSlaPolicy) : null;
   },
 
   async findPolicyByUrgency(urgency: Urgency): Promise<SlaPolicy | null> {
@@ -176,14 +165,10 @@ export const slaRepository = {
   },
 
   async findEventsByTicketId(ticketId: string): Promise<SlaEvent[]> {
-    const rows = await db.query<SlaEventRow>`
+    const rows = await db.queryAll<SlaEventRow>`
       SELECT * FROM sla_events WHERE ticket_id = ${ticketId} ORDER BY created_at DESC
     `;
-    const allRows: SlaEventRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows.map(rowToSlaEvent);
+    return rows.map(rowToSlaEvent);
   },
 
   async hasEvent(ticketId: string, eventType: SlaEventType): Promise<boolean> {
@@ -305,7 +290,7 @@ export const slaRepository = {
 
   // Find tickets needing 50% response warning
   async findTicketsNeedingWarning50(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -320,16 +305,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_response_due_at - created_at) * 0.5
     `;
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // Find tickets needing 75% response warning
   async findTicketsNeedingWarning75(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -344,16 +324,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_response_due_at - created_at) * 0.75
     `;
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // Find tickets that have breached response SLA
   async findTicketsBreachingSla(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -367,12 +342,6 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() > sla_response_due_at
     `;
-
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // ==================
@@ -381,7 +350,7 @@ export const slaRepository = {
 
   // Find tickets needing 50% resolution warning
   async findTicketsNeedingResolutionWarning50(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -396,16 +365,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_resolution_due_at - created_at) * 0.5
     `;
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // Find tickets needing 75% resolution warning
   async findTicketsNeedingResolutionWarning75(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -420,16 +384,11 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() >= created_at + (sla_resolution_due_at - created_at) * 0.75
     `;
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // Find tickets that have breached resolution SLA
   async findTicketsBreachingResolutionSla(): Promise<TicketSlaRow[]> {
-    const rows = await db.query<TicketSlaRow>`
+    return db.queryAll<TicketSlaRow>`
       SELECT id, title, urgency, status, creator_id, assignee_id,
              sla_response_due_at, first_response_at, sla_breached,
              sla_warning_50_sent, sla_warning_75_sent,
@@ -443,12 +402,6 @@ export const slaRepository = {
         AND status NOT IN ('RESOLVED', 'DRAFT')
         AND NOW() > sla_resolution_due_at
     `;
-
-    const allRows: TicketSlaRow[] = [];
-    for await (const row of rows) {
-      allRows.push(row);
-    }
-    return allRows;
   },
 
   // ==================
