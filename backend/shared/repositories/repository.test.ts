@@ -7,6 +7,14 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+// Mock modules that transitively import Encore native runtime
+vi.mock("../../settings", () => ({
+  defaultAutoCloseSettings: { enabled: true, awaitingResponseDays: 2 },
+}));
+vi.mock("../../notifications/templates/utils", () => ({
+  notificationTemplatesDefault: {},
+}));
+
 // Mock the database module - this is hoisted to the top
 vi.mock("../../ticket/db", () => ({
   db: {
@@ -1109,21 +1117,7 @@ describe("Settings Audit Repository", () => {
 
   it("should find audit logs by market center with pagination", async () => {
     mockedDb.rawQueryRow.mockResolvedValueOnce({ count: 25 });
-
-    // // Create async iterator mock
-    // const mockIterator = {
-    //   async *[Symbol.asyncIterator]() {
-    //     yield mockAuditRow;
-    //   },
-    // };
-    // mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
-
-    // Create async generator function
-    async function* mockGenerator() {
-      yield mockAuditRow;
-    }
-
-    mockedDb.rawQuery.mockReturnValueOnce(mockGenerator());
+    mockedDb.rawQueryAll.mockResolvedValueOnce([mockAuditRow]);
 
     const result = await settingsAuditRepository.findByMarketCenterId(
       "mc-123",
@@ -1139,19 +1133,7 @@ describe("Settings Audit Repository", () => {
 
   it("should filter audit logs by section", async () => {
     mockedDb.rawQueryRow.mockResolvedValueOnce({ count: 5 });
-
-    // const mockIterator = {
-    //   async *[Symbol.asyncIterator]() {
-    //     yield mockAuditRow;
-    //   },
-    // };
-    // mockedDb.rawQuery.mockReturnValueOnce(mockIterator);
-
-    async function* mockGenerator() {
-      yield mockAuditRow;
-    }
-
-    mockedDb.rawQuery.mockReturnValueOnce(mockGenerator());
+    mockedDb.rawQueryAll.mockResolvedValueOnce([mockAuditRow]);
 
     const result = await settingsAuditRepository.findByMarketCenterId(
       "mc-123",

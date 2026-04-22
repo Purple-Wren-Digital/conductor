@@ -6,6 +6,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * Instead, broadcastCommentEvent() is called by the Pub/Sub subscription handler.
  */
 
+// Mock Encore native modules to prevent transitive import chains
+vi.mock("encore.dev/log", () => ({
+  default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+}));
+
 const {
   mockGetUserContext,
   mockTicketRepository,

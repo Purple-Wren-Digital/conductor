@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock Encore native modules to prevent transitive import chains
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: { publish: vi.fn() },
+}));
+
 // Mock hoisted values
 const {
   mockDb,

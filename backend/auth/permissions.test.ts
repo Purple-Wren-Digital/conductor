@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock Encore native modules to prevent transitive import chain:
+// permissions → subscription-check → subscription/subscription → encore.dev/config
+vi.mock("../subscription/subscription", () => ({
+  checkSubscriptionLimit: vi.fn(),
+}));
+
 // Mock hoisted values
 const { mockTicketRepository, mockSubscriptionRepository, mockMarketCenterRepository } = vi.hoisted(() => ({
   mockTicketRepository: {

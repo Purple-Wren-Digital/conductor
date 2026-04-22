@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock Encore native modules to prevent transitive import chains
+vi.mock("encore.dev/config", () => ({
+  secret: (_name: string) => () => "https://app.example.com",
+}));
+
 // Mock hoisted values
 const {
   mockGetUserContext,
@@ -56,6 +61,9 @@ vi.mock("~encore/auth", () => ({
 
 vi.mock("../auth/permissions", () => ({
   canManageTeam: mockCanManageTeam,
+  getAccessibleMarketCenterIds: vi.fn((...args: any[]) =>
+    subscriptionRepository.getAccessibleMarketCenterIds(...args)
+  ),
 }));
 
 vi.mock("../auth/subscription-check", () => ({

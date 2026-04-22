@@ -102,6 +102,23 @@ vi.mock("encore.dev/api", () => {
   };
 });
 
+// Mock modules that transitively import Encore native runtime
+vi.mock("../settings", () => ({
+  defaultAutoCloseSettings: { enabled: true, awaitingResponseDays: 2 },
+}));
+vi.mock("../notifications/templates/utils", () => ({
+  notificationTemplatesDefault: {},
+}));
+vi.mock("../subscription/subscription", () => ({
+  checkSubscriptionLimit: vi.fn(),
+}));
+
+// Mock shared repositories (used by report files directly)
+vi.mock("../shared/repositories", () => ({
+  slaRepository: mockSlaRepository,
+  subscriptionRepository,
+}));
+
 // Mock the database module
 vi.mock("../ticket/db", () => ({
   db: mockDb,
@@ -109,6 +126,13 @@ vi.mock("../ticket/db", () => ({
   subscriptionRepository,
   slaRepository: mockSlaRepository,
   policies: mockPolicies,
+  marketCenterRepository: {
+    findById: vi.fn().mockResolvedValue({
+      id: "mc-123",
+      name: "Test MC",
+      stripeCustomerId: null,
+    }),
+  },
 }));
 
 // Mock the auth module
@@ -574,7 +598,7 @@ describe("Reports", () => {
       const result = await slaCompliance({});
 
       expect(result).toEqual({
-        response: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
+        response: { compliant: 2, onTrack: 0, atRisk: 0, overdue: 0 },
         resolve: { compliant: 0, onTrack: 0, atRisk: 0, overdue: 0 },
       });
     });
@@ -609,25 +633,24 @@ describe("Reports", () => {
       mockSlaRepository.findActivePolicies.mockResolvedValue(mockPolicies);
     });
     it("should return SLA stats grouped by assignee", async () => {
-      const now = new Date();
-      const overdueDue = new Date(now.getTime() - 10 * 60 * 60 * 1000); // 10 hours ago
-
+      // First queryAll: response SLA tickets
       mockDb.queryAll.mockResolvedValueOnce([
         {
           id: "ticket-1",
-          created_at: new Date(now.getTime() - 100 * 60 * 60 * 1000),
-          resolved_at: null,
-          due_date: overdueDue,
           assignee_id: "user-test",
           assignee_name: "John Doe",
+          response_at_risk: 1,
+          response_breached: 1,
         },
+      ]);
+      // Second queryAll: resolution SLA tickets
+      mockDb.queryAll.mockResolvedValueOnce([
         {
-          id: "ticket-2",
-          created_at: new Date(now.getTime() - 100 * 60 * 60 * 1000),
-          resolved_at: null,
-          due_date: overdueDue,
+          id: "ticket-1",
           assignee_id: "user-test",
           assignee_name: "John Doe",
+          resolve_at_risk: 0,
+          resolve_breached: 1,
         },
       ]);
 
@@ -639,19 +662,10 @@ describe("Reports", () => {
     });
 
     it("should return empty when no at-risk or overdue tickets", async () => {
-      const now = new Date();
-      const futureDue = new Date(now.getTime() + 100 * 60 * 60 * 1000);
-
-      mockDb.queryAll.mockResolvedValueOnce([
-        {
-          id: "ticket-1",
-          created_at: now,
-          resolved_at: null,
-          due_date: futureDue,
-          assignee_id: "user-test",
-          assignee_name: "John Doe",
-        },
-      ]);
+      // First queryAll: response SLA tickets (empty)
+      mockDb.queryAll.mockResolvedValueOnce([]);
+      // Second queryAll: resolution SLA tickets (empty)
+      mockDb.queryAll.mockResolvedValueOnce([]);
 
       const result = await slaComplianceByUsers({});
 

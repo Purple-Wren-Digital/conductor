@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Mock Encore native modules to prevent transitive import chains
+vi.mock("encore.dev/log", () => ({
+  default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+}));
+vi.mock("encore.dev/cron", () => ({
+  CronJob: vi.fn(),
+}));
+vi.mock("../cron/metrics", () => ({
+  cronExecutions: { with: vi.fn(() => ({ increment: vi.fn() })) },
+  cronErrors: { with: vi.fn(() => ({ increment: vi.fn() })) },
+  caughtErrors: { with: vi.fn(() => ({ increment: vi.fn() })) },
+}));
+
 // Mock hoisted values
 const {
   mockDb,
