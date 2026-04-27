@@ -241,9 +241,9 @@ export function renderTemplate({
     const value = data[key];
     if (value === undefined) continue;
 
-    // Match TipTap {editor_name}, old {{editor_name}} style, or plain variable name (editorName or editor_name)
+    // Match {{editor_name}} style or TipTap {editor_name} style
     const regex = new RegExp(
-      `\\{\\{\\s*${key}\\s*\\}\\}|\\{\\s*${key}\\s*\\}|\\b${key}\\b`,
+      `\\{\\{\\s*${key}\\s*\\}\\}|\\{\\s*${key}\\s*\\}`,
       "g"
     );
     result = result.replace(regex, String(value));

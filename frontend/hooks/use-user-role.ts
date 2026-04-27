@@ -107,7 +107,7 @@ export function getUserPermissions(role: UserRole, isSuperuser?: boolean): UserP
         canViewAllTickets: false,
         canViewInternalComments: true,
         canCreateInternalComments: true,
-        canCreateUsers: false,
+        canCreateUsers: true,
         canManageAllUsers: false,
         canCreateTeam: false,
         canManageTeam: true,

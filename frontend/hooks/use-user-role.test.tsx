@@ -43,6 +43,7 @@ describe("getUserPermissions", () => {
       expect(permissions.canViewAllTickets).toBe(false);
       expect(permissions.canViewInternalComments).toBe(true);
       expect(permissions.canCreateInternalComments).toBe(true);
+      expect(permissions.canCreateUsers).toBe(true);
       expect(permissions.canManageTeam).toBe(true);
       expect(permissions.canAccessSettings).toBe(true);
       expect(permissions.canAccessReports).toBe(true);

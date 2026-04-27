@@ -65,7 +65,7 @@ export default function CreateUser({
   const [copied, setCopied] = useState(false);
 
   const { isEnterprise } = useIsEnterprise();
-  const { permissions, isSuperuser } = useUserRole();
+  const { permissions, isSuperuser, isAdmin } = useUserRole();
   const canBypassLimits = isEnterprise || isSuperuser;
   const fetchWithAuth = useFetchWithAuth();
 
@@ -332,6 +332,9 @@ export default function CreateUser({
                     !seats?.hasAvailableSeats &&
                     role !== "AGENT"
                   ) {
+                    return null;
+                  }
+                  if (role === "ADMIN" && !isAdmin) {
                     return null;
                   }
                   return (

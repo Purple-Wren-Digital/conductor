@@ -157,6 +157,29 @@ describe("renderTemplate", () => {
 
     expect(result).toBe("Ticket #1234");
   });
+
+  it("should not replace bare word 'comment' in template text (Bug #5)", () => {
+    const result = renderTemplate({
+      templateContent:
+        "{{commenter_name}} left a new comment on a ticket you're following.",
+      variables: ["commenter_name", "comment"],
+      data: { commenter_name: "Tony", comment: "This Is The Comment Text" },
+    });
+
+    expect(result).toBe(
+      "Tony left a new comment on a ticket you're following."
+    );
+  });
+
+  it("should only replace variables inside braces, not plain words", () => {
+    const result = renderTemplate({
+      templateContent: "New Comment for '{{ticket_title}}': '{{comment}}'",
+      variables: ["ticket_title", "comment"],
+      data: { ticket_title: "Login Issue", comment: "Please fix this" },
+    });
+
+    expect(result).toBe("New Comment for 'Login Issue': 'Please fix this'");
+  });
 });
 
 // =============================================================================
