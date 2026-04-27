@@ -187,7 +187,8 @@ export function getButtonUrl(
     notification.data?.ticketAssignment?.ticketNumber ||
     notification.data?.newComment?.ticketNumber ||
     notification.data?.ticketSurvey?.ticketNumber ||
-    notification.data?.surveyResults?.ticketNumber;
+    notification.data?.surveyResults?.ticketNumber ||
+    notification.data?.ticketId;
 
   if (ticketId) {
     if (templateType === "ticket_survey") {

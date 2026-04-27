@@ -16,6 +16,7 @@ import type {
   NotificationPreferences,
   UserHistory,
 } from "../../user/types";
+import { buildMarketCenterConditions } from "./user-search-utils";
 
 // Database row types (snake_case from PostgreSQL)
 interface UserRow {
@@ -395,40 +396,13 @@ export const userRepository = {
     }
 
     if (params?.marketCenterIds && params?.marketCenterIds.length > 0) {
-      const includesUnassigned =
-        params?.marketCenterIds &&
-        params?.marketCenterIds.includes("Unassigned");
-
-      if (includesUnassigned) {
-        const moreMarketCenterIds = params?.marketCenterIds.filter(
-          (id) => id !== "Unassigned"
-        );
-
-        if (moreMarketCenterIds && moreMarketCenterIds.length > 0) {
-          conditions.push(`market_center_id IS NULL`);
-          const placeholders = moreMarketCenterIds
-            .map((_, i) => `$${paramIndex + i}`)
-            .join(", ");
-          conditions.push(
-            `(market_center_id IS NULL OR market_center_id IN (${placeholders}))`
-          );
-          values.push(...moreMarketCenterIds);
-          paramIndex += moreMarketCenterIds.length;
-        }
-
-        if (!moreMarketCenterIds || !moreMarketCenterIds.length) {
-          conditions.push(`market_center_id IS NULL`);
-        }
-      }
-
-      if (!includesUnassigned) {
-        const placeholders = params.marketCenterIds
-          .map((_, i) => `$${paramIndex + i}`)
-          .join(", ");
-        conditions.push(`market_center_id IN (${placeholders})`);
-        values.push(...params.marketCenterIds);
-        paramIndex += params.marketCenterIds.length;
-      }
+      const mc = buildMarketCenterConditions(
+        params.marketCenterIds,
+        paramIndex
+      );
+      conditions.push(...mc.conditions);
+      values.push(...mc.values);
+      paramIndex = mc.nextParamIndex;
     }
 
     if (params.isActive !== undefined) {

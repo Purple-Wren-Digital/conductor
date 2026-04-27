@@ -186,6 +186,7 @@ export function formatTicketUpdated(
     inApp: rendered,
     priority: "MEDIUM",
     data: {
+      ticketId: params.ticketId,
       updatedTicket: {
         ticketNumber: params.ticketId,
         ticketTitle: params.ticketTitle,
@@ -222,6 +223,7 @@ export function formatTicketClosed(
     inApp: rendered,
     priority: "MEDIUM",
     data: {
+      ticketId: event.ticketId,
       updatedTicket: {
         ticketNumber: event.ticketId,
         ticketTitle: event.ticketTitle,
@@ -260,6 +262,7 @@ export function formatTicketReopened(
     inApp: rendered,
     priority: "MEDIUM",
     data: {
+      ticketId: event.ticketId,
       updatedTicket: {
         ticketNumber: event.ticketId,
         ticketTitle: event.ticketTitle,
@@ -345,6 +348,7 @@ export function formatSurveyCreated(
     inApp: rendered,
     priority: "MEDIUM",
     data: {
+      ticketId: params.ticketId,
       ticketSurvey: {
         ticketNumber: params.ticketId,
         ticketTitle: params.ticketTitle,
@@ -376,6 +380,7 @@ export function formatSurveyCompleted(
     inApp: rendered,
     priority: "MEDIUM",
     data: {
+      ticketId: event.ticketId,
       surveyResults: {
         ticketNumber: event.ticketId,
         ticketTitle: event.ticketTitle,

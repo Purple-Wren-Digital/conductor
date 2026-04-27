@@ -90,6 +90,35 @@ describe("getButtonUrl", () => {
     expect(url).toBe("https://app.example.com/dashboard/market-centers/mc-2");
   });
 
+  it("uses top-level ticketId as fallback when nested ticketNumber is missing", () => {
+    const notification = baseNotification({
+      ticketId: "tk-fallback",
+    });
+    const url = getButtonUrl(notification, "ticket_created");
+    expect(url).toBe(
+      "https://app.example.com/dashboard/tickets/tk-fallback"
+    );
+  });
+
+  it("uses top-level ticketId for ticket_survey when nested ticketNumber is missing", () => {
+    const notification = baseNotification({
+      ticketId: "tk-survey-fallback",
+    });
+    const url = getButtonUrl(notification, "ticket_survey");
+    expect(url).toBe(
+      "https://app.example.com/dashboard/tickets/tk-survey-fallback?survey=true"
+    );
+  });
+
+  it("prefers nested ticketNumber over top-level ticketId", () => {
+    const notification = baseNotification({
+      ticketId: "tk-top",
+      createdTicket: { ticketNumber: "tk-nested" },
+    });
+    const url = getButtonUrl(notification, "ticket_created");
+    expect(url).toBe("https://app.example.com/dashboard/tickets/tk-nested");
+  });
+
   it("falls back to dashboard when there is no ticket or market center context", () => {
     const notification = baseNotification({});
     const url = getButtonUrl(notification, "ticket_created");

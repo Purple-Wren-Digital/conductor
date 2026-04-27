@@ -14,6 +14,7 @@ import type {
   UserWithStats,
 } from "@/lib/types";
 import { useAuth } from "@clerk/nextjs";
+import { detectUserEdits, initEditUserFormData } from "./user-edit-utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -294,12 +295,7 @@ export default function UserManagement() {
   // DELETE MODAL ACTIONS
   const handleEditUser = (user: UserWithStats) => {
     setEditingUser(user);
-    setEditUserFormData({
-      firstName: user?.name ? user?.name.split(" ")?.[0] : "",
-      lastName: user?.name ? user?.name.split(" ")?.[1] : "",
-      email: user.email,
-      role: user.role,
-    });
+    setEditUserFormData(initEditUserFormData(user));
     setFormErrors({});
     setShowEditUserForm(true);
   };
@@ -310,15 +306,10 @@ export default function UserManagement() {
     [editUserFormData]
   );
 
-  const updates = useMemo(() => {
-    const hasNameChanged: boolean = userNameForm !== editingUser?.name;
-    const hasEmailChanged: boolean =
-      editUserFormData?.email !== editingUser?.email;
-    const hasRoleChanged: boolean =
-      editUserFormData?.role !== editingUser?.role;
-    const userUpdatesMade = hasNameChanged || hasEmailChanged || hasRoleChanged;
-    return { hasNameChanged, hasEmailChanged, hasRoleChanged, userUpdatesMade };
-  }, [userNameForm, editingUser, editUserFormData]);
+  const updates = useMemo(
+    () => detectUserEdits(userNameForm, editUserFormData, editingUser),
+    [userNameForm, editingUser, editUserFormData]
+  );
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
