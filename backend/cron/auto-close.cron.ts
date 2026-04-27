@@ -5,9 +5,10 @@ import { db } from "../ticket/db";
 import {
   ticketRepository,
   marketCenterRepository,
+  surveyRepository,
 } from "../shared/repositories";
 import type { MarketCenterSettings } from "../settings/types";
-import { notificationTopic } from "../notifications/topic";
+import { activityTopic } from "../notifications/activity-topic";
 import { cronExecutions, cronErrors, caughtErrors } from "./metrics";
 
 /**
@@ -30,6 +31,7 @@ interface AwaitingTicketRow {
   title: string | null;
   created_at: Date;
   creator_id: string;
+  creator_role: string | null;
   assignee_id: string | null;
   category_id: string | null;
   market_center_id: string | null;
@@ -71,6 +73,7 @@ async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
       t.title,
       t.created_at,
       t.creator_id,
+      u.role as creator_role,
       t.assignee_id,
       t.category_id,
       tc.market_center_id,
@@ -85,6 +88,7 @@ async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
       ) as status_changed_at
     FROM tickets t
     LEFT JOIN ticket_categories tc ON t.category_id = tc.id
+    LEFT JOIN users u ON t.creator_id = u.id
     WHERE t.status = 'AWAITING_RESPONSE'
   `
   );
@@ -172,10 +176,23 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
 
       // Check if threshold exceeded
       if (businessDays >= autoCloseConfig.days) {
+        // Create survey for AGENT creators (same as manual close flow)
+        let surveyId: string | undefined;
+        if (ticket.creator_role === "AGENT") {
+          const survey = await surveyRepository.findOrCreate({
+            ticketId: ticket.id,
+            surveyorId: ticket.creator_id,
+            assigneeId: ticket.assignee_id || null,
+            marketCenterId: ticket.market_center_id!,
+          });
+          surveyId = survey?.id;
+        }
+
         // Auto-close the ticket
         await ticketRepository.update(ticket.id, {
           status: "RESOLVED",
           resolvedAt: now,
+          ...(surveyId && { surveyId }),
         });
 
         // Create history entry for auto-close
@@ -188,71 +205,17 @@ export const checkAutoClose = api({}, async (): Promise<AutoCloseResult> => {
           changedById: SYSTEM_USER_ID,
         });
 
-        const notificationTitle = "Ticket Automatically Closed";
-        const notificationBody = `Ticket automatically closed after ${autoCloseConfig.days} business days without a response.`;
-
-        // Send notification to ticket creator
-        if (ticket.creator_id) {
-          await notificationTopic.publish({
-            userId: ticket.creator_id,
-            templateName: "Ticket Updated",
-            type: "Ticket Updated",
-            category: "ACTIVITY",
-            priority: "HIGH",
-            email: { title: notificationTitle, body: notificationBody },
-            inApp: { title: notificationTitle, body: notificationBody },
-            data: {
-              ticketId: ticket.id,
-              updatedTicket: {
-                ticketNumber: ticket.id,
-                ticketTitle: ticket.title ?? "",
-                createdOn: ticket.created_at,
-                updatedOn: now,
-                editorName: "System",
-                editorId: SYSTEM_USER_ID,
-                changedDetails: [
-                  {
-                    label: "Auto-Close",
-                    originalValue: "AWAITING_RESPONSE",
-                    newValue: "RESOLVED",
-                  },
-                ],
-                userName: "",
-              },
-            },
-          });
-        }
-        // Notify assignee if different from creator
-        if (ticket.assignee_id && ticket.assignee_id !== ticket.creator_id) {
-          await notificationTopic.publish({
-            userId: ticket.assignee_id,
-            templateName: "Ticket Updated",
-            type: "Ticket Updated",
-            category: "ACTIVITY",
-            priority: "HIGH",
-            email: { title: notificationTitle, body: notificationBody },
-            inApp: { title: notificationTitle, body: notificationBody },
-            data: {
-              ticketId: ticket.id,
-              updatedTicket: {
-                ticketNumber: ticket.id,
-                ticketTitle: ticket.title ?? "",
-                createdOn: ticket.created_at,
-                updatedOn: now,
-                editorName: "System",
-                editorId: SYSTEM_USER_ID,
-                changedDetails: [
-                  {
-                    label: "Auto-Close",
-                    originalValue: "AWAITING_RESPONSE",
-                    newValue: "RESOLVED",
-                  },
-                ],
-                userName: "",
-              },
-            },
-          });
-        }
+        // Publish ticket.closed event — the activity handler dispatches
+        // survey or closed notifications based on creator role
+        await activityTopic.publish({
+          type: "ticket.closed",
+          ticketId: ticket.id,
+          ticketTitle: ticket.title || "",
+          creatorId: ticket.creator_id,
+          creatorRole: ticket.creator_role ?? undefined,
+          assigneeId: ticket.assignee_id ?? undefined,
+          surveyId,
+        });
 
         log.info("[auto-close] closed ticket", {
           ticketId: ticket.id,

@@ -7,6 +7,9 @@ vi.mock("encore.dev/log", () => ({
 vi.mock("../notifications/topic", () => ({
   notificationTopic: { publish: vi.fn() },
 }));
+vi.mock("../notifications/activity-topic", () => ({
+  activityTopic: { publish: vi.fn() },
+}));
 vi.mock("./metrics", () => ({
   cronExecutions: { with: vi.fn(() => ({ increment: vi.fn() })) },
   cronErrors: { with: vi.fn(() => ({ increment: vi.fn() })) },
@@ -19,6 +22,7 @@ const {
   mockTicketRepository,
   mockMarketCenterRepository,
   mockNotificationRepository,
+  mockSurveyRepository,
 } = vi.hoisted(() => ({
   mockDb: {
     rawQueryAll: vi.fn(),
@@ -34,6 +38,9 @@ const {
   mockNotificationRepository: {
     create: vi.fn(),
     sendNotification: vi.fn(),
+  },
+  mockSurveyRepository: {
+    findOrCreate: vi.fn(),
   },
 }));
 
@@ -66,6 +73,7 @@ vi.mock("../shared/repositories", () => ({
   ticketRepository: mockTicketRepository,
   marketCenterRepository: mockMarketCenterRepository,
   notificationRepository: mockNotificationRepository,
+  surveyRepository: mockSurveyRepository,
 }));
 
 // Mock email channel so we don't actually send emails
@@ -79,9 +87,11 @@ vi.mock("../notifications/channels/email/email", () => ({
 // Import after mocks
 import { checkAutoClose } from "./auto-close.cron";
 import { notificationTopic } from "../notifications/topic";
+import { activityTopic } from "../notifications/activity-topic";
 
 describe("Auto-Close Cron Job Tests", () => {
   const mockedPublish = vi.mocked(notificationTopic.publish);
+  const mockedActivityPublish = vi.mocked(activityTopic.publish);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -283,13 +293,14 @@ describe("Auto-Close Cron Job Tests", () => {
       expect(result.ticketsClosed).toBe(1);
     });
 
-    it("should send notification to creator", async () => {
+    it("should publish ticket.closed event for creator", async () => {
       const mockAwaitingTickets = [
         {
           id: "ticket-1",
           title: "Test Ticket",
           created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
+          creator_role: "STAFF",
           assignee_id: null,
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -314,25 +325,23 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
       await checkAutoClose();
 
-      expect(mockedPublish).toHaveBeenCalledWith(
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: "user-1",
-          type: "Ticket Updated",
-          category: "ACTIVITY",
-          data: expect.objectContaining({
-            ticketId: "ticket-1",
-          }),
+          type: "ticket.closed",
+          ticketId: "ticket-1",
+          creatorId: "user-1",
         })
       );
     });
 
-    it("should send notification to assignee if different from creator", async () => {
+    it("should include assigneeId in ticket.closed event when different from creator", async () => {
       const mockAwaitingTickets = [
         {
           id: "ticket-1",
           title: "Test Ticket",
           created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
+          creator_role: "STAFF",
           assignee_id: "user-2",
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -357,23 +366,25 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
       await checkAutoClose();
 
-      // Should be called twice - once for creator, once for assignee
-      expect(mockedPublish).toHaveBeenCalledTimes(2);
-      expect(mockedPublish).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: "user-1" })
-      );
-      expect(mockedPublish).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: "user-2" })
+      // Single event published — the activity handler notifies both creator and assignee
+      expect(mockedActivityPublish).toHaveBeenCalledTimes(1);
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          creatorId: "user-1",
+          assigneeId: "user-2",
+        })
       );
     });
 
-    it("should not send duplicate notification when creator is assignee", async () => {
+    it("should publish single ticket.closed event even when creator is assignee", async () => {
       const mockAwaitingTickets = [
         {
           id: "ticket-1",
           title: "Test Ticket",
           created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
+          creator_role: "STAFF",
           assignee_id: "user-1", // Same as creator
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -398,8 +409,8 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
       await checkAutoClose();
 
-      // Should only be called once since creator === assignee
-      expect(mockedPublish).toHaveBeenCalledTimes(1);
+      // Single event — dedup is the handler's responsibility
+      expect(mockedActivityPublish).toHaveBeenCalledTimes(1);
     });
 
     it("should cache market center settings for multiple tickets", async () => {
@@ -547,6 +558,7 @@ describe("Auto-Close Cron Job Tests", () => {
           title: null,
           created_at: new Date("2025-01-01T12:00:00Z"),
           creator_id: "user-1",
+          creator_role: "STAFF",
           assignee_id: null,
           category_id: "cat-1",
           market_center_id: "mc-123",
@@ -571,15 +583,11 @@ describe("Auto-Close Cron Job Tests", () => {
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
       await checkAutoClose();
 
-      expect(mockedPublish).toHaveBeenCalledWith(
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: "user-1",
-          data: expect.objectContaining({
-            ticketId: "ticket-1",
-            updatedTicket: expect.objectContaining({
-              ticketTitle: "",
-            }),
-          }),
+          type: "ticket.closed",
+          ticketId: "ticket-1",
+          ticketTitle: "",
         })
       );
     });
@@ -854,6 +862,7 @@ describe("Auto-Close Cron Job Tests", () => {
         title: "Maintenance Request - Settings Check",
         created_at: new Date("2025-01-14T12:00:00Z"),
         creator_id: "agent-user-1",
+        creator_role: "AGENT",
         assignee_id: "staff-user-1",
         category_id: "maintenance-cat-1",
         market_center_id: "mc-active-123",
@@ -876,17 +885,19 @@ describe("Auto-Close Cron Job Tests", () => {
       mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
       mockTicketRepository.update.mockResolvedValue({});
       mockTicketRepository.createHistory.mockResolvedValue(undefined);
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-settings" });
 
       const result = await checkAutoClose();
 
       expect(result.ticketsClosed).toBe(1);
 
-      // Verify the notification mentions correct number of days
-      expect(mockedPublish).toHaveBeenCalledWith(
+      // Verify ticket.closed event is published with correct data
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: expect.objectContaining({
-            body: expect.stringContaining("2 business days"),
-          }),
+          type: "ticket.closed",
+          ticketId: "maintenance-ticket-123",
+          creatorRole: "AGENT",
+          surveyId: "survey-settings",
         })
       );
     });
@@ -998,6 +1009,126 @@ describe("Auto-Close Cron Job Tests", () => {
 
       // Should NOT be closed - only 1 business day elapsed, not 2
       expect(result.ticketsClosed).toBe(0);
+    });
+  });
+
+  describe("survey creation on auto-close (Bug #4)", () => {
+    const mcSettings = {
+      id: "mc-123",
+      name: "Test MC",
+      settings: { autoClose: { enabled: true, awaitingResponseDays: 2 } },
+    };
+
+    it("should create a survey and publish ticket.closed event for AGENT creator", async () => {
+      const ticket = {
+        id: "ticket-survey-1",
+        title: "Agent Ticket",
+        created_at: new Date("2025-01-01T12:00:00Z"),
+        creator_id: "agent-user-1",
+        creator_role: "AGENT",
+        assignee_id: "staff-user-1",
+        category_id: "cat-1",
+        market_center_id: "mc-123",
+        status_changed_at: new Date("2025-01-08T12:00:00Z"),
+      };
+
+      mockDb.rawQueryAll.mockResolvedValue([ticket]);
+      mockMarketCenterRepository.findById.mockResolvedValue(mcSettings);
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-auto-1" });
+
+      await checkAutoClose();
+
+      // Should create survey for AGENT creator
+      expect(mockSurveyRepository.findOrCreate).toHaveBeenCalledWith({
+        ticketId: "ticket-survey-1",
+        surveyorId: "agent-user-1",
+        assigneeId: "staff-user-1",
+        marketCenterId: "mc-123",
+      });
+
+      // Should update ticket with surveyId
+      expect(mockTicketRepository.update).toHaveBeenCalledWith("ticket-survey-1", {
+        status: "RESOLVED",
+        resolvedAt: expect.any(Date),
+        surveyId: "survey-auto-1",
+      });
+
+      // Should publish ticket.closed to activityTopic (not notificationTopic)
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          ticketId: "ticket-survey-1",
+          ticketTitle: "Agent Ticket",
+          creatorId: "agent-user-1",
+          creatorRole: "AGENT",
+          surveyId: "survey-auto-1",
+        })
+      );
+    });
+
+    it("should not create a survey for non-AGENT creator but still publish ticket.closed", async () => {
+      const ticket = {
+        id: "ticket-no-survey",
+        title: "Staff Ticket",
+        created_at: new Date("2025-01-01T12:00:00Z"),
+        creator_id: "staff-user-1",
+        creator_role: "STAFF",
+        assignee_id: null,
+        category_id: "cat-1",
+        market_center_id: "mc-123",
+        status_changed_at: new Date("2025-01-08T12:00:00Z"),
+      };
+
+      mockDb.rawQueryAll.mockResolvedValue([ticket]);
+      mockMarketCenterRepository.findById.mockResolvedValue(mcSettings);
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+
+      await checkAutoClose();
+
+      // Should NOT create survey
+      expect(mockSurveyRepository.findOrCreate).not.toHaveBeenCalled();
+
+      // Should still publish ticket.closed event
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          ticketId: "ticket-no-survey",
+          creatorId: "staff-user-1",
+          creatorRole: "STAFF",
+        })
+      );
+    });
+
+    it("should publish ticket.closed with assigneeId when assignee exists", async () => {
+      const ticket = {
+        id: "ticket-with-assignee",
+        title: "Assigned Ticket",
+        created_at: new Date("2025-01-01T12:00:00Z"),
+        creator_id: "agent-user-1",
+        creator_role: "AGENT",
+        assignee_id: "staff-user-2",
+        category_id: "cat-1",
+        market_center_id: "mc-123",
+        status_changed_at: new Date("2025-01-08T12:00:00Z"),
+      };
+
+      mockDb.rawQueryAll.mockResolvedValue([ticket]);
+      mockMarketCenterRepository.findById.mockResolvedValue(mcSettings);
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-2" });
+
+      await checkAutoClose();
+
+      expect(mockedActivityPublish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          assigneeId: "staff-user-2",
+        })
+      );
     });
   });
 });

@@ -144,6 +144,7 @@ import { create } from "./create";
 import { get } from "./get";
 import { assign } from "./assign";
 import { update } from "./update";
+import { closeTicket } from "./close";
 import { getUserContext } from "../auth/user-context";
 import {
   canCreateTicket,
@@ -703,6 +704,144 @@ describe("Ticket Service Tests", () => {
           creatorId: "new-creator-456",
         })
       ).rejects.toThrow("Resolved tickets cannot be modified further");
+    });
+  });
+
+  describe("update - close with survey (Bug #4)", () => {
+    it("should create survey when closing via update for AGENT creator", async () => {
+      const agentTicket = {
+        id: "ticket-upd-close",
+        title: "Agent Update Close",
+        status: "IN_PROGRESS",
+        creatorId: "agent-u1",
+        assigneeId: "staff-u1",
+        creator: { id: "agent-u1", name: "Agent", role: "AGENT", marketCenterId: "mc-123" },
+        assignee: { id: "staff-u1", name: "Staff", role: "STAFF", marketCenterId: "mc-123" },
+        category: { marketCenterId: "mc-123" },
+      };
+
+      mockTicketRepository.findByIdWithRelations
+        .mockResolvedValueOnce(agentTicket)   // oldTicket
+        .mockResolvedValueOnce(agentTicket);  // closedTicket re-fetch
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-upd" });
+      mockTicketRepository.update.mockResolvedValue(agentTicket);
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+
+      await update({ ticketId: "ticket-upd-close", status: "RESOLVED" });
+
+      expect(mockSurveyRepository.findOrCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ticketId: "ticket-upd-close",
+          surveyorId: "agent-u1",
+        })
+      );
+
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          surveyId: "survey-upd",
+          creatorRole: "AGENT",
+        })
+      );
+    });
+  });
+
+  describe("closeTicket - survey creation (Bug #4)", () => {
+    const agentTicket = {
+      id: "ticket-close-1",
+      title: "Agent's Ticket",
+      status: "IN_PROGRESS",
+      creatorId: "agent-1",
+      assigneeId: "staff-1",
+      creator: {
+        id: "agent-1",
+        name: "Alice Agent",
+        role: "AGENT",
+        marketCenterId: "mc-123",
+      },
+      assignee: {
+        id: "staff-1",
+        name: "Bob Staff",
+        role: "STAFF",
+        marketCenterId: "mc-123",
+      },
+      category: { marketCenterId: "mc-123" },
+    };
+
+    const staffTicket = {
+      ...agentTicket,
+      id: "ticket-close-2",
+      creatorId: "staff-1",
+      creator: {
+        id: "staff-1",
+        name: "Bob Staff",
+        role: "STAFF",
+        marketCenterId: "mc-123",
+      },
+    };
+
+    it("should create survey and publish ticket.closed with surveyId for AGENT creator", async () => {
+      mockTicketRepository.findByIdWithRelations
+        .mockResolvedValueOnce(agentTicket)  // oldTicket
+        .mockResolvedValueOnce(agentTicket); // re-fetch after update
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-99" });
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+
+      await closeTicket({ ticketId: "ticket-close-1", status: "RESOLVED" });
+
+      expect(mockSurveyRepository.findOrCreate).toHaveBeenCalledWith({
+        ticketId: "ticket-close-1",
+        surveyorId: "agent-1",
+        assigneeId: "staff-1",
+        marketCenterId: "mc-123",
+      });
+
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          ticketId: "ticket-close-1",
+          creatorRole: "AGENT",
+          surveyId: "survey-99",
+        })
+      );
+    });
+
+    it("should NOT create survey for non-AGENT creator", async () => {
+      mockTicketRepository.findByIdWithRelations
+        .mockResolvedValueOnce(staffTicket)
+        .mockResolvedValueOnce(staffTicket);
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+
+      await closeTicket({ ticketId: "ticket-close-2", status: "RESOLVED" });
+
+      expect(mockSurveyRepository.findOrCreate).not.toHaveBeenCalled();
+
+      expect(mockActivityTopic.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ticket.closed",
+          creatorRole: "STAFF",
+          surveyId: undefined,
+        })
+      );
+    });
+
+    it("should pass surveyId to ticket update when survey is created", async () => {
+      mockTicketRepository.findByIdWithRelations
+        .mockResolvedValueOnce(agentTicket)
+        .mockResolvedValueOnce(agentTicket);
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-100" });
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+
+      await closeTicket({ ticketId: "ticket-close-1", status: "RESOLVED" });
+
+      expect(mockTicketRepository.update).toHaveBeenCalledWith("ticket-close-1", {
+        status: "RESOLVED",
+        resolvedAt: expect.any(Date),
+        surveyId: "survey-100",
+      });
     });
   });
 });
