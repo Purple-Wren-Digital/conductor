@@ -79,6 +79,9 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
       marketCenterToAssign = await marketCenterRepository.findById(
         req.marketCenterId
       );
+      if (marketCenterToAssign) {
+        marketCenterToAssignId = marketCenterToAssign.id;
+      }
     } else {
       marketCenterToAssign = null;
     }
@@ -86,7 +89,7 @@ export const update = api<UpdateUserRequest, UpdateUserResponse>(
     if (
       canUpdateMarketCenterAssignment &&
       req?.marketCenterId !== undefined &&
-      marketCenterToAssign &&
+      (marketCenterToAssign || req.marketCenterId === "Unassigned") &&
       marketCenterToAssignId !== previousMarketCenterId
     ) {
       updateUserData.marketCenterId = marketCenterToAssignId;
