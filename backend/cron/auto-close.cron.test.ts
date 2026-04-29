@@ -798,25 +798,43 @@ describe("Auto-Close Cron Job Tests", () => {
       expect(result.ticketsClosed).toBe(1);
     });
 
-    it("should skip ticket when category has no market_center_id (POTENTIAL BUG)", async () => {
-      const mockTicketWithoutMarketCenter = {
-        id: "maintenance-ticket-no-mc",
-        title: "Maintenance Request - No MC",
+    it("should use creator's market center when category has no market_center_id (COALESCE fallback)", async () => {
+      // After COALESCE fix, SQL returns creator's MC when category MC is NULL.
+      // The mock simulates this: market_center_id comes from the creator's user record.
+      const mockTicketWithCreatorMC = {
+        id: "maintenance-ticket-no-cat-mc",
+        title: "Maintenance Request - Creator MC Fallback",
         creator_id: "agent-user-1",
+        creator_role: "AGENT",
         assignee_id: "staff-user-1",
         category_id: "orphan-category",
-        market_center_id: null, // Category not linked to market center
+        market_center_id: "mc-creator-fallback", // COALESCE returns creator's MC
         status_changed_at: new Date("2025-01-08T12:00:00Z"),
       };
 
-      mockDb.rawQueryAll.mockResolvedValue([mockTicketWithoutMarketCenter]);
+      const mockMarketCenter = {
+        id: "mc-creator-fallback",
+        name: "Creator's Market Center",
+        settings: {
+          autoClose: {
+            enabled: true,
+            awaitingResponseDays: 2,
+          },
+        },
+      };
+
+      mockDb.rawQueryAll.mockResolvedValue([mockTicketWithCreatorMC]);
+      mockMarketCenterRepository.findById.mockResolvedValue(mockMarketCenter);
+      mockTicketRepository.update.mockResolvedValue({});
+      mockTicketRepository.createHistory.mockResolvedValue(undefined);
+      mockSurveyRepository.findOrCreate.mockResolvedValue({ id: "survey-fallback" });
 
       const result = await checkAutoClose();
 
-      // Ticket is skipped because no market_center_id
+      // Ticket should be closed using creator's market center settings
       expect(result.ticketsChecked).toBe(1);
-      expect(result.ticketsClosed).toBe(0);
-      expect(mockMarketCenterRepository.findById).not.toHaveBeenCalled();
+      expect(result.ticketsClosed).toBe(1);
+      expect(mockMarketCenterRepository.findById).toHaveBeenCalledWith("mc-creator-fallback");
     });
 
     it("should skip ticket when status_changed_at is null and ticket has no updatedAt", async () => {

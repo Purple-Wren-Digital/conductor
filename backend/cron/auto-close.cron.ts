@@ -76,7 +76,7 @@ async function findAwaitingResponseTickets(): Promise<AwaitingTicketRow[]> {
       u.role as creator_role,
       t.assignee_id,
       t.category_id,
-      tc.market_center_id,
+      COALESCE(tc.market_center_id, u.market_center_id) AS market_center_id,
       (
         SELECT th.changed_at
         FROM ticket_history th

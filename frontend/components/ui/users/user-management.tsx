@@ -86,15 +86,14 @@ export default function UserManagement() {
 
   const defaultMarketCenterId = useMemo(
     () =>
-      ((role === "ADMIN" && !canViewAllMCs) ||
-        role === "STAFF" ||
-        role === "STAFF_LEADER") &&
-      currentUser?.marketCenterId
-        ? currentUser.marketCenterId
-        : (role === "ADMIN" && canViewAllMCs) || isSuperuser
-          ? "all"
+      canViewAllMCs
+        ? "all"
+        : (role === "STAFF" || role === "STAFF_LEADER" ||
+            (role === "ADMIN" && !canViewAllMCs)) &&
+          currentUser?.marketCenterId
+          ? currentUser.marketCenterId
           : "Unassigned",
-    [currentUser?.marketCenterId, role, canViewAllMCs, isSuperuser]
+    [currentUser?.marketCenterId, role, canViewAllMCs]
   );
 
   const [showFilters, setShowFilters] = useState(false);
