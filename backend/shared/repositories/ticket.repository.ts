@@ -6,20 +6,14 @@ import {
   db,
   fromTimestamp,
   toJson,
-  fromJson,
-  withTransaction,
 } from "../../ticket/db";
 import type {
   Ticket,
   TicketStatus,
   Urgency,
-  TicketHistory,
-  Comment,
-  Attachment,
 } from "../../ticket/types";
 import type { User, UserRole } from "../../user/types";
 import type { TicketCategory } from "../../marketCenters/types";
-import type { Todo } from "../../todos/types";
 
 // Database row types (snake_case from PostgreSQL)
 interface TicketRow {
