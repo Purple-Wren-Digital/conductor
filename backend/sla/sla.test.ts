@@ -186,6 +186,7 @@ describe("SLA System Tests", () => {
           urgency: "HIGH" as const,
           responseTimeMinutes: 120, // 2 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -208,6 +209,7 @@ describe("SLA System Tests", () => {
           urgency: "MEDIUM" as const,
           responseTimeMinutes: 1440, // 24 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -232,6 +234,7 @@ describe("SLA System Tests", () => {
           urgency: "LOW" as const,
           responseTimeMinutes: 4320, // 72 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -261,6 +264,7 @@ describe("SLA System Tests", () => {
           urgency: "HIGH" as const,
           responseTimeMinutes: 120,
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -287,6 +291,7 @@ describe("SLA System Tests", () => {
           urgency: "HIGH" as const,
           responseTimeMinutes: 120,
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -361,6 +366,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 120,
           resolutionTimeMinutes: 240, // 4 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -386,6 +392,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 1440,
           resolutionTimeMinutes: 2880, // 48 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -411,6 +418,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 4320,
           resolutionTimeMinutes: 10080, // 7 days
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -444,6 +452,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 120,
           resolutionTimeMinutes: 240,
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -530,6 +539,7 @@ describe("SLA System Tests", () => {
             urgency: "HIGH" as const,
             responseTimeMinutes: 120,
             isActive: true,
+            resolutionIsActive: true,
             createdAt: new Date("2024-01-01"),
             updatedAt: new Date("2024-01-01"),
           },
@@ -538,6 +548,7 @@ describe("SLA System Tests", () => {
             urgency: "MEDIUM" as const,
             responseTimeMinutes: 1440,
             isActive: true,
+            resolutionIsActive: true,
             createdAt: new Date("2024-01-01"),
             updatedAt: new Date("2024-01-01"),
           },
@@ -546,6 +557,7 @@ describe("SLA System Tests", () => {
             urgency: "LOW" as const,
             responseTimeMinutes: 4320,
             isActive: true,
+            resolutionIsActive: true,
             createdAt: new Date("2024-01-01"),
             updatedAt: new Date("2024-01-01"),
           },
@@ -603,6 +615,7 @@ describe("SLA System Tests", () => {
           urgency: "HIGH" as const,
           responseTimeMinutes: 60, // Changed from 120 to 60
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-15"),
         };
@@ -667,6 +680,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 120,
           resolutionTimeMinutes: 180, // Changed from 240 to 180 (3 hours)
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-15"),
         };
@@ -696,6 +710,7 @@ describe("SLA System Tests", () => {
           responseTimeMinutes: 720, // 12 hours
           resolutionTimeMinutes: 1440, // 24 hours
           isActive: true,
+          resolutionIsActive: true,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-15"),
         };
@@ -1612,6 +1627,7 @@ describe("SLA Repository Unit Tests", () => {
         urgency: "HIGH",
         responseTimeMinutes: 120,
         isActive: true,
+        resolutionIsActive: true,
       });
 
       const result = await mockSlaRepository.findPolicyByUrgency("HIGH");
@@ -1628,6 +1644,7 @@ describe("SLA Repository Unit Tests", () => {
         urgency: "HIGH",
         responseTimeMinutes: 60,
         isActive: true,
+        resolutionIsActive: true,
       });
 
       const result = await mockSlaRepository.updatePolicy("policy-1", {
@@ -1971,6 +1988,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 120,
         resolutionTimeMinutes: 240,
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -2083,6 +2101,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 120,
         resolutionTimeMinutes: 240, // 4 hours
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -2279,6 +2298,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 60, // Changed
         resolutionTimeMinutes: 240,
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -2297,6 +2317,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 60,
         resolutionTimeMinutes: 240,
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -2317,6 +2338,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 120,
         resolutionTimeMinutes: 120, // Changed from 240
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -2335,6 +2357,7 @@ describe("SLA Integration Scenarios", () => {
         responseTimeMinutes: 120,
         resolutionTimeMinutes: 120,
         isActive: true,
+        resolutionIsActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
