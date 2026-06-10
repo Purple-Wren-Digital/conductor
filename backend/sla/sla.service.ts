@@ -18,7 +18,7 @@ export const slaService = {
     createdAt: Date = new Date()
   ): Promise<{ slaDueAt: Date; policyId: string } | null> {
     const policy = await slaRepository.findPolicyByUrgency(urgency);
-    if (!policy) {
+    if (!policy || !policy.isActive) {
       return null;
     }
 
@@ -39,7 +39,7 @@ export const slaService = {
     createdAt: Date = new Date()
   ): Promise<{ slaResolutionDueAt: Date } | null> {
     const policy = await slaRepository.findPolicyByUrgency(urgency);
-    if (!policy) {
+    if (!policy || !policy.resolutionIsActive) {
       return null;
     }
 
@@ -72,22 +72,24 @@ export const slaService = {
     const responseSlaData = await this.calculateResponseSlaDueDate(urgency, createdAt);
     const resolutionSlaData = await this.calculateResolutionSlaDueDate(urgency, createdAt);
 
-    if (!responseSlaData || !resolutionSlaData) {
+    if (!responseSlaData && !resolutionSlaData) {
       return false;
     }
 
-    // Set response SLA
-    await slaRepository.setTicketSlaDueDate(
-      ticketId,
-      responseSlaData.slaDueAt,
-      responseSlaData.policyId
-    );
+    if (responseSlaData) {
+      await slaRepository.setTicketSlaDueDate(
+        ticketId,
+        responseSlaData.slaDueAt,
+        responseSlaData.policyId
+      );
+    }
 
-    // Set resolution SLA
-    await slaRepository.setTicketResolutionSlaDueDate(
-      ticketId,
-      resolutionSlaData.slaResolutionDueAt
-    );
+    if (resolutionSlaData) {
+      await slaRepository.setTicketResolutionSlaDueDate(
+        ticketId,
+        resolutionSlaData.slaResolutionDueAt
+      );
+    }
 
     return true;
   },

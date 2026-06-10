@@ -263,4 +263,30 @@ describe("Ticket Repository - JOIN queries", () => {
       expect(sql).not.toContain("LEFT JOIN ticket_categories");
     });
   });
+
+  describe("update", () => {
+    it("should include creator_id in the UPDATE query when creatorId is provided", async () => {
+      const updatedRow = makeJoinedTicketRow({ creator_id: "new-creator" });
+      mockDb.rawQueryRow.mockResolvedValue(updatedRow);
+
+      await ticketRepository.update("ticket-1", { creatorId: "new-creator" });
+
+      expect(mockDb.rawQueryRow).toHaveBeenCalledTimes(1);
+      const sql = mockDb.rawQueryRow.mock.calls[0][0] as string;
+      expect(sql).toContain("creator_id");
+      const values = mockDb.rawQueryRow.mock.calls[0].slice(1);
+      expect(values).toContain("new-creator");
+    });
+
+    it("should not include creator_id when creatorId is not provided", async () => {
+      const updatedRow = makeJoinedTicketRow();
+      mockDb.rawQueryRow.mockResolvedValue(updatedRow);
+
+      await ticketRepository.update("ticket-1", { title: "Updated Title" });
+
+      const sql = mockDb.rawQueryRow.mock.calls[0][0] as string;
+      expect(sql).not.toContain("creator_id");
+      expect(sql).toContain("title");
+    });
+  });
 });

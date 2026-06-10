@@ -49,6 +49,7 @@ export const getPolicies = api<{}, GetPoliciesResponse>(
             responseTimeMinutes: p.responseTimeMinutes,
             resolutionTimeMinutes: p.resolutionTimeMinutes,
             isActive: p.isActive,
+            resolutionIsActive: p.resolutionIsActive,
             createdAt: p.createdAt.toISOString(),
             updatedAt: p.updatedAt.toISOString(),
           }))
@@ -91,6 +92,7 @@ export const updatePolicy = api<UpdateSlaPolicyRequest, UpdatePolicyResponse>(
       responseTimeMinutes: req.responseTimeMinutes,
       resolutionTimeMinutes: req.resolutionTimeMinutes,
       isActive: req.isActive,
+      resolutionIsActive: req.resolutionIsActive,
     });
 
     if (!policy) {
@@ -104,6 +106,7 @@ export const updatePolicy = api<UpdateSlaPolicyRequest, UpdatePolicyResponse>(
         responseTimeMinutes: policy.responseTimeMinutes,
         resolutionTimeMinutes: policy.resolutionTimeMinutes,
         isActive: policy.isActive,
+        resolutionIsActive: policy.resolutionIsActive,
         createdAt: policy.createdAt.toISOString(),
         updatedAt: policy.updatedAt.toISOString(),
       },

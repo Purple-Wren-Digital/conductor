@@ -98,10 +98,17 @@ export default function SlaSettingsPage() {
     setEditingPolicy(null);
   };
 
-  const togglePolicyActive = async (policyId: string, currentActive: boolean) => {
+  const toggleResponseActive = async (policyId: string, currentActive: boolean) => {
     await updatePolicy.mutateAsync({
       policyId,
       data: { isActive: !currentActive },
+    });
+  };
+
+  const toggleResolutionActive = async (policyId: string, currentActive: boolean) => {
+    await updatePolicy.mutateAsync({
+      policyId,
+      data: { resolutionIsActive: !currentActive },
     });
   };
 
@@ -265,7 +272,7 @@ export default function SlaSettingsPage() {
                                 <Switch
                                   checked={policy.isActive}
                                   onCheckedChange={() =>
-                                    togglePolicyActive(policy.id, policy.isActive)
+                                    toggleResponseActive(policy.id, policy.isActive)
                                   }
                                   disabled={updatePolicy.isPending}
                                 />
@@ -305,10 +312,10 @@ export default function SlaSettingsPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{policy.urgency} Urgency</span>
                           <Badge
-                            variant={policy.isActive ? "default" : "secondary"}
-                            className={policy.isActive ? "bg-green-100 text-green-800" : ""}
+                            variant={policy.resolutionIsActive ? "default" : "secondary"}
+                            className={policy.resolutionIsActive ? "bg-green-100 text-green-800" : ""}
                           >
-                            {policy.isActive ? "Active" : "Inactive"}
+                            {policy.resolutionIsActive ? "Active" : "Inactive"}
                           </Badge>
                         </div>
                         {isEditing(policy.id, "resolution") ? (
@@ -379,15 +386,26 @@ export default function SlaSettingsPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                startEditing(policy.id, "resolution", policy.resolutionTimeMinutes)
-                              }
-                            >
-                              Edit
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  startEditing(policy.id, "resolution", policy.resolutionTimeMinutes)
+                                }
+                              >
+                                Edit
+                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={policy.resolutionIsActive}
+                                  onCheckedChange={() =>
+                                    toggleResolutionActive(policy.id, policy.resolutionIsActive)
+                                  }
+                                  disabled={updatePolicy.isPending}
+                                />
+                              </div>
+                            </>
                           )}
                         </>
                       )}

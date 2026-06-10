@@ -111,6 +111,7 @@ export interface SlaPolicy {
   responseTimeMinutes: number;
   resolutionTimeMinutes: number;
   isActive: boolean;
+  resolutionIsActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -265,6 +265,7 @@ export const ticketRepository = {
       dueDate: Date | null;
       resolvedAt: Date | null;
       surveyId: string | null;
+      creatorId: string | null;
     }>
   ): Promise<Ticket | null> {
     const updates: string[] = ["updated_at = NOW()"];
@@ -306,6 +307,10 @@ export const ticketRepository = {
     if (data?.surveyId && data.surveyId !== undefined) {
       updates.push(`survey_id = $${paramIndex++}`);
       values.push(data.surveyId);
+    }
+    if (data?.creatorId && data.creatorId !== undefined) {
+      updates.push(`creator_id = $${paramIndex++}`);
+      values.push(data.creatorId);
     }
 
     values.push(id);

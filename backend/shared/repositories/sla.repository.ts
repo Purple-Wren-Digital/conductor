@@ -20,6 +20,7 @@ interface SlaPolicyRow {
   response_time_minutes: number;
   resolution_time_minutes: number;
   is_active: boolean;
+  resolution_is_active: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -61,6 +62,7 @@ function rowToSlaPolicy(row: SlaPolicyRow): SlaPolicy {
     responseTimeMinutes: row.response_time_minutes,
     resolutionTimeMinutes: row.resolution_time_minutes,
     isActive: row.is_active,
+    resolutionIsActive: row.resolution_is_active,
     createdAt: fromTimestamp(row.created_at)!,
     updatedAt: fromTimestamp(row.updated_at)!,
   };
@@ -97,7 +99,7 @@ export const slaRepository = {
 
   async findPolicyByUrgency(urgency: Urgency): Promise<SlaPolicy | null> {
     const row = await db.queryRow<SlaPolicyRow>`
-      SELECT * FROM sla_policies WHERE urgency = ${urgency} AND is_active = true
+      SELECT * FROM sla_policies WHERE urgency = ${urgency}
     `;
     return row ? rowToSlaPolicy(row) : null;
   },
@@ -115,6 +117,7 @@ export const slaRepository = {
       responseTimeMinutes?: number;
       resolutionTimeMinutes?: number;
       isActive?: boolean;
+      resolutionIsActive?: boolean;
     }
   ): Promise<SlaPolicy | null> {
     const updates: string[] = ["updated_at = NOW()"];
@@ -132,6 +135,10 @@ export const slaRepository = {
     if (data.isActive !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
       values.push(data.isActive);
+    }
+    if (data.resolutionIsActive !== undefined) {
+      updates.push(`resolution_is_active = $${paramIndex++}`);
+      values.push(data.resolutionIsActive);
     }
 
     values.push(id);

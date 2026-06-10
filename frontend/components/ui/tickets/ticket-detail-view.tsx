@@ -264,16 +264,23 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({ [field]: value }),
-      });
+      const response = await fetch(
+        `${API_BASE}/tickets/update/${ticket.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+          body: JSON.stringify({ [field]: value }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to update ticket");
+      }
     } catch {
+      toast.error("Error: Failed to update ticket");
       setTicket(prev);
     } finally {
       await refreshAllData();
@@ -358,15 +365,21 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
       if (!token) {
         throw new Error("Failed to get authentication token");
       }
-      await fetch(`${API_BASE}/tickets/update/${ticket.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify({ creatorId: newCreatorId }),
-      });
+      const response = await fetch(
+        `${API_BASE}/tickets/update/${ticket.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+          body: JSON.stringify({ creatorId: newCreatorId }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to update ticket creator");
+      }
       toast.success("Creator updated successfully");
     } catch {
       toast.error("Error: Failed to update ticket creator");

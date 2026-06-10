@@ -187,12 +187,21 @@ export function AdminDashboard() {
     role
   );
 
+  const ratingsMarketCenterId = useMemo(() => {
+    if (selectedMarketCenter?.id && selectedMarketCenter.id !== "all") {
+      return selectedMarketCenter.id;
+    }
+    if (marketCenters.length === 1) {
+      return marketCenters[0]?.id;
+    }
+    return selectedMarketCenter?.id;
+  }, [selectedMarketCenter?.id, marketCenters]);
+
   const { data: singleMcRatings } = useFetchRatingsByMarketCenter(
-    ["admin-dashboard-single-mc-ratings", selectedMarketCenter?.id],
-    selectedMarketCenter?.id
+    ["admin-dashboard-single-mc-ratings", ratingsMarketCenterId],
+    ratingsMarketCenterId
   );
 
-  // Use single MC ratings when there's only one market center, otherwise use global averages
   const displayRatings = useMemo(() => {
     if (selectedMarketCenter?.id !== "all" || marketCenters.length === 1) {
       return singleMcRatings;

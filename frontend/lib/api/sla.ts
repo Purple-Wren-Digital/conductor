@@ -10,6 +10,7 @@ export interface SlaPolicy {
   responseTimeMinutes: number;
   resolutionTimeMinutes: number;
   isActive: boolean;
+  resolutionIsActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +23,7 @@ export interface UpdateSlaPolicyRequest {
   responseTimeMinutes?: number;
   resolutionTimeMinutes?: number;
   isActive?: boolean;
+  resolutionIsActive?: boolean;
 }
 
 export interface SlaMetrics {
