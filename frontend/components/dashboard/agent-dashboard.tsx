@@ -10,6 +10,7 @@ import { useStore } from "@/context/store-provider";
 import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
 import { statusOptions } from "@/lib/utils";
+import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
@@ -100,6 +101,19 @@ export function AgentDashboard() {
     };
   }, [tickets]);
 
+  const { data: metrics } = useDashboardMetrics();
+  const mergedStats = useMemo(() => {
+    if (!metrics) return stats;
+    return {
+      ...stats,
+      activeTickets: metrics.openTickets,
+      overdueTickets: metrics.overdueTickets,
+      highPriority: metrics.highPriorityOpen,
+      createdThisWeek: metrics.createdLast7Days,
+      resolvedThisWeek: metrics.resolvedLast7Days,
+    };
+  }, [stats, metrics]);
+
   if (isLoading) {
     return (
       <div className="p-8">
@@ -136,10 +150,10 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-center">
-              {stats.activeTickets}
+              {mergedStats.activeTickets}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              {stats.highPriority} high priority
+              {mergedStats.highPriority} high priority
             </p>
           </CardContent>
         </Card>
@@ -155,7 +169,7 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-center">
-              {stats.createdThisWeek}
+              {mergedStats.createdThisWeek}
             </div>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days
@@ -174,7 +188,7 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-center">
-              {stats.overdueTickets}
+              {mergedStats.overdueTickets}
             </div>
             <p className="text-center text-xs text-muted-foreground">
               across all tickets
@@ -193,7 +207,7 @@ export function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-center text-2xl font-bold">
-              {stats.resolvedThisWeek}
+              {mergedStats.resolvedThisWeek}
             </p>
             <p className="text-center text-xs text-muted-foreground">
               in the last 7 days

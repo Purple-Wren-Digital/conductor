@@ -223,6 +223,36 @@ describe("Permissions", () => {
         expect(result).toBe(false);
       });
 
+      it("should return true when agent is the ticket assignee", async () => {
+        const userContext = createUserContext({
+          role: "AGENT",
+          userId: "agent-123",
+        });
+        const ticket = createTicketWithRelations({
+          creatorId: "other-user",
+          assigneeId: "agent-123",
+        });
+        mockTicketRepository.findByIdWithRelations.mockResolvedValue(ticket);
+
+        const result = await canAccessTicket(userContext, "ticket-123");
+        expect(result).toBe(true);
+      });
+
+      it("should return false when agent is neither creator nor assignee", async () => {
+        const userContext = createUserContext({
+          role: "AGENT",
+          userId: "agent-123",
+        });
+        const ticket = createTicketWithRelations({
+          creatorId: "other-user",
+          assigneeId: "another-user",
+        });
+        mockTicketRepository.findByIdWithRelations.mockResolvedValue(ticket);
+
+        const result = await canAccessTicket(userContext, "ticket-123");
+        expect(result).toBe(false);
+      });
+
       it("should return false when ticket does not exist", async () => {
         const userContext = createUserContext({ role: "AGENT" });
         mockTicketRepository.findByIdWithRelations.mockResolvedValue(null);

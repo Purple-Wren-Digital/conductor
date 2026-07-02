@@ -41,7 +41,8 @@ export async function canAccessTicket(
 
   if (
     userContext.role === "AGENT" &&
-    ticket?.creatorId === userContext?.userId
+    (ticket?.creatorId === userContext?.userId ||
+      ticket?.assigneeId === userContext?.userId)
   ) {
     return true;
   }

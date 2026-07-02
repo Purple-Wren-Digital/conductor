@@ -35,6 +35,7 @@ import {
   useFetchRatingsByMarketCenter,
   useFetchStaffTickets,
 } from "@/hooks/use-tickets";
+import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import {
   Users,
   Plus,
@@ -280,6 +281,22 @@ export function StaffLeaderDashboard() {
     };
   }, [filteredTickets, teamMembers]);
 
+  const { data: metrics } = useDashboardMetrics();
+  const mergedStats = useMemo(() => {
+    if (!metrics) return stats;
+    return {
+      ...stats,
+      totalTickets: metrics.totalTickets,
+      activeTicketsCount: metrics.openTickets,
+      overdueTickets: metrics.overdueTickets,
+      highPriority: metrics.highPriorityOpen,
+      unassignedTickets: metrics.unassignedOpen,
+      createdThisWeek: metrics.createdLast7Days,
+      resolvedThisWeek: metrics.resolvedLast7Days,
+      ticketsByStatus: { ...stats.ticketsByStatus, ...metrics.ticketsByStatus },
+    };
+  }, [stats, metrics]);
+
   const staffStats = useMemo(() => {
     return calculateStaffStats(teamMembers, tickets);
   }, [teamMembers, tickets]);
@@ -426,10 +443,10 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.activeTicketsCount}
+                {mergedStats.activeTicketsCount}
               </p>
               <p className="text-center text-xs text-muted-foreground">
-                {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+                {mergedStats.highPriority} high priority • {mergedStats.unassignedTickets}{" "}
                 unassigned
               </p>
             </CardContent>
@@ -445,7 +462,7 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.createdThisWeek}
+                {mergedStats.createdThisWeek}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 in the last 7 days
@@ -463,7 +480,7 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.overdueTickets}
+                {mergedStats.overdueTickets}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 across all tickets
@@ -481,7 +498,7 @@ export function StaffLeaderDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.resolvedThisWeek}
+                {mergedStats.resolvedThisWeek}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 in the last 7 days
@@ -497,8 +514,8 @@ export function StaffLeaderDashboard() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Staff Breakdown</CardTitle>
                 <CardDescription>
-                  {stats.totalTeamMembers} total team{" "}
-                  {stats.totalTeamMembers === 1 ? "member" : "members"}
+                  {mergedStats.totalTeamMembers} total team{" "}
+                  {mergedStats.totalTeamMembers === 1 ? "member" : "members"}
                 </CardDescription>
               </div>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -579,7 +596,7 @@ export function StaffLeaderDashboard() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Active Tickets by User</CardTitle>
                 <CardDescription>
-                  {stats.activeTicketsCount} active tickets
+                  {mergedStats.activeTicketsCount} active tickets
                 </CardDescription>
               </div>
               <TicketIcon className="h-4 w-4 text-muted-foreground" />
@@ -654,7 +671,7 @@ export function StaffLeaderDashboard() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Tickets by Status</CardTitle>
                 <CardDescription>
-                  {stats.totalTickets ?? "0"} total tickets
+                  {mergedStats.totalTickets ?? "0"} total tickets
                 </CardDescription>
               </div>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />

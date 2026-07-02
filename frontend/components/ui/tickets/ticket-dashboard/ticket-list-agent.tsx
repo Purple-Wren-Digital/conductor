@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import { LoadMoreSentinel } from "@/components/ui/pagination/load-more-sentinel";
+import type { InfiniteData } from "@tanstack/react-query";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -39,10 +40,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { useFetchMarketCenterCategories } from "@/hooks/use-market-center";
-import { useFetchAgentTickets } from "@/hooks/use-tickets";
+import { useInfiniteAgentTickets } from "@/hooks/use-infinite-tickets";
 import { useUserRole } from "@/hooks/use-user-role";
 import {
-  calculateTotalPages,
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
@@ -117,9 +117,6 @@ export default function AgentTicketList() {
   const [sortBy, setSortBy] = useState<TicketSortBy>("updatedAt");
   const [sortDir, setSortDir] = useState<OrderBy>("desc");
   const [filterOverdue, setFilterOverdue] = useState(false);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -200,7 +197,7 @@ export default function AgentTicketList() {
         break;
     }
 
-    setCurrentPage(1);
+    // no-op: changing filters resets the infinite query
     // Clear the query param from URL without causing a navigation
     router.replace("/dashboard/tickets", { scroll: false });
   }, [searchParams, hydrated, router]);
@@ -208,7 +205,7 @@ export default function AgentTicketList() {
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1);
+      // no-op: changing filters resets the infinite query
     }, 500);
     return () => clearTimeout(t);
   }, [searchQuery]);
@@ -231,8 +228,6 @@ export default function AgentTicketList() {
 
     params.append("sortBy", sortBy);
     params.append("sortDir", sortDir);
-    params.append("limit", String(itemsPerPage));
-    params.append("offset", String((currentPage - 1) * itemsPerPage));
     return params;
   }, [
     debouncedSearchQuery,
@@ -244,8 +239,6 @@ export default function AgentTicketList() {
     dateTo,
     sortBy,
     sortDir,
-    currentPage,
-    itemsPerPage,
   ]);
 
   const queryKeyParams = useMemo(
@@ -263,12 +256,25 @@ export default function AgentTicketList() {
     [queryClient, agentTicketsQueryKey]
   );
 
-  const { data: ticketsData, isFetching: ticketsLoading } =
-    useFetchAgentTickets({ queryParams, agentTicketsQueryKey, hydrated });
+  const {
+    data: ticketsData,
+    isFetching: ticketsLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteAgentTickets({
+    queryParams,
+    queryKey: agentTicketsQueryKey,
+    hydrated,
+  });
 
-  const tickets: TicketWithUpdatedAt[] = useMemo(() => {
-    return ticketsData?.tickets ?? [];
-  }, [ticketsData]);
+  const tickets: TicketWithUpdatedAt[] = useMemo(
+    () =>
+      (ticketsData?.pages ?? []).flatMap(
+        (p) => (p.tickets as TicketWithUpdatedAt[]) ?? []
+      ),
+    [ticketsData]
+  );
 
   const displayedTickets: TicketWithUpdatedAt[] = useMemo(() => {
     if (!filterOverdue) return tickets;
@@ -280,19 +286,7 @@ export default function AgentTicketList() {
     });
   }, [tickets, filterOverdue]);
 
-  const totalTickets = useMemo(
-    () => (filterOverdue ? displayedTickets.length : (tickets?.length ?? 0)),
-    [filterOverdue, displayedTickets, tickets]
-  );
-
-  const totalPages = useMemo(
-    () =>
-      calculateTotalPages({
-        totalItems: totalTickets,
-        itemsPerPage,
-      }),
-    [totalTickets, itemsPerPage]
-  );
+  const totalTickets = ticketsData?.pages[0]?.total ?? 0;
 
   const teamMembersAssignedToTickets: {
     id: string;
@@ -339,7 +333,7 @@ export default function AgentTicketList() {
     setDateTo(undefined);
     setOpenFrom(false);
     setOpenTo(false);
-    setCurrentPage(1);
+    // no-op: changing filters resets the infinite query
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
@@ -648,7 +642,7 @@ export default function AgentTicketList() {
                         value={selectedAssignee}
                         onValueChange={(v) => {
                           setSelectedAssignee(v);
-                          setCurrentPage(1);
+                          // no-op: changing filters resets the infinite query
                         }}
                         disabled={isLoading}
                       >
@@ -707,7 +701,7 @@ export default function AgentTicketList() {
                             selected={dateFrom}
                             onSelect={(d) => {
                               setDateFrom(d);
-                              setCurrentPage(1);
+                              // no-op: changing filters resets the infinite query
                               setOpenFrom(false);
                             }}
                           />
@@ -737,7 +731,7 @@ export default function AgentTicketList() {
                             selected={dateTo}
                             onSelect={(d) => {
                               setDateTo(d);
-                              setCurrentPage(1);
+                              // no-op: changing filters resets the infinite query
                               setOpenTo(false);
                             }}
                           />
@@ -765,7 +759,7 @@ export default function AgentTicketList() {
                                     ? [...prev, status]
                                     : prev.filter((s) => s !== status)
                                 );
-                                setCurrentPage(1);
+                                // no-op: changing filters resets the infinite query
                               }}
                             />
                             <Label
@@ -801,7 +795,7 @@ export default function AgentTicketList() {
                                     ? [...prev, urgency]
                                     : prev.filter((u) => u !== urgency)
                                 );
-                                setCurrentPage(1);
+                                // no-op: changing filters resets the infinite query
                               }}
                               disabled={isLoading}
                             />
@@ -948,7 +942,7 @@ export default function AgentTicketList() {
                   onClick={() => {
                     setSortBy("status");
                     setSortDir(sortDir === "asc" ? "desc" : "asc");
-                    setCurrentPage(1);
+                    // no-op: changing filters resets the infinite query
                   }}
                 >
                   <p className="flex items-center gap-1">
@@ -967,7 +961,7 @@ export default function AgentTicketList() {
                   onClick={() => {
                     setSortBy("urgency");
                     setSortDir(sortDir === "asc" ? "desc" : "asc");
-                    setCurrentPage(1);
+                    // no-op: changing filters resets the infinite query
                   }}
                 >
                   <p className="flex items-center gap-1">
@@ -1040,13 +1034,15 @@ export default function AgentTicketList() {
             </TableBody>
           </Table>
 
-          <PagesAndItemsCount
-            type="tickets"
-            totalItems={totalTickets}
-            itemsPerPage={itemsPerPage}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            totalPages={totalPages}
+          <LoadMoreSentinel
+            hasNextPage={hasNextPage ?? false}
+            isFetching={ticketsLoading || isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+            totalLabel={
+              totalTickets > 0
+                ? `Showing ${displayedTickets.length} of ${totalTickets} tickets`
+                : undefined
+            }
           />
         </section>
       </Collapsible>
@@ -1060,18 +1056,20 @@ export default function AgentTicketList() {
           setIsEditOpen(false);
           setEditingTicket(null);
           if (updated) {
-            // optimistic local update of current page
-            queryClient.setQueryData<TicketsResponse>(
+            // optimistic local update across all loaded pages
+            queryClient.setQueryData<InfiniteData<TicketsResponse>>(
               agentTicketsQueryKey,
               (prev) => {
                 if (!prev) return prev;
-                const nextTickets = prev.tickets.map(
-                  (t: TicketWithUpdatedAt) =>
+                const nextPages = prev.pages.map((page) => ({
+                  ...page,
+                  tickets: page.tickets.map((t: TicketWithUpdatedAt) =>
                     t.id === (updated as TicketWithUpdatedAt).id
                       ? (updated as TicketWithUpdatedAt)
                       : t
-                );
-                return { ...prev, tickets: nextTickets };
+                  ),
+                }));
+                return { ...prev, pages: nextPages };
               }
             );
           }

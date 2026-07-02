@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import PagesAndItemsCount from "@/components/ui/pagination/page-and-items-count";
+import { LoadMoreSentinel } from "@/components/ui/pagination/load-more-sentinel";
+import type { InfiniteData } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -48,11 +49,10 @@ import {
   useFetchAllMarketCenters,
   useFetchMarketCenterCategories,
 } from "@/hooks/use-market-center";
-import { useFetchAdminTickets } from "@/hooks/use-tickets";
+import { useInfiniteAdminTickets } from "@/hooks/use-infinite-tickets";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
-  calculateTotalPages,
   defaultActiveStatuses,
   formatOrderBy,
   formatTicketOptions,
@@ -164,9 +164,6 @@ export default function AdminTicketList() {
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [sortDir, setSortDir] = useState<OrderBy>("desc");
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false);
   const [bulkAssigneeId, setBulkAssigneeId] = useState<string>("");
@@ -177,7 +174,7 @@ export default function AdminTicketList() {
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1);
+      // no-op: changing filters resets the infinite query
     }, 500);
     return () => clearTimeout(t);
   }, [searchQuery]);
@@ -254,7 +251,7 @@ export default function AdminTicketList() {
         break;
     }
 
-    setCurrentPage(1);
+    // no-op: changing filters resets the infinite query
     // Clear the query param from URL without causing a navigation
     router.replace("/dashboard/tickets", { scroll: false });
   }, [searchParams, hydrated, router]);
@@ -286,8 +283,6 @@ export default function AdminTicketList() {
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
     params.append("sortBy", sortBy);
     params.append("sortDir", sortDir);
-    params.append("limit", String(itemsPerPage));
-    params.append("offset", String((currentPage - 1) * itemsPerPage));
     return params;
   }, [
     debouncedSearchQuery,
@@ -301,8 +296,6 @@ export default function AdminTicketList() {
     dateTo,
     sortBy,
     sortDir,
-    currentPage,
-    itemsPerPage,
   ]);
 
   const queryKeyParams = useMemo(
@@ -314,17 +307,26 @@ export default function AdminTicketList() {
     [queryKeyParams]
   );
 
-  const { data: ticketsData, isFetching: ticketsLoading } =
-    useFetchAdminTickets({
-      role,
-      adminTicketsQueryKey,
-      queryParams,
-      hydrated,
-    });
+  const {
+    data: ticketsData,
+    isFetching: ticketsLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteAdminTickets({
+    role,
+    queryParams,
+    queryKey: adminTicketsQueryKey,
+    hydrated,
+  });
 
-  const tickets: TicketWithUpdatedAt[] = useMemo(() => {
-    return ticketsData?.tickets ?? [];
-  }, [ticketsData]);
+  const tickets: TicketWithUpdatedAt[] = useMemo(
+    () =>
+      (ticketsData?.pages ?? []).flatMap(
+        (p) => (p.tickets as TicketWithUpdatedAt[]) ?? []
+      ),
+    [ticketsData]
+  );
 
   const displayedTickets: TicketWithUpdatedAt[] = useMemo(() => {
     if (!filterOverdue) return tickets;
@@ -336,18 +338,7 @@ export default function AdminTicketList() {
     });
   }, [tickets, filterOverdue]);
 
-  const totalTickets: number = useMemo(
-    () => (filterOverdue ? displayedTickets.length : (ticketsData?.total ?? 0)),
-    [filterOverdue, displayedTickets, ticketsData]
-  );
-  const totalPages = useMemo(
-    () =>
-      calculateTotalPages({
-        totalItems: totalTickets,
-        itemsPerPage,
-      }),
-    [totalTickets, itemsPerPage]
-  );
+  const totalTickets: number = ticketsData?.pages[0]?.total ?? 0;
 
   const {
     data: usersData,
@@ -609,7 +600,7 @@ export default function AdminTicketList() {
     setDateTo(undefined);
     setOpenFrom(false);
     setOpenTo(false);
-    setCurrentPage(1);
+    // no-op: changing filters resets the infinite query
     setSortBy("updatedAt");
     setSortDir("desc");
     setFilterOverdue(false);
@@ -777,7 +768,7 @@ export default function AdminTicketList() {
                   setSelectedMarketCenterId={setSelectedMarketCenterId}
                   handleMarketCenterSelected={() => {
                     setSelectedCategory(defaultSelectedCategory);
-                    setCurrentPage(1);
+                    // no-op: changing filters resets the infinite query
                   }}
                 />
               </div>
@@ -868,7 +859,7 @@ export default function AdminTicketList() {
                       value={selectedAssignee}
                       onValueChange={(v) => {
                         setSelectedAssignee(v);
-                        setCurrentPage(1);
+                        // no-op: changing filters resets the infinite query
                       }}
                       disabled={usersLoading || ticketsLoading}
                     >
@@ -920,7 +911,7 @@ export default function AdminTicketList() {
                       value={selectedCreator}
                       onValueChange={(v) => {
                         setSelectedCreator(v);
-                        setCurrentPage(1);
+                        // no-op: changing filters resets the infinite query
                       }}
                       disabled={usersLoading || ticketsLoading}
                     >
@@ -982,7 +973,7 @@ export default function AdminTicketList() {
                                   ? [...prev, status]
                                   : prev.filter((s) => s !== status)
                               );
-                              setCurrentPage(1);
+                              // no-op: changing filters resets the infinite query
                             }}
                           />
                           <Label
@@ -1018,7 +1009,7 @@ export default function AdminTicketList() {
                           selected={dateFrom}
                           onSelect={(d) => {
                             setDateFrom(d);
-                            setCurrentPage(1);
+                            // no-op: changing filters resets the infinite query
                             setOpenFrom(false);
                           }}
                         />
@@ -1046,7 +1037,7 @@ export default function AdminTicketList() {
                           selected={dateTo}
                           onSelect={(d) => {
                             setDateTo(d);
-                            setCurrentPage(1);
+                            // no-op: changing filters resets the infinite query
                             setOpenTo(false);
                           }}
                         />
@@ -1062,7 +1053,7 @@ export default function AdminTicketList() {
                       onValueChange={(value) => {
                         if (value === "all") {
                           setSelectedCategory(defaultSelectedCategory);
-                          setCurrentPage(1);
+                          // no-op: changing filters resets the infinite query
                           return;
                         }
                         const selected: CategoryOption | undefined =
@@ -1074,7 +1065,7 @@ export default function AdminTicketList() {
                           selected?.ids.length > 0
                         ) {
                           setSelectedCategory(selected);
-                          setCurrentPage(1);
+                          // no-op: changing filters resets the infinite query
                         }
                       }}
                       aria-label="Filter by ticket categories"
@@ -1114,7 +1105,7 @@ export default function AdminTicketList() {
                                   ? [...prev, urgency]
                                   : prev.filter((u) => u !== urgency)
                               );
-                              setCurrentPage(1);
+                              // no-op: changing filters resets the infinite query
                             }}
                           />
                           <Label
@@ -1146,7 +1137,7 @@ export default function AdminTicketList() {
                   value={sortBy}
                   onValueChange={(value: TicketSortBy) => {
                     setSortBy(value);
-                    setCurrentPage(1);
+                    // no-op: changing filters resets the infinite query
                   }}
                   disabled={
                     ticketsLoading ||
@@ -1178,7 +1169,7 @@ export default function AdminTicketList() {
                   value={sortDir}
                   onValueChange={(value: OrderBy) => {
                     setSortDir(value);
-                    setCurrentPage(1);
+                    // no-op: changing filters resets the infinite query
                   }}
                   disabled={
                     ticketsLoading ||
@@ -1235,7 +1226,7 @@ export default function AdminTicketList() {
                 onClick={() => {
                   setSortBy("status");
                   setSortDir(sortDir === "asc" ? "desc" : "asc");
-                  setCurrentPage(1);
+                  // no-op: changing filters resets the infinite query
                 }}
               >
                 <p className="flex items-center justify-center gap-1">
@@ -1254,7 +1245,7 @@ export default function AdminTicketList() {
                 onClick={() => {
                   setSortBy("urgency");
                   setSortDir(sortDir === "asc" ? "desc" : "asc");
-                  setCurrentPage(1);
+                  // no-op: changing filters resets the infinite query
                 }}
               >
                 <p className="flex items-center justify-center gap-1">
@@ -1316,13 +1307,15 @@ export default function AdminTicketList() {
               )}
           </TableBody>
         </Table>
-        <PagesAndItemsCount
-          type="tickets"
-          totalItems={totalTickets}
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
+        <LoadMoreSentinel
+          hasNextPage={hasNextPage ?? false}
+          isFetching={ticketsLoading || isFetchingNextPage}
+          onLoadMore={() => fetchNextPage()}
+          totalLabel={
+            totalTickets > 0
+              ? `Showing ${displayedTickets.length} of ${totalTickets} tickets`
+              : undefined
+          }
         />
       </section>
 
@@ -1445,18 +1438,20 @@ export default function AdminTicketList() {
         onClose={() => setIsEditOpen(false)}
         onSuccess={async (updated) => {
           if (updated) {
-            // optimistic local update of current page
-            queryClient.setQueryData<TicketsResponse>(
+            // optimistic local update across all loaded pages
+            queryClient.setQueryData<InfiniteData<TicketsResponse>>(
               adminTicketsQueryKey,
               (prev) => {
                 if (!prev) return prev;
-                const nextTickets = prev.tickets.map(
-                  (t: TicketWithUpdatedAt) =>
+                const nextPages = prev.pages.map((page) => ({
+                  ...page,
+                  tickets: page.tickets.map((t: TicketWithUpdatedAt) =>
                     t.id === (updated as TicketWithUpdatedAt).id
                       ? (updated as TicketWithUpdatedAt)
                       : t
-                );
-                return { ...prev, tickets: nextTickets };
+                  ),
+                }));
+                return { ...prev, pages: nextPages };
               }
             );
           }

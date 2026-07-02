@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/chart";
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import {
   Select,
   SelectContent,
@@ -342,6 +343,32 @@ export function AdminDashboard() {
     };
   }, [tickets, teamMembers]);
 
+  const { data: metrics } = useDashboardMetrics(
+    selectedMarketCenter?.id && selectedMarketCenter.id !== "all"
+      ? selectedMarketCenter.id
+      : undefined
+  );
+
+  // Override paginated-slice counts with SQL-side scoped metrics.
+  // The local `stats` still drives charts and per-user breakdowns that need ticket rows.
+  const mergedStats = useMemo(() => {
+    if (!metrics) return stats;
+    return {
+      ...stats,
+      totalTickets: metrics.totalTickets,
+      openTicketsCount: metrics.openTickets,
+      overdueTickets: metrics.overdueTickets,
+      highPriority: metrics.highPriorityOpen,
+      unassignedTickets: metrics.unassignedOpen,
+      createdThisWeek: metrics.createdLast7Days,
+      resolvedThisWeek: metrics.resolvedLast7Days,
+      ticketsByStatus: {
+        ...stats.ticketsByStatus,
+        ...metrics.ticketsByStatus,
+      },
+    };
+  }, [stats, metrics]);
+
   const staffStats = useMemo(() => {
     return calculateStaffStats(teamMembers, tickets);
   }, [teamMembers, tickets]);
@@ -350,7 +377,7 @@ export function AdminDashboard() {
     if (!stats) return [];
     return STATUS_ORDER.map((key) => ({
       status: key,
-      count: stats.ticketsByStatus[key] ?? 0,
+      count: mergedStats.ticketsByStatus[key] ?? 0,
       fill: STATUS_COLORS[key],
     }));
   }, [stats]);
@@ -501,10 +528,10 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.openTicketsCount}
+                {mergedStats.openTicketsCount}
               </p>
               <p className="text-center text-xs text-muted-foreground">
-                {stats.highPriority} high priority • {stats.unassignedTickets}{" "}
+                {mergedStats.highPriority} high priority • {mergedStats.unassignedTickets}{" "}
                 unassigned
               </p>
             </CardContent>
@@ -521,7 +548,7 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.createdThisWeek}
+                {mergedStats.createdThisWeek}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 in the last 7 days
@@ -540,7 +567,7 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.overdueTickets}
+                {mergedStats.overdueTickets}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 across all tickets
@@ -559,7 +586,7 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-center text-2xl font-bold">
-                {stats.resolvedThisWeek}
+                {mergedStats.resolvedThisWeek}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 in the last 7 days
@@ -730,7 +757,7 @@ export function AdminDashboard() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Tickets by Status</CardTitle>
                 <CardDescription>
-                  {stats.totalTickets} total tickets
+                  {mergedStats.totalTickets} total tickets
                 </CardDescription>
               </div>
               <TrendingUp className="h-4 w-4 text-muted-foreground hidden sm:visible" />
@@ -792,7 +819,7 @@ export function AdminDashboard() {
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
-                {stats.totalTickets} total tickets
+                {mergedStats.totalTickets} total tickets
               </CardDescription>
             </CardHeader>
             <CardContent>

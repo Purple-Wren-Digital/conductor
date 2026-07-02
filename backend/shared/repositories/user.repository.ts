@@ -432,18 +432,30 @@ export const userRepository = {
     );
     const total = countResult?.count ?? 0;
 
-    // Get users
+    // Get users with per-user ticket counts for the MC team list UI
     const sql = `
-      SELECT * FROM users
+      SELECT
+        users.*,
+        (SELECT COUNT(*)::int FROM tickets WHERE assignee_id = users.id) AS assigned_count,
+        (SELECT COUNT(*)::int FROM tickets WHERE creator_id = users.id) AS created_count
+      FROM users
       WHERE ${whereClause}
       ORDER BY ${sortColumn} ${sortDir}
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const rows = await db.rawQueryAll<UserRow>(sql, ...values);
+    const rows = await db.rawQueryAll<
+      UserRow & { assigned_count: number; created_count: number }
+    >(sql, ...values);
 
     return {
-      users: rows.map(rowToUser),
+      users: rows.map((row) => ({
+        ...rowToUser(row),
+        _count: {
+          assignedTickets: row.assigned_count,
+          createdTickets: row.created_count,
+        },
+      })),
       total,
     };
   },
