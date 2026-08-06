@@ -8,4 +8,5 @@ export * from "./export";
 export * from "./import";
 export * from "./categories";
 export * from "./auto-close";
+export * from "./sponsor-slots";
 export * from "./types";

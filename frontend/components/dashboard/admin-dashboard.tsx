@@ -44,6 +44,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFetchAllMarketCenters } from "@/hooks/use-market-center";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useSponsorSlot } from "@/hooks/use-sponsor-display";
+import { SponsorDashboardCard } from "@/components/ui/sponsors/sponsor-dashboard-card";
 import {
   useFetchAdminTickets,
   useFetchRatingsByMarketCenter,
@@ -89,6 +91,7 @@ export function AdminDashboard() {
   const { role, isSuperuser } = useUserRole();
   const { isEnterprise } = useIsEnterprise();
   const canViewAllMCs = isEnterprise || isSuperuser;
+  const dashboardCardSponsor = useSponsorSlot("dashboardCard");
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -516,7 +519,9 @@ export function AdminDashboard() {
         </section>
 
         {/* TOP STATS */}
-        <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <section
+          className={`grid gap-4 grid-cols-2 ${dashboardCardSponsor ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+        >
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("active")}
@@ -593,6 +598,8 @@ export function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
+
+          <SponsorDashboardCard />
         </section>
 
         <section className="grid gap-4 auto-cols-[minmax(0,2fr)] lg:grid-cols-2 place-content-evenly">
