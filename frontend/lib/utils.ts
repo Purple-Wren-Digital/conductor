@@ -93,6 +93,15 @@ export const sortByRoleThenName = (
 // ticket, not just the market center's current active/non-agent roster -
 // a user assigned to a ticket can otherwise vanish from the filter the
 // moment their role changes, they're deactivated, or they leave the team.
+// Encore >= 1.57 hardened the local object store: it returns 403 for browser
+// requests marked Sec-Fetch-Site: cross-site, and Chrome classifies
+// localhost:3000 -> 127.0.0.1:<port> as cross-site. Rewriting the host to
+// localhost makes the request same-site so local bucket images render.
+// Production asset URLs (S3/CDN) never match this pattern and pass through.
+export function normalizeLocalAssetUrl(url: string): string {
+  return url.replace(/^http:\/\/127\.0\.0\.1:(\d+)\//, "http://localhost:$1/");
+}
+
 export interface AssigneeOption {
   id: string;
   name: string | null;

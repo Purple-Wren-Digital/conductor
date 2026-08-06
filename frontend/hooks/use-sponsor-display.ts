@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
 import { useQuery } from "@tanstack/react-query";
 import type { settings } from "@/lib/api/encore-client";
+import { normalizeLocalAssetUrl } from "@/lib/utils";
 
 export type SponsorDisplaySlot = settings.SponsorDisplaySlot;
 export type SponsorSlotKey = settings.SponsorSlotKey;
@@ -27,7 +28,10 @@ export function useSponsorDisplay() {
       });
       if (!res.ok) throw new Error("Failed to fetch sponsor display");
       const data = (await res.json()) as settings.GetSponsorDisplayResponse;
-      return data.slots;
+      return data.slots.map((s) => ({
+        ...s,
+        imageUrl: normalizeLocalAssetUrl(s.imageUrl),
+      }));
     },
     staleTime: 5 * 60_000,
   });

@@ -6,19 +6,19 @@ import { MarketCenterNotificationPreferences } from "../../settings";
 import { defaultMarketCenterNotificationPreferences } from "../../marketCenters/notification-preferences/utils";
 import { formatNotificationWithoutTemplate } from "./utils";
 
-export interface FormatNotificationRequest {
+export interface FormatStandardNotificationRequest {
   templateName: string;
   type: "App Permissions" | "Invitation" | "Account Information";
   content: NotificationContent;
 }
 
-export interface FormatNotificationResponse {
+export interface FormatStandardNotificationResponse {
   formattedNotification: CreateNotificationPayload | null;
 }
 
 export const formatStandard = api<
-  FormatNotificationRequest,
-  FormatNotificationResponse
+  FormatStandardNotificationRequest,
+  FormatStandardNotificationResponse
 >(
   {
     expose: true,

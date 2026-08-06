@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
 import { API_BASE } from "@/lib/api/utils";
+import { normalizeLocalAssetUrl } from "@/lib/utils";
 import type { settings } from "@/lib/api/encore-client";
 
 // =============================================================================
@@ -60,7 +61,11 @@ export function useSponsorSlots(marketCenterId: string | undefined) {
         throw new Error("Failed to fetch sponsor slots");
       }
 
-      return (await response.json()) as settings.GetSponsorSlotsResponse;
+      const data = (await response.json()) as settings.GetSponsorSlotsResponse;
+      for (const slot of Object.values(data.sponsorSlots)) {
+        if (slot?.imageUrl) slot.imageUrl = normalizeLocalAssetUrl(slot.imageUrl);
+      }
+      return data;
     },
     enabled: !!marketCenterId,
   });
@@ -159,7 +164,9 @@ export function useUploadSponsorAsset() {
         throw new Error("Failed to upload sponsor asset");
       }
 
-      return (await response.json()) as settings.UploadSponsorAssetResponse;
+      const data =
+        (await response.json()) as settings.UploadSponsorAssetResponse;
+      return { ...data, imageUrl: normalizeLocalAssetUrl(data.imageUrl) };
     },
   });
 }

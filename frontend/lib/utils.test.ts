@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeAssigneeOptions, type AssigneeOption } from "./utils";
+import { normalizeLocalAssetUrl, mergeAssigneeOptions, type AssigneeOption } from "./utils";
 
 describe("mergeAssigneeOptions", () => {
   it("returns the staff list untouched when there are no extra assignees", () => {
@@ -103,5 +103,25 @@ describe("mergeAssigneeOptions", () => {
     const assignees = [{ name: "Also No Id", role: "AGENT" } as AssigneeOption];
 
     expect(mergeAssigneeOptions(staff, assignees)).toEqual([]);
+  });
+});
+
+describe("normalizeLocalAssetUrl", () => {
+  it("rewrites 127.0.0.1 local object store URLs to localhost", () => {
+    expect(
+      normalizeLocalAssetUrl("http://127.0.0.1:9800/app/partner-assets/mc/header/x.png")
+    ).toBe("http://localhost:9800/app/partner-assets/mc/header/x.png");
+  });
+
+  it("leaves production https URLs untouched", () => {
+    expect(normalizeLocalAssetUrl("https://cdn.example.com/x.png")).toBe(
+      "https://cdn.example.com/x.png"
+    );
+  });
+
+  it("leaves other hosts untouched", () => {
+    expect(normalizeLocalAssetUrl("http://10.0.0.5:9800/x.png")).toBe(
+      "http://10.0.0.5:9800/x.png"
+    );
   });
 });
