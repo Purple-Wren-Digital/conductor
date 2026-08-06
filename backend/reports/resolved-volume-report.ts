@@ -3,8 +3,7 @@ import { db } from "../ticket/db";
 import { subscriptionRepository } from "../shared/repositories";
 import { getUserContext } from "../auth/user-context";
 import { getAccessibleMarketCenterIds } from "../auth/permissions";
-
-export type Granularity = "daily" | "weekly" | "monthly";
+import type { Granularity } from "./created-volume-report";
 
 export interface ResolvedVolumeRequest {
   marketCenterIds?: Query<string[]>;

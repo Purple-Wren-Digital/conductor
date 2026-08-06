@@ -17,8 +17,10 @@ import { getEncoreClient } from "@/lib/api/client-side";
 import { Footer } from "@/components/ui/footer";
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import conductorLogo from "@/app/(landing)/assets/conductor/Conductor Icon_White.png";
+import conductorHorizontalLogo from "@/app/(landing)/assets/conductor/Conductor Horizontal_White.png";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import { SponsorHeaderBadge } from "@/components/ui/sponsors/sponsor-header-badge";
 
 // hydration fix
 const UserButton = dynamic(
@@ -217,18 +219,18 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-8 flex items-center justify-center">
+                <div className="size-8 flex items-center justify-center md:hidden">
                   <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
-                <div className="hidden md:flex flex-col leading-tight ">
-                  <h1 className="text-sm font-bold sm:text-xl text-muted">
-                    Conductor
-                  </h1>
-                  <p className="text-xs font-medium sm:text-sm text-muted">
-                    Agent Ticketing System
-                  </p>
-                </div>
+                <Image
+                  src={conductorHorizontalLogo}
+                  alt="Conductor — Agent Ticketing System"
+                  className="hidden md:block h-10 w-auto"
+                  priority
+                />
               </Link>
+
+              <SponsorHeaderBadge />
 
               <div className="flex items-center gap-2">
                 <AllNotifications

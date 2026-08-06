@@ -19,12 +19,28 @@ export interface AutoCloseSettings {
   awaitingResponseDays: number; // Number of business days before auto-closing. Default: 2
 }
 
+export type SponsorSlotKey = "header" | "dashboardCard" | "ticketListRow";
+
+export interface SponsorSlot {
+  enabled: boolean;
+  name?: string; // vendor name, max 100 chars
+  imageKey?: string; // key in the partner-assets bucket
+  linkUrl?: string; // http(s) URL
+}
+
+export interface SponsorSlots {
+  header?: SponsorSlot;
+  dashboardCard?: SponsorSlot;
+  ticketListRow?: SponsorSlot;
+}
+
 export interface MarketCenterSettings {
   notificationPreferences?: MarketCenterNotificationPreferences[];
   notificationTemplates?: NotificationTemplate[];
   ticketTemplates?: TicketTemplate[];
   marketCenter?: MarketCenter;
   autoClose?: AutoCloseSettings;
+  sponsorSlots?: SponsorSlots;
 
   businessHours?: BusinessHours;
   branding?: BrandingSettings;

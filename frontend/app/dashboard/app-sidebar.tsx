@@ -36,6 +36,7 @@ import {
   FolderPen,
   HomeIcon,
   LockKeyholeIcon,
+  Megaphone,
   Ticket,
   Users as UsersIcon,
 } from "lucide-react";
@@ -102,7 +103,8 @@ export function AppSidebar({
           <SidebarMenuButton
             onClick={() => navigate("/dashboard/account")}
             disabled={isLoading || !currentUser}
-            className="flex items-center gap-2 h-[100px]"
+            aria-label="Navigate to your account"
+            className="flex items-center gap-2 h-auto py-2"
           >
             {isLoading && (
               <div className="flex flex-col gap-1 items-center w-full">
@@ -118,25 +120,26 @@ export function AppSidebar({
               </div>
             )}
             {!isLoading && currentUser && (
-              <div
-                className="flex flex-col gap-1"
-                aria-label="Navigate to your account"
-              >
+              <div className="flex flex-col gap-1">
                 <p className="font-medium text-sm hover:underline">
                   {currentUser?.name ? `${currentUser.name}` : "User not found"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {currentUser?.email}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {currentUser?.role &&
-                    currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
-                  •{" "}
-                  <MarketCenterSwitcher />
-                </p>
               </div>
             )}
           </SidebarMenuButton>
+          {/* Outside the button: the switcher renders its own <button> and
+              nesting it would produce invalid HTML (hydration error). */}
+          {!isLoading && currentUser && (
+            <p className="px-2 pb-3 text-xs text-muted-foreground capitalize">
+              {currentUser?.role &&
+                currentUser?.role?.split("_").join(" ").toLowerCase()}{" "}
+              •{" "}
+              <MarketCenterSwitcher />
+            </p>
+          )}
         </div>
       </SidebarHeader>
 
@@ -367,6 +370,16 @@ export function AppSidebar({
                         >
                           <LockKeyholeIcon className="text-muted-foreground" />
                           Auto-Close Management
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate(`/dashboard/sponsors`)}
+                          disabled={isLoading}
+                        >
+                          <Megaphone className="text-muted-foreground" />
+                          Sponsors
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </SidebarMenuSub>

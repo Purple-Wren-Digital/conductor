@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
+import { SponsoredTicketRow } from "@/components/ui/sponsors/sponsored-ticket-row";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +49,7 @@ import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-tic
 import { format, startOfDay, endOfDay } from "date-fns";
 import { useFetchMarketCenter } from "@/hooks/use-market-center";
 import { useInfiniteStaffTickets } from "@/hooks/use-infinite-tickets";
+import { useTicketAssignees } from "@/hooks/use-ticket-assignees";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
 import {
@@ -55,6 +57,7 @@ import {
   formatOrderBy,
   formatTicketOptions,
   getResolvedInBusinessDays,
+  mergeAssigneeOptions,
   orderByOptions,
   sortByRoleThenName,
   sortByTicketOptions,
@@ -85,6 +88,7 @@ import type {
   TicketsResponse,
   TicketWithUpdatedAt,
   TicketCategory,
+  UserRole,
 } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -266,6 +270,23 @@ export default function TicketListStaff() {
       .filter((user) => user?.role && user.role !== "AGENT")
       .sort(sortByRoleThenName);
   }, [teamMembers]);
+
+  // Users who actually hold an assigned ticket in scope, regardless of
+  // whether they're still active, on the AGENT role, or still on this
+  // market center's roster - keeps them selectable in the Assignee filter.
+  const { data: ticketAssignees } = useTicketAssignees(marketCenterId);
+
+  const assigneeFilterOptions = useMemo(
+    () =>
+      mergeAssigneeOptions(
+        staffTeamMembers,
+        (ticketAssignees ?? []).map((a) => ({
+          ...a,
+          role: a.role as UserRole,
+        }))
+      ),
+    [staffTeamMembers, ticketAssignees]
+  );
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -796,9 +817,9 @@ export default function TicketListStaff() {
                               <SelectItem value="Unassigned">
                                 Unassigned
                               </SelectItem>
-                              {staffTeamMembers &&
-                                staffTeamMembers.length > 0 &&
-                                staffTeamMembers.map((user: ConductorUser) => (
+                              {assigneeFilterOptions &&
+                                assigneeFilterOptions.length > 0 &&
+                                assigneeFilterOptions.map((user) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     <span className="font-medium">
                                       {user.name}:
@@ -810,6 +831,9 @@ export default function TicketListStaff() {
                                             .join(" ")
                                             .toLowerCase()
                                         : "No role"}
+                                      {user.isActive === false
+                                        ? " (inactive)"
+                                        : ""}
                                     </span>
                                   </SelectItem>
                                 ))}
@@ -1215,24 +1239,33 @@ export default function TicketListStaff() {
                 {!ticketsLoading &&
                   tickets &&
                   displayedTickets.length > 0 &&
-                  displayedTickets.map((ticket: TicketWithUpdatedAt) => (
-                    <TicketListItemWrapper
-                      key={ticket.id}
-                      ticket={ticket}
-                      selected={selectedTickets.includes(ticket.id)}
-                      onSelect={(checked: boolean) =>
-                        handleSelectTicket(ticket.id, checked)
-                      }
-                      onEdit={(e: React.MouseEvent) =>
-                        handleQuickEdit(e, ticket)
-                      }
-                      onClose={(e: React.MouseEvent) =>
-                        handleQuickClose(e, ticket)
-                      }
-                      onClick={() => handleTicketClick(ticket)}
-                      onReopen={() => handleReopenTicket(ticket)}
-                    />
-                  ))}
+                  displayedTickets.flatMap((ticket: TicketWithUpdatedAt, index: number) => {
+                    const row = (
+                      <TicketListItemWrapper
+                        key={ticket.id}
+                        ticket={ticket}
+                        selected={selectedTickets.includes(ticket.id)}
+                        onSelect={(checked: boolean) =>
+                          handleSelectTicket(ticket.id, checked)
+                        }
+                        onEdit={(e: React.MouseEvent) =>
+                          handleQuickEdit(e, ticket)
+                        }
+                        onClose={(e: React.MouseEvent) =>
+                          handleQuickClose(e, ticket)
+                        }
+                        onClick={() => handleTicketClick(ticket)}
+                        onReopen={() => handleReopenTicket(ticket)}
+                      />
+                    );
+                    // Insert the sponsored row once, after the 3rd data row
+                    // (or after the last row if there are fewer than 3).
+                    const isSponsorInsertionPoint =
+                      index === Math.min(2, displayedTickets.length - 1);
+                    return isSponsorInsertionPoint
+                      ? [row, <SponsoredTicketRow key="sponsored-ticket-row" colSpan={6} />]
+                      : [row];
+                  })}
 
                 {!ticketsLoading &&
                   (!displayedTickets || !displayedTickets.length) && (

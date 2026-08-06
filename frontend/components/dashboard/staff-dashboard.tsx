@@ -58,6 +58,8 @@ import {
 import { StarRating } from "../ui/ratingInput/star-rating-static";
 import { useFetchRatingsByAssignee } from "@/hooks/use-tickets";
 import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
+import { useSponsorSlot } from "@/hooks/use-sponsor-display";
+import { SponsorDashboardCard } from "@/components/ui/sponsors/sponsor-dashboard-card";
 import { CreateTicketForm } from "../ui/tickets/ticket-form/create-ticket-form";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -71,6 +73,7 @@ export function StaffDashboard() {
   const { user: clerkUser } = useUser();
 
   const hasMultipleMCs = currentUser?.marketCenters && currentUser.marketCenters.length > 1;
+  const dashboardCardSponsor = useSponsorSlot("dashboardCard");
 
   useEffect(() => {
     if (currentUser?.marketCenterId && !selectedMarketCenterId) {
@@ -317,7 +320,9 @@ export function StaffDashboard() {
           </div>
         </section>
         {/* TOP STATS */}
-        <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <section
+          className={`grid gap-4 grid-cols-2 ${dashboardCardSponsor ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+        >
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"
             onClick={() => navigateToTicketsWithFilter("active")}
@@ -394,6 +399,8 @@ export function StaffDashboard() {
               </p>
             </CardContent>
           </Card>
+
+          <SponsorDashboardCard />
         </section>
 
         <section className="grid gap-4 auto-cols-[minmax(0,2fr)] lg:grid-cols-2 place-content-evenly">

@@ -11,12 +11,15 @@ import { API_BASE } from "@/lib/api/utils";
 import type { Ticket } from "@/lib/types";
 import { statusOptions } from "@/lib/utils";
 import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
+import { useSponsorSlot } from "@/hooks/use-sponsor-display";
+import { SponsorDashboardCard } from "@/components/ui/sponsors/sponsor-dashboard-card";
 
 export function AgentDashboard() {
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const { currentUser } = useStore();
   const router = useRouter();
+  const dashboardCardSponsor = useSponsorSlot("dashboardCard");
 
   const navigateToTicketsWithFilter = useCallback(
     (filterType: "active" | "new" | "overdue" | "resolved") => {
@@ -138,7 +141,9 @@ export function AgentDashboard() {
         <p className="text-muted-foreground">Manage your assigned tickets</p>
       </section>
       {/* TOP STATS */}
-      <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      <section
+        className={`grid gap-4 grid-cols-2 ${dashboardCardSponsor ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+      >
         <Card
           className="cursor-pointer transition-colors hover:bg-muted/50"
           onClick={() => navigateToTicketsWithFilter("active")}
@@ -214,6 +219,8 @@ export function AgentDashboard() {
             </p>
           </CardContent>
         </Card>
+
+        <SponsorDashboardCard />
       </section>
 
       <AgentTicketList />

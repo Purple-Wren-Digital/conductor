@@ -32,6 +32,7 @@ import {
 import { CreateTicketForm } from "@/components/ui/tickets/ticket-form/create-ticket-form";
 import { EditTicketForm } from "@/components/ui/tickets/ticket-form/edit-ticket-form";
 import { TicketListItemWrapper } from "@/components/ui/tickets/ticket-list-item-wrapper";
+import { SponsoredTicketRow } from "@/components/ui/sponsors/sponsored-ticket-row";
 import {
   Popover,
   PopoverContent,
@@ -1010,18 +1011,27 @@ export default function AgentTicketList() {
               {!ticketsLoading &&
                 tickets &&
                 displayedTickets.length > 0 &&
-                displayedTickets.map((ticket: TicketWithUpdatedAt) => (
-                  <TicketListItemWrapper
-                    key={ticket.id}
-                    ticket={ticket}
-                    onClick={() => handleTicketClick(ticket)}
-                    onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
-                    onClose={(e: React.MouseEvent) =>
-                      handleQuickClose(e, ticket)
-                    }
-                    onReopen={() => handleReopenTicket(ticket)}
-                  />
-                ))}
+                displayedTickets.flatMap((ticket: TicketWithUpdatedAt, index: number) => {
+                  const row = (
+                    <TicketListItemWrapper
+                      key={ticket.id}
+                      ticket={ticket}
+                      onClick={() => handleTicketClick(ticket)}
+                      onEdit={(e: React.MouseEvent) => handleQuickEdit(e, ticket)}
+                      onClose={(e: React.MouseEvent) =>
+                        handleQuickClose(e, ticket)
+                      }
+                      onReopen={() => handleReopenTicket(ticket)}
+                    />
+                  );
+                  // Insert the sponsored row once, after the 3rd data row
+                  // (or after the last row if there are fewer than 3).
+                  const isSponsorInsertionPoint =
+                    index === Math.min(2, displayedTickets.length - 1);
+                  return isSponsorInsertionPoint
+                    ? [row, <SponsoredTicketRow key="sponsored-ticket-row" colSpan={6} />]
+                    : [row];
+                })}
 
               {!ticketsLoading &&
                 (!displayedTickets || !displayedTickets.length) && (

@@ -89,6 +89,52 @@ export const sortByRoleThenName = (
   return (a.name ?? "").localeCompare(b.name ?? "");
 };
 
+// Assignee filter dropdowns need every user who actually holds an assigned
+// ticket, not just the market center's current active/non-agent roster -
+// a user assigned to a ticket can otherwise vanish from the filter the
+// moment their role changes, they're deactivated, or they leave the team.
+// Encore >= 1.57 hardened the local object store: it returns 403 for browser
+// requests marked Sec-Fetch-Site: cross-site, and Chrome classifies
+// localhost:3000 -> 127.0.0.1:<port> as cross-site. Rewriting the host to
+// localhost makes the request same-site so local bucket images render.
+// Production asset URLs (S3/CDN) never match this pattern and pass through.
+export function normalizeLocalAssetUrl(url: string): string {
+  return url.replace(/^http:\/\/127\.0\.0\.1:(\d+)\//, "http://localhost:$1/");
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string | null;
+  role: UserRole;
+  isActive?: boolean;
+}
+
+/**
+ * Merge the active team roster with the set of users who are actually
+ * assigned to >=1 ticket in scope, deduped by id and sorted by role then
+ * name. Entries from `staff` win on conflict (its data is already known to
+ * be current); entries only present in `assignees` fill in anyone who has
+ * dropped off the active roster but still holds a ticket.
+ */
+export function mergeAssigneeOptions(
+  staff: AssigneeOption[],
+  assignees: AssigneeOption[]
+): AssigneeOption[] {
+  const byId = new Map<string, AssigneeOption>();
+
+  for (const user of staff) {
+    if (!user?.id) continue;
+    byId.set(user.id, { ...user, isActive: user.isActive ?? true });
+  }
+
+  for (const user of assignees) {
+    if (!user?.id || byId.has(user.id)) continue;
+    byId.set(user.id, user);
+  }
+
+  return Array.from(byId.values()).sort(sortByRoleThenName);
+}
+
 // TICKETS
 function hashString(str: string) {
   let h = 0;

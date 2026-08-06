@@ -724,6 +724,115 @@ export const ticketRepository = {
     return { tickets, total };
   },
 
+  // Distinct assignees of tickets within a given role-based scope.
+  // Mirrors the access-control conditions in `search()` (see above) so the
+  // returned set matches exactly what the caller's ticket list would show,
+  // but ignores status/urgency/date/etc. filters since we want every user
+  // who is the assignee of >=1 ticket in scope, regardless of ticket status.
+  async findAssignees(params: {
+    userId?: string;
+    userRole?: UserRole;
+    marketCenterIds?: string[];
+  }): Promise<
+    Array<{ id: string; name: string | null; role: UserRole; isActive: boolean }>
+  > {
+    const conditions: string[] = ["t.assignee_id IS NOT NULL"];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (params.userRole === "AGENT" && params.userId) {
+      conditions.push(`t.creator_id = $${paramIndex++}`);
+      values.push(params.userId);
+    }
+
+    if (
+      (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
+      params?.marketCenterIds &&
+      params?.marketCenterIds.length > 0
+    ) {
+      const placeholders = params.marketCenterIds
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+      conditions.push(`
+        (
+          EXISTS (
+            SELECT 1 FROM ticket_categories tc2
+            WHERE tc2.id = t.category_id
+              AND tc2.market_center_id IN (${placeholders})
+          )
+          OR creator.market_center_id IN (${placeholders})
+          OR assignee.market_center_id IN (${placeholders})
+        )
+      `);
+      values.push(...params.marketCenterIds);
+      paramIndex += params.marketCenterIds.length;
+    }
+
+    if (
+      (params.userRole === "STAFF" || params.userRole === "STAFF_LEADER") &&
+      (!params?.marketCenterIds || !params?.marketCenterIds.length) &&
+      params?.userId
+    ) {
+      conditions.push(
+        `(t.assignee_id = $${paramIndex} OR t.creator_id = $${paramIndex})`
+      );
+      values.push(params.userId);
+      paramIndex++;
+    }
+
+    if (
+      params.userRole === "ADMIN" &&
+      params?.marketCenterIds &&
+      params?.marketCenterIds.length > 0
+    ) {
+      const placeholders = params.marketCenterIds
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(", ");
+      conditions.push(`
+        (
+          EXISTS (
+            SELECT 1 FROM ticket_categories tc2
+            WHERE tc2.id = t.category_id
+              AND tc2.market_center_id IN (${placeholders})
+          )
+          OR creator.market_center_id IN (${placeholders})
+          OR assignee.market_center_id IN (${placeholders})
+        )
+      `);
+      values.push(...params.marketCenterIds);
+      paramIndex += params.marketCenterIds.length;
+    }
+
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+    const sql = `
+      SELECT DISTINCT
+        assignee.id as id,
+        assignee.name as name,
+        assignee.role as role,
+        assignee.is_active as is_active
+      FROM tickets t
+      LEFT JOIN users creator ON t.creator_id = creator.id
+      JOIN users assignee ON t.assignee_id = assignee.id
+      ${whereClause}
+      ORDER BY assignee.name ASC
+    `;
+
+    const rows = await db.rawQueryAll<{
+      id: string;
+      name: string | null;
+      role: UserRole;
+      is_active: boolean;
+    }>(sql, ...values);
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      role: row.role,
+      isActive: row.is_active,
+    }));
+  },
+
   // Create ticket history
   async createHistory(data: {
     ticketId: string;
