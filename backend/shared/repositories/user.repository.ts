@@ -371,7 +371,12 @@ export const userRepository = {
     isActive?: boolean;
     sortBy?: "updatedAt" | "createdAt" | "name" | "role";
     sortDir?: "asc" | "desc";
-    limit?: number;
+    /**
+     * Number of rows to return, clamped to [1, 200]. Pass "all" to return
+     * every matching row — required by callers that need a complete roster
+     * (e.g. assignee pickers), which would otherwise be silently truncated.
+     */
+    limit?: number | "all";
     offset?: number;
   }): Promise<{ users: User[]; total: number }> {
     const conditions: string[] = ["1=1"];
@@ -421,8 +426,13 @@ export const userRepository = {
     };
     const sortColumn = columnMap[params.sortBy ?? "updatedAt"] ?? "updated_at";
     const sortDir = params.sortDir?.toUpperCase() === "ASC" ? "ASC" : "DESC";
-    const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+    const unbounded = params.limit === "all";
+    const limit = Math.min(
+      Math.max(typeof params.limit === "number" ? params.limit : 50, 1),
+      200
+    );
     const offset = Math.max(params.offset ?? 0, 0);
+    const paginationClause = unbounded ? "" : `LIMIT ${limit} OFFSET ${offset}`;
 
     // Get total count
     const countSql = `SELECT COUNT(*)::int as count FROM users WHERE ${whereClause}`;
@@ -441,7 +451,7 @@ export const userRepository = {
       FROM users
       WHERE ${whereClause}
       ORDER BY ${sortColumn} ${sortDir}
-      LIMIT ${limit} OFFSET ${offset}
+      ${paginationClause}
     `;
 
     const rows = await db.rawQueryAll<
