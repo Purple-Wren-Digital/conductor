@@ -39,14 +39,22 @@ export const list = api<ListUsersRequest, ListUsersResponse>(
       };
     }
 
-    // Build search parameters
+    // Build search parameters.
+    // This endpoint backs assignee/creator pickers and the admin dashboard
+    // team roster, so it must return every accessible user — a page-sized
+    // result would silently drop whoever sorts past the cut-off.
     const searchParams: any = {
       sortBy: "name" as const,
       sortDir: "asc" as const,
+      limit: "all" as const,
     };
 
     if (req?.role && req?.role.length > 0) {
       searchParams.role = req.role;
+    }
+
+    if (req?.isActive !== undefined) {
+      searchParams.isActive = req.isActive;
     }
 
     // Determine market center filter based on subscription and role

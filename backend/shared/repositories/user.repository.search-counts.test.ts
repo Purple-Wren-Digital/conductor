@@ -118,4 +118,46 @@ describe("userRepository.search — _count.assignedTickets / createdTickets", ()
     expect(sql).toContain("LIMIT 25");
     expect(sql).toContain("OFFSET 50");
   });
+
+  it("defaults to a page-sized LIMIT when no limit is supplied", async () => {
+    mockDb.rawQueryRow.mockResolvedValueOnce({ count: 0 });
+    mockDb.rawQueryAll.mockResolvedValueOnce([]);
+
+    await userRepository.search({});
+
+    const sql = mockDb.rawQueryAll.mock.calls[0][0] as string;
+    expect(sql).toContain("LIMIT 50");
+  });
+
+  it('omits LIMIT/OFFSET entirely when limit is "all"', async () => {
+    mockDb.rawQueryRow.mockResolvedValueOnce({ count: 0 });
+    mockDb.rawQueryAll.mockResolvedValueOnce([]);
+
+    await userRepository.search({ limit: "all" });
+
+    const sql = mockDb.rawQueryAll.mock.calls[0][0] as string;
+    expect(sql).not.toContain("LIMIT");
+    expect(sql).not.toContain("OFFSET");
+  });
+
+  it('returns rows sorting past the page cut-off when limit is "all"', async () => {
+    // Regression: /users truncated at 50 rows ordered by name ASC, so
+    // alphabetically-late users vanished from assignee pickers.
+    const roster = Array.from({ length: 120 }, (_, i) =>
+      makeRow({ id: `user-${i}`, name: `User ${String(i).padStart(3, "0")}` })
+    );
+    roster.push(makeRow({ id: "tony", name: "Tony Stutz", role: "ADMIN" }));
+
+    mockDb.rawQueryRow.mockResolvedValueOnce({ count: roster.length });
+    mockDb.rawQueryAll.mockResolvedValueOnce(roster);
+
+    const { users } = await userRepository.search({
+      limit: "all",
+      sortBy: "name",
+      sortDir: "asc",
+    });
+
+    expect(users).toHaveLength(121);
+    expect(users.some((u) => u.name === "Tony Stutz")).toBe(true);
+  });
 });

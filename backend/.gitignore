@@ -12,3 +12,5 @@ node_modules
 # misc
 .DS_Store
 *.pem
+# typescript incremental build info
+*.tsbuildinfo
