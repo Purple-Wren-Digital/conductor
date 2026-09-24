@@ -53,6 +53,37 @@ export const roleOptions: UserRole[] = [
   "AGENT",
 ];
 
+/**
+ * Whether a role can be offered in a role-assignment dropdown.
+ *
+ * `option` is the role being listed; `viewerRole` is the role of the signed-in
+ * user doing the assigning. Keep the two apart -- testing the viewer's role
+ * against the seat limit filters out every option and blanks the dropdown.
+ */
+export const canAssignRoleOption = ({
+  option,
+  viewerRole,
+  canBypassLimits,
+  hasAvailableSeats,
+}: {
+  option: UserRole;
+  viewerRole?: UserRole | null;
+  canBypassLimits: boolean;
+  hasAvailableSeats: boolean;
+}): boolean => {
+  // AGENT is free; every other role consumes a paid seat.
+  if (!canBypassLimits && !hasAvailableSeats && option !== "AGENT") return false;
+
+  // Staff and staff leaders cannot promote anyone to admin.
+  if (
+    (viewerRole === "STAFF" || viewerRole === "STAFF_LEADER") &&
+    option === "ADMIN"
+  )
+    return false;
+
+  return true;
+};
+
 export const ROLE_DESCRIPTIONS: {
   ADMIN: string;
   STAFF_LEADER: string;

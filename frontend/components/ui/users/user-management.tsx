@@ -52,6 +52,7 @@ import {
   formatUserOptions,
   ROLE_ICONS,
   roleOptions,
+  canAssignRoleOption,
   sortByUserOptions,
   orderByOptions,
   USER_STATUS_ICONS,
@@ -1123,11 +1124,12 @@ export default function UserManagement() {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!canViewAllMCs &&
-                        !seats?.hasAvailableSeats &&
-                        role !== "AGENT") ||
-                      ((role === "STAFF" || role === "STAFF_LEADER") &&
-                        option === "ADMIN")
+                      !canAssignRoleOption({
+                        option,
+                        viewerRole: role,
+                        canBypassLimits: !!canViewAllMCs,
+                        hasAvailableSeats: !!seats?.hasAvailableSeats,
+                      })
                     )
                       return null;
                     return (

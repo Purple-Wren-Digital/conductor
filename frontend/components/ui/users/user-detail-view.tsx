@@ -35,7 +35,12 @@ import {
   UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
-import { getRoleDescription, ROLE_ICONS, roleOptions } from "@/lib/utils";
+import {
+  canAssignRoleOption,
+  getRoleDescription,
+  ROLE_ICONS,
+  roleOptions,
+} from "@/lib/utils";
 import {
   ArrowLeft,
   Building,
@@ -491,11 +496,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!canBypassLimits &&
-                        !seats?.hasAvailableSeats &&
-                        role !== "AGENT") ||
-                      ((role === "STAFF" || role === "STAFF_LEADER") &&
-                        option === "ADMIN")
+                      !canAssignRoleOption({
+                        option,
+                        viewerRole: role,
+                        canBypassLimits: !!canBypassLimits,
+                        hasAvailableSeats: !!seats?.hasAvailableSeats,
+                      })
                     )
                       return null;
 
@@ -649,11 +655,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                 <SelectContent>
                   {roleOptions.map((option: UserRole) => {
                     if (
-                      (!canBypassLimits &&
-                        !seats?.hasAvailableSeats &&
-                        role !== "AGENT") ||
-                      ((role === "STAFF" || role === "STAFF_LEADER") &&
-                        option === "ADMIN")
+                      !canAssignRoleOption({
+                        option,
+                        viewerRole: role,
+                        canBypassLimits: !!canBypassLimits,
+                        hasAvailableSeats: !!seats?.hasAvailableSeats,
+                      })
                     )
                       return null;
                     return (
