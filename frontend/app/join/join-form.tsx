@@ -27,7 +27,17 @@ export function JoinForm() {
   const { isSignedIn, getToken } = useAuth();
 
   const [code, setCode] = useState(() => format(searchParams.get("code") ?? ""));
-  const [marketCenterName, setMarketCenterName] = useState<string | null>(null);
+  // The code and name shown on the confirmation step are locked together here,
+  // set from a single resolveCode() success branch. join() and <SignUp> read
+  // ONLY from this, never from the live `code` state above -- otherwise an
+  // edit to the input while the resolve request is in flight could confirm
+  // one market center's name while submitting a different market center's
+  // code, which is exactly the silent-wrong-brokerage outcome this whole
+  // confirmation step exists to prevent.
+  const [confirmed, setConfirmed] = useState<{
+    code: string;
+    marketCenterName: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
@@ -38,13 +48,18 @@ export function JoinForm() {
   }, [searchParams]);
 
   async function resolveCode() {
+    const attemptedCode = normalize(code);
     setIsBusy(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/join-codes/${normalize(code)}`);
+      const response = await fetch(`${API_BASE}/join-codes/${attemptedCode}`);
+      if (!response.ok) {
+        setError("Couldn't check that code. Please try again.");
+        return;
+      }
       const data = await response.json();
       if (data?.valid) {
-        setMarketCenterName(data.marketCenterName);
+        setConfirmed({ code: attemptedCode, marketCenterName: data.marketCenterName });
       } else {
         setError(INVALID_MESSAGE);
       }
@@ -56,12 +71,13 @@ export function JoinForm() {
   }
 
   async function join() {
+    if (!confirmed) return;
     setIsBusy(true);
     setError(null);
     try {
       const token = await getToken();
       const response = await fetch(
-        `${API_BASE}/join-codes/${normalize(code)}/join`,
+        `${API_BASE}/join-codes/${confirmed.code}/join`,
         {
           method: "POST",
           headers: {
@@ -92,7 +108,7 @@ export function JoinForm() {
         </p>
       </div>
 
-      {!marketCenterName ? (
+      {!confirmed ? (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="join-code">Join code</Label>
@@ -103,6 +119,7 @@ export function JoinForm() {
               placeholder="K7M4-2XQP"
               autoComplete="off"
               spellCheck={false}
+              disabled={isBusy}
             />
           </div>
           <Button
@@ -117,7 +134,7 @@ export function JoinForm() {
         <div className="space-y-4">
           <div className="rounded-lg border bg-muted/40 p-4">
             <p className="text-sm text-muted-foreground">You&apos;re joining</p>
-            <p className="text-lg font-semibold">{marketCenterName}</p>
+            <p className="text-lg font-semibold">{confirmed.marketCenterName}</p>
           </div>
 
           {isSignedIn ? (
@@ -126,15 +143,15 @@ export function JoinForm() {
             </Button>
           ) : (
             <SignUp
-              forceRedirectUrl={`/join?code=${normalize(code)}`}
-              signInForceRedirectUrl={`/join?code=${normalize(code)}`}
+              forceRedirectUrl={`/join?code=${confirmed.code}`}
+              signInForceRedirectUrl={`/join?code=${confirmed.code}`}
             />
           )}
 
           <Button
             variant="ghost"
             className="w-full"
-            onClick={() => setMarketCenterName(null)}
+            onClick={() => setConfirmed(null)}
             disabled={isBusy}
           >
             Use a different code
