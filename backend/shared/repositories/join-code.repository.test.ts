@@ -1,8 +1,10 @@
 /**
  * Join Code Repository Tests - Verify rotate() is transactional
  *
- * Tests that the rotate() method properly wraps the UPDATE and INSERT
- * in a transaction to ensure exactly one active code per market center.
+ * The "one active code per market center" guarantee is enforced by the partial
+ * unique index in backend/ticket/migrations/20260924000000_add_join_codes/migration.sql,
+ * not by application code. These tests verify the rotate() implementation's structure
+ * and parameter handling within a transaction.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -48,7 +50,7 @@ describe("Join Code Repository - rotate()", () => {
     vi.resetAllMocks();
   });
 
-  it("deactivates the previously active row and inserts the new one in a transaction", async () => {
+  it("UPDATE deactivates prior active row with correct WHERE clause", async () => {
     const mockTx = {
       exec: vi.fn(),
       queryRow: vi.fn(),
@@ -70,32 +72,24 @@ describe("Join Code Repository - rotate()", () => {
       fn(mockTx)
     );
 
-    const result = await joinCodeRepository.rotate("mc-1", "ABC12345", "user-1");
+    await joinCodeRepository.rotate("mc-1", "ABC12345", "user-1");
 
-    // Verify transaction was used
-    expect(mockWithTransaction).toHaveBeenCalled();
+    // Reconstruct the UPDATE SQL from template literals
+    const updateCall = mockTx.exec.mock.calls[0];
+    const updateSql = updateCall[0].join("?");
 
-    // Verify both UPDATE and INSERT were called on the transaction
-    expect(mockTx.exec).toHaveBeenCalled();
-    expect(mockTx.queryRow).toHaveBeenCalled();
+    // Assert UPDATE contains required deactivation logic
+    expect(updateSql).toContain("UPDATE market_center_join_codes");
+    expect(updateSql).toContain("is_active = false");
+    expect(updateSql).toContain("deactivated_at");
+    expect(updateSql).toContain("market_center_id = ?");
+    expect(updateSql).toContain("is_active = true");
 
-    // Verify UPDATE was called with the right market center ID
-    const execCall = mockTx.exec.mock.calls[0];
-    expect(execCall[0][0]).toContain("UPDATE market_center_join_codes");
-    expect(execCall[1]).toBe("mc-1"); // market_center_id parameter
-
-    // Verify the returned code
-    expect(result).toEqual({
-      id: "jc-new-123",
-      marketCenterId: "mc-1",
-      code: "ABC12345",
-      createdBy: "user-1",
-      isActive: true,
-      createdAt: new Date("2026-09-24"),
-    });
+    // Verify the market_center_id parameter is passed
+    expect(updateCall[1]).toBe("mc-1");
   });
 
-  it("ensures exactly one active code exists after rotation by using withTransaction", async () => {
+  it("INSERT carries marketCenterId, code, and createdBy in correct order", async () => {
     const mockTx = {
       exec: vi.fn(),
       queryRow: vi.fn(),
@@ -119,19 +113,61 @@ describe("Join Code Repository - rotate()", () => {
 
     await joinCodeRepository.rotate("mc-2", "XYZ98765", "admin-user");
 
-    // Verify withTransaction was invoked to protect the invariant
-    expect(mockWithTransaction).toHaveBeenCalled();
+    // Reconstruct the INSERT SQL from template literals
+    const insertCall = mockTx.queryRow.mock.calls[0];
+    const insertSql = insertCall[0].join("?");
 
-    // Verify both UPDATE and INSERT were called as part of the transaction
-    expect(mockTx.exec).toHaveBeenCalled();
-    expect(mockTx.queryRow).toHaveBeenCalled();
+    // Assert INSERT structure
+    expect(insertSql).toContain("INSERT INTO market_center_join_codes");
+    expect(insertSql).toContain("market_center_id");
+    expect(insertSql).toContain("code");
+    expect(insertSql).toContain("created_by");
+    expect(insertSql).toContain("RETURNING");
 
-    // Verify the market center was deactivated correctly
-    const execCall = mockTx.exec.mock.calls[0];
-    expect(execCall[1]).toBe("mc-2");
+    // Verify parameters in correct order: marketCenterId, code, createdBy
+    expect(insertCall[1]).toBe("mc-2");      // marketCenterId
+    expect(insertCall[2]).toBe("XYZ98765");   // code
+    expect(insertCall[3]).toBe("admin-user"); // createdBy
   });
 
-  it("rolls back both statements if INSERT fails (duplicate code)", async () => {
+  it("UPDATE executes before INSERT within a single transaction", async () => {
+    const mockTx = {
+      exec: vi.fn(),
+      queryRow: vi.fn(),
+      queryAll: vi.fn(),
+      query: vi.fn(),
+    };
+
+    const newJoinCodeRow = {
+      id: "jc-new-789",
+      market_center_id: "mc-3",
+      code: "NEW99999",
+      created_by: "sys",
+      is_active: true,
+      created_at: new Date("2026-09-24"),
+    };
+
+    mockTx.queryRow.mockResolvedValue(newJoinCodeRow);
+    mockWithTransaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockTx)
+    );
+
+    await joinCodeRepository.rotate("mc-3", "NEW99999", "sys");
+
+    // Verify withTransaction was called exactly once
+    expect(mockWithTransaction).toHaveBeenCalledTimes(1);
+
+    // Verify UPDATE was called before INSERT (by invocation order)
+    const execCallOrder = mockTx.exec.mock.invocationCallOrder[0];
+    const queryRowCallOrder = mockTx.queryRow.mock.invocationCallOrder[0];
+    expect(execCallOrder).toBeLessThan(queryRowCallOrder);
+
+    // Both operations were within the transaction callback
+    expect(mockTx.exec).toHaveBeenCalledTimes(1);
+    expect(mockTx.queryRow).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when INSERT fails, propagating the error from the transaction", async () => {
     const mockTx = {
       exec: vi.fn(),
       queryRow: vi.fn().mockRejectedValue(new Error("UNIQUE violation: code")),
@@ -147,19 +183,17 @@ describe("Join Code Repository - rotate()", () => {
       }
     });
 
+    // Verify error propagates from rotate()
     await expect(
       joinCodeRepository.rotate("mc-1", "DUPLICATE", null)
-    ).rejects.toThrow("UNIQUE violation");
+    ).rejects.toThrow("UNIQUE violation: code");
 
-    // Both statements were attempted
+    // Verify UPDATE was attempted before the INSERT failed
     expect(mockTx.exec).toHaveBeenCalled();
     expect(mockTx.queryRow).toHaveBeenCalled();
-
-    // withTransaction was called, ensuring rollback on error
-    expect(mockWithTransaction).toHaveBeenCalled();
   });
 
-  it("allows null createdBy when rotating", async () => {
+  it("INSERT with null createdBy passes null parameter correctly", async () => {
     const mockTx = {
       exec: vi.fn(),
       queryRow: vi.fn(),
@@ -183,7 +217,11 @@ describe("Join Code Repository - rotate()", () => {
 
     const result = await joinCodeRepository.rotate("mc-1", "AUTO1234", null);
 
+    // Verify null is passed as the createdBy parameter
+    const insertCall = mockTx.queryRow.mock.calls[0];
+    expect(insertCall[3]).toBeNull();
+
+    // Verify the row is returned correctly with null createdBy
     expect(result.createdBy).toBeNull();
-    expect(mockWithTransaction).toHaveBeenCalled();
   });
 });
