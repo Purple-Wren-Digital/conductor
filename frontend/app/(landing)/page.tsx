@@ -25,13 +25,16 @@ export default async function Home() {
                   and empower your team with Conductor.
                 </p>
               </div>
-              <div className="my-6 lg:my-10">
+              <div className="my-6 flex flex-col gap-3 sm:flex-row lg:my-10">
                 <Button
                   asChild
                   size="lg"
                   className="bg-[#404042] hover:opacity-50"
                 >
-                  <Link href="/pricing">Get Started</Link>
+                  <Link href="/pricing">Set up a market center</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/join">Join your market center</Link>
                 </Button>
               </div>
             </div>

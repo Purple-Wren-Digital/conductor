@@ -112,8 +112,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             return;
           }
 
-          // No subscription and no market center - redirect
-          router.replace("/dashboard/subscription");
+          // No subscription and no market center: this is almost always an agent
+          // who needs to join, not someone who needs to buy. /join carries a link
+          // to pricing for the genuine market-center owner.
+          router.replace("/join");
           return;
         }
 
