@@ -24,7 +24,7 @@ function format(input: string): string {
 export function JoinForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
 
   const [code, setCode] = useState(() => format(searchParams.get("code") ?? ""));
   // The code and name shown on the confirmation step are locked together here,
@@ -41,7 +41,9 @@ export function JoinForm() {
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
-  // A link carrying ?code= should land on the confirmation step, not a blank form.
+  // A link carrying ?code= pre-fills the input so the agent only has to press
+  // Continue -- the confirmation step is still reached by resolving the code,
+  // never skipped, so they always see which market center they are joining.
   useEffect(() => {
     const fromQuery = searchParams.get("code");
     if (fromQuery) setCode(format(fromQuery));
@@ -137,7 +139,13 @@ export function JoinForm() {
             <p className="text-lg font-semibold">{confirmed.marketCenterName}</p>
           </div>
 
-          {isSignedIn ? (
+          {/* Clerk reports isSignedIn === false while it is still hydrating.
+              Rendering on that would flash the sign-up form at an agent who is
+              already signed in -- reachable on the primary path now that /join
+              is genuinely public. */}
+          {!isLoaded ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : isSignedIn ? (
             <Button onClick={join} disabled={isBusy} className="w-full">
               Join market center
             </Button>
@@ -159,7 +167,13 @@ export function JoinForm() {
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {/* The only feedback on a public page used by people who have never
+          seen this product, so it has to be announced, not just shown. */}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <p className="text-center text-sm text-muted-foreground">
         <Link href="/pricing" className="underline">
