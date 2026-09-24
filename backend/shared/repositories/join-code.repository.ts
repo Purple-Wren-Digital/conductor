@@ -5,7 +5,7 @@
  * (Encore's compiler requires static db usage — no dynamic conn dispatch).
  */
 
-import { db } from "../../ticket/db";
+import { db, withTransaction } from "../../ticket/db";
 
 export interface JoinCode {
   id: string;
@@ -67,16 +67,18 @@ export const joinCodeRepository = {
     code: string,
     createdBy: string | null
   ): Promise<JoinCode> {
-    await db.exec`
-      UPDATE market_center_join_codes
-      SET is_active = false, deactivated_at = NOW()
-      WHERE market_center_id = ${marketCenterId} AND is_active = true
-    `;
-    const row = await db.queryRow<JoinCodeRow>`
-      INSERT INTO market_center_join_codes (market_center_id, code, created_by)
-      VALUES (${marketCenterId}, ${code}, ${createdBy})
-      RETURNING *
-    `;
-    return rowToJoinCode(row!);
+    return await withTransaction(async (tx) => {
+      await tx.exec`
+        UPDATE market_center_join_codes
+        SET is_active = false, deactivated_at = NOW()
+        WHERE market_center_id = ${marketCenterId} AND is_active = true
+      `;
+      const row = await tx.queryRow<JoinCodeRow>`
+        INSERT INTO market_center_join_codes (market_center_id, code, created_by)
+        VALUES (${marketCenterId}, ${code}, ${createdBy})
+        RETURNING *
+      `;
+      return rowToJoinCode(row!);
+    });
   },
 };
