@@ -59,13 +59,33 @@ describe("getMarketCenterJoinCode", () => {
   it("creates a code on first read when none exists", async () => {
     mockJoinCodeRepository.findActiveByMarketCenterId.mockResolvedValue(null);
     mockJoinCodeRepository.rotate.mockImplementation(
-      async (_mc: string, code: string) => ({ code })
+      async (_mc: string, generateCode: () => string) => ({
+        code: generateCode(),
+      })
     );
 
     const result = await getMarketCenterJoinCode({ id: "mc-1" });
 
     expect(mockJoinCodeRepository.rotate).toHaveBeenCalled();
     expect(result.code).toHaveLength(8);
+  });
+
+  it("hands rotate the generator, not a single finished code", async () => {
+    mockJoinCodeRepository.findActiveByMarketCenterId.mockResolvedValue(null);
+    mockJoinCodeRepository.rotate.mockImplementation(
+      async (_mc: string, generateCode: () => string) => ({
+        code: generateCode(),
+      })
+    );
+
+    await getMarketCenterJoinCode({ id: "mc-1" });
+
+    // Passing generateJoinCode() instead of generateJoinCode gives the
+    // repository one code and nothing to retry with, so a collision on
+    // `code TEXT NOT NULL UNIQUE` goes back to being a raw 500.
+    const [, generator] = mockJoinCodeRepository.rotate.mock.calls[0];
+    expect(typeof generator).toBe("function");
+    expect(generator()).toHaveLength(8);
   });
 
   it("allows staff leaders to read", async () => {
@@ -94,7 +114,9 @@ describe("getMarketCenterJoinCode", () => {
 describe("rotateMarketCenterJoinCode", () => {
   it("installs a fresh code", async () => {
     mockJoinCodeRepository.rotate.mockImplementation(
-      async (_mc: string, code: string) => ({ code })
+      async (_mc: string, generateCode: () => string) => ({
+        code: generateCode(),
+      })
     );
 
     const result = await rotateMarketCenterJoinCode({ id: "mc-1" });

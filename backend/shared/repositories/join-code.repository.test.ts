@@ -72,7 +72,7 @@ describe("Join Code Repository - rotate()", () => {
       fn(mockTx)
     );
 
-    await joinCodeRepository.rotate("mc-1", "ABC12345", "user-1");
+    await joinCodeRepository.rotate("mc-1", () => "ABC12345", "user-1");
 
     // Reconstruct the UPDATE SQL from template literals
     const updateCall = mockTx.exec.mock.calls[0];
@@ -111,7 +111,7 @@ describe("Join Code Repository - rotate()", () => {
       fn(mockTx)
     );
 
-    await joinCodeRepository.rotate("mc-2", "XYZ98765", "admin-user");
+    await joinCodeRepository.rotate("mc-2", () => "XYZ98765", "admin-user");
 
     // Reconstruct the INSERT SQL from template literals
     const insertCall = mockTx.queryRow.mock.calls[0];
@@ -152,7 +152,7 @@ describe("Join Code Repository - rotate()", () => {
       fn(mockTx)
     );
 
-    await joinCodeRepository.rotate("mc-3", "NEW99999", "sys");
+    await joinCodeRepository.rotate("mc-3", () => "NEW99999", "sys");
 
     // Verify withTransaction was called exactly once
     expect(mockWithTransaction).toHaveBeenCalledTimes(1);
@@ -167,7 +167,7 @@ describe("Join Code Repository - rotate()", () => {
     expect(mockTx.queryRow).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects when INSERT fails, propagating the error from the transaction", async () => {
+  it("rejects when INSERT fails for a reason other than a unique violation", async () => {
     const mockTx = {
       exec: vi.fn(),
       queryRow: vi.fn().mockRejectedValue(new Error("UNIQUE violation: code")),
@@ -185,7 +185,7 @@ describe("Join Code Repository - rotate()", () => {
 
     // Verify error propagates from rotate()
     await expect(
-      joinCodeRepository.rotate("mc-1", "DUPLICATE", null)
+      joinCodeRepository.rotate("mc-1", () => "DUPLICATE", null)
     ).rejects.toThrow("UNIQUE violation: code");
 
     // Verify UPDATE was attempted before the INSERT failed
@@ -215,7 +215,7 @@ describe("Join Code Repository - rotate()", () => {
       fn(mockTx)
     );
 
-    const result = await joinCodeRepository.rotate("mc-1", "AUTO1234", null);
+    const result = await joinCodeRepository.rotate("mc-1", () => "AUTO1234", null);
 
     // Verify null is passed as the createdBy parameter
     const insertCall = mockTx.queryRow.mock.calls[0];
@@ -223,5 +223,126 @@ describe("Join Code Repository - rotate()", () => {
 
     // Verify the row is returned correctly with null createdBy
     expect(result.createdBy).toBeNull();
+  });
+
+  // ---- Concurrency and collision handling ----
+
+  function makeTx() {
+    return {
+      exec: vi.fn(),
+      queryRow: vi.fn(),
+      queryAll: vi.fn(),
+      query: vi.fn(),
+    };
+  }
+
+  function uniqueViolation(message: string) {
+    return Object.assign(new Error(message), { code: "23505" });
+  }
+
+  it("INSERT is idempotent against the one-active-code index, not a bare DO NOTHING", async () => {
+    const mockTx = makeTx();
+    mockTx.queryRow.mockResolvedValue({
+      id: "jc-1",
+      market_center_id: "mc-1",
+      code: "ABC12345",
+      created_by: null,
+      is_active: true,
+      created_at: new Date("2026-09-24"),
+    });
+    mockWithTransaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockTx)
+    );
+
+    await joinCodeRepository.rotate("mc-1", () => "ABC12345", null);
+
+    const insertSql = mockTx.queryRow.mock.calls[0][0].join("?");
+    // A bare INSERT turns the mint-on-read race (two Settings loads, or React
+    // StrictMode's double effect) into an unmapped 23505 -> 500. A bare
+    // `ON CONFLICT DO NOTHING` would over-swallow instead, silently returning
+    // some other market center's row on a `code` collision, so the conflict
+    // target must name the partial index's column and predicate.
+    expect(insertSql).toContain("ON CONFLICT (market_center_id) WHERE is_active");
+    expect(insertSql).toContain("DO NOTHING");
+  });
+
+  it("a mint that loses the race returns the winning code instead of failing", async () => {
+    const mockTx = makeTx();
+    // INSERT ... DO NOTHING matched nothing: someone else committed first.
+    mockTx.queryRow.mockResolvedValueOnce(null);
+    // The follow-up SELECT finds the winner's row.
+    mockTx.queryRow.mockResolvedValueOnce({
+      id: "jc-winner",
+      market_center_id: "mc-1",
+      code: "WINNER99",
+      created_by: "other-admin",
+      is_active: true,
+      created_at: new Date("2026-09-24"),
+    });
+    mockWithTransaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockTx)
+    );
+
+    const result = await joinCodeRepository.rotate("mc-1", () => "LOSER123", null);
+
+    expect(result.code).toBe("WINNER99");
+    const selectSql = mockTx.queryRow.mock.calls[1][0].join("?");
+    expect(selectSql).toContain("SELECT * FROM market_center_join_codes");
+    expect(selectSql).toContain("is_active = true");
+  });
+
+  it("retries with a freshly generated code when the code collides", async () => {
+    const mockTx = makeTx();
+    const winningRow = {
+      id: "jc-2",
+      market_center_id: "mc-1",
+      code: "FRESH222",
+      created_by: null,
+      is_active: true,
+      created_at: new Date("2026-09-24"),
+    };
+    mockTx.queryRow
+      .mockRejectedValueOnce(
+        uniqueViolation("duplicate key value violates unique constraint")
+      )
+      .mockResolvedValueOnce(winningRow);
+    mockWithTransaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockTx)
+    );
+
+    const codes = ["TAKEN111", "FRESH222"];
+    let issued = 0;
+    const result = await joinCodeRepository.rotate(
+      "mc-1",
+      () => codes[issued++],
+      null
+    );
+
+    // Without the retry, a collision on `code TEXT NOT NULL UNIQUE` surfaces as
+    // a raw 500 for the admin opening Settings -- the case the spec calls out
+    // as "collisions retry".
+    expect(issued).toBe(2);
+    expect(result.code).toBe("FRESH222");
+    // Each attempt re-runs the transaction: a 23505 aborts the one in flight.
+    expect(mockWithTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after a bounded number of collisions rather than looping forever", async () => {
+    const mockTx = makeTx();
+    mockTx.queryRow.mockRejectedValue(
+      uniqueViolation("duplicate key value violates unique constraint")
+    );
+    mockWithTransaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockTx)
+    );
+
+    let issued = 0;
+    await expect(
+      joinCodeRepository.rotate("mc-1", () => `TAKEN${issued++}`, null)
+    ).rejects.toThrow("duplicate key");
+
+    // An unbounded retry would hang the request forever if the collision were
+    // caused by something other than luck (e.g. a broken generator).
+    expect(issued).toBe(5);
   });
 });

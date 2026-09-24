@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { joinCodeRepository } from "../shared/repositories";
 import { getUserContext } from "../auth/user-context";
+import type { UserRole } from "../user/types";
 import { generateJoinCode, formatJoinCode } from "./code-generator";
 
 export interface MarketCenterJoinCodeRequest {
@@ -15,7 +16,7 @@ export interface MarketCenterJoinCodeResponse {
 /** Superusers aside, a leader only ever touches their own market center's code. */
 async function requireMarketCenterAccess(
   marketCenterId: string,
-  allowedRoles: string[]
+  allowedRoles: UserRole[]
 ) {
   const userContext = await getUserContext();
 
@@ -34,7 +35,12 @@ async function requireMarketCenterAccess(
   return userContext;
 }
 
-/** Reads the active code, minting one on first access so admins never see an empty card. */
+/**
+ * Reads the active code, minting one on first access so leadership never sees an
+ * empty card. Both ADMIN and STAFF_LEADER reach the mint, and the mint is
+ * concurrency-safe in the repository (two Settings loads, or React StrictMode's
+ * double effect, must not race into a 500).
+ */
 export const getMarketCenterJoinCode = api<
   MarketCenterJoinCodeRequest,
   MarketCenterJoinCodeResponse
@@ -58,7 +64,7 @@ export const getMarketCenterJoinCode = api<
 
     const created = await joinCodeRepository.rotate(
       id,
-      generateJoinCode(),
+      generateJoinCode,
       userContext.userId
     );
     return { code: created.code, formattedCode: formatJoinCode(created.code) };
@@ -81,7 +87,7 @@ export const rotateMarketCenterJoinCode = api<
 
     const rotated = await joinCodeRepository.rotate(
       id,
-      generateJoinCode(),
+      generateJoinCode,
       userContext.userId
     );
     return { code: rotated.code, formattedCode: formatJoinCode(rotated.code) };
