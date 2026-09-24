@@ -1455,6 +1455,16 @@ git commit -m "feat: add /join route for agent self-signup"
 
 ---
 
+> **Post-review correction (commit 747ce48).** The Task 5 code above shipped with three defects
+> found in review, all of them in this plan rather than in its execution. As built, the component:
+> stores the resolved code and market center name together in one `confirmed` state object, set
+> from a single `resolveCode()` success branch and captured synchronously before the await, so
+> `join()` and the `<SignUp>` redirects can never read a code the user edited mid-flight; checks
+> `response.ok` in `resolveCode()` so a backend outage reports "couldn't check that code" rather
+> than telling an agent their valid code is invalid; and covers the signed-out signup branch and
+> the post-Clerk return trip, which the tests above never exercised. Treat the committed code as
+> authoritative over the snippet above.
+
 ### Task 6: Guard redirect and landing buttons
 
 **Files:**
