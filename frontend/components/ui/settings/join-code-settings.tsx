@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   Card,
@@ -33,33 +33,40 @@ export default function JoinCodeSettings() {
   const [isConfirmingRotate, setIsConfirmingRotate] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
 
-  const loadCode = useCallback(async () => {
-    if (!marketCenterId || !canViewJoinCode) return;
-    setIsLoading(true);
-    try {
-      const token = await getToken();
-      const response = await fetch(
-        `${API_BASE}/marketCenters/${marketCenterId}/join-code`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error("Failed to load join code");
-      const data = await response.json();
-      setFormattedCode(data.formattedCode);
-    } catch {
-      toast.error("Couldn't load the join code");
-    } finally {
-      setIsLoading(false);
-    }
-    // getToken is intentionally omitted: Clerk's useAuth() (and the test
-    // double for it) can return a new getToken function identity on every
-    // render. Depending on it here would recreate loadCode each render,
-    // retrigger the effect below, and refetch in a loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marketCenterId, canViewJoinCode]);
+  // useAuth() can return a new getToken function identity on every render.
+  // A ref lets the effect below call the latest getToken without taking a
+  // dependency on its identity, so the effect only reruns when
+  // marketCenterId/canViewJoinCode actually change.
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   useEffect(() => {
-    loadCode();
-  }, [loadCode]);
+    if (!marketCenterId || !canViewJoinCode) return;
+    let cancelled = false;
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        const token = await getTokenRef.current();
+        const response = await fetch(
+          `${API_BASE}/marketCenters/${marketCenterId}/join-code`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) throw new Error("Failed to load join code");
+        const data = await response.json();
+        if (cancelled) return;
+        setFormattedCode(data.formattedCode);
+      } catch {
+        if (!cancelled) toast.error("Couldn't load the join code");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [marketCenterId, canViewJoinCode]);
 
   if (!canViewJoinCode) return null;
 

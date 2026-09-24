@@ -3,8 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import JoinCodeSettings from "./join-code-settings";
 
+// vi.mock factories are hoisted, so anything they close over must be too --
+// a plain `let`/`const` here throws "Cannot access before initialization".
+// Clerk's real useAuth() returns a stable getToken across renders; this
+// double is hoisted to a single shared function so it reflects that instead
+// of manufacturing a new identity on every call.
+const { getToken } = vi.hoisted(() => ({ getToken: vi.fn(async () => "token") }));
+
 vi.mock("@clerk/nextjs", () => ({
-  useAuth: () => ({ getToken: async () => "token" }),
+  useAuth: () => ({ getToken }),
 }));
 
 vi.mock("@/context/store-provider", () => ({
@@ -32,6 +39,23 @@ describe("JoinCodeSettings", () => {
     render(<JoinCodeSettings />);
 
     expect(await screen.findByText("K7M4-2XQP")).toBeInTheDocument();
+  });
+
+  it("fetches the join code exactly once on mount", async () => {
+    render(<JoinCodeSettings />);
+
+    await screen.findByText("K7M4-2XQP");
+
+    // Guards against the effect re-running on every render (e.g. because it
+    // depends on a third-party function identity like getToken instead of
+    // marketCenterId/role) and silently refetching in a loop.
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://api.test/marketCenters/mc-1/join-code",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer token" },
+      })
+    );
   });
 
   it("requires confirmation before rotating", async () => {
