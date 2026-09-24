@@ -31,6 +31,7 @@ interface UserRow {
   is_superuser: boolean;
   market_center_id: string | null;
   clerk_id: string;
+  joined_via_join_code: boolean;
 }
 
 interface UserSettingsRow {
@@ -65,6 +66,7 @@ function rowToUser(row: UserRow): User {
     isSuperuser: row.is_superuser,
     marketCenterId: row.market_center_id,
     clerkId: row.clerk_id,
+    joinedViaJoinCode: row.joined_via_join_code ?? false,
   };
 }
 
