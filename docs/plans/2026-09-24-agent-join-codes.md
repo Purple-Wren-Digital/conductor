@@ -83,7 +83,7 @@ describe("normalizeJoinCode", () => {
   });
 
   it("maps look-alike characters onto the alphabet", () => {
-    expect(normalizeJoinCode("O0I1L1UV")).toBe("0011117V");
+    expect(normalizeJoinCode("O0I1L1UV")).toBe("001111VV");
   });
 });
 
@@ -1144,11 +1144,16 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JoinForm } from "./join-form";
 
-const mockPush = vi.fn();
+// vi.mock factories are hoisted, so anything they close over must be too --
+// a plain `let` here throws "Cannot access before initialization".
+const { mockPush, search } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  search: { value: "" },
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
-  useSearchParams: () => new URLSearchParams(mockSearch),
+  useSearchParams: () => new URLSearchParams(search.value),
 }));
 
 vi.mock("@clerk/nextjs", () => ({
@@ -1156,11 +1161,9 @@ vi.mock("@clerk/nextjs", () => ({
   SignUp: () => <div data-testid="clerk-signup" />,
 }));
 
-let mockSearch = "";
-
 beforeEach(() => {
   vi.clearAllMocks();
-  mockSearch = "";
+  search.value = "";
   global.fetch = vi.fn();
 });
 
@@ -1200,7 +1203,7 @@ describe("JoinForm", () => {
   });
 
   it("pre-fills the code from the query string", () => {
-    mockSearch = "code=K7M42XQP";
+    search.value = "code=K7M42XQP";
 
     render(<JoinForm />);
 
@@ -1640,6 +1643,17 @@ describe("JoinCodeSettings", () => {
 
     expect(screen.queryByRole("button", { name: /rotate/i })).toBeNull();
   });
+
+  it("renders nothing, and fetches nothing, for agents and staff", async () => {
+    for (const role of ["AGENT", "STAFF"]) {
+      mockUseUserRole.mockReturnValue({ role });
+
+      const { container } = render(<JoinCodeSettings />);
+
+      expect(container).toBeEmptyDOMElement();
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });
 ```
 
@@ -1679,6 +1693,9 @@ export default function JoinCodeSettings() {
 
   const marketCenterId = currentUser?.marketCenterId;
   const canRotate = role === "ADMIN";
+  // The backend denies these roles anyway; hiding the card avoids firing a
+  // request that can only fail and surfacing an error toast for it.
+  const canViewJoinCode = role === "ADMIN" || role === "STAFF_LEADER";
 
   const [formattedCode, setFormattedCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1686,7 +1703,7 @@ export default function JoinCodeSettings() {
   const [isRotating, setIsRotating] = useState(false);
 
   const loadCode = useCallback(async () => {
-    if (!marketCenterId) return;
+    if (!marketCenterId || !canViewJoinCode) return;
     setIsLoading(true);
     try {
       const token = await getToken();
@@ -1707,6 +1724,8 @@ export default function JoinCodeSettings() {
   useEffect(() => {
     loadCode();
   }, [loadCode]);
+
+  if (!canViewJoinCode) return null;
 
   async function rotate() {
     setIsRotating(true);
@@ -1801,7 +1820,7 @@ export default function JoinCodeSettings() {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `cd frontend && npx vitest run components/ui/settings/join-code-settings.test.tsx`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Add the card to the settings page**
 
