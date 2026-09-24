@@ -40,6 +40,7 @@ These are implied by the spec but easy to leave untested. Each has a test assign
 - Create: `backend/joinCodes/code-generator.ts`
 - Create: `backend/joinCodes/code-generator.test.ts`
 - Create: `backend/shared/repositories/join-code.repository.ts`
+- Create: `backend/shared/repositories/join-code.repository.test.ts`
 - Modify: `backend/shared/repositories/index.ts`
 
 **Interfaces:**
@@ -181,7 +182,7 @@ Create `backend/shared/repositories/join-code.repository.ts`:
  * (Encore's compiler requires static db usage — no dynamic conn dispatch).
  */
 
-import { db } from "../../ticket/db";
+import { db, withTransaction } from "../../ticket/db";
 
 export interface JoinCode {
   id: string;
@@ -237,23 +238,31 @@ export const joinCodeRepository = {
     return row ? rowToJoinCode(row) : null;
   },
 
-  /** Deactivates the current code (if any) and installs a new one. */
+  /**
+   * Deactivates the current code (if any) and installs a new one.
+   *
+   * Both statements run in one transaction. Split apart, an INSERT that fails
+   * after the UPDATE commits would leave the market center with ZERO active
+   * codes — locking every agent out of joining until someone re-rotates.
+   */
   async rotate(
     marketCenterId: string,
     code: string,
     createdBy: string | null
   ): Promise<JoinCode> {
-    await db.exec`
-      UPDATE market_center_join_codes
-      SET is_active = false, deactivated_at = NOW()
-      WHERE market_center_id = ${marketCenterId} AND is_active = true
-    `;
-    const row = await db.queryRow<JoinCodeRow>`
-      INSERT INTO market_center_join_codes (market_center_id, code, created_by)
-      VALUES (${marketCenterId}, ${code}, ${createdBy})
-      RETURNING *
-    `;
-    return rowToJoinCode(row!);
+    return await withTransaction(async (tx) => {
+      await tx.exec`
+        UPDATE market_center_join_codes
+        SET is_active = false, deactivated_at = NOW()
+        WHERE market_center_id = ${marketCenterId} AND is_active = true
+      `;
+      const row = await tx.queryRow<JoinCodeRow>`
+        INSERT INTO market_center_join_codes (market_center_id, code, created_by)
+        VALUES (${marketCenterId}, ${code}, ${createdBy})
+        RETURNING *
+      `;
+      return rowToJoinCode(row!);
+    });
   },
 };
 ```
@@ -771,15 +780,32 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
     // bind the non-transactional `db`, and Encore's compiler requires static db
     // usage (see the header of shared/repositories/user-market-center.repository.ts).
     await withTransaction(async (tx) => {
+      // The UPDATE is itself the concurrency gate, not the pre-check above.
+      // Two concurrent requests from one account (racing codes for two different
+      // market centers, or a plain double submit) both pass the pre-check, since
+      // neither has committed. Only one UPDATE can match this WHERE: whichever
+      // commits first flips market_center_id away from NULL, so the loser matches
+      // zero rows and RETURNING gives nothing. The loser throws before the
+      // junction and history writes, so there is no split-brain membership, no
+      // duplicate history row, and no duplicate notification.
       // Role is pinned to AGENT regardless of anything on the caller.
-      await tx.exec`
+      const updated = await tx.queryRow<{ id: string }>`
         UPDATE users
         SET market_center_id = ${joinCode.marketCenterId},
             role = 'AGENT',
             joined_via_join_code = true,
             updated_at = NOW()
         WHERE id = ${userContext.userId}
+          AND market_center_id IS NULL
+          AND is_active = true
+        RETURNING id
       `;
+
+      if (!updated) {
+        throw APIError.failedPrecondition(
+          "You're already a member of a market center."
+        );
+      }
 
       // Non-optional: /users/me reads the market center switcher from this
       // junction table (backend/user/me.ts:52). ON CONFLICT DO NOTHING makes a
@@ -810,10 +836,17 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
       `;
     });
 
-    // Deliberately outside the transaction: a preferences or notification hiccup
-    // must not roll back a join the agent already completed. Both are safe to
-    // retry and ensureNotificationPreferences is idempotent.
-    await ensureNotificationPreferences(userContext.userId);
+    // Deliberately outside the transaction, and deliberately swallowed. A join
+    // that has committed must return 200: if one of these throws, the caller
+    // CANNOT recover by retrying, because the already-a-member gate above now
+    // rejects them. Failing loudly here would strand the user joined but
+    // half-provisioned. getUserContext already ensures preferences on both
+    // user-creation branches, so this call is near-defensive anyway.
+    try {
+      await ensureNotificationPreferences(userContext.userId);
+    } catch (error) {
+      console.error("[joinWithCode] ensureNotificationPreferences failed", error);
+    }
 
     await notifyMarketCenterLeadership(
       joinCode.marketCenterId,
