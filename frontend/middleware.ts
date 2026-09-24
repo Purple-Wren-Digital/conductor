@@ -6,6 +6,10 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/company",
   "/pricing",
+  // A brand-new agent arriving from the landing page has no account yet --
+  // protecting this route drops them on a sign-in wall before they can even
+  // confirm which market center a code belongs to.
+  "/join(.*)",
 ]);
 
 export default clerkMiddleware(
