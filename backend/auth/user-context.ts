@@ -9,7 +9,7 @@ import { defaultNotificationPreferences } from "../utils";
 import type { UserRole } from "../user/types";
 
 // Helper function to ensure user has notification preferences
-async function ensureNotificationPreferences(userId: string): Promise<void> {
+export async function ensureNotificationPreferences(userId: string): Promise<void> {
   const userWithSettings = await userRepository.findByIdWithSettings(userId);
   if (!userWithSettings?.userSettings || !userWithSettings?.userSettings?.id) {
     const newSettings = await userRepository.createUserSettings(userId);
