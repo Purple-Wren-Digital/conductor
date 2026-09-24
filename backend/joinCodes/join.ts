@@ -25,6 +25,13 @@ const INVALID_CODE_MESSAGE =
   "That join code isn't valid. Check it with your market center.";
 
 /**
+ * Reused for both the pre-transaction check and the in-transaction gate (the
+ * latter also fires for a same-instant deactivation race) — the caller doesn't
+ * need to know which check caught it.
+ */
+const ALREADY_MEMBER_MESSAGE = "You're already a member of a market center.";
+
+/**
  * Join the authenticated user to a market center as an AGENT.
  *
  * Deliberately does NOT call the seat check: agents are free and excluded from
@@ -52,10 +59,11 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
     }
 
     // A real move between brokerages is an admin action, not a code redemption.
+    // This is the fast path for the common case — a clean error without opening
+    // a transaction. It is NOT the concurrency guard; see the in-transaction
+    // gate below for that.
     if (user.marketCenterId) {
-      throw APIError.failedPrecondition(
-        "You're already a member of a market center."
-      );
+      throw APIError.failedPrecondition(ALREADY_MEMBER_MESSAGE);
     }
 
     const joinCode = await joinCodeRepository.findActiveByCode(
@@ -65,23 +73,41 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
       throw APIError.failedPrecondition(INVALID_CODE_MESSAGE);
     }
 
-    // All three writes land together or not at all. A partial provision (market
+    // All writes land together or not at all. A partial provision (market
     // center set, junction row missing) leaves the agent with an empty market
     // center switcher, which is worse than a clean failure they can retry.
     //
-    // These are raw tx.exec rather than repository calls: the repository helpers
-    // bind the non-transactional `db`, and Encore's compiler requires static db
-    // usage (see the header of shared/repositories/user-market-center.repository.ts).
+    // These are raw tx.exec/tx.queryRow rather than repository calls: the
+    // repository helpers bind the non-transactional `db`, and Encore's compiler
+    // requires static db usage (see the header of
+    // shared/repositories/user-market-center.repository.ts).
     await withTransaction(async (tx) => {
-      // Role is pinned to AGENT regardless of anything on the caller.
-      await tx.exec`
+      // The UPDATE itself is the concurrency gate — not the pre-check above.
+      // Two concurrent requests from the same account (racing codes for two
+      // different market centers, or a plain double submit of the same code)
+      // can both pass the pre-check, since neither has committed yet. Only one
+      // UPDATE can ever match this WHERE clause: whichever commits first flips
+      // market_center_id away from NULL, so the second transaction's UPDATE
+      // matches zero rows and RETURNING gives back nothing. That loser throws
+      // before the junction/history writes run, so there is no split-brain
+      // membership (two rows in user_market_centers), no duplicate history row,
+      // and no duplicate leadership notification. Role is pinned to AGENT
+      // regardless of anything on the caller.
+      const updated = await tx.queryRow<{ id: string }>`
         UPDATE users
         SET market_center_id = ${joinCode.marketCenterId},
             role = 'AGENT',
             joined_via_join_code = true,
             updated_at = NOW()
         WHERE id = ${userContext.userId}
+          AND market_center_id IS NULL
+          AND is_active = true
+        RETURNING id
       `;
+
+      if (!updated) {
+        throw APIError.failedPrecondition(ALREADY_MEMBER_MESSAGE);
+      }
 
       // Non-optional: /users/me reads the market center switcher from this
       // junction table (backend/user/me.ts:52). ON CONFLICT DO NOTHING makes a
@@ -112,16 +138,34 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
       `;
     });
 
-    // Deliberately outside the transaction: a preferences or notification hiccup
-    // must not roll back a join the agent already completed. Both are safe to
-    // retry and ensureNotificationPreferences is idempotent.
-    await ensureNotificationPreferences(userContext.userId);
+    // Deliberately outside the transaction and best-effort: the join already
+    // committed above, so a failure here must not turn into a 5xx for the
+    // agent — a retry would just hit the "already a member" guard with no way
+    // to self-recover. getUserContext() already calls
+    // ensureNotificationPreferences on both of its user-creation branches, so
+    // this call is mostly a defensive backstop for pre-existing users. Both
+    // failures are logged and swallowed rather than surfaced.
+    try {
+      await ensureNotificationPreferences(userContext.userId);
+    } catch (err) {
+      console.error(
+        "[joinWithCode] ensureNotificationPreferences failed after commit",
+        err
+      );
+    }
 
-    await notifyMarketCenterLeadership(
-      joinCode.marketCenterId,
-      joinCode.marketCenterName,
-      userContext.name || userContext.email
-    );
+    try {
+      await notifyMarketCenterLeadership(
+        joinCode.marketCenterId,
+        joinCode.marketCenterName,
+        userContext.name || userContext.email
+      );
+    } catch (err) {
+      console.error(
+        "[joinWithCode] notifyMarketCenterLeadership failed after commit",
+        err
+      );
+    }
 
     return {
       marketCenterId: joinCode.marketCenterId,
