@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockJoinCodeRepository,
   mockUserRepository,
-  mockNotificationRepository,
+  mockNotificationTopic,
   mockGetUserContext,
   mockEnsureNotificationPreferences,
   mockCheckCanAddUser,
@@ -17,7 +17,7 @@ const {
       findById: vi.fn(),
       findByMarketCenterIdAndRole: vi.fn(),
     },
-    mockNotificationRepository: { createMany: vi.fn() },
+    mockNotificationTopic: { publish: vi.fn() },
     mockGetUserContext: vi.fn(),
     mockEnsureNotificationPreferences: vi.fn(),
     mockCheckCanAddUser: vi.fn(),
@@ -46,10 +46,17 @@ vi.mock("encore.dev/api", () => ({
   },
 }));
 
+vi.mock("encore.dev/log", () => ({
+  default: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
+
 vi.mock("../shared/repositories", () => ({
   joinCodeRepository: mockJoinCodeRepository,
   userRepository: mockUserRepository,
-  notificationRepository: mockNotificationRepository,
+}));
+
+vi.mock("../notifications/topic", () => ({
+  notificationTopic: mockNotificationTopic,
 }));
 
 vi.mock("../ticket/db", () => ({ withTransaction: mockWithTransaction }));
@@ -115,6 +122,10 @@ describe("joinWithCode", () => {
     const sql = executedSql();
     expect(sql).toContain("UPDATE users");
     expect(sql).toContain("market_center_id IS NULL");
+    // The roster badge marking self-joined agents reads this column and nothing
+    // else. Dropping it from the UPDATE makes every self-joined agent
+    // indistinguishable from an invited one, and no other test notices.
+    expect(sql).toContain("joined_via_join_code = true");
     expect(sql).toContain("INSERT INTO user_market_centers");
     expect(sql).toContain("ON CONFLICT (user_id, market_center_id) DO NOTHING");
     expect(sql).toContain("INSERT INTO user_history");
@@ -146,7 +157,7 @@ describe("joinWithCode", () => {
     // notify anyone — the whole transaction rolled back.
     expect(mockTx.exec).not.toHaveBeenCalled();
     expect(mockEnsureNotificationPreferences).not.toHaveBeenCalled();
-    expect(mockNotificationRepository.createMany).not.toHaveBeenCalled();
+    expect(mockNotificationTopic.publish).not.toHaveBeenCalled();
   });
 
   it("a repeat call after the code was already consumed writes nothing twice", async () => {
@@ -170,7 +181,7 @@ describe("joinWithCode", () => {
       (call[0] as TemplateStringsArray).join("?").includes("user_history")
     );
     expect(historyInserts).toHaveLength(1);
-    expect(mockNotificationRepository.createMany).toHaveBeenCalledTimes(1);
+    expect(mockNotificationTopic.publish).toHaveBeenCalledTimes(1);
   });
 
   it("still returns success if syncing notification preferences fails after commit", async () => {
@@ -185,9 +196,10 @@ describe("joinWithCode", () => {
   });
 
   it("still returns success if notifying leadership fails after commit", async () => {
-    mockUserRepository.findByMarketCenterIdAndRole.mockRejectedValueOnce(
-      new Error("boom")
-    );
+    mockUserRepository.findByMarketCenterIdAndRole.mockResolvedValue([
+      { id: "admin-1" },
+    ]);
+    mockNotificationTopic.publish.mockRejectedValue(new Error("boom"));
 
     const result = await joinWithCode({ code: "K7M42XQP" });
 
@@ -215,13 +227,55 @@ describe("joinWithCode", () => {
 
     await joinWithCode({ code: "K7M42XQP" });
 
-    const [notifications] = mockNotificationRepository.createMany.mock.calls[0];
-    expect(notifications.map((n: { userId: string }) => n.userId).sort()).toEqual([
+    const published = mockNotificationTopic.publish.mock.calls.map(
+      ([req]) => req
+    );
+    expect(published.map((req) => req.userId).sort()).toEqual([
       "admin-1",
       "leader-1",
     ]);
-    expect(notifications[0].body).toContain("Jeffrey Harris");
-    expect(notifications[0].body).toContain("Greater Austin Market Center");
+    expect(published[0].inApp.body).toContain("Jeffrey Harris");
+    expect(published[0].inApp.body).toContain("Greater Austin Market Center");
+  });
+
+  it("publishes through the notification topic, not straight into the table", async () => {
+    mockUserRepository.findByMarketCenterIdAndRole.mockImplementation(
+      async (_mcId: string, role: string) =>
+        role === "ADMIN" ? [{ id: "admin-1" }] : []
+    );
+
+    await joinWithCode({ code: "K7M42XQP" });
+
+    // Writing notification rows directly (the only producer in the repo that
+    // did) silently drops the EMAIL channel, the per-user/per-market-center
+    // preference checks and broadcastNotification -- so leadership gets no
+    // email and no dashboard toast, which is the entire "a leaked code surfaces
+    // within minutes" argument. These assertions fail the moment the publish is
+    // swapped back for a repository write.
+    expect(mockNotificationTopic.publish).toHaveBeenCalledTimes(1);
+    const [req] = mockNotificationTopic.publish.mock.calls[0];
+
+    // ACCOUNT was wrong: "Market Center Assignment" is an ACTIVITY type
+    // everywhere else, and the category drives which preference block applies.
+    expect(req.category).toBe("ACTIVITY");
+    expect(req.type).toBe("Market Center Assignment");
+
+    // Both channels must be requested. An "email" of "Notifications
+    // deactivated" would suppress the email that makes this alertable.
+    expect(req.inApp).toEqual({
+      title: "New agent joined",
+      body: "Jeffrey Harris joined Greater Austin Market Center as an agent.",
+    });
+    expect(req.email).toEqual(req.inApp);
+
+    // The email body is rendered from data.marketCenterAssignment, not from
+    // email.body -- an empty data block renders an email with blank variables.
+    expect(req.data.marketCenterAssignment).toMatchObject({
+      marketCenterId: "mc-1",
+      marketCenterName: "Greater Austin Market Center",
+      editorName: "Jeffrey Harris",
+      editorEmail: "jeffrey@example.com",
+    });
   });
 
   it("rejects a code rotated away between resolve and join", async () => {

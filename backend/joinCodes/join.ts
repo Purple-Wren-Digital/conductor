@@ -1,9 +1,7 @@
 import { api, APIError } from "encore.dev/api";
-import {
-  joinCodeRepository,
-  userRepository,
-  notificationRepository,
-} from "../shared/repositories";
+import log from "encore.dev/log";
+import { joinCodeRepository, userRepository } from "../shared/repositories";
+import { notificationTopic } from "../notifications/topic";
 import { withTransaction } from "../ticket/db";
 import {
   getUserContext,
@@ -148,23 +146,28 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
     try {
       await ensureNotificationPreferences(userContext.userId);
     } catch (err) {
-      console.error(
-        "[joinWithCode] ensureNotificationPreferences failed after commit",
-        err
-      );
+      log.error("joinWithCode: ensureNotificationPreferences failed after commit", {
+        userId: userContext.userId,
+        marketCenterId: joinCode.marketCenterId,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     try {
       await notifyMarketCenterLeadership(
         joinCode.marketCenterId,
         joinCode.marketCenterName,
-        userContext.name || userContext.email
+        {
+          name: userContext.name || userContext.email,
+          email: userContext.email,
+        }
       );
     } catch (err) {
-      console.error(
-        "[joinWithCode] notifyMarketCenterLeadership failed after commit",
-        err
-      );
+      log.error("joinWithCode: notifyMarketCenterLeadership failed after commit", {
+        userId: userContext.userId,
+        marketCenterId: joinCode.marketCenterId,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     return {
@@ -174,11 +177,21 @@ export const joinWithCode = api<JoinWithCodeRequest, JoinWithCodeResponse>(
   }
 );
 
-/** Makes a leaked code visible within minutes rather than at the next roster review. */
+/**
+ * Makes a leaked code visible within minutes rather than at the next roster review.
+ *
+ * Publishes to notificationTopic, the same path every other producer uses
+ * (notifications/activity-handlers.ts, cron/sla-check.cron.ts). Writing
+ * notification rows directly would skip everything that makes this notification
+ * land: the EMAIL row alongside the IN_APP one (the "Market Center Assignment"
+ * default is email: true — see utils.ts:120), the user/market-center preference
+ * checks, and broadcastNotification, without which the dashboard stream never
+ * fires its toast and never invalidates the notification query.
+ */
 async function notifyMarketCenterLeadership(
   marketCenterId: string,
   marketCenterName: string,
-  joinerName: string
+  joiner: { name: string; email: string }
 ): Promise<void> {
   const [admins, leaders] = await Promise.all([
     userRepository.findByMarketCenterIdAndRole(marketCenterId, "ADMIN"),
@@ -188,14 +201,32 @@ async function notifyMarketCenterLeadership(
   const recipients = [...admins, ...leaders];
   if (recipients.length === 0) return;
 
-  await notificationRepository.createMany(
-    recipients.map((recipient) => ({
-      userId: recipient.id,
-      channel: "IN_APP" as const,
-      category: "ACCOUNT" as const,
-      type: "Market Center Assignment",
-      title: "New agent joined",
-      body: `${joinerName} joined ${marketCenterName} as an agent.`,
-    }))
+  const title = "New agent joined";
+  const body = `${joiner.name} joined ${marketCenterName} as an agent.`;
+
+  await Promise.all(
+    recipients.map((recipient) =>
+      notificationTopic.publish({
+        userId: recipient.id,
+        category: "ACTIVITY",
+        type: "Market Center Assignment",
+        inApp: { title, body },
+        email: { title, body },
+        priority: "MEDIUM",
+        data: {
+          marketCenterId,
+          // The email renderer reads its variables from here, not from the
+          // title/body above (channels/email/customization-renderer.ts:127).
+          marketCenterAssignment: {
+            userUpdate: "added",
+            marketCenterId,
+            marketCenterName,
+            userName: joiner.name,
+            editorName: joiner.name,
+            editorEmail: joiner.email,
+          },
+        },
+      })
+    )
   );
 }
