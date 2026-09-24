@@ -2,7 +2,9 @@ import { randomInt } from "node:crypto";
 
 /** Crockford base32 — excludes I, L, O and U so codes survive being read aloud. */
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const CODE_LENGTH = 8;
+
+/** Exported so the public resolve endpoint can reject malformed input without a query. */
+export const JOIN_CODE_LENGTH = 8;
 
 /** Look-alikes an agent might type off a printed code. */
 const SUBSTITUTIONS: Record<string, string> = {
@@ -14,7 +16,7 @@ const SUBSTITUTIONS: Record<string, string> = {
 
 export function generateJoinCode(): string {
   let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < JOIN_CODE_LENGTH; i++) {
     code += ALPHABET[randomInt(ALPHABET.length)];
   }
   return code;
