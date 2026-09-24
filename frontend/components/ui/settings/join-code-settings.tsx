@@ -41,7 +41,15 @@ export default function JoinCodeSettings() {
   getTokenRef.current = getToken;
 
   useEffect(() => {
-    if (!marketCenterId || !canViewJoinCode) return;
+    if (!canViewJoinCode) return;
+    // An ADMIN can pass the role gate with no market center -- a superuser, or
+    // anyone whose market center was deleted (users.market_center_id is
+    // ON DELETE SET NULL). Returning without clearing the flag leaves the card
+    // spinning forever.
+    if (!marketCenterId) {
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
 
     (async () => {
@@ -90,10 +98,24 @@ export default function JoinCodeSettings() {
     }
   }
 
-  function copyLink() {
+  async function copyLink() {
     const raw = (formattedCode ?? "").replace("-", "");
-    navigator.clipboard.writeText(`${window.location.origin}/join?code=${raw}`);
-    toast.success("Join link copied");
+    const link = `${window.location.origin}/join?code=${raw}`;
+
+    // navigator.clipboard is undefined outside a secure context, and writeText
+    // rejects when permission is denied -- firing the success toast without
+    // awaiting it told the admin a link was copied when nothing was.
+    if (!navigator.clipboard?.writeText) {
+      toast.error("Copying isn't available here. Share the code above instead.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Join link copied");
+    } catch {
+      toast.error("Couldn't copy the join link");
+    }
   }
 
   return (
@@ -111,6 +133,11 @@ export default function JoinCodeSettings() {
       <CardContent className="space-y-4">
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
+        ) : !formattedCode ? (
+          <p className="text-sm text-muted-foreground">
+            No join code is available. Select a market center to manage its
+            join code.
+          </p>
         ) : (
           <>
             <p className="font-mono text-2xl tracking-widest">{formattedCode}</p>

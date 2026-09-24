@@ -8,15 +8,21 @@ import JoinCodeSettings from "./join-code-settings";
 // Clerk's real useAuth() returns a stable getToken across renders; this
 // double is hoisted to a single shared function so it reflects that instead
 // of manufacturing a new identity on every call.
-const { getToken } = vi.hoisted(() => ({ getToken: vi.fn(async () => "token") }));
+const { getToken, store, toastMock } = vi.hoisted(() => ({
+  getToken: vi.fn(async () => "token"),
+  store: { currentUser: { marketCenterId: "mc-1" } as { marketCenterId: string | null } },
+  toastMock: { success: vi.fn(), error: vi.fn() },
+}));
 
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({ getToken }),
 }));
 
 vi.mock("@/context/store-provider", () => ({
-  useStore: () => ({ currentUser: { marketCenterId: "mc-1" } }),
+  useStore: () => store,
 }));
+
+vi.mock("sonner", () => ({ toast: toastMock }));
 
 const mockUseUserRole = vi.fn();
 vi.mock("@/hooks/use-user-role", () => ({
@@ -27,6 +33,7 @@ vi.mock("@/lib/api/utils", () => ({ API_BASE: "http://api.test" }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  store.currentUser = { marketCenterId: "mc-1" };
   mockUseUserRole.mockReturnValue({ role: "ADMIN" });
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -86,5 +93,52 @@ describe("JoinCodeSettings", () => {
       expect(container).toBeEmptyDOMElement();
     }
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("stops loading for an admin with no market center instead of spinning forever", async () => {
+    // An ADMIN passes the role gate with a null market center -- a superuser,
+    // or anyone whose market center was deleted (ON DELETE SET NULL). The early
+    // return used to skip setIsLoading(false), leaving a permanent spinner and
+    // no way to tell it apart from a hung request.
+    store.currentUser = { marketCenterId: null };
+
+    render(<JoinCodeSettings />);
+
+    expect(await screen.findByText(/no join code is available/i)).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /copy join link/i })).toBeNull();
+  });
+
+  it("does not claim the link was copied when the clipboard write fails", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<JoinCodeSettings />);
+    await screen.findByText("K7M4-2XQP");
+
+    await userEvent.click(screen.getByRole("button", { name: /copy join link/i }));
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalled());
+    expect(toastMock.success).not.toHaveBeenCalled();
+  });
+
+  it("tells the admin when the clipboard is unavailable rather than throwing", async () => {
+    // navigator.clipboard is undefined outside a secure context; an unguarded
+    // writeText throws a TypeError straight out of the click handler.
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+
+    render(<JoinCodeSettings />);
+    await screen.findByText("K7M4-2XQP");
+
+    await userEvent.click(screen.getByRole("button", { name: /copy join link/i }));
+
+    expect(toastMock.error).toHaveBeenCalled();
+    expect(toastMock.success).not.toHaveBeenCalled();
   });
 });
