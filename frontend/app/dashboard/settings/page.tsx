@@ -1,7 +1,6 @@
 "use client";
 
 import AutoCloseSettings from "@/components/ui/settings/auto-close-settings";
-import JoinCodeSettings from "@/components/ui/settings/join-code-settings";
 
 export default function SettingsPage() {
   return (
@@ -14,7 +13,6 @@ export default function SettingsPage() {
       </div> */}
 
       <AutoCloseSettings />
-      <JoinCodeSettings />
     </div>
   );
 }
