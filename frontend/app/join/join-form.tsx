@@ -150,10 +150,27 @@ export function JoinForm() {
               Join market center
             </Button>
           ) : (
-            <SignUp
-              forceRedirectUrl={`/join?code=${confirmed.code}`}
-              signInForceRedirectUrl={`/join?code=${confirmed.code}`}
-            />
+            <div className="space-y-4">
+              {/* Offered before the sign-up form, not buried inside it: plenty of
+                  agents already have an account (signed up and abandoned, or came
+                  from another market center) and should not be asked to create a
+                  second one. Landing back here signed in shows the Join button. */}
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <Link
+                  href={`/sign-in?redirect_url=${encodeURIComponent(
+                    `/join?code=${confirmed.code}`
+                  )}`}
+                  className="font-medium underline"
+                >
+                  Sign in instead
+                </Link>
+              </p>
+              <SignUp
+                forceRedirectUrl={`/join?code=${confirmed.code}`}
+                signInForceRedirectUrl={`/join?code=${confirmed.code}`}
+              />
+            </div>
           )}
 
           <Button

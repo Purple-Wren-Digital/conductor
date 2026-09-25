@@ -27,7 +27,12 @@ const INVALID_CODE_MESSAGE =
  * latter also fires for a same-instant deactivation race) — the caller doesn't
  * need to know which check caught it.
  */
-const ALREADY_MEMBER_MESSAGE = "You're already a member of a market center.";
+// Refusing is deliberate -- moving between market centers is an admin action,
+// not a code redemption -- so the message has to say where to go next instead of
+// dead-ending someone who did nothing wrong.
+const ALREADY_MEMBER_MESSAGE =
+  "You're already a member of a market center. If you need to move to a " +
+  "different one, ask an admin at your market center to move you.";
 
 /**
  * Join the authenticated user to a market center as an AGENT.

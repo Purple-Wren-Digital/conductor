@@ -297,6 +297,9 @@ describe("joinWithCode", () => {
     await expect(joinWithCode({ code: "K7M42XQP" })).rejects.toThrow(
       "already a member"
     );
+    // Refusing is deliberate, so the message must route them somewhere rather
+    // than dead-ending someone who did nothing wrong.
+    await expect(joinWithCode({ code: "K7M42XQP" })).rejects.toThrow(/ask an admin/i);
     expect(mockWithTransaction).not.toHaveBeenCalled();
   });
 

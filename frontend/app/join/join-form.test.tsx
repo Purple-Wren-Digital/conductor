@@ -281,4 +281,28 @@ describe("JoinForm", () => {
     // region the page looks unchanged to a screen reader.
     expect(await screen.findByRole("alert")).toHaveTextContent(/isn't valid/i);
   });
+
+  it("offers an existing account holder a sign-in path carrying the code", async () => {
+    auth.isSignedIn = false;
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        valid: true,
+        marketCenterName: "Greater Austin Market Center",
+      }),
+    });
+
+    render(<JoinForm />);
+    await userEvent.type(screen.getByLabelText(/join code/i), "K7M42XQP");
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    const signIn = await screen.findByRole("link", { name: /sign in instead/i });
+    // Must carry the CONFIRMED code, so the round trip returns to the same
+    // market center rather than a blank form.
+    expect(signIn).toHaveAttribute(
+      "href",
+      `/sign-in?redirect_url=${encodeURIComponent("/join?code=K7M42XQP")}`
+    );
+  });
+
 });
