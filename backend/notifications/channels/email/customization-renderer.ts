@@ -26,6 +26,7 @@ function getTemplateTypeFromNotification(
     "Ticket Assignment": "ticket_assignment",
     "New Comments": "new_comments",
     "Market Center Assignment": "market_center_assignment",
+    "Agent Joined": "agent_joined",
     "Category Assignment": "category_assignment",
     "Ticket Survey": "ticket_survey",
     "Ticket Survey Results": "ticket_survey_results",
@@ -134,6 +135,15 @@ function extractContextFromNotification(
         context.user_name = data.marketCenterAssignment.userName || "";
         context.editor_name = data.marketCenterAssignment.editorName || "";
         context.editor_email = data.marketCenterAssignment.editorEmail || "";
+      }
+      break;
+
+    case "agent_joined":
+      if (data.agentJoined) {
+        context.agent_name = data.agentJoined.agentName || "";
+        context.market_center_name = data.agentJoined.marketCenterName || "";
+        context.market_center_id = data.agentJoined.marketCenterId || "";
+        context.user_name = data.agentJoined.userName || "";
       }
       break;
 

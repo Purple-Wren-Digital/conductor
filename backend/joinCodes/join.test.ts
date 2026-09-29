@@ -255,10 +255,10 @@ describe("joinWithCode", () => {
     expect(mockNotificationTopic.publish).toHaveBeenCalledTimes(1);
     const [req] = mockNotificationTopic.publish.mock.calls[0];
 
-    // ACCOUNT was wrong: "Market Center Assignment" is an ACTIVITY type
+    // ACCOUNT was wrong: "Agent Joined" is an ACTIVITY type
     // everywhere else, and the category drives which preference block applies.
     expect(req.category).toBe("ACTIVITY");
-    expect(req.type).toBe("Market Center Assignment");
+    expect(req.type).toBe("Agent Joined");
 
     // Both channels must be requested. An "email" of "Notifications
     // deactivated" would suppress the email that makes this alertable.
@@ -268,14 +268,18 @@ describe("joinWithCode", () => {
     });
     expect(req.email).toEqual(req.inApp);
 
-    // The email body is rendered from data.marketCenterAssignment, not from
-    // email.body -- an empty data block renders an email with blank variables.
-    expect(req.data.marketCenterAssignment).toMatchObject({
+    // The email body is rendered from data.agentJoined, not from email.body --
+    // an empty data block renders an email with blank variables.
+    expect(req.data.agentJoined).toMatchObject({
       marketCenterId: "mc-1",
       marketCenterName: "Greater Austin Market Center",
-      editorName: "Jeffrey Harris",
-      editorEmail: "jeffrey@example.com",
+      agentName: "Jeffrey Harris",
     });
+
+    // Must NOT reuse marketCenterAssignment: that template addresses the
+    // recipient about their OWN assignment, so leadership were being told their
+    // market center assignment had been updated by the agent who just joined.
+    expect(req.data.marketCenterAssignment).toBeUndefined();
   });
 
   it("rejects a code rotated away between resolve and join", async () => {

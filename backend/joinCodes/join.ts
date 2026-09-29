@@ -214,21 +214,24 @@ async function notifyMarketCenterLeadership(
       notificationTopic.publish({
         userId: recipient.id,
         category: "ACTIVITY",
-        type: "Market Center Assignment",
+        // Its own type, not "Market Center Assignment": that template addresses
+        // the recipient about THEIR assignment, so leadership were being told
+        // their own market center assignment had been updated.
+        type: "Agent Joined",
         inApp: { title, body },
         email: { title, body },
         priority: "MEDIUM",
         data: {
           marketCenterId,
           // The email renderer reads its variables from here, not from the
-          // title/body above (channels/email/customization-renderer.ts:127).
-          marketCenterAssignment: {
-            userUpdate: "added",
-            marketCenterId,
+          // title/body above (channels/email/customization-renderer.ts).
+          agentJoined: {
+            agentName: joiner.name,
             marketCenterName,
-            userName: joiner.name,
-            editorName: joiner.name,
-            editorEmail: joiner.email,
+            marketCenterId,
+            // Filled per recipient by the renderer; leadership each see their
+            // own name in the greeting.
+            userName: recipient.name ?? "",
           },
         },
       })
