@@ -36,6 +36,7 @@ import {
   FolderPen,
   HomeIcon,
   LockKeyholeIcon,
+  KeyRound,
   Megaphone,
   Ticket,
   Users as UsersIcon,
@@ -370,6 +371,18 @@ export function AppSidebar({
                         >
                           <LockKeyholeIcon className="text-muted-foreground" />
                           Auto-Close Management
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() =>
+                            navigate(`/dashboard/settings/join-code`)
+                          }
+                          disabled={isLoading}
+                        >
+                          <KeyRound className="text-muted-foreground" />
+                          Agent Join Code
                         </SidebarMenuButton>
                       </SidebarMenuItem>
 
