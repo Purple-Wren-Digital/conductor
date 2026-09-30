@@ -14,6 +14,7 @@ export type CustomizableTemplateType =
   | "ticket_assignment"
   | "new_comments"
   | "market_center_assignment"
+  | "agent_joined"
   | "category_assignment"
   | "ticket_survey"
   | "ticket_survey_results";
@@ -27,6 +28,7 @@ export const TEMPLATE_TYPE_LABELS: Record<CustomizableTemplateType, string> = {
   ticket_assignment: "Ticket Assignment",
   new_comments: "New Comment",
   market_center_assignment: "Market Center Assignment",
+  agent_joined: "Agent Joined",
   category_assignment: "Category Assignment",
   ticket_survey: "Ticket Survey",
   ticket_survey_results: "Survey Results",
@@ -44,6 +46,7 @@ export const TEMPLATE_TYPE_TO_TRIGGER: Record<
   ticket_assignment: "Ticket Assignment",
   new_comments: "New Comments",
   market_center_assignment: "Market Center Assignment",
+  agent_joined: "Agent Joined",
   category_assignment: "Category Assignment",
   ticket_survey: "Ticket Survey",
   ticket_survey_results: "Ticket Survey Results",
@@ -235,6 +238,26 @@ export const TEMPLATE_VARIABLES: Record<
       example: "John Smith",
     },
   ],
+  agent_joined: [
+    {
+      key: "agent_name",
+      label: "Agent Name",
+      description: "Name of the agent who joined using the join code",
+      example: "Jeffrey Harris",
+    },
+    {
+      key: "market_center_name",
+      label: "Market Center Name",
+      description: "Name of the market center they joined",
+      example: "Austin Downtown",
+    },
+    {
+      key: "user_name",
+      label: "Recipient Name",
+      description: "Name of the person receiving this notification",
+      example: "John Smith",
+    },
+  ],
   category_assignment: [
     {
       key: "market_center_name",
@@ -369,6 +392,11 @@ export const EMAIL_VISIBLE_FIELDS: Record<
     { key: "market_center_name", label: "Market Center", defaultVisible: true },
     { key: "user_update", label: "Added or Removed", defaultVisible: true },
     { key: "editor_name", label: "Changed By", defaultVisible: true },
+    { key: "user_name", label: "Recipient Name", defaultVisible: false },
+  ],
+  agent_joined: [
+    { key: "agent_name", label: "Agent Name", defaultVisible: true },
+    { key: "market_center_name", label: "Market Center", defaultVisible: true },
     { key: "user_name", label: "Recipient Name", defaultVisible: false },
   ],
   category_assignment: [
@@ -568,6 +596,17 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<
       "user_name",
     ],
   },
+  // Sent to market center leadership, NOT to the agent who joined -- so it
+  // reports what someone else did rather than addressing the recipient's own
+  // assignment.
+  agent_joined: {
+    subject: "New agent joined {{market_center_name}}",
+    greeting: "Hi {{user_name}},",
+    mainMessage:
+      "{{agent_name}} joined {{market_center_name}} using your market center's join code.",
+    buttonText: "View Members",
+    visibleFields: ["agent_name", "market_center_name"],
+  },
   category_assignment: {
     subject: "Ticket Category Assignment Update: '{{category_name}}'",
     greeting: "Hi {{user_name}},",
@@ -627,6 +666,10 @@ export const DEFAULT_IN_APP_TEMPLATES: Record<
   market_center_assignment: {
     title: "Market Center Update",
     body: "{{editor_name}} updated your market center assignment",
+  },
+  agent_joined: {
+    title: "New agent joined",
+    body: "{{agent_name}} joined {{market_center_name}} as an agent.",
   },
   category_assignment: {
     title: "Category Assignment",

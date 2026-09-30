@@ -230,7 +230,7 @@ describe("Template Customization Integration Tests", () => {
 
       // Step 1: List all templates - should show all as default
       const initialList = await listTemplateStatuses({ marketCenterId });
-      expect(initialList.templates).toHaveLength(8);
+      expect(initialList.templates).toHaveLength(9);
       expect(initialList.templates.every((t) => !t.hasEmailCustomization)).toBe(
         true
       );

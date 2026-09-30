@@ -242,6 +242,7 @@ export interface ConductorUser {
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
   marketCenters?: { id: string; name: string }[];
+  joinedViaJoinCode?: boolean;
 
   ticketHistory?: TicketHistory[];
   userHistory?: UserHistory[];

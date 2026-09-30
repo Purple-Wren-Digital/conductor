@@ -34,6 +34,8 @@ export interface User {
   marketCenterId: string | null;
   marketCenter?: MarketCenter;
 
+  joinedViaJoinCode?: boolean;
+
   ticketHistory?: TicketHistory[];
   userHistory?: UserHistory[];
   otherUsersChanges?: UserHistory[];

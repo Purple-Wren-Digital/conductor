@@ -24,10 +24,15 @@ describe("CustomizableTemplateType", () => {
     "category_assignment",
     "ticket_survey",
     "ticket_survey_results",
+    "agent_joined",
   ];
 
-  it("should have exactly 8 template types", () => {
-    expect(Object.keys(TEMPLATE_TYPE_LABELS)).toHaveLength(8);
+  it("should have exactly the expected template types, and no others", () => {
+    // Derived from expectedTypes rather than hardcoded, so adding a type forces
+    // you to declare it above instead of just bumping a number.
+    expect(Object.keys(TEMPLATE_TYPE_LABELS).sort()).toEqual(
+      [...expectedTypes].sort()
+    );
   });
 
   it("should have all expected types in TEMPLATE_TYPE_LABELS", () => {

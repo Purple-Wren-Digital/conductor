@@ -80,6 +80,18 @@ export interface NotificationData {
 
   // ACTIVITY: MARKET CENTER
   marketCenterAssignment?: MarketCenterAssignmentProps;
+  /**
+   * An agent self-joined with a market center join code. Distinct from
+   * marketCenterAssignment because the recipient is the market center's
+   * leadership, not the person whose assignment changed -- reusing that shape
+   * makes the email tell a leader their OWN assignment was updated.
+   */
+  agentJoined?: {
+    agentName: string;
+    marketCenterName: string;
+    marketCenterId: string;
+    userName: string;
+  };
   categoryAssignment?: CategoryAssignmentProps;
 
   // ACTIVITY: TICKETS

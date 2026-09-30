@@ -83,6 +83,15 @@ export function UserListItem({
               style: getCategoryStyle(category.name ?? "Unnamed"),
             }))
           : []),
+        ...(user?.joinedViaJoinCode
+          ? [
+              {
+                label: "Joined via code",
+                variant: "secondary" as const,
+                title: "This agent joined using the market center join code",
+              },
+            ]
+          : []),
       ]}
       metadata={[
         { label: user.email, icon: <Mail className="h-3 w-3" /> },

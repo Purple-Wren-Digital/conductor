@@ -13,6 +13,7 @@ export type CustomizableTemplateType =
   | "ticket_assignment"
   | "new_comments"
   | "market_center_assignment"
+  | "agent_joined"
   | "category_assignment"
   | "ticket_survey"
   | "ticket_survey_results";

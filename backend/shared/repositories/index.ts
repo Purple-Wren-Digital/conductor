@@ -19,3 +19,4 @@ export { subscriptionRepository } from "./subscription.repository";
 export { settingsAuditRepository } from "./settings-audit.repository";
 export { slaRepository } from "./sla.repository";
 export { userMarketCenterRepository } from "./user-market-center.repository";
+export { joinCodeRepository } from "./join-code.repository";
