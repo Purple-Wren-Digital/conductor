@@ -54,6 +54,21 @@ export const roleOptions: UserRole[] = [
 ];
 
 /**
+ * Whether changing someone from `from` to `to` costs a paid seat.
+ *
+ * Only a move OFF the free AGENT role consumes one. Staff -> staff leader is
+ * seat-neutral (both already counted) and demoting to AGENT frees a seat.
+ * Creating a user has no `from`, so any non-AGENT role costs one.
+ *
+ * Shared by the dropdown filter and the confirmation prompt so the two can
+ * never disagree about what a change costs.
+ */
+export const roleChangeConsumesSeat = (
+  from: UserRole | null | undefined,
+  to: UserRole
+): boolean => (from ?? "AGENT") === "AGENT" && to !== "AGENT";
+
+/**
  * Whether a role can be offered in a role-assignment dropdown.
  *
  * `option` is the role being listed; `viewerRole` is the role of the signed-in
@@ -78,11 +93,7 @@ export const canAssignRoleOption = ({
   // current value, misrepresenting state and making every selection a change.
   const isCurrentRole = currentRole != null && option === currentRole;
 
-  // Only a move OFF the free AGENT role consumes a new paid seat. A staff ->
-  // staff-leader change is seat-neutral (both already counted), and demoting to
-  // AGENT frees one, so neither should be blocked at the limit. Creating a user
-  // has no currentRole, so any non-AGENT role counts as consuming a seat.
-  const wouldConsumeASeat = option !== "AGENT" && (currentRole ?? "AGENT") === "AGENT";
+  const wouldConsumeASeat = roleChangeConsumesSeat(currentRole, option);
 
   if (
     !canBypassLimits &&
