@@ -35,6 +35,7 @@ import {
   UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
+import { RoleSeatNotice } from "./role-seat-notice";
 import {
   canAssignRoleOption,
   getRoleDescription,
@@ -498,6 +499,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     if (
                       !canAssignRoleOption({
                         option,
+                        currentRole: user?.role,
                         viewerRole: role,
                         canBypassLimits: !!canBypassLimits,
                         hasAvailableSeats: !!seats?.hasAvailableSeats,
@@ -518,6 +520,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   })}
                 </SelectContent>
               </Select>
+              <RoleSeatNotice
+                canBypassLimits={!!canBypassLimits}
+                hasAvailableSeats={!!seats?.hasAvailableSeats}
+                totalSeats={seats?.totalSeats ?? 0}
+                currentRole={user?.role}
+              />
             </div>
           </CardContent>
         </Card>
@@ -657,6 +665,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     if (
                       !canAssignRoleOption({
                         option,
+                        currentRole: user?.role,
                         viewerRole: role,
                         canBypassLimits: !!canBypassLimits,
                         hasAvailableSeats: !!seats?.hasAvailableSeats,

@@ -62,17 +62,35 @@ export const roleOptions: UserRole[] = [
  */
 export const canAssignRoleOption = ({
   option,
+  currentRole,
   viewerRole,
   canBypassLimits,
   hasAvailableSeats,
 }: {
   option: UserRole;
+  /** The role the user being edited holds today. Omit when creating a user. */
+  currentRole?: UserRole | null;
   viewerRole?: UserRole | null;
   canBypassLimits: boolean;
   hasAvailableSeats: boolean;
 }): boolean => {
-  // AGENT is free; every other role consumes a paid seat.
-  if (!canBypassLimits && !hasAvailableSeats && option !== "AGENT") return false;
+  // Never hide the role someone already has: the dropdown would omit their
+  // current value, misrepresenting state and making every selection a change.
+  const isCurrentRole = currentRole != null && option === currentRole;
+
+  // Only a move OFF the free AGENT role consumes a new paid seat. A staff ->
+  // staff-leader change is seat-neutral (both already counted), and demoting to
+  // AGENT frees one, so neither should be blocked at the limit. Creating a user
+  // has no currentRole, so any non-AGENT role counts as consuming a seat.
+  const wouldConsumeASeat = option !== "AGENT" && (currentRole ?? "AGENT") === "AGENT";
+
+  if (
+    !canBypassLimits &&
+    !hasAvailableSeats &&
+    wouldConsumeASeat &&
+    !isCurrentRole
+  )
+    return false;
 
   // Staff and staff leaders cannot promote anyone to admin.
   if (

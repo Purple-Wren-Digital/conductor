@@ -86,4 +86,57 @@ describe("canAssignRoleOption", () => {
       })
     ).toBe(true);
   });
+
+  // A role change only costs a seat when it moves someone OFF the free AGENT
+  // role. Blocking seat-neutral changes strands admins at the seat limit.
+  it("allows a seat-neutral change when seats are full", () => {
+    expect(
+      canAssignRoleOption({
+        option: "STAFF_LEADER",
+        currentRole: "STAFF",
+        viewerRole: "ADMIN",
+        canBypassLimits: false,
+        hasAvailableSeats: false,
+      })
+    ).toBe(true);
+  });
+
+  it("still blocks promoting an agent when seats are full", () => {
+    expect(
+      canAssignRoleOption({
+        option: "STAFF",
+        currentRole: "AGENT",
+        viewerRole: "ADMIN",
+        canBypassLimits: false,
+        hasAvailableSeats: false,
+      })
+    ).toBe(false);
+  });
+
+  it("always offers the role the user already has", () => {
+    // Otherwise the dropdown omits their current role, misrepresenting state
+    // and making every selection a change.
+    expect(
+      canAssignRoleOption({
+        option: "ADMIN",
+        currentRole: "ADMIN",
+        viewerRole: "ADMIN",
+        canBypassLimits: false,
+        hasAvailableSeats: false,
+      })
+    ).toBe(true);
+  });
+
+  it("still lets a full market center demote someone to agent", () => {
+    expect(
+      canAssignRoleOption({
+        option: "AGENT",
+        currentRole: "STAFF",
+        viewerRole: "ADMIN",
+        canBypassLimits: false,
+        hasAvailableSeats: false,
+      })
+    ).toBe(true);
+  });
+
 });

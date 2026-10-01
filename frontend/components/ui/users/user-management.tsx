@@ -1126,6 +1126,7 @@ export default function UserManagement() {
                     if (
                       !canAssignRoleOption({
                         option,
+                        currentRole: editingUser?.role,
                         viewerRole: role,
                         canBypassLimits: !!canViewAllMCs,
                         hasAvailableSeats: !!seats?.hasAvailableSeats,
