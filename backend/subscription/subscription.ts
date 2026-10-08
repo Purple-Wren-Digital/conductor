@@ -599,6 +599,24 @@ interface UpdateSeatsParams {
   additionalSeats: number;
 }
 
+interface UpdateSeatsResponse {
+  success: boolean;
+  totalSeats: number;
+  additionalSeats: number;
+  seatPrice: number;
+}
+
+/**
+ * How Stripe bills a mid-cycle seat change.
+ *
+ * "create_prorations" puts the prorated amount on the NEXT invoice: the seat is
+ * usable immediately and no card is charged today. The alternative,
+ * "always_invoice", bills right away -- safer for collection, but it means an
+ * admin adding one seat gets an immediate charge, and a declined card leaves
+ * the change half-applied. Flip this single constant to change that behaviour.
+ */
+const SEAT_PRORATION_BEHAVIOR = "create_prorations" as const;
+
 // Update additional seats for the subscription
 export const updateSeats = api(
   {
@@ -607,7 +625,7 @@ export const updateSeats = api(
     expose: true,
     auth: true,
   },
-  async (params: UpdateSeatsParams): Promise<{ success: boolean }> => {
+  async (params: UpdateSeatsParams): Promise<UpdateSeatsResponse> => {
     const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("Not authenticated");
@@ -653,29 +671,45 @@ export const updateSeats = api(
       subscription.stripeSubscriptionId
     );
 
-    // Find the additional seats item if it exists
+    // The seat line item is whichever item is NOT the plan. Checkout creates it
+    // with an inline product (price_data + product_data), so there is no stable
+    // product id to match on -- the previous `price.product === "additional_seats"`
+    // check could never match, so every call fell through to the create branch
+    // and would have stacked a second seat line item onto the subscription.
+    const planPriceIds = Object.values(PRICING_PLANS).map((p) => p.priceId);
     const seatItem = stripeSubscription.items.data.find(
-      (item) => item.price.product === "additional_seats" // You'll need to set this up in Stripe
+      (item) => !planPriceIds.includes(item.price.id)
     );
 
     if (seatItem) {
-      // Update existing seat item
-      await stripe.subscriptionItems.update(seatItem.id, {
-        quantity: params.additionalSeats,
-      });
+      if (params.additionalSeats > 0) {
+        await stripe.subscriptionItems.update(seatItem.id, {
+          quantity: params.additionalSeats,
+          proration_behavior: SEAT_PRORATION_BEHAVIOR,
+        });
+      } else {
+        // Down to zero extra seats: drop the line item rather than bill for 0.
+        await stripe.subscriptionItems.del(seatItem.id, {
+          proration_behavior: SEAT_PRORATION_BEHAVIOR,
+        });
+      }
     } else if (params.additionalSeats > 0) {
-      // Add new seat item
+      // subscriptionItems.create only accepts an existing product id, unlike
+      // checkout's line_items. Create the price (with its product inline)
+      // first, then attach it -- same end state as checkout, no Stripe
+      // dashboard setup required.
+      const seatPrice = await stripe.prices.create({
+        currency: "usd",
+        unit_amount: Math.round(subscription.seatPrice * 100),
+        recurring: { interval: "month" },
+        product_data: { name: "Additional Seats" },
+      });
+
       await stripe.subscriptionItems.create({
         subscription: subscription.stripeSubscriptionId,
-        price_data: {
-          currency: "usd",
-          product: "additional_seats",
-          recurring: {
-            interval: "month",
-          },
-          unit_amount: subscription.seatPrice * 100,
-        },
+        price: seatPrice.id,
         quantity: params.additionalSeats,
+        proration_behavior: SEAT_PRORATION_BEHAVIOR,
       });
     }
 
@@ -684,7 +718,18 @@ export const updateSeats = api(
       additionalSeats: params.additionalSeats,
     });
 
-    return { success: true };
+    log.info("Updated subscription seats", {
+      marketCenterId: user.marketCenterId,
+      additionalSeats: params.additionalSeats,
+      newTotalSeats,
+    });
+
+    return {
+      success: true,
+      totalSeats: newTotalSeats,
+      additionalSeats: params.additionalSeats,
+      seatPrice: subscription.seatPrice,
+    };
   }
 );
 
