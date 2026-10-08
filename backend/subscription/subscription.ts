@@ -617,6 +617,12 @@ interface UpdateSeatsResponse {
  */
 const SEAT_PRORATION_BEHAVIOR = "create_prorations" as const;
 
+/**
+ * Product name used to recognise the additional-seats line item. Checkout
+ * writes "Additional Seats (N seats)", so matching is by prefix.
+ */
+const SEAT_PRODUCT_NAME = "Additional Seats";
+
 // Update additional seats for the subscription
 export const updateSeats = api(
   {
@@ -668,18 +674,41 @@ export const updateSeats = api(
 
     // Update in Stripe
     const stripeSubscription = await stripe.subscriptions.retrieve(
-      subscription.stripeSubscriptionId
+      subscription.stripeSubscriptionId,
+      { expand: ["items.data.price.product"] }
     );
 
-    // The seat line item is whichever item is NOT the plan. Checkout creates it
-    // with an inline product (price_data + product_data), so there is no stable
-    // product id to match on -- the previous `price.product === "additional_seats"`
-    // check could never match, so every call fell through to the create branch
-    // and would have stacked a second seat line item onto the subscription.
-    const planPriceIds = Object.values(PRICING_PLANS).map((p) => p.priceId);
-    const seatItem = stripeSubscription.items.data.find(
-      (item) => !planPriceIds.includes(item.price.id)
-    );
+    // Identify the seat line item POSITIVELY, by its product name.
+    //
+    // Checkout creates it with an inline product named "Additional Seats (N
+    // seats)" and this endpoint creates one named "Additional Seats", so the
+    // name is the only stable signal -- the product id is generated per
+    // subscription. Deliberately NOT "whichever item isn't the plan": if the
+    // subscription's plan price is missing from PRICING_PLANS (a rotated price,
+    // a grandfathered customer, a different Stripe account) that rule points at
+    // the PLAN item and we would reprice or delete someone's subscription.
+    const seatItems = stripeSubscription.items.data.filter((item) => {
+      const product = item.price.product;
+      const name =
+        typeof product === "object" && product !== null && !("deleted" in product)
+          ? product.name
+          : undefined;
+      return typeof name === "string" && name.startsWith(SEAT_PRODUCT_NAME);
+    });
+
+    if (seatItems.length > 1) {
+      // Two seat items means an earlier bug already duplicated them. Guessing
+      // which to edit could leave the customer billed twice; a human should look.
+      log.error("Multiple additional-seat line items on one subscription", {
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        count: seatItems.length,
+      });
+      throw APIError.failedPrecondition(
+        "This subscription has more than one additional-seats line item. Please contact support so we can correct your billing."
+      );
+    }
+
+    const seatItem = seatItems[0];
 
     if (seatItem) {
       if (params.additionalSeats > 0) {
@@ -702,7 +731,7 @@ export const updateSeats = api(
         currency: "usd",
         unit_amount: Math.round(subscription.seatPrice * 100),
         recurring: { interval: "month" },
-        product_data: { name: "Additional Seats" },
+        product_data: { name: SEAT_PRODUCT_NAME },
       });
 
       await stripe.subscriptionItems.create({

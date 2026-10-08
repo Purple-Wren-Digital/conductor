@@ -38,6 +38,7 @@ vi.mock("encore.dev/api", () => {
       permissionDenied: (m: string) => Object.assign(new Error(m), { code: "permission_denied" }),
       invalidArgument: (m: string) => Object.assign(new Error(m), { code: "invalid_argument" }),
       alreadyExists: (m: string) => Object.assign(new Error(m), { code: "already_exists" }),
+      failedPrecondition: (m: string) => Object.assign(new Error(m), { code: "failed_precondition" }),
     },
   };
 });
@@ -78,7 +79,11 @@ beforeEach(() => {
 /** A subscription carrying only the plan item (no seats yet). */
 function planOnly() {
   stripe.subscriptions.retrieve.mockResolvedValue({
-    items: { data: [{ id: "si_plan", price: { id: PLAN_PRICE_ID } }] },
+    items: {
+      data: [
+        { id: "si_plan", price: { id: PLAN_PRICE_ID, product: { name: "Conductor Standard" } } },
+      ],
+    },
   });
 }
 
@@ -87,8 +92,11 @@ function planPlusSeats() {
   stripe.subscriptions.retrieve.mockResolvedValue({
     items: {
       data: [
-        { id: "si_plan", price: { id: PLAN_PRICE_ID } },
-        { id: "si_seats", price: { id: "price_seats_adhoc" } },
+        { id: "si_plan", price: { id: PLAN_PRICE_ID, product: { name: "Conductor Standard" } } },
+        {
+          id: "si_seats",
+          price: { id: "price_seats_adhoc", product: { name: "Additional Seats (3 seats)" } },
+        },
       ],
     },
   });
@@ -176,4 +184,46 @@ describe("updateSeats", () => {
     );
     expect(stripe.subscriptionItems.create).not.toHaveBeenCalled();
   });
+
+  it("does not touch the plan when its price is unknown to PRICING_PLANS", async () => {
+    // A rotated price, a grandfathered customer, or a different Stripe account.
+    // The old "whichever item isn't the plan" rule pointed straight at the plan
+    // here and would have repriced or deleted someone's subscription.
+    stripe.subscriptions.retrieve.mockResolvedValue({
+      items: {
+        data: [
+          {
+            id: "si_plan",
+            price: { id: "price_grandfathered", product: { name: "Conductor Legacy" } },
+          },
+        ],
+      },
+    });
+
+    await updateSeats({ additionalSeats: 2 });
+
+    expect(stripe.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripe.subscriptionItems.del).not.toHaveBeenCalled();
+    // It adds a seat item instead, which is the correct outcome.
+    expect(stripe.subscriptionItems.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to guess when a subscription already has two seat items", async () => {
+    stripe.subscriptions.retrieve.mockResolvedValue({
+      items: {
+        data: [
+          { id: "si_plan", price: { id: PLAN_PRICE_ID, product: { name: "Conductor Standard" } } },
+          { id: "si_seats_a", price: { id: "p1", product: { name: "Additional Seats" } } },
+          { id: "si_seats_b", price: { id: "p2", product: { name: "Additional Seats (2 seats)" } } },
+        ],
+      },
+    });
+
+    await expect(updateSeats({ additionalSeats: 5 })).rejects.toThrow(
+      /more than one additional-seats line item/
+    );
+    expect(stripe.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripe.subscriptionItems.del).not.toHaveBeenCalled();
+  });
+
 });
