@@ -4,6 +4,16 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useStore } from "@/context/store-provider";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +45,10 @@ import {
   UserNotificationCallback,
   UserRole,
 } from "@/lib/types";
+import { RoleSeatNotice } from "./role-seat-notice";
 import {
   canAssignRoleOption,
+  roleChangeConsumesSeat,
   getRoleDescription,
   ROLE_ICONS,
   roleOptions,
@@ -84,6 +96,9 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
     role: user?.role ?? "AGENT",
     marketCenterId: user?.marketCenterId ?? "Unassigned",
   });
+  // A role change that costs a paid seat is held here until confirmed, rather
+  // than applied the moment the dropdown closes.
+  const [pendingSeatRole, setPendingSeatRole] = useState<UserRole | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -480,6 +495,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     email: user?.email ?? "",
                     role: value,
                   });
+                  // This dropdown commits immediately, so a change that spends
+                  // a paid seat gets confirmed first.
+                  if (roleChangeConsumesSeat(user?.role, value)) {
+                    setPendingSeatRole(value);
+                    return;
+                  }
                   handleRoleChange();
                 }}
                 disabled={
@@ -498,6 +519,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     if (
                       !canAssignRoleOption({
                         option,
+                        currentRole: user?.role,
                         viewerRole: role,
                         canBypassLimits: !!canBypassLimits,
                         hasAvailableSeats: !!seats?.hasAvailableSeats,
@@ -518,6 +540,63 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   })}
                 </SelectContent>
               </Select>
+              <AlertDialog
+                open={pendingSeatRole !== null}
+                onOpenChange={(open) => !open && setPendingSeatRole(null)}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      This will use one of your paid seats
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Making {user?.name || "this user"} a{" "}
+                      {pendingSeatRole
+                        ? pendingSeatRole.split("_").join(" ").toLowerCase()
+                        : ""}{" "}
+                      moves them off the free agent role.
+                      {canBypassLimits
+                        ? " Your plan has unlimited seats."
+                        : ` You'll have ${Math.max(
+                            (seats?.totalSeats ?? 0) -
+                              (seats?.filledSeats ?? 0) -
+                              1,
+                            0
+                          )} of ${seats?.totalSeats ?? 0} paid seats left.`}{" "}
+                      Moving them back to agent frees the seat again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel
+                      onClick={() => {
+                        setPendingSeatRole(null);
+                        // Drop the staged change so the dropdown reverts.
+                        setFormData((prev) => ({
+                          ...prev,
+                          role: user?.role ?? "AGENT",
+                        }));
+                      }}
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        setPendingSeatRole(null);
+                        handleRoleChange();
+                      }}
+                    >
+                      Use a seat
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <RoleSeatNotice
+                canBypassLimits={!!canBypassLimits}
+                hasAvailableSeats={!!seats?.hasAvailableSeats}
+                totalSeats={seats?.totalSeats ?? 0}
+                currentRole={user?.role}
+              />
             </div>
           </CardContent>
         </Card>
@@ -657,6 +736,7 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                     if (
                       !canAssignRoleOption({
                         option,
+                        currentRole: user?.role,
                         viewerRole: role,
                         canBypassLimits: !!canBypassLimits,
                         hasAvailableSeats: !!seats?.hasAvailableSeats,

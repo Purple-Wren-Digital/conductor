@@ -141,4 +141,16 @@ describe("JoinCodeSettings", () => {
     expect(toastMock.error).toHaveBeenCalled();
     expect(toastMock.success).not.toHaveBeenCalled();
   });
+
+  it("tells the admin where agents enter the code, not just the code", async () => {
+    render(<JoinCodeSettings />);
+    await screen.findByText("K7M4-2XQP");
+
+    // A code shared by phone or newsletter is useless without the destination,
+    // and the URL otherwise exists only inside the Copy button's handler.
+    expect(
+      screen.getByText(`${window.location.origin}/join`)
+    ).toBeInTheDocument();
+  });
+
 });

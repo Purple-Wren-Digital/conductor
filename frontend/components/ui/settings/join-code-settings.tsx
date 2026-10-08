@@ -32,6 +32,11 @@ export default function JoinCodeSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmingRotate, setIsConfirmingRotate] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  // Read client-side only: window is undefined during SSR. Admins need to see
+  // the destination, not just the code -- a code read out over the phone or
+  // pasted into a newsletter is useless on its own.
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
 
   // useAuth() can return a new getToken function identity on every render.
   // A ref lets the effect below call the latest getToken without taking a
@@ -141,6 +146,13 @@ export default function JoinCodeSettings() {
         ) : (
           <>
             <p className="font-mono text-2xl tracking-widest">{formattedCode}</p>
+
+            <p className="text-sm text-muted-foreground">
+              Agents enter this at{" "}
+              <span className="font-medium text-foreground">
+                {origin}/join
+              </span>
+            </p>
 
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={copyLink}>

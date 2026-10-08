@@ -72,4 +72,11 @@ describe("middleware public routes", () => {
     expect(await isPublic("/dashboard")).toBe(false);
     expect(await isPublic("/dashboard/settings")).toBe(false);
   });
+
+  it("does NOT expose the admin page that displays the join code", async () => {
+    // The one authenticated route whose path contains "join". If the matcher
+    // were ever loosened to something like "(.*)join(.*)", this page would hand
+    // the market center's join code to anyone signed out.
+    expect(await isPublic("/dashboard/settings/join-code")).toBe(false);
+  });
 });
