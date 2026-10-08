@@ -752,6 +752,12 @@ export default function UserDetailView({ id }: UserDetailViewProps) {
                   })}
                 </SelectContent>
               </Select>
+              <RoleSeatNotice
+                canBypassLimits={!!canBypassLimits}
+                hasAvailableSeats={!!seats?.hasAvailableSeats}
+                totalSeats={seats?.totalSeats ?? 0}
+                currentRole={user?.role}
+              />
               <p className="text-sm text-destructive">
                 {formErrors?.role && formErrors.role}
               </p>

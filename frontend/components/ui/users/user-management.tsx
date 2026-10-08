@@ -46,6 +46,7 @@ import {
 import { useIsEnterprise, useSubscription } from "@/hooks/useSubscription";
 import { useUserRole } from "@/hooks/use-user-role";
 import { API_BASE } from "@/lib/api/utils";
+import { RoleSeatNotice } from "./role-seat-notice";
 import {
   userStatusOptions,
   UserStatusType,
@@ -1142,6 +1143,12 @@ export default function UserManagement() {
                   })}
                 </SelectContent>
               </Select>
+              <RoleSeatNotice
+                canBypassLimits={!!canViewAllMCs}
+                hasAvailableSeats={!!seats?.hasAvailableSeats}
+                totalSeats={seats?.totalSeats ?? 0}
+                currentRole={editingUser?.role}
+              />
 
               <p className="text-sm text-destructive">
                 {formErrors?.role && formErrors.role}
