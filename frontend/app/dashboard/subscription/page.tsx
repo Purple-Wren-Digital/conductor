@@ -61,7 +61,11 @@ function SubscriptionPageContent() {
   // Changing seats on an EXISTING subscription, as opposed to choosing extras
   // at checkout (additionalSeats above).
   const [editingSeats, setEditingSeats] = useState(false);
-  const [seatDraft, setSeatDraft] = useState(0);
+  // Held as a string so typing behaves. A number-backed value re-renders to the
+  // parsed result only when it changes, so typing "10" into a "0" leaves "010"
+  // in the box -- the parse is a no-op on the first keystroke.
+  const [seatDraftText, setSeatDraftText] = useState("0");
+  const seatDraft = Math.max(0, parseInt(seatDraftText, 10) || 0);
   const [seatSaving, setSeatSaving] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
 
@@ -280,7 +284,7 @@ function SubscriptionPageContent() {
                     variant="link"
                     className="h-auto p-0 text-sm"
                     onClick={() => {
-                      setSeatDraft(subscription.additionalSeats);
+                      setSeatDraftText(String(subscription.additionalSeats));
                       setSeatError(null);
                       setEditingSeats(true);
                     }}
@@ -297,10 +301,19 @@ function SubscriptionPageContent() {
                       id="seatDraft"
                       type="number"
                       min={0}
-                      value={seatDraft}
-                      onChange={(e) =>
-                        setSeatDraft(Math.max(0, parseInt(e.target.value) || 0))
-                      }
+                      value={seatDraftText}
+                      onChange={(e) => {
+                        // Keep digits only, and drop leading zeros so the box
+                        // never reads "010".
+                        const digits = e.target.value.replace(/[^0-9]/g, "");
+                        setSeatDraftText(
+                          digits === "" ? "" : String(parseInt(digits, 10))
+                        );
+                      }}
+                      onBlur={() => {
+                        if (seatDraftText === "") setSeatDraftText("0");
+                      }}
+                      placeholder="0"
                       className="w-28"
                     />
                     <p className="text-sm text-muted-foreground">
