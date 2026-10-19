@@ -53,7 +53,7 @@ vi.mock("../ticket/db", () => ({
 }));
 vi.mock("../auth/user-context", () => ({ getUserContext: vi.fn() }));
 
-import { updateSeats, PRICING_PLANS } from "./subscription";
+import { updateSeats, PRICING_PLANS, planPricingFor } from "./subscription";
 
 const PLAN_PRICE_ID = PRICING_PLANS.STANDARD.priceId;
 
@@ -226,4 +226,33 @@ describe("updateSeats", () => {
     expect(stripe.subscriptionItems.del).not.toHaveBeenCalled();
   });
 
+});
+
+describe("seat pricing source of truth", () => {
+  it("quotes the plan's rate, not whatever is stored on the row", () => {
+    // The bug: checkout billed plan.additionalSeatPrice ($6) while adding seats
+    // later used subscriptions.seat_price, which defaults to $10 -- so a row not
+    // created by checkout charged a different rate than it was sold at.
+    const p = planPricingFor("STANDARD", 10);
+    expect(p.seatPrice).toBe(PRICING_PLANS.STANDARD.additionalSeatPrice);
+    expect(p.seatPrice).not.toBe(10);
+    expect(p.monthlyPrice).toBe(PRICING_PLANS.STANDARD.monthlyPrice);
+    expect(p.fromPlan).toBe(true);
+  });
+
+  it("honours the stored rate for a plan type it doesn't recognise", () => {
+    // Legacy and seeded rows carry plan types absent from PRICING_PLANS
+    // (production seed rows are "TEAM"). Inventing a price for those would
+    // charge people something they never agreed to.
+    const p = planPricingFor("TEAM", 10);
+    expect(p.seatPrice).toBe(10);
+    expect(p.monthlyPrice).toBeNull();
+    expect(p.fromPlan).toBe(false);
+  });
+
+  it("does not quote a price for custom enterprise plans", () => {
+    const p = planPricingFor("ENTERPRISE", 7);
+    expect(p.fromPlan).toBe(false);
+    expect(p.seatPrice).toBe(7);
+  });
 });

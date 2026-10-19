@@ -28,6 +28,8 @@ interface SubscriptionData {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  seatPrice: number;
+  monthlyPrice: number | null;
   agentCount: number;
   currentPeriodStart: string;
   currentPeriodEnd: string;
@@ -305,6 +307,56 @@ function SubscriptionPageContent() {
                       New total: {subscription.includedSeats + seatDraft} paid
                       seats. Agents stay free.
                     </p>
+
+                    {/* Quote the bill before charging it: an admin changing
+                        seats is changing what they pay, and should see the
+                        number before confirming rather than on the invoice. */}
+                    {subscription.monthlyPrice !== null && (
+                      <div className="rounded-md bg-muted/50 p-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Today
+                          </span>
+                          <span>
+                            $
+                            {subscription.monthlyPrice +
+                              subscription.additionalSeats *
+                                subscription.seatPrice}
+                            /mo
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>After this change</span>
+                          <span>
+                            $
+                            {subscription.monthlyPrice +
+                              seatDraft * subscription.seatPrice}
+                            /mo
+                          </span>
+                        </div>
+                        {seatDraft !== subscription.additionalSeats && (
+                          <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                            <span>
+                              {seatDraft > subscription.additionalSeats
+                                ? "Increase"
+                                : "Decrease"}
+                            </span>
+                            <span>
+                              {seatDraft > subscription.additionalSeats
+                                ? "+"
+                                : "-"}
+                              $
+                              {Math.abs(
+                                (seatDraft - subscription.additionalSeats) *
+                                  subscription.seatPrice
+                              )}
+                              /mo &middot; ${subscription.seatPrice}/seat
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground">
                       Changes are prorated and appear on your next invoice. You
                       can&apos;t drop below the {subscription.usedSeats} seats

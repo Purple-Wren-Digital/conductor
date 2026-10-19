@@ -533,6 +533,10 @@ interface GetSubscriptionResponse {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  /** Monthly cost of one additional seat, so the UI can quote it before charging. */
+  seatPrice: number;
+  /** Base plan cost per month, or null for custom/unknown plans. */
+  monthlyPrice: number | null;
   agentCount: number;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
@@ -585,6 +589,12 @@ export const getSubscription = api(
       additionalSeats: subscription.additionalSeats,
       totalSeats: subscription.includedSeats + subscription.additionalSeats,
       usedSeats: activeUserCount,
+      seatPrice: planPricingFor(subscription.planType, subscription.seatPrice)
+        .seatPrice,
+      monthlyPrice: planPricingFor(
+        subscription.planType,
+        subscription.seatPrice
+      ).monthlyPrice,
       agentCount: agentCount,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
@@ -604,6 +614,34 @@ interface UpdateSeatsResponse {
   totalSeats: number;
   additionalSeats: number;
   seatPrice: number;
+}
+
+/**
+ * Pricing for a subscription, read from PRICING_PLANS so checkout and seat
+ * changes can never quote different numbers.
+ *
+ * Previously checkout billed plan.additionalSeatPrice ($6) while adding seats
+ * later used the subscriptions.seat_price column, which defaults to $10 -- so
+ * any row not created by checkout charged a different rate than it was sold at.
+ *
+ * Falls back to the stored column for plan types absent from PRICING_PLANS
+ * (legacy or seeded rows), since guessing a price is worse than honouring the
+ * one on record.
+ */
+export function planPricingFor(
+  planType: string,
+  storedSeatPrice: number
+): { seatPrice: number; monthlyPrice: number | null; fromPlan: boolean } {
+  const plan = (PRICING_PLANS as Record<string, { additionalSeatPrice: number; monthlyPrice: number } | undefined>)[planType];
+
+  if (!plan || plan.additionalSeatPrice < 0) {
+    return { seatPrice: storedSeatPrice, monthlyPrice: null, fromPlan: false };
+  }
+  return {
+    seatPrice: plan.additionalSeatPrice,
+    monthlyPrice: plan.monthlyPrice,
+    fromPlan: true,
+  };
 }
 
 /**
@@ -665,6 +703,18 @@ export const updateSeats = api(
 
     const currentUsersCount = currentUsers?.count || 0;
     const newTotalSeats = subscription.includedSeats + params.additionalSeats;
+
+    // Bill the same rate checkout quoted, not whatever is on the row.
+    const pricing = planPricingFor(
+      subscription.planType,
+      subscription.seatPrice
+    );
+    if (!pricing.fromPlan) {
+      log.warn("Seat price not found in PRICING_PLANS; using stored rate", {
+        planType: subscription.planType,
+        seatPrice: pricing.seatPrice,
+      });
+    }
 
     if (newTotalSeats < currentUsersCount) {
       throw APIError.invalidArgument(
@@ -729,7 +779,7 @@ export const updateSeats = api(
       // dashboard setup required.
       const seatPrice = await stripe.prices.create({
         currency: "usd",
-        unit_amount: Math.round(subscription.seatPrice * 100),
+        unit_amount: Math.round(pricing.seatPrice * 100),
         recurring: { interval: "month" },
         product_data: { name: SEAT_PRODUCT_NAME },
       });
@@ -757,7 +807,7 @@ export const updateSeats = api(
       success: true,
       totalSeats: newTotalSeats,
       additionalSeats: params.additionalSeats,
-      seatPrice: subscription.seatPrice,
+      seatPrice: pricing.seatPrice,
     };
   }
 );
