@@ -94,7 +94,7 @@ function mapStripeStatus(stripeStatus: string): SubscriptionStatus {
 }
 
 // Helper function to determine plan type from price ID
-function getPlanTypeFromPriceId(priceId: string): SubscriptionPlan {
+export function getPlanTypeFromPriceId(priceId: string): SubscriptionPlan {
   for (const [key, plan] of Object.entries(PRICING_PLANS)) {
     if (plan.priceId === priceId) {
       return key as SubscriptionPlan;
@@ -316,6 +316,15 @@ interface CreateCheckoutSessionParams {
   planType: "EARLY_BIRD" | "STANDARD";
   additionalSeats?: number;
   organizationName?: string; // Optional - for when creating a new organization
+  /**
+   * Superuser only. Subscribe a market center the caller is not a member of.
+   *
+   * Without this the only way to pay for a market center provisioned by hand
+   * was to create the subscription in the Stripe dashboard, which does not set
+   * the marketCenterId metadata the webhook requires -- so the card was charged
+   * and the market center stayed unlinked.
+   */
+  marketCenterId?: string;
 }
 
 interface CreateCheckoutSessionResponse {
@@ -348,7 +357,31 @@ export const createCheckoutSession = api(
     let marketCenterId = user.marketCenterId;
     let marketCenterName: string | undefined;
 
-    if (marketCenterId) {
+    // Paying for someone else's market center. Resolved before anything else so
+    // the rest of the flow treats it exactly like an existing organisation --
+    // in particular it must not fall into the "create a new organisation"
+    // branch, which would reassign the operator's own account.
+    const targetMarketCenterId = params.marketCenterId;
+    if (targetMarketCenterId) {
+      if (!user.isSuperuser) {
+        throw APIError.permissionDenied(
+          "Only a superuser can subscribe another market center"
+        );
+      }
+
+      const target = await db.queryRow<{ id: string; name: string }>`
+        SELECT id, name FROM market_centers WHERE id = ${targetMarketCenterId}
+      `;
+
+      if (!target) {
+        throw APIError.notFound("Market center not found");
+      }
+
+      marketCenterId = target.id;
+      marketCenterName = target.name;
+    }
+
+    if (marketCenterId && !marketCenterName) {
       const mc = await db.queryRow<{ name: string }>`
         SELECT name FROM market_centers WHERE id = ${marketCenterId}
       `;
@@ -384,21 +417,26 @@ export const createCheckoutSession = api(
         });
       }
     } else {
-      // Check if market center already has a subscription
+      // Check the market center being paid for, which is not necessarily the
+      // caller's own one.
       const existingSubscription =
-        await subscriptionRepository.findByMarketCenterId(user?.marketCenterId);
+        await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
       if (
         existingSubscription &&
         existingSubscription.status === SubscriptionStatus.ACTIVE
       ) {
         throw APIError.alreadyExists(
-          "Your organization already has an active subscription"
+          targetMarketCenterId
+            ? "That market center already has an active subscription"
+            : "Your organization already has an active subscription"
         );
       }
 
-      // Only admins can create subscriptions for existing market centers
-      if (user.role !== "ADMIN") {
+      // Only admins can create subscriptions for existing market centers. A
+      // superuser paying for another market center has already been authorised
+      // above and is not expected to hold a role inside it.
+      if (!targetMarketCenterId && user.role !== "ADMIN") {
         throw APIError.permissionDenied(
           "Only organization admins can manage subscriptions"
         );
@@ -581,20 +619,22 @@ export const getSubscription = api(
 
     const { subscription, activeUserCount, agentCount } = result;
 
+    const currentPricing = planPricingFor(
+      subscription.planType,
+      subscription.seatPrice,
+      subscription.includedSeats
+    );
+
     return {
       id: subscription.id,
       status: subscription.status,
       planType: subscription.planType,
-      includedSeats: subscription.includedSeats,
+      includedSeats: currentPricing.includedSeats,
       additionalSeats: subscription.additionalSeats,
-      totalSeats: subscription.includedSeats + subscription.additionalSeats,
+      totalSeats: currentPricing.includedSeats + subscription.additionalSeats,
       usedSeats: activeUserCount,
-      seatPrice: planPricingFor(subscription.planType, subscription.seatPrice)
-        .seatPrice,
-      monthlyPrice: planPricingFor(
-        subscription.planType,
-        subscription.seatPrice
-      ).monthlyPrice,
+      seatPrice: currentPricing.seatPrice,
+      monthlyPrice: currentPricing.monthlyPrice,
       agentCount: agentCount,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
@@ -630,16 +670,38 @@ interface UpdateSeatsResponse {
  */
 export function planPricingFor(
   planType: string,
-  storedSeatPrice: number
-): { seatPrice: number; monthlyPrice: number | null; fromPlan: boolean } {
-  const plan = (PRICING_PLANS as Record<string, { additionalSeatPrice: number; monthlyPrice: number } | undefined>)[planType];
+  storedSeatPrice: number,
+  storedIncludedSeats?: number
+): {
+  seatPrice: number;
+  monthlyPrice: number | null;
+  includedSeats: number;
+  fromPlan: boolean;
+} {
+  const plan = (
+    PRICING_PLANS as Record<
+      string,
+      | { additionalSeatPrice: number; monthlyPrice: number; includedSeats: number }
+      | undefined
+    >
+  )[planType];
 
+  // Every paid plan includes 50 seats. Rows written before the current plans
+  // existed carry included_seats = 5, which silently capped those market
+  // centers at five paid users and blocked role changes they had already paid
+  // for. The plan is the source of truth; the column is not.
   if (!plan || plan.additionalSeatPrice < 0) {
-    return { seatPrice: storedSeatPrice, monthlyPrice: null, fromPlan: false };
+    return {
+      seatPrice: storedSeatPrice,
+      monthlyPrice: null,
+      includedSeats: DEFAULT_INCLUDED_SEATS,
+      fromPlan: false,
+    };
   }
   return {
     seatPrice: plan.additionalSeatPrice,
     monthlyPrice: plan.monthlyPrice,
+    includedSeats: plan.includedSeats,
     fromPlan: true,
   };
 }
@@ -660,6 +722,9 @@ const SEAT_PRORATION_BEHAVIOR = "create_prorations" as const;
  * writes "Additional Seats (N seats)", so matching is by prefix.
  */
 const SEAT_PRODUCT_NAME = "Additional Seats";
+
+/** Seats included with every paid plan. Anything beyond this is billed. */
+const DEFAULT_INCLUDED_SEATS = 50;
 
 // Update additional seats for the subscription
 export const updateSeats = api(
@@ -702,7 +767,12 @@ export const updateSeats = api(
     `;
 
     const currentUsersCount = currentUsers?.count || 0;
-    const newTotalSeats = subscription.includedSeats + params.additionalSeats;
+    const newTotalSeats =
+      planPricingFor(
+        subscription.planType,
+        subscription.seatPrice,
+        subscription.includedSeats
+      ).includedSeats + params.additionalSeats;
 
     // Bill the same rate checkout quoted, not whatever is on the row.
     const pricing = planPricingFor(

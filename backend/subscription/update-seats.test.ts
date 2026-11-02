@@ -114,7 +114,8 @@ describe("updateSeats", () => {
     expect(arg.price).toBe("price_new");
     // Priced from the subscription's own seat price, in cents.
     expect(stripe.prices.create.mock.calls[0][0].unit_amount).toBe(1000);
-    expect(res).toMatchObject({ success: true, totalSeats: 7, additionalSeats: 2 });
+    // 50 included by the plan + 2 extra, NOT the stale 5 on the row.
+    expect(res).toMatchObject({ success: true, totalSeats: 52, additionalSeats: 2 });
     expect(mockSubscriptionRepository.update).toHaveBeenCalledWith("sub-row-1", {
       additionalSeats: 2,
     });
@@ -156,13 +157,8 @@ describe("updateSeats", () => {
 
   it("refuses to cut seats below the people already occupying them", async () => {
     planPlusSeats();
-    mockSubscriptionRepository.findByMarketCenterId.mockResolvedValue({
-      id: "sub-row-1",
-      stripeSubscriptionId: "sub_123",
-      includedSeats: 2,
-      seatPrice: 10,
-    });
-    mockDb.queryRow.mockResolvedValue({ count: 4 });
+    // 50 included by the plan, so the guard only bites past 50 paid users.
+    mockDb.queryRow.mockResolvedValue({ count: 55 });
 
     await expect(updateSeats({ additionalSeats: 0 })).rejects.toThrow(
       /Cannot reduce seats below/
@@ -238,6 +234,15 @@ describe("seat pricing source of truth", () => {
     expect(p.seatPrice).not.toBe(10);
     expect(p.monthlyPrice).toBe(PRICING_PLANS.STANDARD.monthlyPrice);
     expect(p.fromPlan).toBe(true);
+  });
+
+  it("gives every plan the 50 included seats, ignoring a stale column", () => {
+    // Rows predating the current plans carry included_seats = 5, which capped
+    // those market centers at five paid users and blocked role changes they
+    // had already paid for.
+    expect(planPricingFor("STANDARD", 6, 5).includedSeats).toBe(50);
+    expect(planPricingFor("EARLY_BIRD", 6, 5).includedSeats).toBe(50);
+    expect(planPricingFor("TEAM", 10, 5).includedSeats).toBe(50);
   });
 
   it("honours the stored rate for a plan type it doesn't recognise", () => {
