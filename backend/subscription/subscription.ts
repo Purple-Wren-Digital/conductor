@@ -94,7 +94,7 @@ function mapStripeStatus(stripeStatus: string): SubscriptionStatus {
 }
 
 // Helper function to determine plan type from price ID
-function getPlanTypeFromPriceId(priceId: string): SubscriptionPlan {
+export function getPlanTypeFromPriceId(priceId: string): SubscriptionPlan {
   for (const [key, plan] of Object.entries(PRICING_PLANS)) {
     if (plan.priceId === priceId) {
       return key as SubscriptionPlan;
@@ -316,6 +316,15 @@ interface CreateCheckoutSessionParams {
   planType: "EARLY_BIRD" | "STANDARD";
   additionalSeats?: number;
   organizationName?: string; // Optional - for when creating a new organization
+  /**
+   * Superuser only. Subscribe a market center the caller is not a member of.
+   *
+   * Without this the only way to pay for a market center provisioned by hand
+   * was to create the subscription in the Stripe dashboard, which does not set
+   * the marketCenterId metadata the webhook requires -- so the card was charged
+   * and the market center stayed unlinked.
+   */
+  marketCenterId?: string;
 }
 
 interface CreateCheckoutSessionResponse {
@@ -348,7 +357,31 @@ export const createCheckoutSession = api(
     let marketCenterId = user.marketCenterId;
     let marketCenterName: string | undefined;
 
-    if (marketCenterId) {
+    // Paying for someone else's market center. Resolved before anything else so
+    // the rest of the flow treats it exactly like an existing organisation --
+    // in particular it must not fall into the "create a new organisation"
+    // branch, which would reassign the operator's own account.
+    const targetMarketCenterId = params.marketCenterId;
+    if (targetMarketCenterId) {
+      if (!user.isSuperuser) {
+        throw APIError.permissionDenied(
+          "Only a superuser can subscribe another market center"
+        );
+      }
+
+      const target = await db.queryRow<{ id: string; name: string }>`
+        SELECT id, name FROM market_centers WHERE id = ${targetMarketCenterId}
+      `;
+
+      if (!target) {
+        throw APIError.notFound("Market center not found");
+      }
+
+      marketCenterId = target.id;
+      marketCenterName = target.name;
+    }
+
+    if (marketCenterId && !marketCenterName) {
       const mc = await db.queryRow<{ name: string }>`
         SELECT name FROM market_centers WHERE id = ${marketCenterId}
       `;
@@ -384,21 +417,26 @@ export const createCheckoutSession = api(
         });
       }
     } else {
-      // Check if market center already has a subscription
+      // Check the market center being paid for, which is not necessarily the
+      // caller's own one.
       const existingSubscription =
-        await subscriptionRepository.findByMarketCenterId(user?.marketCenterId);
+        await subscriptionRepository.findByMarketCenterId(marketCenterId);
 
       if (
         existingSubscription &&
         existingSubscription.status === SubscriptionStatus.ACTIVE
       ) {
         throw APIError.alreadyExists(
-          "Your organization already has an active subscription"
+          targetMarketCenterId
+            ? "That market center already has an active subscription"
+            : "Your organization already has an active subscription"
         );
       }
 
-      // Only admins can create subscriptions for existing market centers
-      if (user.role !== "ADMIN") {
+      // Only admins can create subscriptions for existing market centers. A
+      // superuser paying for another market center has already been authorised
+      // above and is not expected to hold a role inside it.
+      if (!targetMarketCenterId && user.role !== "ADMIN") {
         throw APIError.permissionDenied(
           "Only organization admins can manage subscriptions"
         );
@@ -533,6 +571,10 @@ interface GetSubscriptionResponse {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  /** Monthly cost of one additional seat, so the UI can quote it before charging. */
+  seatPrice: number;
+  /** Base plan cost per month, or null for custom/unknown plans. */
+  monthlyPrice: number | null;
   agentCount: number;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
@@ -577,14 +619,22 @@ export const getSubscription = api(
 
     const { subscription, activeUserCount, agentCount } = result;
 
+    const currentPricing = planPricingFor(
+      subscription.planType,
+      subscription.seatPrice,
+      subscription.includedSeats
+    );
+
     return {
       id: subscription.id,
       status: subscription.status,
       planType: subscription.planType,
-      includedSeats: subscription.includedSeats,
+      includedSeats: currentPricing.includedSeats,
       additionalSeats: subscription.additionalSeats,
-      totalSeats: subscription.includedSeats + subscription.additionalSeats,
+      totalSeats: currentPricing.includedSeats + subscription.additionalSeats,
       usedSeats: activeUserCount,
+      seatPrice: currentPricing.seatPrice,
+      monthlyPrice: currentPricing.monthlyPrice,
       agentCount: agentCount,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
@@ -599,6 +649,83 @@ interface UpdateSeatsParams {
   additionalSeats: number;
 }
 
+interface UpdateSeatsResponse {
+  success: boolean;
+  totalSeats: number;
+  additionalSeats: number;
+  seatPrice: number;
+}
+
+/**
+ * Pricing for a subscription, read from PRICING_PLANS so checkout and seat
+ * changes can never quote different numbers.
+ *
+ * Previously checkout billed plan.additionalSeatPrice ($6) while adding seats
+ * later used the subscriptions.seat_price column, which defaults to $10 -- so
+ * any row not created by checkout charged a different rate than it was sold at.
+ *
+ * Falls back to the stored column for plan types absent from PRICING_PLANS
+ * (legacy or seeded rows), since guessing a price is worse than honouring the
+ * one on record.
+ */
+export function planPricingFor(
+  planType: string,
+  storedSeatPrice: number,
+  storedIncludedSeats?: number
+): {
+  seatPrice: number;
+  monthlyPrice: number | null;
+  includedSeats: number;
+  fromPlan: boolean;
+} {
+  const plan = (
+    PRICING_PLANS as Record<
+      string,
+      | { additionalSeatPrice: number; monthlyPrice: number; includedSeats: number }
+      | undefined
+    >
+  )[planType];
+
+  // Every paid plan includes 50 seats. Rows written before the current plans
+  // existed carry included_seats = 5, which silently capped those market
+  // centers at five paid users and blocked role changes they had already paid
+  // for. The plan is the source of truth; the column is not.
+  if (!plan || plan.additionalSeatPrice < 0) {
+    return {
+      seatPrice: storedSeatPrice,
+      monthlyPrice: null,
+      includedSeats: DEFAULT_INCLUDED_SEATS,
+      fromPlan: false,
+    };
+  }
+  return {
+    seatPrice: plan.additionalSeatPrice,
+    monthlyPrice: plan.monthlyPrice,
+    includedSeats: plan.includedSeats,
+    fromPlan: true,
+  };
+}
+
+/**
+ * How Stripe bills a mid-cycle seat change.
+ *
+ * "create_prorations" puts the prorated amount on the NEXT invoice: the seat is
+ * usable immediately and no card is charged today. The alternative,
+ * "always_invoice", bills right away -- safer for collection, but it means an
+ * admin adding one seat gets an immediate charge, and a declined card leaves
+ * the change half-applied. Flip this single constant to change that behaviour.
+ */
+const SEAT_PRORATION_BEHAVIOR = "create_prorations" as const;
+
+/**
+ * Product name used to recognise the additional-seats line item. Checkout
+ * writes "Additional Seats (N seats)", so matching is by prefix.
+ */
+const SEAT_PRODUCT_NAME = "Additional Seats";
+
+/** Seats included with every paid plan. Anything beyond this is billed. */
+const DEFAULT_INCLUDED_SEATS = 50;
+
 // Update additional seats for the subscription
 export const updateSeats = api(
   {
@@ -607,7 +734,7 @@ export const updateSeats = api(
     expose: true,
     auth: true,
   },
-  async (params: UpdateSeatsParams): Promise<{ success: boolean }> => {
+  async (params: UpdateSeatsParams): Promise<UpdateSeatsResponse> => {
     const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("Not authenticated");
@@ -640,7 +767,24 @@ export const updateSeats = api(
     `;
 
     const currentUsersCount = currentUsers?.count || 0;
-    const newTotalSeats = subscription.includedSeats + params.additionalSeats;
+    const newTotalSeats =
+      planPricingFor(
+        subscription.planType,
+        subscription.seatPrice,
+        subscription.includedSeats
+      ).includedSeats + params.additionalSeats;
+
+    // Bill the same rate checkout quoted, not whatever is on the row.
+    const pricing = planPricingFor(
+      subscription.planType,
+      subscription.seatPrice
+    );
+    if (!pricing.fromPlan) {
+      log.warn("Seat price not found in PRICING_PLANS; using stored rate", {
+        planType: subscription.planType,
+        seatPrice: pricing.seatPrice,
+      });
+    }
 
     if (newTotalSeats < currentUsersCount) {
       throw APIError.invalidArgument(
@@ -650,32 +794,71 @@ export const updateSeats = api(
 
     // Update in Stripe
     const stripeSubscription = await stripe.subscriptions.retrieve(
-      subscription.stripeSubscriptionId
+      subscription.stripeSubscriptionId,
+      { expand: ["items.data.price.product"] }
     );
 
-    // Find the additional seats item if it exists
-    const seatItem = stripeSubscription.items.data.find(
-      (item) => item.price.product === "additional_seats" // You'll need to set this up in Stripe
-    );
+    // Identify the seat line item POSITIVELY, by its product name.
+    //
+    // Checkout creates it with an inline product named "Additional Seats (N
+    // seats)" and this endpoint creates one named "Additional Seats", so the
+    // name is the only stable signal -- the product id is generated per
+    // subscription. Deliberately NOT "whichever item isn't the plan": if the
+    // subscription's plan price is missing from PRICING_PLANS (a rotated price,
+    // a grandfathered customer, a different Stripe account) that rule points at
+    // the PLAN item and we would reprice or delete someone's subscription.
+    const seatItems = stripeSubscription.items.data.filter((item) => {
+      const product = item.price.product;
+      const name =
+        typeof product === "object" && product !== null && !("deleted" in product)
+          ? product.name
+          : undefined;
+      return typeof name === "string" && name.startsWith(SEAT_PRODUCT_NAME);
+    });
+
+    if (seatItems.length > 1) {
+      // Two seat items means an earlier bug already duplicated them. Guessing
+      // which to edit could leave the customer billed twice; a human should look.
+      log.error("Multiple additional-seat line items on one subscription", {
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        count: seatItems.length,
+      });
+      throw APIError.failedPrecondition(
+        "This subscription has more than one additional-seats line item. Please contact support so we can correct your billing."
+      );
+    }
+
+    const seatItem = seatItems[0];
 
     if (seatItem) {
-      // Update existing seat item
-      await stripe.subscriptionItems.update(seatItem.id, {
-        quantity: params.additionalSeats,
-      });
+      if (params.additionalSeats > 0) {
+        await stripe.subscriptionItems.update(seatItem.id, {
+          quantity: params.additionalSeats,
+          proration_behavior: SEAT_PRORATION_BEHAVIOR,
+        });
+      } else {
+        // Down to zero extra seats: drop the line item rather than bill for 0.
+        await stripe.subscriptionItems.del(seatItem.id, {
+          proration_behavior: SEAT_PRORATION_BEHAVIOR,
+        });
+      }
     } else if (params.additionalSeats > 0) {
-      // Add new seat item
+      // subscriptionItems.create only accepts an existing product id, unlike
+      // checkout's line_items. Create the price (with its product inline)
+      // first, then attach it -- same end state as checkout, no Stripe
+      // dashboard setup required.
+      const seatPrice = await stripe.prices.create({
+        currency: "usd",
+        unit_amount: Math.round(pricing.seatPrice * 100),
+        recurring: { interval: "month" },
+        product_data: { name: SEAT_PRODUCT_NAME },
+      });
+
       await stripe.subscriptionItems.create({
         subscription: subscription.stripeSubscriptionId,
-        price_data: {
-          currency: "usd",
-          product: "additional_seats",
-          recurring: {
-            interval: "month",
-          },
-          unit_amount: subscription.seatPrice * 100,
-        },
+        price: seatPrice.id,
         quantity: params.additionalSeats,
+        proration_behavior: SEAT_PRORATION_BEHAVIOR,
       });
     }
 
@@ -684,7 +867,18 @@ export const updateSeats = api(
       additionalSeats: params.additionalSeats,
     });
 
-    return { success: true };
+    log.info("Updated subscription seats", {
+      marketCenterId: user.marketCenterId,
+      additionalSeats: params.additionalSeats,
+      newTotalSeats,
+    });
+
+    return {
+      success: true,
+      totalSeats: newTotalSeats,
+      additionalSeats: params.additionalSeats,
+      seatPrice: pricing.seatPrice,
+    };
   }
 );
 

@@ -160,6 +160,10 @@ export default function AdminTicketList() {
 
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+  // Separate from dateFrom/dateTo, which filter on creation date. The
+  // dashboard's resolved count is a resolution-date measure.
+  const [resolvedFrom, setResolvedFrom] = useState<Date>();
+  const [resolvedTo, setResolvedTo] = useState<Date>();
 
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
@@ -233,24 +237,35 @@ export default function AdminTicketList() {
         setSelectedStatuses(defaultActiveStatuses);
         setDateFrom(undefined);
         setDateTo(undefined);
+        setResolvedFrom(undefined);
+        setResolvedTo(undefined);
         setFilterOverdue(false);
         break;
       case "new":
         setSelectedStatuses([...defaultActiveStatuses, "RESOLVED"]);
         setDateFrom(oneWeekAgo);
         setDateTo(now);
+        setResolvedFrom(undefined);
+        setResolvedTo(undefined);
         setFilterOverdue(false);
         break;
       case "overdue":
         setSelectedStatuses(defaultActiveStatuses);
         setDateFrom(undefined);
         setDateTo(undefined);
+        setResolvedFrom(undefined);
+        setResolvedTo(undefined);
         setFilterOverdue(true);
         break;
       case "resolved":
         setSelectedStatuses(["RESOLVED"]);
-        setDateFrom(oneWeekAgo);
-        setDateTo(now);
+        // Match the dashboard card, which counts by resolvedAt. Filtering on
+        // created_at here dropped every older ticket resolved this week, so the
+        // list disagreed with the number that was clicked.
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        setResolvedFrom(oneWeekAgo);
+        setResolvedTo(now);
         setFilterOverdue(false);
         break;
     }
@@ -285,6 +300,10 @@ export default function AdminTicketList() {
     }
     if (dateFrom) params.append("dateFrom", startOfDay(dateFrom).toISOString());
     if (dateTo) params.append("dateTo", endOfDay(dateTo).toISOString());
+    if (resolvedFrom)
+      params.append("resolvedFrom", startOfDay(resolvedFrom).toISOString());
+    if (resolvedTo)
+      params.append("resolvedTo", endOfDay(resolvedTo).toISOString());
     params.append("sortBy", sortBy);
     params.append("sortDir", sortDir);
     return params;

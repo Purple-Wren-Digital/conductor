@@ -3,13 +3,17 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * Covers one behaviour of the Quick Edit role dropdown: it commits immediately
- * on select, so a change that spends a paid seat must be confirmed first.
+ * Covers the Quick Edit role dropdown: selecting a role applies it straight
+ * away, with no confirmation step.
  *
- * The seat arithmetic itself lives in roleChangeConsumesSeat and is tested in
- * lib/role-assignment.test.ts. What this pins is the wiring -- that the
- * component actually routes a seat-consuming change through the dialog instead
- * of firing the mutation.
+ * A seat-consuming promotion used to open a dialog warning that it would spend
+ * a paid seat. The client asked for it to go: a market center pays a flat rate
+ * for its included seats, so at 5 of 50 the prompt announced a cost that had
+ * not been incurred and read as a limit that did not apply.
+ *
+ * What is pinned here is that no confirmation returns by accident. The dropdown
+ * still hides roles that are genuinely unavailable -- that filtering lives in
+ * canAssignRoleOption and is tested in lib/role-assignment.test.ts.
  */
 // jsdom has no matchMedia; Radix needs it. Same stub the ticket-form tests use.
 Object.defineProperty(window, "matchMedia", {
@@ -97,60 +101,38 @@ async function chooseRole(name: RegExp) {
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
-describe("Quick Edit role change — paid seat confirmation", () => {
-  it("asks before spending a seat, and does not change the role yet", async () => {
+describe("Quick Edit role change", () => {
+  it("applies a seat-consuming promotion immediately", async () => {
     render(<UserDetailView id="u-1" />);
 
     await chooseRole(/staff$/i);
 
-    expect(
-      await screen.findByText(/will use one of your paid seats/i)
-    ).toBeInTheDocument();
-    // The mutation must NOT have fired just because the dropdown closed.
-    expect(mutate).not.toHaveBeenCalled();
-  });
-
-  it("tells the admin how many seats remain afterwards", async () => {
-    render(<UserDetailView id="u-1" />);
-
-    await chooseRole(/staff$/i);
-
-    expect(await screen.findByText(/1 of 5 paid seats left/i)).toBeInTheDocument();
-  });
-
-  it("applies the change once confirmed", async () => {
-    render(<UserDetailView id="u-1" />);
-
-    await chooseRole(/staff$/i);
-    await userEvent.click(
-      await screen.findByRole("button", { name: /use a seat/i })
-    );
-
+    // Previously this opened a dialog and withheld the mutation.
     expect(mutate).toHaveBeenCalledTimes(1);
   });
 
-  it("abandons the change on cancel", async () => {
+  it("does not warn that a paid seat is being used", async () => {
     render(<UserDetailView id="u-1" />);
 
     await chooseRole(/staff$/i);
-    await userEvent.click(
-      await screen.findByRole("button", { name: /cancel/i })
-    );
 
-    expect(mutate).not.toHaveBeenCalled();
+    // The "N out of M paid seats used" counter elsewhere on the page is a
+    // status label, not a prompt, and is deliberately left alone.
+    expect(
+      screen.queryByText(/will use one of your paid seats/i)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /use a seat/i })
+    ).not.toBeInTheDocument();
   });
 
-  it("does not interrupt a seat-neutral change", async () => {
-    // Already on a paid role: moving to another paid role costs nothing, so
-    // prompting would be noise.
+  it("applies a seat-neutral change", async () => {
+    // Already on a paid role, so nothing about the seat count changes.
     user.value.role = "STAFF";
     render(<UserDetailView id="u-1" />);
 
     await chooseRole(/staff leader/i);
 
-    expect(
-      screen.queryByText(/will use one of your paid seats/i)
-    ).not.toBeInTheDocument();
     expect(mutate).toHaveBeenCalledTimes(1);
   });
 });

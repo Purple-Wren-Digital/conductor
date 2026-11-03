@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { UserRole } from "@/lib/types";
 
 /**
@@ -30,7 +31,12 @@ export function RoleSeatNotice({
     <p className="text-xs text-muted-foreground">
       {totalSeats === 0
         ? "This market center has no active subscription, so only the agent role can be assigned. Agents are always free."
-        : `All ${totalSeats} paid seats are in use, so only the agent role can be assigned. Free a seat or add more to assign staff, staff leader or admin.`}
+        : `All ${totalSeats} paid seats are in use, so only the agent role can be assigned. Free a seat, or add more to assign staff, staff leader or admin.`}{" "}
+      {/* Telling an admin they are stuck without offering the way out is why
+          this turned into a support message rather than a self-serve fix. */}
+      <Link href="/dashboard/subscription" className="underline">
+        {totalSeats === 0 ? "View subscription" : "Add seats"}
+      </Link>
     </p>
   );
 }

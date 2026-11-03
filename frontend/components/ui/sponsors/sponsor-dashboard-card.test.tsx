@@ -83,6 +83,93 @@ describe("SponsorDashboardCard", () => {
   });
 });
 
+describe("SponsorDashboardCardView creative sizing", () => {
+  it("scales the creative to fit without cropping it", () => {
+    render(
+      <SponsorDashboardCardView
+        slot={{
+          slot: "dashboardCard",
+          name: "Acme Roofing",
+          imageUrl: "https://cdn.example.com/card.png",
+        }}
+      />
+    );
+
+    const img = screen.getByAltText("Acme Roofing");
+    expect(img).toHaveClass("object-contain");
+    // `object-cover` fills the tile by cropping the overflowing axis, which
+    // slices the edges off wide sponsor logos.
+    expect(img).not.toHaveClass("object-cover");
+    expect(img).toHaveClass("h-full");
+    expect(img).toHaveClass("w-full");
+  });
+
+  it("keeps the creative out of flow so it cannot drive the card's height", () => {
+    render(
+      <SponsorDashboardCardView
+        slot={{
+          slot: "dashboardCard",
+          imageUrl: "https://cdn.example.com/card.png",
+        }}
+      />
+    );
+
+    // Regression guard: in normal flow a tall/square creative sizes the card to
+    // its intrinsic height, and grid row stretching drags every sibling stat
+    // card up to match — a 400px-square upload produced a ~500px stats row.
+    const img = screen.getByAltText("Sponsor");
+    expect(img).toHaveClass("absolute");
+    expect(img).toHaveClass("inset-0");
+    expect(img.parentElement).toHaveClass("relative");
+  });
+
+  it("spans two stat-grid columns so wide logos stay legible", () => {
+    const { container } = render(
+      <SponsorDashboardCardView
+        slot={{
+          slot: "dashboardCard",
+          imageUrl: "https://cdn.example.com/card.png",
+        }}
+      />
+    );
+
+    expect(container.firstElementChild).toHaveClass("col-span-2");
+  });
+
+  it("spans two stat-grid columns when the card is a link", () => {
+    const { container } = render(
+      <SponsorDashboardCardView
+        slot={{
+          slot: "dashboardCard",
+          imageUrl: "https://cdn.example.com/card.png",
+          linkUrl: "https://acme.example.com",
+        }}
+      />
+    );
+
+    // The anchor is the grid item in this case, so the span has to live on it.
+    expect(container.firstElementChild).toHaveClass("col-span-2");
+    expect(screen.getByRole("link")).toHaveClass("col-span-2");
+  });
+
+  it("keeps the attribution out of the creative's box", () => {
+    render(
+      <SponsorDashboardCardView
+        slot={{
+          slot: "dashboardCard",
+          name: "Acme Roofing",
+          imageUrl: "https://cdn.example.com/card.png",
+        }}
+      />
+    );
+
+    // An overlaid scrim would sit on top of a contained logo and clip it.
+    const attribution = screen.getByText("Sponsored").parentElement;
+    expect(attribution).not.toHaveClass("absolute");
+    expect(attribution).not.toContainElement(screen.getByAltText("Acme Roofing"));
+  });
+});
+
 describe("SponsorDashboardCardView", () => {
   it("renders the creative image, Sponsored label, and name from a plain slot prop", () => {
     render(

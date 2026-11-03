@@ -21,6 +21,15 @@ export interface SearchTicketsRequest {
   dateFrom?: Query<string>;
   dateTo?: Query<string>;
 
+  /**
+   * Filter on when a ticket was RESOLVED, not when it was created. The
+   * dashboard's "resolved in the last 7 days" count is a resolution-date
+   * measure; filtering it by created_at silently drops every older ticket that
+   * was resolved recently, so the drill-down disagreed with the number.
+   */
+  resolvedFrom?: Query<string>;
+  resolvedTo?: Query<string>;
+
   sortBy?: Query<"updatedAt" | "createdAt" | "urgency" | "status">;
   sortDir?: Query<"asc" | "desc">;
 
@@ -57,10 +66,20 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
     // Parse dates
     let dateFrom: Date | undefined;
     let dateTo: Date | undefined;
+    let resolvedFrom: Date | undefined;
+    let resolvedTo: Date | undefined;
 
     if (req.dateFrom) {
       const from = new Date(req.dateFrom);
       if (!isNaN(from.getTime())) dateFrom = from;
+    }
+    if (req.resolvedFrom) {
+      const from = new Date(req.resolvedFrom);
+      if (!isNaN(from.getTime())) resolvedFrom = from;
+    }
+    if (req.resolvedTo) {
+      const to = new Date(req.resolvedTo);
+      if (!isNaN(to.getTime())) resolvedTo = to;
     }
     if (req.dateTo) {
       const to = new Date(req.dateTo);
@@ -122,6 +141,8 @@ export const search = api<SearchTicketsRequest, SearchTicketsResponse>(
       marketCenterIds,
       dateFrom,
       dateTo,
+      resolvedFrom,
+      resolvedTo,
       sortBy: req.sortBy as any,
       sortDir: req.sortDir as any,
       limit,

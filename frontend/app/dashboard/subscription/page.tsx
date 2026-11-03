@@ -28,6 +28,8 @@ interface SubscriptionData {
   additionalSeats: number;
   totalSeats: number;
   usedSeats: number;
+  seatPrice: number;
+  monthlyPrice: number | null;
   agentCount: number;
   currentPeriodStart: string;
   currentPeriodEnd: string;
@@ -56,6 +58,38 @@ function SubscriptionPageContent() {
   const [organizationName, setOrganizationName] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  // Changing seats on an EXISTING subscription, as opposed to choosing extras
+  // at checkout (additionalSeats above).
+  const [editingSeats, setEditingSeats] = useState(false);
+  // Held as a string so typing behaves. A number-backed value re-renders to the
+  // parsed result only when it changes, so typing "10" into a "0" leaves "010"
+  // in the box -- the parse is a no-op on the first keystroke.
+  const [seatDraftText, setSeatDraftText] = useState("0");
+  const seatDraft = Math.max(0, parseInt(seatDraftText, 10) || 0);
+  const [seatSaving, setSeatSaving] = useState(false);
+  const [seatError, setSeatError] = useState<string | null>(null);
+
+  const handleUpdateSeats = async () => {
+    setSeatSaving(true);
+    setSeatError(null);
+    try {
+      const response = await fetchWithAuth("/subscription/seats", {
+        method: "PUT",
+        body: JSON.stringify({ additionalSeats: seatDraft }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setSeatError(body?.message ?? "Couldn't update seats. Please try again.");
+        return;
+      }
+      setEditingSeats(false);
+      await fetchCurrentSubscription();
+    } catch {
+      setSeatError("Couldn't update seats. Please try again.");
+    } finally {
+      setSeatSaving(false);
+    }
+  };
 
   const fetchCurrentSubscription = useCallback(async () => {
     try {
@@ -244,6 +278,130 @@ function SubscriptionPageContent() {
                     )}
                   </p>
                 </div>
+
+                {!editingSeats ? (
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    onClick={() => {
+                      setSeatDraftText(String(subscription.additionalSeats));
+                      setSeatError(null);
+                      setEditingSeats(true);
+                    }}
+                  >
+                    Change seats
+                  </Button>
+                ) : (
+                  <div className="mt-2 space-y-2 rounded-md border p-3">
+                    <Label htmlFor="seatDraft" className="text-sm">
+                      Additional seats on top of the {subscription.includedSeats}{" "}
+                      included
+                    </Label>
+                    <Input
+                      id="seatDraft"
+                      type="number"
+                      min={0}
+                      value={seatDraftText}
+                      onChange={(e) => {
+                        // Keep digits only, and drop leading zeros so the box
+                        // never reads "010".
+                        const digits = e.target.value.replace(/[^0-9]/g, "");
+                        setSeatDraftText(
+                          digits === "" ? "" : String(parseInt(digits, 10))
+                        );
+                      }}
+                      onBlur={() => {
+                        if (seatDraftText === "") setSeatDraftText("0");
+                      }}
+                      placeholder="0"
+                      className="w-28"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      New total: {subscription.includedSeats + seatDraft} paid
+                      seats. Agents stay free.
+                    </p>
+
+                    {/* Quote the bill before charging it: an admin changing
+                        seats is changing what they pay, and should see the
+                        number before confirming rather than on the invoice. */}
+                    {subscription.monthlyPrice !== null && (
+                      <div className="rounded-md bg-muted/50 p-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Today
+                          </span>
+                          <span>
+                            $
+                            {subscription.monthlyPrice +
+                              subscription.additionalSeats *
+                                subscription.seatPrice}
+                            /mo
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>After this change</span>
+                          <span>
+                            $
+                            {subscription.monthlyPrice +
+                              seatDraft * subscription.seatPrice}
+                            /mo
+                          </span>
+                        </div>
+                        {seatDraft !== subscription.additionalSeats && (
+                          <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                            <span>
+                              {seatDraft > subscription.additionalSeats
+                                ? "Increase"
+                                : "Decrease"}
+                            </span>
+                            <span>
+                              {seatDraft > subscription.additionalSeats
+                                ? "+"
+                                : "-"}
+                              $
+                              {Math.abs(
+                                (seatDraft - subscription.additionalSeats) *
+                                  subscription.seatPrice
+                              )}
+                              /mo &middot; ${subscription.seatPrice}/seat
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                      Changes are prorated and appear on your next invoice. You
+                      can&apos;t drop below the {subscription.usedSeats} seats
+                      currently in use.
+                    </p>
+                    {seatError && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {seatError}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateSeats}
+                        disabled={
+                          seatSaving ||
+                          seatDraft === subscription.additionalSeats
+                        }
+                      >
+                        {seatSaving ? "Saving..." : "Update seats"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingSeats(false)}
+                        disabled={seatSaving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

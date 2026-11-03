@@ -415,6 +415,8 @@ export const ticketRepository = {
     marketCenterIds?: string[];
     dateFrom?: Date;
     dateTo?: Date;
+    resolvedFrom?: Date;
+    resolvedTo?: Date;
     // Sorting
     sortBy?: "updatedAt" | "createdAt" | "urgency" | "status";
     sortDir?: "asc" | "desc";
@@ -586,6 +588,17 @@ export const ticketRepository = {
     if (params.dateTo) {
       conditions.push(`t.created_at <= $${paramIndex++}`);
       values.push(params.dateTo);
+    }
+
+    // Resolution-date window, distinct from the creation-date one above.
+    if (params.resolvedFrom) {
+      conditions.push(`t.resolved_at >= $${paramIndex++}`);
+      values.push(params.resolvedFrom);
+    }
+
+    if (params.resolvedTo) {
+      conditions.push(`t.resolved_at <= $${paramIndex++}`);
+      values.push(params.resolvedTo);
     }
 
     const whereClause =

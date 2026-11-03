@@ -35,7 +35,7 @@ export function SponsorHeaderBadgeView({
       <img
         src={slot.imageUrl}
         alt={slot.name ?? "Sponsor"}
-        className="h-8 max-h-10 w-auto object-contain"
+        className="h-10 max-h-12 w-auto object-contain"
       />
     </>
   );
