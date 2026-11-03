@@ -97,7 +97,12 @@ export function AppSidebar({
   return (
     <Sidebar
       {...rest}
-      className={cn(className, "border-r h-[calc(100vh-70px)]")}
+      className={cn(
+        className,
+        // `--header-height` is set by the dashboard layout's SidebarProvider;
+        // the fallback keeps this correct if the sidebar is rendered elsewhere.
+        "border-r h-[calc(100vh-var(--header-height,4.5rem))]"
+      )}
     >
       <SidebarHeader>
         <div className="border-b">

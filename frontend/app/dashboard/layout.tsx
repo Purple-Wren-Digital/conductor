@@ -22,6 +22,14 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { SponsorHeaderBadge } from "@/components/ui/sponsors/sponsor-header-badge";
 
+/**
+ * Height of the sticky dashboard header. Sized to give the Conductor wordmark
+ * and the sponsor logo room to breathe (48px logo + 12px padding either side).
+ * Consumed as `--header-height` by the header itself and by AppSidebar, which
+ * sizes itself to the remaining viewport.
+ */
+const HEADER_HEIGHT = "4.5rem";
+
 // hydration fix
 const UserButton = dynamic(
   () => import("@clerk/nextjs").then((m) => m.UserButton),
@@ -201,7 +209,16 @@ export default function DashboardLayout({
 
   return (
     <>
-      <SidebarProvider>
+      {/*
+        The header height lives in a CSS variable rather than a literal in two
+        places: the sidebar sizes itself as `100vh` minus the header, so a
+        hardcoded value there silently drifts whenever the header changes.
+        SidebarProvider merges `style` onto its wrapper div, so the variable
+        cascades to both the header and AppSidebar.
+      */}
+      <SidebarProvider
+        style={{ "--header-height": HEADER_HEIGHT } as React.CSSProperties}
+      >
         <AppSidebar
           props={{ collapsible: "offcanvas" }}
           newestNotification={newestNotification}
@@ -210,7 +227,7 @@ export default function DashboardLayout({
         />
 
         <div className="w-full flex flex-col min-h-screen">
-          <header className="flex items-center px-4 py-2 gap-2 border-b sticky top-0 bg-[#6D1C24] z-10">
+          <header className="flex h-[var(--header-height)] items-center px-4 gap-2 border-b sticky top-0 bg-[#6D1C24] z-10">
             <SidebarTrigger className="text-muted hover:text-[#A2646A] hover:bg-transparent" />
             <Separator orientation="vertical" className="text-muted" />
 
@@ -219,13 +236,13 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="hover:text-[#A2646A] flex items-center gap-3"
               >
-                <div className="size-8 flex items-center justify-center md:hidden">
+                <div className="size-10 flex items-center justify-center md:hidden">
                   <Image src={conductorLogo} alt="Conductor Logo" />
                 </div>
                 <Image
                   src={conductorHorizontalLogo}
                   alt="Conductor — Agent Ticketing System"
-                  className="hidden md:block h-10 w-auto"
+                  className="hidden md:block h-12 w-auto"
                   priority
                 />
               </Link>
