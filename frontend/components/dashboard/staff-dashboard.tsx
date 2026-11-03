@@ -321,7 +321,7 @@ export function StaffDashboard() {
         </section>
         {/* TOP STATS */}
         <section
-          className={`grid gap-4 grid-cols-2 ${dashboardCardSponsor ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+          className={`grid gap-4 grid-cols-2 ${dashboardCardSponsor ? "md:grid-cols-6" : "md:grid-cols-4"}`}
         >
           <Card
             className="cursor-pointer transition-colors hover:bg-muted/50"

@@ -841,14 +841,14 @@ function SponsorSlotPreview({
 // notifications/avatar cluster standing in for the real ones.
 function HeaderSlotPreview({ slot }: { slot: SponsorDisplaySlot }) {
   return (
-    <div className="flex w-full items-center gap-2 rounded-md bg-[#6D1C24] px-4 py-2">
+    <div className="flex h-[4.5rem] w-full items-center gap-2 rounded-md bg-[#6D1C24] px-4">
       <div className="flex grow items-center justify-between">
         <Image
           src={conductorHorizontalLogoWhite}
           alt="Conductor — Agent Ticketing System"
-          width={106}
-          height={40}
-          className="h-10 w-auto"
+          width={127}
+          height={48}
+          className="h-12 w-auto"
         />
 
         <SponsorHeaderBadgeView slot={slot} alwaysVisible />
@@ -870,7 +870,7 @@ function HeaderSlotPreview({ slot }: { slot: SponsorDisplaySlot }) {
 // components/dashboard/admin-dashboard.tsx) with static mock figures.
 function DashboardCardSlotPreview({ slot }: { slot: SponsorDisplaySlot }) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
       {MOCK_DASHBOARD_STATS.map((stat) => (
         <Card key={stat.title}>
           <CardHeader>
